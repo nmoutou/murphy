@@ -1,0 +1,153 @@
+# ============================================================
+# GENERAL SETTINGS
+# ============================================================
+
+nlp:
+  spacy_model: "fr_core_news_sm"
+
+
+# ============================================================
+# Phase 1: Importation
+# ============================================================
+
+importation:
+  extraction:
+    content_tag: "CONTENU"
+
+  validation:
+    validation_rules:
+      require_eli: true
+      format_regex: "^[A-Z]{8}[0-9]{12}$"
+    log_invalidated: false
+
+  normalization:
+    title_mapping:
+      enabled: true
+      sources:
+        Article:
+          - "article_meta_meta_spec_meta_article_num"
+        Texte:
+          - "texte_version_meta_meta_spec_meta_texte_version_titre"
+        TexteAdmin:
+          - "section_ta_titre_ta"
+
+# ============================================================
+# Phase 2: Preparation
+# ============================================================
+
+field_mappings:
+  Article:
+    document_type: document
+    r"^.*_ancien_id$": anciend_id
+    r"^.*_eli$": eli
+    r"^.*_etat$": etat
+    r"^.*_num$": num
+    r"^.*_type$": type
+    r"^.*_nature$": nature
+    r"^.*_origine$": origine
+    r"^.*_date_debut$": date_debut
+    r"^.*_date_fin$": date_fin
+    r"^.*_url$": url
+  
+  Texte:
+    document_type: document
+    r"^.*_ancien_id$": anciend_id
+    r"^.*_eli$": eli
+    r"^.*_titre$": titre
+    r"^.*_etat$": etat
+    r"^.*_num$": num
+    r"^.*_nature$": nature
+    r"^.*_origine$": origine
+    r"^.*_date_debut$": date_debut
+    r"^.*_date_fin$": date_fin
+    r"^.*_url$": url
+    r"^.*_chronicle_cid$": chronicle_cid
+    r"^.*_date_publi$": date_publi
+    r"^.*_date_texte$": date_texte
+    r"^.*_derniere_modification$": derniere_modification
+    r"^.*_nor$": nor
+    r"^.*_num_parution$": num_parution
+    r"^.*_num_sequence$": num_sequence
+    r"^.*_origine_publi$": origine_publi
+    r"^.*_page_deb_publi$": page_deb_publi
+    r"^.*_page_fin_publi$": page_fin_publi
+    r"^.*_titrefull$": titre_full
+    r"^.*_version_a_venir.*$": version_a_venir
+
+  
+  TexteAdmin:
+    document_type: document
+    section_ta_titre_ta: titre
+    r"^.*_eli$": eli
+
+  
+# ============================================================
+# Phase 3: Formatting
+# ============================================================
+
+formatting:
+  tokenizing:
+    tokenizing_model: ${nlp.spacy_model}
+    batch_size: 50
+
+  chunking:
+    chunk_size: 128
+    chunk_overlap: 25
+
+  relations:
+    filtering: []
+    invert: 
+      - txt_source
+      - lien_art
+      - lien_section_ta
+    mappings:
+      titre_tm: titre
+      titre_txt: titre
+      texte: titre
+      lien_art: titre
+      lien_section_ta: titre
+      txt_source: source
+    reduction:
+      enabled: true
+      types: 
+        - titre
+
+# ============================================================
+# Phase 4: Exportation
+# ============================================================
+
+embedding:
+  embedding:
+    embedding_model: "sentence-transformers/all-mpnet-base-v2"
+    embedding_service_timeout: 30
+    batch_size: 32
+
+exportation:
+  neo4j:
+    include_path: false
+    include_content: false
+    force_drop: true
+  
+  mongodb:
+    include_path: true
+    force_drop: true
+    database: "LEGIFRANCE"
+    collection: "chunks"
+
+  qdrant:
+    force_drop: true
+    collection: "chunks"
+    distance: "Cosine"
+    vector_size: 768
+    batch_size: 100
+
+
+# ============================================================
+# Phase 5: Maintenance
+# ============================================================
+
+maintenance:
+  cleanup_enabled: true
+  cache_paths:
+    - "data/cache"
+    - "data/meta/events"

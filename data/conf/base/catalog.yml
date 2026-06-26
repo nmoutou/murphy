@@ -1,0 +1,80 @@
+# ============================================================
+# Runtime objects — injectés par TelemetryHooks.before_pipeline_run
+# ============================================================
+
+connector:
+  type: MemoryDataset
+  copy_mode: assign
+
+parser:
+  type: MemoryDataset
+  copy_mode: assign
+
+chunker:
+  type: MemoryDataset
+  copy_mode: assign
+
+embedder:
+  type: MemoryDataset
+  copy_mode: assign
+
+relation_extractor:
+  type: MemoryDataset
+  copy_mode: assign
+
+ingest_use_case:
+  type: MemoryDataset
+  copy_mode: assign
+
+manifest_repo:
+  type: MemoryDataset
+  copy_mode: assign
+
+doc_repo:
+  type: MemoryDataset
+  copy_mode: assign
+
+graph_repo:
+  type: MemoryDataset
+  copy_mode: assign
+
+vector_repo:
+  type: MemoryDataset
+  copy_mode: assign
+
+pipeline_context:
+  type: MemoryDataset
+  copy_mode: assign
+
+telemetry:
+  type: MemoryDataset
+  copy_mode: assign
+
+raw_documents:
+  type: MemoryDataset
+  copy_mode: assign
+
+to_process:
+  type: MemoryDataset
+  copy_mode: assign
+
+to_skip:
+  type: MemoryDataset
+  copy_mode: assign
+
+run_results:
+  type: MemoryDataset
+  copy_mode: assign
+
+run_report:
+  type: MemoryDataset
+  copy_mode: assign
+
+force_drop_done:
+  type: MemoryDataset
+  copy_mode: assign
+
+cleanup_results:
+  type: MemoryDataset
+  copy_mode: assign
+

@@ -1,0 +1,35 @@
+# More information available at https://docs.kedro.org/en/stable/logging
+version: 1
+
+disable_existing_loggers: False
+
+formatters:
+  simple:
+    format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+
+  structlog:
+    (): structlog.stdlib.ProcessorFormatter
+    processors:
+      - structlog.stdlib.ProcessorFormatter.remove_processors_meta
+      - structlog.dev.ConsoleRenderer
+
+handlers:
+  console:
+    class: logging.StreamHandler
+    level: INFO
+    formatter: simple
+    stream: ext://sys.stdout
+
+  info_file_handler:
+    class: logging.NullHandler
+
+  rich:
+    class: kedro.logging.RichHandler
+    rich_tracebacks: True
+
+loggers:
+  kedro:
+    level: INFO
+
+root:
+  handlers: [rich, info_file_handler]
