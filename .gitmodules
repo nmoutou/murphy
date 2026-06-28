@@ -1,0 +1,9 @@
+[submodule "backend"]
+	path = backend
+	url = git@github.com:left-eyebr0w/murphy-backend.git
+[submodule "frontend"]
+	path = frontend
+	url = git@github.com:left-eyebr0w/murphy-frontend.git
+[submodule "data"]
+	path = data
+	url = git@github.com:left-eyebr0w/murphy-data.git

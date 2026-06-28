@@ -1,0 +1,17 @@
+{
+  "name": "murphy-infra",
+  "private": true,
+  "description": "Docker Compose serving stack for the Murphy RAG system (backend + frontend + datastores + embedding service).",
+  "scripts": {
+    "up": "docker compose -f docker-compose.base.yml -f docker-compose.dev.yml --env-file .env.dev up -d",
+    "start": "npm run up",
+    "build": "docker compose -f docker-compose.base.yml -f docker-compose.dev.yml --env-file .env.dev build",
+    "stop": "docker compose -f docker-compose.base.yml -f docker-compose.dev.yml -f docker-compose.prod.yml --env-file .env.dev down",
+    "down": "npm run stop",
+    "ps": "docker compose -f docker-compose.base.yml --env-file .env.dev ps",
+    "logs": "docker compose -f docker-compose.base.yml --env-file .env.dev logs",
+    "status": "docker compose -f docker-compose.base.yml -f docker-compose.dev.yml --env-file .env.dev ps --format \"table {{.Name}}\t\t{{.Status}}\"",
+    "restart": "docker compose -f docker-compose.base.yml -f docker-compose.dev.yml -f docker-compose.prod.yml --env-file .env.dev restart",
+    "watch": "docker compose -f docker-compose.base.yml -f docker-compose.dev.yml --env-file .env.dev up"
+  }
+}

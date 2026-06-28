@@ -1,0 +1,119 @@
+services:
+  qdrant:
+    container_name: qdrant
+    image: qdrant/qdrant:v1.16.3
+    networks:
+      - backend
+    volumes:
+      - qdrant_data:/qdrant/storage
+
+  mongo:
+    container_name: mongo
+    image: mongo:8.2
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_INITDB_ROOT_USERNAME}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_INITDB_ROOT_PASSWORD}
+    networks:
+      - backend
+    volumes:
+      - mongo_data:/data/db
+
+  neo4j:
+    container_name: neo4j
+    image: neo4j:2025.09.0
+    environment:
+      NEO4J_AUTH: ${NEO4J_AUTH}
+      NEO4J_apoc_export_file_enabled: ${NEO4J_apoc_export_file_enabled}
+      NEO4J_apoc_import_file_enabled: ${NEO4J_apoc_import_file_enabled}
+      NEO4J_apoc_import_file_use__neo4j__config: ${NEO4J_apoc_import_file_use__neo4j__config}
+      NEO4J_PLUGINS: ${NEO4J_PLUGINS}
+      # NEO4J_dbms_mode: CORE
+      # NEO4J_server_config_strict_validation_enabled: false
+    networks:
+      - backend
+    volumes:
+      - neo4j_data:/data
+
+  backend:
+    container_name: backend
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    networks:
+      - backend
+    environment:
+      - NODE_ENV=${NODE_ENV}
+      - PORT=${PORT}
+      - LOG_LEVEL=${LOG_LEVEL}
+      - CORS_ORIGIN=${CORS_ORIGIN}
+      - RATE_LIMIT_WINDOW_MS=${RATE_LIMIT_WINDOW_MS}
+      - RATE_LIMIT_MAX=${RATE_LIMIT_MAX}
+      - STREAM_RATE_LIMIT_WINDOW_MS=${STREAM_RATE_LIMIT_WINDOW_MS}
+      - STREAM_RATE_LIMIT_MAX=${STREAM_RATE_LIMIT_MAX}
+      - MONGODB_URI=${MONGODB_URI}
+      - MONGODB_DATABASE=${MONGODB_DATABASE}
+      - MONGODB_COLLECTION=${MONGODB_COLLECTION}
+      - MONGODB_TIMEOUT=${MONGODB_TIMEOUT}
+      - EMBEDDING_SERVICE_URL=${EMBEDDING_SERVICE_URL}
+      - EMBEDDING_SERVICE_TIMEOUT=${EMBEDDING_SERVICE_TIMEOUT}
+      - EMBEDDING_MODEL_NAME=${EMBEDDING_MODEL_NAME}
+      - QDRANT_URL=${QDRANT_URL}
+      - QDRANT_COLLECTION=${QDRANT_COLLECTION}
+      - RETRIEVAL_MIN_SCORE=${RETRIEVAL_MIN_SCORE}
+      - RETRIEVAL_TOP_K=${RETRIEVAL_TOP_K}
+      - LLM_API_ENDPOINT=${LLM_API_ENDPOINT}
+      - LLM_API_KEY=${LLM_API_KEY}
+      - LLM_MODEL=${LLM_MODEL}
+      - LLM_TEMPERATURE=${LLM_TEMPERATURE}
+      - LLM_MAX_TOKENS=${LLM_MAX_TOKENS}
+      - LLM_TIMEOUT=${LLM_TIMEOUT}
+      - SYSTEM_PROMPT=${SYSTEM_PROMPT}
+    depends_on:
+      - mongo
+      - qdrant
+      - embedding-service
+
+  frontend:
+    container_name: frontend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    networks:
+      - backend
+    environment:
+      - NODE_ENV=${NODE_ENV}
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+      - NEXT_PUBLIC_WS_URL=${NEXT_PUBLIC_WS_URL}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  embedding-service:
+    container_name: embedding-service
+    image: ghcr.io/huggingface/text-embeddings-inference:cuda-1.8.1
+    command: ["--model-id", "${EMBEDDING_MODEL}", "--pooling", "mean", "--dtype", "float16"]
+    networks:
+      - backend
+    volumes:
+      - hf_cache:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    environment:
+      - HUGGING_FACE_HUB_TOKEN=${HUGGING_FACE_HUB_TOKEN:-}
+      - CUDA_VISIBLE_DEVICES=0
+      - EMBEDDING_MODEL=${EMBEDDING_MODEL}
+
+networks:
+  backend:
+    driver: bridge
+
+volumes:
+  mongo_data:
+  neo4j_data:
+  qdrant_data:
+  hf_cache:
