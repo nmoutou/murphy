@@ -1,0 +1,26 @@
+source_name: legi
+display_name: "Légifrance / LEGI"
+version: "1.0.0"
+
+capabilities:
+  fetch_all: true
+  fetch_one: true
+  incremental: true
+  relations: true
+  eli: true
+
+targets:
+  mongo: true
+  neo4j: true
+  qdrant: true
+
+chunking:
+  strategy: structural
+  fallback: fixed_size
+
+neo4j:
+  id_field: eli
+
+config_defaults:
+  fetch_batch_size: 100
+  max_retries: 3
