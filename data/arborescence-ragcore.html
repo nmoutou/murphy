@@ -1,0 +1,760 @@
+<title>Arborescence cible — ragcore</title>
+<style>
+  :root {
+    color-scheme: light dark;
+
+    /* neutres biaisés vert-gris (vers l'accent), jamais gris purs */
+    --bg:        #eef1f0;
+    --surface:   #fbfcfc;
+    --surface-2: #e3e8e6;
+    --ink:       #1b2220;
+    --ink-soft:  #4c5a56;
+    --ink-faint: #7d8c87;
+    --rule:      #d3dad7;
+
+    /* accent unique — cuivre oxydé / vert minéral */
+    --accent:      #3f6f63;
+    --accent-soft: #dfeae6;
+
+    /* états sémantiques — distincts de l'accent */
+    --keep:      #4a5f8a;  --keep-soft:  #e2e7f1;   /* existe, on garde */
+    --rewrite:   #8a6a2e;  --rewrite-soft:#f3ead6;  /* existe, à réécrire */
+    --new:       #7a4a55;  --new-soft:   #f2e2e5;   /* n'existe pas, à créer */
+    --gone:      #7d8c87;  --gone-soft:  #e5e9e8;   /* à supprimer */
+
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+    --serif: Georgia, "Iowan Old Style", "Times New Roman", serif;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --measure: 68ch;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg:        #121615;
+      --surface:   #1a201e;
+      --surface-2: #222927;
+      --ink:       #e4eae8;
+      --ink-soft:  #a5b3ae;
+      --ink-faint: #71807b;
+      --rule:      #2c3533;
+      --accent:      #6fb3a1;
+      --accent-soft: #1d312c;
+      --keep:      #8ba6d8;  --keep-soft:   #1e2637;
+      --rewrite:   #d3a95f;  --rewrite-soft:#33280f;
+      --new:       #cf8b98;  --new-soft:    #332024;
+      --gone:      #71807b;  --gone-soft:   #232927;
+    }
+  }
+  :root[data-theme="light"] {
+    --bg:#eef1f0; --surface:#fbfcfc; --surface-2:#e3e8e6;
+    --ink:#1b2220; --ink-soft:#4c5a56; --ink-faint:#7d8c87; --rule:#d3dad7;
+    --accent:#3f6f63; --accent-soft:#dfeae6;
+    --keep:#4a5f8a; --keep-soft:#e2e7f1;
+    --rewrite:#8a6a2e; --rewrite-soft:#f3ead6;
+    --new:#7a4a55; --new-soft:#f2e2e5;
+    --gone:#7d8c87; --gone-soft:#e5e9e8;
+  }
+  :root[data-theme="dark"] {
+    --bg:#121615; --surface:#1a201e; --surface-2:#222927;
+    --ink:#e4eae8; --ink-soft:#a5b3ae; --ink-faint:#71807b; --rule:#2c3533;
+    --accent:#6fb3a1; --accent-soft:#1d312c;
+    --keep:#8ba6d8; --keep-soft:#1e2637;
+    --rewrite:#d3a95f; --rewrite-soft:#33280f;
+    --new:#cf8b98; --new-soft:#332024;
+    --gone:#71807b; --gone-soft:#232927;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 16.5px;
+    line-height: 1.62;
+    margin: 0;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 0 24px 110px; }
+
+  /* ---------- masthead ---------- */
+  header.masthead {
+    padding: 68px 0 34px;
+    border-bottom: 2px solid var(--ink);
+  }
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 16px;
+  }
+  h1 {
+    font-family: var(--serif);
+    font-weight: 600;
+    font-size: clamp(29px, 4.6vw, 42px);
+    line-height: 1.13;
+    letter-spacing: -0.012em;
+    text-wrap: balance;
+    margin: 0 0 18px;
+  }
+  .lede {
+    font-size: 18.5px;
+    color: var(--ink-soft);
+    max-width: var(--measure);
+    margin: 0;
+  }
+  .lede strong { color: var(--ink); font-weight: 600; }
+
+  .caveat {
+    margin: 26px 0 0;
+    padding: 16px 20px;
+    background: var(--rewrite-soft);
+    border: 1px solid var(--rule);
+    border-left: 3px solid var(--rewrite);
+    border-radius: 8px;
+    font-size: 15px;
+    color: var(--ink-soft);
+    max-width: var(--measure);
+  }
+  .caveat b { color: var(--ink); }
+  .caveat .tag { color: var(--rewrite); font-family: var(--mono); font-size: 11px; letter-spacing: .09em; text-transform: uppercase; display: block; margin-bottom: 6px; font-weight: 600; }
+
+  /* ---------- legend ---------- */
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 9px 20px;
+    margin: 24px 0 0;
+    padding: 15px 18px;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+  }
+  .legend-item {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 13.5px; color: var(--ink-soft);
+  }
+  .chip {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: .07em;
+    text-transform: uppercase;
+    font-weight: 600;
+    padding: 2px 7px;
+    border-radius: 4px;
+    white-space: nowrap;
+    flex: none;
+  }
+  .chip.keep    { color: var(--keep);    background: var(--keep-soft); }
+  .chip.rewrite { color: var(--rewrite); background: var(--rewrite-soft); }
+  .chip.new     { color: var(--new);     background: var(--new-soft); }
+  .chip.gone    { color: var(--gone);    background: var(--gone-soft); text-decoration: line-through; }
+
+  /* ---------- the tree ---------- */
+  .tree-frame {
+    margin: 34px 0 0;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .tree-head {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--rule);
+    background: var(--surface-2);
+  }
+  .tree-head .path {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--ink);
+    font-weight: 600;
+  }
+  .tree-head .hint {
+    font-size: 12.5px;
+    color: var(--ink-faint);
+    margin-left: auto;
+  }
+  .tree-scroll { overflow-x: auto; }
+  .tree {
+    font-family: var(--mono);
+    font-size: 13.2px;
+    line-height: 1.95;
+    margin: 0;
+    padding: 14px 0 18px;
+    min-width: 660px;
+  }
+  .tree .row {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    padding: 0 20px 0 17px;
+    border-left: 3px solid transparent;
+    white-space: pre;
+  }
+  .tree .row:hover { background: var(--surface-2); }
+  /* couche hexagonale — encodée par le rail gauche */
+  .tree .row.l-core  { border-left-color: var(--accent); }
+  .tree .row.l-app   { border-left-color: color-mix(in srgb, var(--accent) 55%, transparent); }
+  .tree .row.l-adapt { border-left-color: color-mix(in srgb, var(--accent) 30%, transparent); }
+  .tree .row.l-orch  { border-left-color: color-mix(in srgb, var(--ink-faint) 45%, transparent); }
+  .tree .row.l-src   { border-left-color: color-mix(in srgb, var(--ink-faint) 45%, transparent); }
+
+  .tree .name { color: var(--ink); flex: none; }
+  .tree .name .dir { color: var(--accent); font-weight: 600; }
+  .tree .branch { color: var(--ink-faint); }
+  .tree .why {
+    color: var(--ink-faint);
+    font-family: var(--sans);
+    font-size: 12.8px;
+    white-space: normal;
+    line-height: 1.45;
+  }
+  .tree .st {
+    margin-left: auto;
+    flex: none;
+    font-family: var(--mono);
+    font-size: 9.5px;
+    letter-spacing: .07em;
+    text-transform: uppercase;
+    font-weight: 600;
+    padding: 1px 6px;
+    border-radius: 3px;
+    align-self: center;
+  }
+  .tree .st.keep    { color: var(--keep);    background: var(--keep-soft); }
+  .tree .st.rewrite { color: var(--rewrite); background: var(--rewrite-soft); }
+  .tree .st.new     { color: var(--new);     background: var(--new-soft); }
+  .tree .st.gone    { color: var(--gone);    background: var(--gone-soft); }
+
+  .tree .sep {
+    height: 10px;
+  }
+
+  /* layer banner rows */
+  .tree .layer {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    padding: 12px 20px 3px 17px;
+    border-left: 3px solid transparent;
+    margin-top: 6px;
+  }
+  .tree .layer.l-core  { border-left-color: var(--accent); }
+  .tree .layer.l-app   { border-left-color: color-mix(in srgb, var(--accent) 55%, transparent); }
+  .tree .layer.l-adapt { border-left-color: color-mix(in srgb, var(--accent) 30%, transparent); }
+  .tree .layer.l-orch  { border-left-color: color-mix(in srgb, var(--ink-faint) 45%, transparent); }
+  .tree .layer.l-src   { border-left-color: color-mix(in srgb, var(--ink-faint) 45%, transparent); }
+  .tree .layer .lbl {
+    font-family: var(--sans);
+    font-size: 11px;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    font-weight: 700;
+    color: var(--ink-faint);
+    white-space: nowrap;
+  }
+  .tree .layer .rule-line {
+    flex: 1;
+    height: 1px;
+    background: var(--rule);
+    transform: translateY(-3px);
+  }
+
+  /* ---------- sections ---------- */
+  section.chapter {
+    padding: 44px 0 6px;
+    border-bottom: 1px solid var(--rule);
+  }
+  .ch-head { display: flex; align-items: baseline; gap: 14px; margin-bottom: 4px; }
+  h2 {
+    font-family: var(--serif);
+    font-size: 24px;
+    font-weight: 600;
+    line-height: 1.2;
+    letter-spacing: -0.01em;
+    margin: 0;
+    text-wrap: balance;
+  }
+  .ch-refs {
+    margin-left: auto;
+    align-self: center;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: .06em;
+    color: var(--accent);
+    background: var(--accent-soft);
+    padding: 2px 9px;
+    border-radius: 20px;
+    white-space: nowrap;
+    flex: none;
+  }
+  .ch-sub { color: var(--ink-faint); font-size: 14.5px; margin: 2px 0 20px; }
+
+  p { max-width: var(--measure); }
+  p.tight { margin: 0 0 14px; }
+
+  code, .mono {
+    font-family: var(--mono);
+    font-size: 0.86em;
+    background: var(--surface-2);
+    padding: 1px 5px;
+    border-radius: 4px;
+    color: var(--ink);
+  }
+
+  ul.d { list-style: none; padding: 0; margin: 0; }
+  ul.d > li {
+    position: relative;
+    padding: 10px 0 10px 24px;
+    border-top: 1px dashed var(--rule);
+    max-width: var(--measure);
+    font-size: 15.5px;
+    line-height: 1.55;
+  }
+  ul.d > li:first-child { border-top: none; }
+  ul.d > li::before {
+    content: "\2192";
+    position: absolute; left: 0; top: 10px;
+    font-weight: 700;
+    color: var(--accent);
+  }
+  ul.d > li .k { font-weight: 600; color: var(--ink); }
+
+  .note {
+    background: var(--accent-soft);
+    border-radius: 9px;
+    padding: 15px 19px;
+    margin: 16px 0;
+    font-size: 15px;
+    max-width: var(--measure);
+  }
+  .note b { color: var(--accent); }
+
+  /* ---------- signature table ---------- */
+  .sig-scroll { overflow-x: auto; margin: 16px 0 4px; }
+  pre.sig {
+    font-family: var(--mono);
+    font-size: 12.8px;
+    line-height: 1.72;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-left: 3px solid var(--accent);
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin: 0;
+    min-width: 560px;
+    color: var(--ink);
+    overflow: visible;
+  }
+  pre.sig .kw { color: var(--accent); font-weight: 600; }
+  pre.sig .cm { color: var(--ink-faint); }
+  pre.sig .ty { color: var(--keep); }
+
+  /* ---------- closing ---------- */
+  .close {
+    margin-top: 50px;
+    padding: 28px 28px 30px;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 12px;
+  }
+  .close h3 { font-family: var(--serif); font-size: 20px; margin: 0 0 12px; }
+  .close ol { margin: 0; padding-left: 20px; }
+  .close li { margin: 8px 0; max-width: var(--measure); font-size: 15.5px; }
+
+  a { color: var(--accent); }
+  a:focus-visible, .row:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  ::selection { background: var(--accent); color: #fff; }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+</style>
+
+<div class="wrap">
+  <header class="masthead">
+    <p class="eyebrow">ragcore · arborescence cible · rév. 3 — arrêtée</p>
+    <h1>La doctrine, traduite en modules</h1>
+    <p class="lede">Chaque décision du cadrage a désormais <strong>un fichier où elle vit</strong>. Cette carte n'invente rien&nbsp;: elle place les treize familles dans l'hexagone, et dit pour chaque module s'il existe déjà, s'il est à réécrire, ou s'il reste à écrire. Les trois arbitrages de placement sont <strong>tranchés</strong>&nbsp;; l'arborescence des tests et la scission des deux configs y sont entrées.</p>
+
+    <div class="caveat">
+      <span class="tag">État réel du dépôt — à savoir avant de lire</span>
+      <p style="margin:0"><code>hooks.py</code> importe aujourd'hui <b>une quinzaine de modules absents de l'arbre</b> (<code>adapters/embedding/*</code>, les <code>client.py</code> de chaque store, <code>audit_repository</code>, <code>run_summary_repository</code>, <code>config/settings.py</code>, <code>pipeline_context</code>, <code>ports/telemetry.py</code>, <code>file_connector</code>, <code>pipeline_registry</code>). C'est la trace de la <b>récupération partielle</b> déjà consignée. Ces modules sont donc marqués <span class="chip new" style="display:inline-block">à écrire</span> — non parce qu'ils sont neufs, mais parce qu'<b>il n'y a rien à lire dans le dépôt</b>. Le code perdu, s'il ressort, sera un point de départ, pas une contrainte.</p>
+    </div>
+
+    <div class="legend">
+      <span class="legend-item"><span class="chip keep">garder</span>existe et tient — on ne touche pas</span>
+      <span class="legend-item"><span class="chip rewrite">réécrire</span>existe mais la doctrine l'a périmé</span>
+      <span class="legend-item"><span class="chip new">à écrire</span>absent du dépôt</span>
+      <span class="legend-item"><span class="chip gone">supprimer</span>deadcode ou contredit par la doctrine</span>
+    </div>
+  </header>
+
+  <!-- ================= THE TREE ================= -->
+  <div class="tree-frame">
+    <div class="tree-head">
+      <span class="path">src/ragcore/</span>
+      <span class="hint">le rail de gauche encode la couche&nbsp;: plus il est saturé, plus on est au cœur</span>
+    </div>
+    <div class="tree-scroll">
+      <div class="tree">
+
+        <!-- ---------- CORE ---------- -->
+        <div class="layer l-core"><span class="lbl">Core — le domaine, zéro dépendance sortante</span><span class="rule-line"></span></div>
+
+        <div class="row l-core"><span class="name"><span class="branch">├── </span><span class="dir">core/</span></span></div>
+        <div class="row l-core"><span class="name"><span class="branch">│   ├── </span><span class="dir">models/</span></span></div>
+        <div class="row l-core"><span class="name"><span class="branch">│   │   ├── </span>identifiers.py</span><span class="why">ELI, JorfId, OwnerId, RunId — <b>+ CanonicalKey (UUID)</b>, la clé allouée de §1</span><span class="st rewrite">réécrire</span></div>
+        <div class="row l-core"><span class="name"><span class="branch">│   │   ├── </span>document.py</span><span class="why">RawDocument, ParsedDocument — <code>structure</code> retiré, <code>doc_type</code> simple champ</span><span class="st rewrite">réécrire</span></div>
+        <div class="row l-core"><span class="name"><span class="branch">│   │   ├── </span>chunk.py</span><span class="why">Chunk, EmbeddedChunk — <code>structural_path</code> → <code>source_path</code></span><span class="st rewrite">réécrire</span></div>
+        <div class="row l-core"><span class="name"><span class="branch">│   │   ├── </span>relation.py</span><span class="why">Relation + <code>sens</code> (prérequis §7), <code>run_id</code> (compensation §8)</span><span class="st rewrite">réécrire</span></div>
+        <div class="row l-core"><span class="name"><span class="branch">│   │   ├── </span>pending.py</span><span class="why"><b>PendingRelation</b> — clé (owner, source, target, type) + first/last_seen_run</span><span class="st new">à écrire</span></div>
+        <div class="row l-core"><span class="name"><span class="branch">│   │   ├── </span>manifest.py</span><span class="why">ManifestEntry — la complétude des liens devient un état distinct (§11)</span><span class="st rewrite">réécrire</span></div>
+        <div class="row l-core"><span class="name"><span class="branch">│   │   ├── </span>audit.py</span><span class="why">AuditEvent + build_event — le contrat tient</span><span class="st keep">garder</span></div>
+        <div class="row l-core"><span class="name"><span class="branch">│   │   ├── </span>run_summary.py</span><span class="why">RunSummary + <b>RunStats mergeable</b> (monoïde de fusion, §11)</span><span class="st new">à écrire</span></div>
+        <div class="row l-core"><span class="name"><span class="branch">│   │   └── </span>enums.py</span><span class="why">SourceName, Operation, TargetStore, RelationType extensible</span><span class="st keep">garder</span></div>
+
+        <div class="row l-core"><span class="name"><span class="branch">│   ├── </span><span class="dir">links/</span></span><span class="why"><b>Le module hégémonique de §7.</b> Personne d'autre ne fabrique de lien.</span><span class="st new">à écrire</span></div>
+        <div class="row l-core"><span class="name"><span class="branch">│   │   ├── </span>extraction.py</span><span class="why">face extraction — balise → lien brut. Appelée <i>par</i> le parser.</span><span class="st new">à écrire</span></div>
+        <div class="row l-core"><span class="name"><span class="branch">│   │   ├── </span>resolution.py</span><span class="why">face résolution — <code>unknown</code> → node, par le type-hint + le registre</span><span class="st new">à écrire</span></div>
+        <div class="row l-core"><span class="name"><span class="branch">│   │   └── </span>vocabulary.py</span><span class="why">le RelationType partagé par les deux faces</span><span class="st new">à écrire</span></div>
+
+        <div class="row l-core"><span class="name"><span class="branch">│   ├── </span><span class="dir">config/</span></span><span class="why"><b>Ce qui change le résultat</b>, et rien d'autre. L'infra vit ailleurs.</span></div>
+        <div class="row l-core"><span class="name"><span class="branch">│   │   ├── </span>workflow.py</span><span class="why"><b>WorkflowConfig</b> — normalisation + chunking + embedding. La référence, pas <code>parameters.yml</code> (§9). <b>C'est lui qu'on hashe.</b></span><span class="st new">à écrire</span></div>
+        <div class="row l-core"><span class="name"><span class="branch">│   │   └── </span>fingerprint.py</span><span class="why"><b>fonction pure</b> config canonicalisée → hash. Nomme la collection (§6) <i>et</i> le run MLflow (§9). Golden test. <b>N'a physiquement pas accès à l'URI Mongo</b> — l'erreur est impossible, pas seulement évitée.</span><span class="st new">à écrire</span></div>
+
+        <div class="row l-core"><span class="name"><span class="branch">│   ├── </span><span class="dir">ports/</span></span></div>
+        <div class="row l-core"><span class="name"><span class="branch">│   │   ├── </span>document_repository.py</span><span class="why">adressage <code>(identifier, owner_id)</code> — le modèle uniforme</span><span class="st keep">garder</span></div>
+        <div class="row l-core"><span class="name"><span class="branch">│   │   ├── </span>vector_repository.py</span><span class="why">+ la collection nommée par hash entre dans le contrat</span><span class="st rewrite">réécrire</span></div>
+        <div class="row l-core"><span class="name"><span class="branch">│   │   ├── </span>graph_repository.py</span><span class="why">+ compensation exacte&nbsp;: DETACH-DELETE conditionnel, dé-hydratation, purge par <code>run_id</code></span><span class="st rewrite">réécrire</span></div>
+        <div class="row l-core"><span class="name"><span class="branch">│   │   ├── </span>manifest_repository.py</span><span class="why">le manifest entre dans la saga (§8, step 4)</span><span class="st keep">garder</span></div>
+        <div class="row l-core"><span class="name"><span class="branch">│   │   ├── </span>alias_registry.py</span><span class="why"><b>resolve / append / list_known</b> — §1. Adapter Neo4j, pas de 4<sup>e</sup> store.</span><span class="st new">à écrire</span></div>
+        <div class="row l-core"><span class="name"><span class="branch">│   │   ├── </span>pending_repository.py</span><span class="why">union idempotente + <b>rejeu ciblé</b> (<code>promotable_for(new_node_ids)</code>), §13</span><span class="st new">à écrire</span></div>
+        <div class="row l-core"><span class="name"><span class="branch">│   │   ├── </span>telemetry.py</span><span class="why">TelemetryPort + <b>TelemetryFactory</b> (une pile par worker, §11)</span><span class="st new">à écrire</span></div>
+        <div class="row l-core"><span class="name"><span class="branch">│   │   ├── </span>delivery.py</span><span class="why"><b>Le contrat at-least-once.</b> Drain aux frontières. §11.</span><span class="st new">à écrire</span></div>
+        <div class="row l-core"><span class="name"><span class="branch">│   │   ├── </span>runtime.py</span><span class="why"><b>AsyncRuntime</b> — une instance = une boucle + son lot de clients</span><span class="st new">à écrire</span></div>
+        <div class="row l-core"><span class="name"><span class="branch">│   │   ├── </span>tracker.py</span><span class="why">ExperimentTracker — start/log_params/log_metrics/end (§9)</span><span class="st new">à écrire</span></div>
+        <div class="row l-core"><span class="name"><span class="branch">│   │   ├── </span>embedder.py</span><span class="why">le port manquait&nbsp;: l'embedder était injecté en <code>object</code></span><span class="st new">à écrire</span></div>
+        <div class="row l-core"><span class="name"><span class="branch">│   │   └── </span>connector.py</span><span class="why">ouvert aux formats (XML, odt, pdf — §1), pas verrouillé sur XML</span><span class="st new">à écrire</span></div>
+
+        <div class="row l-core"><span class="name"><span class="branch">│   ├── </span><span class="dir">services/</span></span></div>
+        <div class="row l-core"><span class="name"><span class="branch">│   │   ├── </span>idempotence.py</span><span class="why">determine_operation — l'idempotence binaire de v0</span><span class="st keep">garder</span></div>
+        <div class="row l-core"><span class="name"><span class="branch">│   │   ├── </span>telemetry_registry.py</span><span class="why">EVENT_CATALOG source de vérité — <b>backends typés</b>, fin des clés-strings (§12)</span><span class="st rewrite">réécrire</span></div>
+        <div class="row l-core"><span class="name"><span class="branch">│   │   └── </span>exclusion_reasons.py</span><span class="why">le vocabulaire de rejet</span><span class="st keep">garder</span></div>
+        <div class="row l-core"><span class="name"><span class="branch">│   └── </span>telemetry_events.py</span><span class="why">+ events de dégradation&nbsp;: <b>relation pendante</b>, <b>fallback chunker</b> (§12)</span><span class="st rewrite">réécrire</span></div>
+
+        <div class="sep"></div>
+
+        <!-- ---------- APPLICATION ---------- -->
+        <div class="layer l-app"><span class="lbl">Application — les cas d'usage, l'orchestration du domaine</span><span class="rule-line"></span></div>
+
+        <div class="row l-app"><span class="name"><span class="branch">├── </span><span class="dir">application/</span></span></div>
+        <div class="row l-app"><span class="name"><span class="branch">│   ├── </span>run_context.py</span><span class="why">PipelineContext — run_id, owner_id, source, started_at</span><span class="st new">à écrire</span></div>
+        <div class="row l-app"><span class="name"><span class="branch">│   ├── </span>saga.py</span><span class="why">SagaExecutor — compensation systématique (stratégie A, §8)</span><span class="st keep">garder</span></div>
+        <div class="row l-app"><span class="name"><span class="branch">│   ├── </span>ingest_document.py</span><span class="why"><b>saga à 3 steps</b>&nbsp;: Mongo → Qdrant → Neo4j(nœud+registre). <b>Les relations en sortent</b> (§11).</span><span class="st rewrite">réécrire</span></div>
+        <div class="row l-app"><span class="name"><span class="branch">│   ├── </span>delete_document.py</span><span class="why">le pendant du drop ciblé</span><span class="st keep">garder</span></div>
+        <div class="row l-app"><span class="name"><span class="branch">│   ├── </span>ingestion_runner.py</span><span class="why"><b>Le worker pool.</b> N workers, un AsyncRuntime chacun, dispatch <b>par clé document</b>. Testable sans Kedro. (§11)</span><span class="st new">à écrire</span></div>
+        <div class="row l-app"><span class="name"><span class="branch">│   └── </span>resolve_relations.py</span><span class="why"><b>La phase 2.</b> Écrit les arêtes en batch, possède le cache des pendantes. (§11/§13)</span><span class="st new">à écrire</span></div>
+
+        <div class="sep"></div>
+
+        <!-- ---------- ADAPTERS ---------- -->
+        <div class="layer l-adapt"><span class="lbl">Adapters — l'extérieur, interchangeable par construction</span><span class="rule-line"></span></div>
+
+        <div class="row l-adapt"><span class="name"><span class="branch">├── </span><span class="dir">adapters/</span></span></div>
+        <div class="row l-adapt"><span class="name"><span class="branch">│   ├── </span><span class="dir">runtime/</span></span></div>
+        <div class="row l-adapt"><span class="name"><span class="branch">│   │   └── </span>asyncio_runtime.py</span><span class="why"><b>Remplace <code>utils/async_utils.py</code>.</b> Boucle + clients + drain, <b>par instance</b>. La global <code>_LOOP</code> meurt ici.</span><span class="st new">à écrire</span></div>
+
+        <div class="row l-adapt"><span class="name"><span class="branch">│   ├── </span><span class="dir">config/</span></span></div>
+        <div class="row l-adapt"><span class="name"><span class="branch">│   │   └── </span>settings.py</span><span class="why"><b>InfraSettings</b> — URIs, secrets, chemins, nb de workers. <b>Jamais hashé.</b> Déménager Mongo ne change pas un vecteur.</span><span class="st new">à écrire</span></div>
+
+        <div class="row l-adapt"><span class="name"><span class="branch">│   ├── </span><span class="dir">storage/mongo/</span></span></div>
+        <div class="row l-adapt"><span class="name"><span class="branch">│   │   ├── </span>client.py</span><span class="why">fabrique de client — <b>par runtime</b>, plus de singleton de module</span><span class="st new">à écrire</span></div>
+        <div class="row l-adapt"><span class="name"><span class="branch">│   │   ├── </span>document_repository.py</span><span class="why">delete-then-insert <b>inconditionnel</b> (contrat unifié §11)</span><span class="st rewrite">réécrire</span></div>
+        <div class="row l-adapt"><span class="name"><span class="branch">│   │   ├── </span>manifest_repository.py</span><span class="why">l'entrée passe sous saga</span><span class="st rewrite">réécrire</span></div>
+        <div class="row l-adapt"><span class="name"><span class="branch">│   │   ├── </span>pending_repository.py</span><span class="why"><b>MURPHY_META.pending_relations</b> — index unique sur le quadruplet</span><span class="st new">à écrire</span></div>
+        <div class="row l-adapt"><span class="name"><span class="branch">│   │   ├── </span>audit_repository.py</span><span class="why">l'audit Mongo</span><span class="st new">à écrire</span></div>
+        <div class="row l-adapt"><span class="name"><span class="branch">│   │   ├── </span>run_summary_repository.py</span><span class="why">le RunSummary persisté</span><span class="st new">à écrire</span></div>
+        <div class="row l-adapt"><span class="name"><span class="branch">│   │   └── </span>schemas.py</span><span class="why">+ index unique des pendantes</span><span class="st rewrite">réécrire</span></div>
+
+        <div class="row l-adapt"><span class="name"><span class="branch">│   ├── </span><span class="dir">storage/neo4j/</span></span></div>
+        <div class="row l-adapt"><span class="name"><span class="branch">│   │   ├── </span>client.py</span><span class="why">driver par runtime</span><span class="st new">à écrire</span></div>
+        <div class="row l-adapt"><span class="name"><span class="branch">│   │   ├── </span>graph_repository.py</span><span class="why"><b>nœud + relations + registre en UNE transaction</b>&nbsp;; relations taguées <code>run_id</code>&nbsp;; fin du nœud orphelin</span><span class="st rewrite">réécrire</span></div>
+        <div class="row l-adapt"><span class="name"><span class="branch">│   │   └── </span>alias_registry.py</span><span class="why">le registre <b>vit dans Neo4j</b> (§1) — nœud canonique portant ses alias</span><span class="st new">à écrire</span></div>
+
+        <div class="row l-adapt"><span class="name"><span class="branch">│   ├── </span><span class="dir">storage/qdrant/</span></span></div>
+        <div class="row l-adapt"><span class="name"><span class="branch">│   │   ├── </span>client.py</span><span class="why">client par runtime</span><span class="st new">à écrire</span></div>
+        <div class="row l-adapt"><span class="name"><span class="branch">│   │   └── </span>vector_repository.py</span><span class="why">collection = <b>hash de config</b>&nbsp;; <code>force_drop</code> <b>scopé collection</b>, jamais le store (§6)</span><span class="st rewrite">réécrire</span></div>
+
+        <div class="row l-adapt"><span class="name"><span class="branch">│   ├── </span><span class="dir">telemetry/</span></span></div>
+        <div class="row l-adapt"><span class="name"><span class="branch">│   │   ├── </span>factory.py</span><span class="why"><b>TelemetryFactory</b> — <code>build()</code> rend à chaque worker <b>sa</b> pile complète</span><span class="st new">à écrire</span></div>
+        <div class="row l-adapt"><span class="name"><span class="branch">│   │   ├── </span>registry_aware.py</span><span class="why">backends <b>typés</b>&nbsp;; les <code>if/try/except</code> dupliqués factorisés</span><span class="st rewrite">réécrire</span></div>
+        <div class="row l-adapt"><span class="name"><span class="branch">│   │   ├── </span>aggregator.py</span><span class="why"><b>le <code>threading.Lock</code> disparaît.</b> Agrégat local au worker, fusionné par réduction.</span><span class="st rewrite">réécrire</span></div>
+        <div class="row l-adapt"><span class="name"><span class="branch">│   │   ├── </span>mongo_audit.py</span><span class="why">fin du <code>create_task</code> fire-and-forget&nbsp;: <b>at-least-once</b></span><span class="st rewrite">réécrire</span></div>
+        <div class="row l-adapt"><span class="name"><span class="branch">│   │   ├── </span>jsonl_file.py</span><span class="why">un fichier <b>par worker</b> (isolation jusqu'aux backends)</span><span class="st new">à écrire</span></div>
+        <div class="row l-adapt"><span class="name"><span class="branch">│   │   ├── </span>console_log.py</span><span class="why">structlog</span><span class="st keep">garder</span></div>
+        <div class="row l-adapt"><span class="name"><span class="branch">│   │   └── </span><s>composite.py</s></span><span class="why">vide — le registry a pris le rôle</span><span class="st gone">supprimer</span></div>
+
+        <div class="row l-adapt"><span class="name"><span class="branch">│   ├── </span><span class="dir">tracking/</span></span></div>
+        <div class="row l-adapt"><span class="name"><span class="branch">│   │   └── </span>mlflow_tracker.py</span><span class="why">best-effort&nbsp;: MLflow indisponible ⇒ <b>le run ne casse pas</b> (§9)</span><span class="st new">à écrire</span></div>
+
+        <div class="row l-adapt"><span class="name"><span class="branch">│   └── </span><span class="dir">embedding/</span></span></div>
+        <div class="row l-adapt"><span class="name"><span class="branch">│       ├── </span>local_embedder.py</span><span class="why">sentence-transformers</span><span class="st new">à écrire</span></div>
+        <div class="row l-adapt"><span class="name"><span class="branch">│       ├── </span>openai_embedder.py</span><span class="why">service HTTP (TEI)</span><span class="st new">à écrire</span></div>
+        <div class="row l-adapt"><span class="name"><span class="branch">│       └── </span>noop_embedder.py</span><span class="why">pour les tests</span><span class="st new">à écrire</span></div>
+
+        <div class="sep"></div>
+
+        <!-- ---------- SOURCES ---------- -->
+        <div class="layer l-src"><span class="lbl">Sources — le générique d'abord, la spécificité en stratégie</span><span class="rule-line"></span></div>
+
+        <div class="row l-src"><span class="name"><span class="branch">├── </span><span class="dir">sources/</span></span></div>
+        <div class="row l-src"><span class="name"><span class="branch">│   ├── </span><span class="dir">generic/</span></span><span class="why"><b>Le renversement de §3.</b> Un parser, pas cinq.</span><span class="st new">à écrire</span></div>
+        <div class="row l-src"><span class="name"><span class="branch">│   │   ├── </span>parser.py</span><span class="why">le parser générique — route chaque balise vers son rôle</span><span class="st new">à écrire</span></div>
+        <div class="row l-src"><span class="name"><span class="branch">│   │   ├── </span>roles.py</span><span class="why"><b>body / link / version / meta</b> — les 4 rôles, un handler chacun</span><span class="st new">à écrire</span></div>
+        <div class="row l-src"><span class="name"><span class="branch">│   │   ├── </span>role_table.py</span><span class="why">la <b>table déclarative</b> balise → rôle. <b>Donnée inspectable</b>, pas du code. Golden test&nbsp;: <b>balise sans rôle = build cassé</b>.</span><span class="st new">à écrire</span></div>
+        <div class="row l-src"><span class="name"><span class="branch">│   │   ├── </span>normalize.py</span><span class="why"><b>fonction pure</b>&nbsp;: NFC, insécables, guillemets, tirets. <code>norm_version</code> <b>entre dans le hash §6</b>. Golden test.</span><span class="st new">à écrire</span></div>
+        <div class="row l-src"><span class="name"><span class="branch">│   │   ├── </span>markdown.py</span><span class="why">HTML minuscule → Markdown. <b>La conversion EST le nettoyage</b> (§4).</span><span class="st new">à écrire</span></div>
+        <div class="row l-src"><span class="name"><span class="branch">│   │   └── </span>chunking.py</span><span class="why">découpe <b>aux frontières</b> du Markdown. Le fallback taille-fixe <b>émet un event</b> (§12).</span><span class="st new">à écrire</span></div>
+
+        <div class="row l-src"><span class="name"><span class="branch">│   ├── </span><span class="dir">legi/</span></span></div>
+        <div class="row l-src"><span class="name"><span class="branch">│   │   ├── </span>connector.py</span><span class="why">découverte des fichiers source</span><span class="st rewrite">réécrire</span></div>
+        <div class="row l-src"><span class="name"><span class="branch">│   │   ├── </span>strategy.py</span><span class="why">ce qui reste de LEGI&nbsp;: <b>sa table de rôles + ses 4 handlers</b>. Plus de parser, plus de chunker.</span><span class="st new">à écrire</span></div>
+        <div class="row l-src"><span class="name"><span class="branch">│   │   ├── </span><s>parser.py</s></span><span class="why">absorbé par <code>generic/</code> + <code>strategy.py</code>. Le <code>_clean_text</code> spaCy sort du chemin critique.</span><span class="st gone">supprimer</span></div>
+        <div class="row l-src"><span class="name"><span class="branch">│   │   ├── </span><s>chunking.py</s></span><span class="why">absorbé par <code>generic/chunking.py</code></span><span class="st gone">supprimer</span></div>
+        <div class="row l-src"><span class="name"><span class="branch">│   │   └── </span><s>relations.py</s></span><span class="why">absorbé par <code>core/links/</code> — <b>personne d'autre ne fabrique de lien</b></span><span class="st gone">supprimer</span></div>
+        <div class="row l-src"><span class="name"><span class="branch">│   └── </span><span class="dir">juri/</span></span><span class="why">CAPP, CASS, CONSTIT, INCA, JADE — <b>une table de rôles, pas un parser</b>. Le rôle <code>version</code> y est un no-op.</span><span class="st new">à écrire</span></div>
+
+        <div class="sep"></div>
+
+        <!-- ---------- ORCHESTRATION ---------- -->
+        <div class="layer l-orch"><span class="lbl">Orchestration — Kedro exprime les phases, ragcore fait le travail</span><span class="rule-line"></span></div>
+
+        <div class="row l-orch"><span class="name"><span class="branch">└── </span><span class="dir">orchestration/kedro/</span></span></div>
+        <div class="row l-orch"><span class="name"><span class="branch">    ├── </span>hooks.py</span><span class="why"><b>redevient du pur câblage.</b> Il construit une <b>fabrique</b>, plus une instance&nbsp;; il ne fusionne plus rien.</span><span class="st rewrite">réécrire</span></div>
+        <div class="row l-orch"><span class="name"><span class="branch">    ├── </span>pipeline_registry.py</span><span class="why">le DAG <b>bi-phasé</b>&nbsp;: <code>connect → ingest_documents → resolve_relations → report</code></span><span class="st new">à écrire</span></div>
+        <div class="row l-orch"><span class="name"><span class="branch">    └── </span><span class="dir">nodes/</span></span></div>
+        <div class="row l-orch"><span class="name"><span class="branch">        ├── </span>connect.py</span><span class="why">source → RawDocument</span><span class="st keep">garder</span></div>
+        <div class="row l-orch"><span class="name"><span class="branch">        ├── </span>compute_idempotence.py</span><span class="why">to_process / to_skip</span><span class="st keep">garder</span></div>
+        <div class="row l-orch"><span class="name"><span class="branch">        ├── </span>ingest_documents.py</span><span class="why"><b>Phase 1.</b> Délègue à l'IngestionRunner et <b>retourne les RunStats fusionnés</b> — un agrégat est une donnée, pas un effet de bord.</span><span class="st new">à écrire</span></div>
+        <div class="row l-orch"><span class="name"><span class="branch">        ├── </span>resolve_relations.py</span><span class="why"><b>Phase 2.</b> L'arête qui l'y relie <b>EST la barrière</b>.</span><span class="st new">à écrire</span></div>
+        <div class="row l-orch"><span class="name"><span class="branch">        ├── </span>report.py</span><span class="why">réduit les stats des deux phases → RunSummary</span><span class="st new">à écrire</span></div>
+        <div class="row l-orch"><span class="name"><span class="branch">        ├── </span>discover.py</span><span class="why"><b>hors-pipeline</b>&nbsp;: <code>source ∖ registre</code>. Diagnostic, ne modifie rien (§1).</span><span class="st new">à écrire</span></div>
+        <div class="row l-orch"><span class="name"><span class="branch">        ├── </span>force_drop.py</span><span class="why">le drop Qdrant devient <b>scopé collection</b></span><span class="st rewrite">réécrire</span></div>
+        <div class="row l-orch"><span class="name"><span class="branch">        └── </span><s>persist.py</s></span><span class="why">dissous dans <code>ingest_documents</code> — la persistance est <i>dans</i> la saga du worker</span><span class="st gone">supprimer</span></div>
+
+        <div class="sep"></div>
+        <div class="row"><span class="name"><span class="branch">    </span><s>utils/async_utils.py</s></span><span class="why"><b>La global <code>_LOOP</code>.</b> Remplacée par <code>adapters/runtime/</code>.</span><span class="st gone">supprimer</span></div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= THE TEST TREE ================= -->
+  <div class="tree-frame">
+    <div class="tree-head">
+      <span class="path">src/ragcore/tests/</span>
+      <span class="hint">quatre natures de test, quatre lieux — la nature dicte le rangement, pas la commodité</span>
+    </div>
+    <div class="tree-scroll">
+      <div class="tree">
+
+        <div class="layer l-core"><span class="lbl">unit — miroir de <code style="text-transform:none;letter-spacing:0">src/</code>, un fichier = un module</span><span class="rule-line"></span></div>
+        <div class="row l-core"><span class="name"><span class="branch">├── </span><span class="dir">unit/</span></span></div>
+        <div class="row l-core"><span class="name"><span class="branch">│   ├── </span><span class="dir">core/links/</span></span><span class="why">extraction, résolution, vocabulaire partagé</span></div>
+        <div class="row l-core"><span class="name"><span class="branch">│   ├── </span><span class="dir">core/config/</span></span><span class="why">le fingerprint est-il <b>pur</b>&nbsp;? la canonicalisation est-elle stricte&nbsp;?</span></div>
+        <div class="row l-core"><span class="name"><span class="branch">│   ├── </span><span class="dir">core/services/</span></span><span class="why">idempotence, registry de télémétrie</span></div>
+        <div class="row l-core"><span class="name"><span class="branch">│   ├── </span>application/test_saga.py</span><span class="why">chaque step qui échoue ⇒ compensation exacte de tous les précédents</span></div>
+        <div class="row l-core"><span class="name"><span class="branch">│   ├── </span>application/test_ingestion_runner.py</span><span class="why">le pool, avec des runtimes factices&nbsp;: <b>le dispatch par clé tient-il&nbsp;?</b></span></div>
+        <div class="row l-core"><span class="name"><span class="branch">│   ├── </span>application/test_resolve_relations.py</span><span class="why">phase 2 + promotion des pendantes</span></div>
+        <div class="row l-core"><span class="name"><span class="branch">│   └── </span><span class="dir">sources/generic/</span></span><span class="why">parser, handlers de rôles, markdown, chunking</span></div>
+
+        <div class="sep"></div>
+
+        <div class="layer l-app"><span class="lbl">golden — des cliquets, pas des tests</span><span class="rule-line"></span></div>
+        <div class="row l-app"><span class="name"><span class="branch">├── </span><span class="dir">golden/</span></span><span class="why"><b>Un unitaire échoue quand tu casses le code. Un golden échoue quand tu changes la doctrine sans t'en rendre compte.</b></span></div>
+        <div class="row l-app"><span class="name"><span class="branch">│   ├── </span><span class="dir">role_table/</span></span><span class="why">une balise <b>sans rôle casse le build</b></span><span class="st keep">§3</span></div>
+        <div class="row l-app"><span class="name"><span class="branch">│   ├── </span><span class="dir">normalization/</span></span><span class="why">entrée → sortie <b>figée</b>&nbsp;: elle invalide tous les embeddings si elle bouge</span><span class="st keep">§4</span></div>
+        <div class="row l-app"><span class="name"><span class="branch">│   ├── </span><span class="dir">fingerprint/</span></span><span class="why">même config → même hash, <b>pour toujours</b></span><span class="st keep">§6</span></div>
+        <div class="row l-app"><span class="name"><span class="branch">│   ├── </span><span class="dir">event_catalog/</span></span><span class="why">un <b>event inconnu casse le build</b> — symétrique de la table de rôles</span><span class="st keep">§12</span></div>
+        <div class="row l-app"><span class="name"><span class="branch">│   └── </span><span class="dir">ingestion/</span></span><span class="why">XML fixe → Markdown + champs + liens (type/sens/cible) figés</span><span class="st keep">§10</span></div>
+
+        <div class="sep"></div>
+
+        <div class="layer l-adapt"><span class="lbl">contract — un port, N adapters, le MÊME test</span><span class="rule-line"></span></div>
+        <div class="row l-adapt"><span class="name"><span class="branch">├── </span><span class="dir">contract/</span></span><span class="why">Écrits <b>contre le port</b>, pas contre l'adapter. La preuve <b>exécutable</b> que la substituabilité de l'hexagone est réelle.</span></div>
+        <div class="row l-adapt"><span class="name"><span class="branch">│   ├── </span>test_document_repository.py</span><span class="why">Mongo <i>et</i> InMemory passent le même test</span></div>
+        <div class="row l-adapt"><span class="name"><span class="branch">│   ├── </span>test_pending_repository.py</span><span class="why"><b>union idempotente</b>, <code>promotable_for</code> borné par le delta</span></div>
+        <div class="row l-adapt"><span class="name"><span class="branch">│   └── </span>test_alias_registry.py</span><span class="why">resolve / append / <code>list_known</code></span></div>
+
+        <div class="sep"></div>
+
+        <div class="layer l-orch"><span class="lbl">integration — testcontainers, lent, peu nombreux</span><span class="rule-line"></span></div>
+        <div class="row l-orch"><span class="name"><span class="branch">├── </span><span class="dir">integration/</span></span></div>
+        <div class="row l-orch"><span class="name"><span class="branch">│   ├── </span>conftest.py</span><span class="why">containers Mongo/Neo4j/Qdrant <b>scopés session</b> (Neo4j met des secondes à démarrer)&nbsp;; <b>drop des bases entre tests</b> — l'isolation revient par le nettoyage, pas par le redémarrage.</span><span class="st new">à écrire</span></div>
+        <div class="row l-orch"><span class="name"><span class="branch">│   ├── </span>test_saga_rollback.py</span><span class="why">la compensation Neo4j exacte, <b>pour de vrai</b>&nbsp;: DETACH-DELETE conditionnel, dé-hydratation, purge par <code>run_id</code></span></div>
+        <div class="row l-orch"><span class="name"><span class="branch">│   └── </span>test_two_phase_dag.py</span><span class="why"><b>la barrière tient-elle&nbsp;?</b> Un doc citant un doc ingéré <i>après</i> lui doit voir son arête écrite.</span></div>
+
+        <div class="sep"></div>
+
+        <div class="layer l-src"><span class="lbl">fixtures — le pont avec la saturation</span><span class="rule-line"></span></div>
+        <div class="row l-src"><span class="name"><span class="branch">└── </span><span class="dir">fixtures/</span></span></div>
+        <div class="row l-src"><span class="name"><span class="branch">    ├── </span><span class="dir">corpus/</span></span><span class="why">XML réels&nbsp;: LEGI + les 5 arbres juri. <b>Le corpus qui sature la table de rôles EST celui des golden</b> — une seule copie, pas deux qui divergent.</span></div>
+        <div class="row l-src"><span class="name"><span class="branch">    └── </span><span class="dir">expected/</span></span><span class="why">les sorties figées. <b>Y toucher est un geste visible en revue</b> — c'est l'effet recherché.</span></div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= CHAPTERS ================= -->
+
+  <section class="chapter">
+    <div class="ch-head">
+      <h2>Ce que l'arborescence dit, que la doctrine ne disait pas encore</h2>
+    </div>
+    <p class="ch-sub">Traduire en modules force trois arbitrages que le texte pouvait laisser flous.</p>
+    <ul class="d">
+      <li><span class="k"><code>sources/generic/</code> est le vrai lieu de §3.</span> La doctrine disait «&nbsp;un parser générique + stratégies enfichables&nbsp;» sans dire <b>où</b> vit le générique. Le mettre dans <code>sources/</code> et non dans <code>core/</code> est délibéré&nbsp;: parser, c'est <b>traduire un format extérieur</b> — c'est un adaptateur d'entrée, pas du domaine. <code>core/links</code>, lui, <b>est</b> du domaine&nbsp;: un lien juridique existe indépendamment du XML qui le porte. D'où le partage&nbsp;: le parser <b>appelle</b> <code>core/links</code>, jamais l'inverse.</li>
+      <li><span class="k">Il ne reste presque rien de <code>sources/legi/</code>.</span> Trois de ses cinq modules disparaissent, absorbés. Ce qui subsiste — une table de rôles et quatre handlers — tient dans un fichier. <b>C'est la mesure du succès de §3&nbsp;:</b> si ajouter la jurisprudence coûtait un second <code>parser.py</code>, la doctrine aurait échoué. Ici, une source nouvelle = <b>une table</b>.</li>
+      <li><span class="k">Le port <code>runtime.py</code> vit dans <code>core/</code>, pas dans <code>utils/</code>.</span> Ce n'est pas un détail de rangement. Tant que le pont sync↔async était une fonction utilitaire sur une global, <b>il n'était le contrat de personne</b>. En faire un port du domaine, c'est déclarer que le modèle de concurrence <b>est une décision d'architecture</b> — exactement ce que §11 exige.</li>
+    </ul>
+  </section>
+
+  <section class="chapter">
+    <div class="ch-head">
+      <h2>Les quatre contrats neufs</h2>
+      <span class="ch-refs">§11 §13 §9 §1</span>
+    </div>
+    <p class="ch-sub">Le reste est du déplacement. Ces quatre-là sont ce que le cadrage a réellement créé.</p>
+
+    <div class="sig-scroll">
+      <pre class="sig"><span class="cm"># core/ports/runtime.py — §11, invariant 1</span>
+<span class="kw">class</span> <span class="ty">AsyncRuntime</span>(Protocol):
+    <span class="kw">def</span> run(self, coro: Coroutine[Any, Any, T]) -> T: ...
+    <span class="kw">def</span> drain(self) -> <span class="kw">None</span>: ...          <span class="cm"># at-least-once aux frontières</span>
+    <span class="kw">def</span> close(self) -> <span class="kw">None</span>: ...
+    <span class="cm"># une instance = une boucle + son lot de clients. Rien de partagé.</span>
+
+<span class="cm"># core/ports/telemetry.py — §11, la fabrique</span>
+<span class="kw">class</span> <span class="ty">TelemetryFactory</span>(Protocol):
+    <span class="kw">def</span> build(self, runtime: AsyncRuntime) -> <span class="ty">TelemetryPort</span>: ...
+    <span class="cm"># le hook ne peut plus construire UNE instance : il y a N workers.</span>
+
+<span class="cm"># core/ports/pending_repository.py — §13, le rejeu ciblé</span>
+<span class="kw">class</span> <span class="ty">PendingRepository</span>(Protocol):
+    <span class="kw">async def</span> remember(self, pending: <span class="ty">PendingRelation</span>) -> <span class="kw">None</span>: ...
+        <span class="cm"># union idempotente : absent → insert(first_seen_run)</span>
+        <span class="cm">#                    présent → update(last_seen_run)</span>
+    <span class="kw">async def</span> promotable_for(
+        self, owner_id: OwnerId, new_node_ids: <span class="kw">set</span>[<span class="ty">CanonicalKey</span>]
+    ) -> <span class="kw">list</span>[<span class="ty">PendingRelation</span>]: ...
+        <span class="cm"># ← borné par le DELTA de la run, jamais par le backlog.</span>
+        <span class="cm">#   C'est CE contrat qui rend le TTL inutile.</span>
+    <span class="kw">async def</span> forget(self, promoted: <span class="kw">list</span>[<span class="ty">PendingRelation</span>]) -> <span class="kw">None</span>: ...
+
+<span class="cm"># core/ports/alias_registry.py — §1, l'inventaire lisible</span>
+<span class="kw">class</span> <span class="ty">AliasRegistry</span>(Protocol):
+    <span class="kw">async def</span> resolve(self, alias: <span class="kw">str</span>, owner_id: OwnerId) -> <span class="ty">CanonicalKey</span> | <span class="kw">None</span>: ...
+    <span class="kw">async def</span> append(self, key: <span class="ty">CanonicalKey</span>, aliases: <span class="kw">list</span>[<span class="kw">str</span>]) -> <span class="kw">None</span>: ...
+    <span class="kw">async def</span> list_known(self, owner_id: OwnerId) -> <span class="kw">set</span>[<span class="kw">str</span>]: ...
+        <span class="cm"># acté en v0 bien que le pipeline binaire ne le consomme pas.</span></pre>
+    </div>
+
+    <div class="note">
+      <p style="margin:0"><b>Lire <code>promotable_for</code> comme la clé de voûte.</b> C'est la signature qui <i>rend vraie</i> la doctrine du cache&nbsp;: parce que le rejeu est borné par les nœuds neufs et non par le backlog, une pendante ancienne ne coûte rien — et c'est <b>pour cette raison</b> qu'aucun TTL n'est nécessaire. Le contrat n'illustre pas la décision&nbsp;: il en est le mécanisme.</p>
+    </div>
+  </section>
+
+  <section class="chapter">
+    <div class="ch-head">
+      <h2>Deux configs, deux couches</h2>
+      <span class="ch-refs">§6 §9</span>
+    </div>
+    <p class="ch-sub">Ce qui change le résultat vit dans le domaine. Ce qui ne le change pas vit dans l'infra. La frontière est celle du hash.</p>
+
+    <p class="tight">Le pipeline a besoin de deux sortes de réglages, et ils sont aujourd'hui mélangés dans un <code>settings.py</code> unique.</p>
+    <ul class="d">
+      <li><span class="k">Ceux qui <b>changent le résultat</b>.</span> <code>chunk_size</code>, <code>chunk_overlap</code>, le modèle d'embedding, la <code>norm_version</code>. En changer un&nbsp;: <b>les vecteurs produits ne sont plus les mêmes</b>. Les anciens et les nouveaux ne sont plus comparables — ils ne peuvent pas cohabiter dans une collection.</li>
+      <li><span class="k">Ceux qui <b>ne changent rien</b>.</span> <code>MONGODB_URI</code>, le mot de passe Neo4j, le chemin source, le nombre de workers, le dossier des logs. Déménage Mongo sur une autre machine&nbsp;: <b>les vecteurs produits sont identiques</b>. C'est le <i>où</i> et le <i>comment</i>, pas le <i>quoi</i>.</li>
+    </ul>
+
+    <div class="note">
+      <p style="margin:0"><b>Pourquoi c'est structurel, et pas du rangement.</b> §6 a décidé que <b>le nom de la collection Qdrant est un hash de la config</b> — c'est ce qui rend l'A/B possible. Mais alors&nbsp;: <b>hash de <i>quoi</i></b>&nbsp;? Si le hash mange toute la config, il mange l'URI Mongo. Passe de <code>localhost</code> au conteneur Docker&nbsp;: le hash change, <b>une collection neuve est créée</b> — alors que tu produis rigoureusement les mêmes vecteurs. L'A/B est perdu pour une raison qui n'a aucun sens, et le même run rejoué depuis deux machines n'atterrit pas au même endroit.</p>
+    </div>
+
+    <p class="tight">D'où la scission&nbsp;: <code>WorkflowConfig</code> dans <code>core/config/</code>, <code>InfraSettings</code> dans <code>adapters/config/</code>. La fonction <code>fingerprint()</code> vit dans <code>core/</code> et ne voit que le premier — <b>elle n'a physiquement pas accès à l'URI Mongo</b>. L'erreur devient <b>impossible par construction</b>, au lieu d'être évitée par la discipline de qui pense à exclure les bons champs au moment de hasher. C'est exactement la forme d'argument que le principe directeur d'architecture réclame&nbsp;: une garantie, pas une convention.</p>
+
+    <p class="tight" style="color:var(--ink-faint);font-size:14.5px"><b>Cas limite qui prouve que la frontière est nette&nbsp;:</b> <code>RETRIEVAL_TOP_K</code> n'est <b>ni l'un ni l'autre</b> — c'est du <i>serving</i>, il n'appartient pas à ragcore.</p>
+  </section>
+
+  <section class="chapter">
+    <div class="ch-head">
+      <h2>Le DAG bi-phasé</h2>
+      <span class="ch-refs">§11</span>
+    </div>
+    <p class="ch-sub">La barrière n'est pas un <code>join()</code>&nbsp;: c'est une arête. Elle se lit dans <code>kedro viz</code>.</p>
+
+    <div class="sig-scroll">
+      <pre class="sig">  connect ──► compute_idempotence ──► <span class="kw">ingest_documents</span> ──┬──► resolve_relations ──► report
+                                       <span class="cm">│ IngestionRunner</span>      <span class="kw">│</span>          <span class="cm">│ phase 2</span>
+                                       <span class="cm">│ N workers</span>            <span class="kw">│</span>          <span class="cm">│ relations en batch</span>
+                                       <span class="cm">│ 1 AsyncRuntime chacun</span> <span class="kw">│</span>          <span class="cm">│ + cache pendantes</span>
+                                       <span class="cm">│ saga 3 steps / doc</span>    <span class="kw">│</span>
+                                       <span class="cm">└─ sort : RunStats ─────┘</span>
+                                                              <span class="kw">▲</span>
+                                            <span class="kw">cette arête EST la barrière</span>
+                                     <span class="cm">tous les nœuds avant toute arête (§11)</span></pre>
+    </div>
+
+    <ul class="d">
+      <li><span class="k">Le hook cesse d'être un lieu de logique.</span> Aujourd'hui <code>after_pipeline_run</code> finalise l'agrégateur — il <b>calcule</b>. Demain il ne voit plus les workers&nbsp;: il ne <i>peut</i> plus. La fusion redescend dans le node, l'agrégat <b>sort comme donnée</b>, et <code>hooks.py</code> redevient ce qu'il aurait toujours dû être&nbsp;: du câblage.</li>
+      <li><span class="k">Le pool est testable sans Kedro.</span> <code>IngestionRunner</code> ne connaît ni <code>DataCatalog</code>, ni <code>hook_impl</code>. On peut le lancer depuis un test, un CLI, un service. Le modèle de concurrence n'est <b>pas prisonnier de l'orchestrateur</b> — ce qui est précisément l'argument qui a fait rejeter les runners Kedro.</li>
+    </ul>
+  </section>
+
+  <section class="chapter">
+    <div class="ch-head">
+      <h2>Ce qui meurt</h2>
+      <span class="ch-refs">§10</span>
+    </div>
+    <p class="ch-sub">Sept modules. Aucun n'est un accident&nbsp;: chacun est une doctrine qui a changé.</p>
+    <ul class="d">
+      <li><span class="k"><code>utils/async_utils.py</code> — la global <code>_LOOP</code>.</span> État mutable partagé au niveau module. Toute la §11 est, au fond, la mise à mort de cette variable.</li>
+      <li><span class="k"><code>legi/parser.py</code>, <code>legi/chunking.py</code>, <code>legi/relations.py</code>.</span> Absorbés. Le parser LEGI n'extrait <b>aucun lien</b> aujourd'hui&nbsp;; <code>relations.py</code> travaille en aval sur un <code>ParsedDocument</code>. <code>core/links</code> renverse ça&nbsp;: <b>l'extraction se fait à la balise</b>, là où le <code>sens</code> et le <code>type</code> sont encore lisibles.</li>
+      <li><span class="k"><code>nodes/persist.py</code>.</span> Un node qui persiste, c'est la persistance <b>hors</b> de la saga du worker. Contradictoire avec §8.</li>
+      <li><span class="k"><code>telemetry/composite.py</code>.</span> Fichier vide&nbsp;; le registry a pris le rôle.</li>
+      <li><span class="k">Et hors <code>ragcore</code>&nbsp;: <code>data/src/data/pipelines/embedding/</code>.</span> Le node archivé que le CLAUDE.md signale déjà comme mort. Le supprimer, pas le maintenir.</li>
+    </ul>
+  </section>
+
+  <section class="chapter">
+    <div class="ch-head">
+      <h2>Pourquoi les tests ont quatre lieux</h2>
+      <span class="ch-refs">§3 §6 §9 §12</span>
+    </div>
+    <p class="ch-sub">Ce n'est pas un rangement par commodité&nbsp;: chaque dossier correspond à une <b>nature de vérification</b> différente.</p>
+    <ul class="d">
+      <li><span class="k"><code>golden/</code> est séparé parce que ce ne sont <b>pas des tests</b>&nbsp;: ce sont des cliquets.</span> Un test unitaire échoue quand tu <b>casses le code</b>. Un golden échoue quand tu <b>changes la doctrine sans t'en rendre compte</b>. Le cadrage l'a exigé trois fois — «&nbsp;balise sans rôle casse le build&nbsp;» (§3), «&nbsp;event inconnu = échec&nbsp;» (§12), «&nbsp;même config → même hash, pour toujours&nbsp;» (§6). Ce sont des <b>engagements</b>, pas des vérifications. Les noyer dans <code>unit/</code> les banaliserait&nbsp;: un jour, quelqu'un mettrait à jour le fichier attendu pour faire passer le build. Isolés dans <code>golden/</code>, <b>y toucher est un geste visible en revue</b> — c'est précisément l'effet recherché.</li>
+      <li><span class="k"><code>contract/</code> existe parce que tu as des <b>ports</b>.</span> Un test de contrat est écrit <b>contre le port</b>, pas contre l'adapter&nbsp;: le même test tourne sur <code>MongoPendingRepository</code> <i>et</i> sur un <code>InMemoryPendingRepository</code>. C'est la preuve <b>exécutable</b> que la substituabilité promise par l'hexagone est réelle. Sans lui, «&nbsp;adapter interchangeable&nbsp;» est une <b>intention</b>, pas un fait — et le jour où MLflow cède la place à ClearML (§9 le prévoit), c'est ce test qui dira si le nouvel adapter est conforme.</li>
+      <li><span class="k"><code>fixtures/corpus/</code> est le <b>pont avec la saturation</b>.</span> §3 attend <code>analyze(corpus_complet)</code> sur les cinq arbres. Le corpus qui sature la table de rôles <b>est</b> celui qui alimente les golden d'ingestion. Une seule copie&nbsp;: deux corpus qui divergent, c'est un golden qui atteste d'une doctrine que le pipeline n'applique plus.</li>
+      <li><span class="k"><code>integration/</code> reste <b>mince</b>.</span> Deux fichiers, pas vingt&nbsp;: la compensation Neo4j exacte et la barrière bi-phasée. Ce sont les deux endroits où <b>seule une vraie base peut dire la vérité</b> — le reste se teste contre les ports.</li>
+      <li><span class="k">Et il tourne sur <b>testcontainers</b>, pas sur le <code>docker-compose</code>.</span> Le motif n'est pas le confort&nbsp;: c'est que <code>docker-compose</code> ferait tester contre une base <b>qui a déjà servi</b>. Or ces deux tests sont exactement ceux où <b>l'état résiduel ment</b> — <code>test_saga_rollback</code> vérifie qu'après compensation il ne reste <b>rien</b>&nbsp;; un nœud laissé par un run précédent le fait passer ou échouer <b>sans rapport avec le code</b>. Un état vierge donne un verdict qui veut dire quelque chose. Et en CI, il n'y a pas d'alternative. <b>Conséquence de conception&nbsp;:</b> Neo4j démarre en plusieurs secondes ⇒ containers <b>scopés session</b>, isolation rétablie par <b>drop des bases entre tests</b> — tenable précisément parce que ces tests sont <b>peu nombreux par conception</b>.</li>
+    </ul>
+  </section>
+
+  <div class="close">
+    <h3>L'arborescence est arrêtée — place au code</h3>
+    <p style="margin:0 0 14px; color:var(--ink-soft); max-width:var(--measure)">Les quatre arbitrages sont <b>tranchés</b>&nbsp;: <code>sources/generic/</code> (le parser est un adaptateur d'entrée)&nbsp;; <code>ragcore/tests/</code> centralisé, en <b>quatre natures</b>&nbsp;; la <b>scission <code>WorkflowConfig</code> / <code>InfraSettings</code></b>&nbsp;; et l'intégration sur <b>testcontainers</b>. <b>Plus aucune question de structure n'est en attente.</b></p>
+    <p style="margin:0 0 12px; color:var(--ink-soft); max-width:var(--measure)">L'ordre d'écriture suit les dépendances&nbsp;— et il n'est pas arbitraire&nbsp;: chaque couche ne peut être écrite que parce que la précédente a figé ce dont elle a besoin.</p>
+    <ol>
+      <li><b><code>core/</code></b> — modèles, ports, <code>links</code>, <code>fingerprint</code>, <code>WorkflowConfig</code>. <b>Tout en dépend, rien n'en dépend.</b> C'est ici que la doctrine devient du code&nbsp;; les golden de <code>fingerprint</code> et de normalisation se posent en même temps.</li>
+      <li><b><code>application/</code></b> — saga à 3 steps, <code>IngestionRunner</code>, <code>ResolveRelationsService</code>. Testable <b>sans aucune base</b>&nbsp;: les ports suffisent.</li>
+      <li><b><code>adapters/</code></b> — les stores, le runtime asyncio, la télémétrie, MLflow. Les tests de <b>contrat</b> écrits à l'étape&nbsp;1 les valident en arrivant.</li>
+      <li><b><code>sources/generic/</code> + <code>legi/strategy.py</code></b> — le parser et sa première table de rôles. La <b>saturation</b> (§3) peut alors tourner.</li>
+      <li><b>Le shell Kedro</b> — en dernier, <b>quand il n'a plus qu'à câbler</b>. Si à ce stade il contient de la logique, c'est que quelque chose s'est mal passé en amont.</li>
+    </ol>
+  </div>
+</div>
