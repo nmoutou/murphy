@@ -7,7 +7,6 @@ import logging
 from typing import Any
 
 from ragcore.core.models.audit import AuditEvent
-from ragcore.core.ports.telemetry import TelemetryPort
 
 _LOGGER = logging.getLogger("ragcore.telemetry")
 

@@ -1,7 +1,12 @@
 # ============================================================
-# Runtime objects — injectés par TelemetryHooks.before_pipeline_run
+# Objets runtime — injectés par TelemetryHooks.before_pipeline_run
 # ============================================================
+# Ce ne sont pas des données mais des objets vivants (dépôts, fabriques, services)
+# que le hook construit et pose au catalogue avant le run. Le DAG les NOMME, le hook
+# les FOURNIT. Tout est `MemoryDataset` / `copy_mode: assign` : on passe la référence,
+# jamais une copie — un client Mongo copié n'aurait plus de sens.
 
+# --- Composants source (lus par les nœuds de maintenance) ---
 connector:
   type: MemoryDataset
   copy_mode: assign
@@ -10,22 +15,7 @@ parser:
   type: MemoryDataset
   copy_mode: assign
 
-chunker:
-  type: MemoryDataset
-  copy_mode: assign
-
-embedder:
-  type: MemoryDataset
-  copy_mode: assign
-
-relation_extractor:
-  type: MemoryDataset
-  copy_mode: assign
-
-ingest_use_case:
-  type: MemoryDataset
-  copy_mode: assign
-
+# --- Dépôts du hook (maintenance + phase 2 ; les workers fabriquent les leurs) ---
 manifest_repo:
   type: MemoryDataset
   copy_mode: assign
@@ -42,11 +32,37 @@ vector_repo:
   type: MemoryDataset
   copy_mode: assign
 
+# --- Le pool phase 1 et le service phase 2 ---
+runner:
+  type: MemoryDataset
+  copy_mode: assign
+
+resolve_service:
+  type: MemoryDataset
+  copy_mode: assign
+
+# --- Contexte, télémétrie, runtime du hook (pont sync→async des nœuds non parallélisés) ---
 pipeline_context:
   type: MemoryDataset
   copy_mode: assign
 
 telemetry:
+  type: MemoryDataset
+  copy_mode: assign
+
+pipeline_runtime:
+  type: MemoryDataset
+  copy_mode: assign
+
+# ============================================================
+# Données inter-nœuds — produites et consommées dans le run
+# ============================================================
+
+force_drop_done:
+  type: MemoryDataset
+  copy_mode: assign
+
+cleanup_results:
   type: MemoryDataset
   copy_mode: assign
 
@@ -62,19 +78,14 @@ to_skip:
   type: MemoryDataset
   copy_mode: assign
 
-run_results:
+ingestion_outcome:
+  type: MemoryDataset
+  copy_mode: assign
+
+resolution_outcome:
   type: MemoryDataset
   copy_mode: assign
 
 run_report:
   type: MemoryDataset
   copy_mode: assign
-
-force_drop_done:
-  type: MemoryDataset
-  copy_mode: assign
-
-cleanup_results:
-  type: MemoryDataset
-  copy_mode: assign
-

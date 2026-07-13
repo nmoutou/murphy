@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from .enums import SourceName
 from .identifiers import OwnerId, SourceIdentifier
@@ -40,5 +40,17 @@ class ParsedDocument(BaseModel):
     content: str
     structure: dict[str, Any]
     metadata: dict[str, Any]
+
+    unknowns: dict[str, list[str]] = Field(default_factory=dict)
+    """Le vocabulaire que le parsing a vu sans savoir le nommer.
+
+    Un parser ne connaît pas la télémétrie — ce n'est pas son métier, et il ne tourne
+    pas dans le même worker que celui qui écrit le bilan du run. L'inconnu voyage donc
+    dans la DONNÉE, comme une arête différée voyage dans ``RelationWriteResult.pending``.
+    C'est l'appelant, qui tient une ``WorkerTelemetry``, qui le DÉCLARE.
+
+    Un parser qui ne rencontre rien d'inconnu laisse ce dict vide : c'est le neutre,
+    et il ne ment pas.
+    """
 
     parsed_at: datetime

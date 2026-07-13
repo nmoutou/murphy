@@ -90,7 +90,29 @@ formatting:
     tokenizing_model: ${nlp.spacy_model}
     batch_size: 50
 
+  # --- Ce qui suit peuple le WorkflowConfig, donc ENTRE DANS LE HASH (§6) -----------
+  # Changer une de ces valeurs crée mécaniquement une NOUVELLE collection Qdrant : les
+  # vecteurs d'avant et d'après ne sont pas comparables, ils ne doivent pas cohabiter.
+  # Les deux collections coexistent et restent rejouables — c'est le point de l'A/B.
+
+  normalization:
+    # §4 est ÉCRITE (sources/generic/normalize.py) : NFC, espaces insécables, caractères
+    # de largeur nulle, césures conditionnelles. Pas de lemmatisation — on normalise la
+    # typographie, jamais la langue.
+    #
+    # Ce passage de `none` à `v1` CHANGE LE HASH, donc la collection Qdrant — et c'est
+    # exactement le comportement voulu : le texte embarqué n'est plus le même, les
+    # vecteurs d'avant et d'après ne sont pas comparables et ne doivent pas cohabiter.
+    # Les deux collections coexistent, chacune rejouable. C'est le premier vrai exercice
+    # de l'A/B que le fingerprint rend possible.
+    #
+    # Doit rester synchronisé avec `NORMALIZATION_VERSION` dans le code : changer le
+    # traitement sans changer cette version mélangerait deux jeux de vecteurs
+    # incomparables DANS LA MÊME collection, sans que rien ne le signale.
+    version: v1
+
   chunking:
+    strategy: legi-structural-v1
     chunk_size: 128
     chunk_overlap: 25
 
@@ -118,7 +140,11 @@ formatting:
 
 embedding:
   embedding:
+    # Modèle + dimension : ils décident des vecteurs, donc ils SONT HASHÉS (§6).
+    # Le *provider* (local / openai / noop), lui, est de l'infra et vit dans .env :
+    # deux façons d'atteindre le même modèle produisent les mêmes vecteurs.
     embedding_model: "sentence-transformers/all-mpnet-base-v2"
+    dimension: 768
     embedding_service_timeout: 30
     batch_size: 32
 
@@ -127,7 +153,7 @@ exportation:
     include_path: false
     include_content: false
     force_drop: true
-  
+
   mongodb:
     include_path: true
     force_drop: true
@@ -135,10 +161,13 @@ exportation:
     collection: "chunks"
 
   qdrant:
+    # PAS de `collection:` — elle est DÉRIVÉE de l'empreinte du WorkflowConfig (§6),
+    # jamais écrite à la main. La nommer ici permettrait d'écraser les vecteurs d'une
+    # stratégie avec ceux d'une autre sans que rien ne le signale.
+    # `force_drop` reste scopé à CETTE collection, jamais au store Qdrant entier :
+    # deux configs ⇒ deux collections, chacune droppable indépendamment.
     force_drop: true
-    collection: "chunks"
     distance: "Cosine"
-    vector_size: 768
     batch_size: 100
 
 

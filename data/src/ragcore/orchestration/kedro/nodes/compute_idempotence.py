@@ -9,34 +9,38 @@ Changements post-refonte :
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
-from ragcore.application.pipeline_context import PipelineContext
+from ragcore.application.run_context import PipelineContext
 from ragcore.core.exceptions import ValidationError
 from ragcore.core.models.audit import build_event
-from ragcore.core.telemetry_events import DOCUMENT_INVALIDATED, DOCUMENT_PARSED
 from ragcore.core.models.document import ParsedDocument, RawDocument
 from ragcore.core.models.enums import Operation
 from ragcore.core.models.manifest import ManifestEntry
 from ragcore.core.ports.manifest_repository import ManifestRepository
 from ragcore.core.ports.parser import BaseParser
+from ragcore.core.ports.runtime import AsyncRuntime
 from ragcore.core.ports.telemetry import TelemetryPort
+from ragcore.core.services.exclusion_reasons import (
+    REASON_PARSE_ERROR,
+    REASON_VALIDATION_ERROR,
+)
 from ragcore.core.services.idempotence import determine_operation
-
-from ._async_utils import run_async
+from ragcore.core.telemetry_events import DOCUMENT_INVALIDATED, DOCUMENT_PARSED
 
 logger = logging.getLogger(__name__)
 
 
-def compute_idempotence_node(
+def compute_idempotence_node(  # noqa: PLR0913 — l'identité d'un nœud Kedro EST sa liste d'inputs ; les grouper les cacherait au DAG
     raw_documents: list[RawDocument],
     parser: BaseParser,
     manifest_repo: ManifestRepository,
     pipeline_context: PipelineContext,
     telemetry: TelemetryPort,
+    pipeline_runtime: AsyncRuntime,
 ) -> tuple[list[tuple[ParsedDocument, Operation]], list[str]]:
     """Parse documents and determine which need processing (INSERT vs UPDATE).
-    
+
     Les documents rejetés (ValidationError) sont tracés dans le manifest avec
     l'opération EXCLUDED et un message de raison.
     """
@@ -60,7 +64,7 @@ def compute_idempotence_node(
                     owner_id=owner_id,
                     source=source,
                     payload={
-                        "reason": "validation_error",
+                        "reason": REASON_VALIDATION_ERROR,
                         "uid": raw.source_document_id,
                         "error": str(exc),
                     },
@@ -69,7 +73,7 @@ def compute_idempotence_node(
                 )
             )
             # Écrire une entrée EXCLUDED au manifest
-            run_async(
+            pipeline_runtime.run(
                 manifest_repo.append(
                     ManifestEntry(
                         identifier=None,
@@ -78,7 +82,7 @@ def compute_idempotence_node(
                         source=source,
                         operation=Operation.EXCLUDED,
                         reason=str(exc),
-                        processed_at=datetime.now(timezone.utc),
+                        processed_at=datetime.now(UTC),
                     )
                 )
             )
@@ -94,7 +98,7 @@ def compute_idempotence_node(
                     owner_id=owner_id,
                     source=source,
                     payload={
-                        "reason": "parse_error",
+                        "reason": REASON_PARSE_ERROR,
                         "uid": raw.source_document_id,
                         "error": str(exc),
                     },
@@ -102,7 +106,7 @@ def compute_idempotence_node(
                     error_message=str(exc),
                 )
             )
-            run_async(
+            pipeline_runtime.run(
                 manifest_repo.append(
                     ManifestEntry(
                         identifier=None,
@@ -110,8 +114,8 @@ def compute_idempotence_node(
                         owner_id=owner_id,
                         source=source,
                         operation=Operation.EXCLUDED,
-                        reason=f"parse_error: {str(exc)}",
-                        processed_at=datetime.now(timezone.utc),
+                        reason=f"{REASON_PARSE_ERROR}: {exc}",
+                        processed_at=datetime.now(UTC),
                     )
                 )
             )
@@ -119,7 +123,7 @@ def compute_idempotence_node(
             continue
 
         # Document valide — détermine l'opération (INSERT ou UPDATE)
-        manifest_entry = run_async(
+        manifest_entry = pipeline_runtime.run(
             manifest_repo.last_for_identifier(parsed.identifier, parsed.owner_id)
         )
         operation = determine_operation(manifest_entry)

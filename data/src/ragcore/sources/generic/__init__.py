@@ -1,0 +1,26 @@
+"""``sources/generic`` — **un** parser, **un** chunker, pour six sources.
+
+La thèse de §3 : « un parser par source » est l'inverse du but. On factorise la
+mécanique ; les spécificités d'une source sont une **table déclarative** (``RoleTable``),
+pas une classe.
+
+De ``sources/legi/`` il ne reste qu'une table et un connecteur. La jurisprudence
+n'écrira pas une ligne de parser — elle écrira trois tables.
+"""
+
+from .chunking import StructuralChunker
+from .normalize import NORMALIZATION_VERSION, normalize_text
+from .parser import GenericParser
+from .relations import GenericRelationExtractor
+from .role_table import RoleTable
+from .roles import Role
+
+__all__ = [
+    "NORMALIZATION_VERSION",
+    "GenericParser",
+    "GenericRelationExtractor",
+    "Role",
+    "RoleTable",
+    "StructuralChunker",
+    "normalize_text",
+]

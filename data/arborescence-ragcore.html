@@ -376,19 +376,21 @@
 
 <div class="wrap">
   <header class="masthead">
-    <p class="eyebrow">ragcore · arborescence cible · rév. 3 — arrêtée</p>
+    <p class="eyebrow">ragcore · arborescence cible · rév. 4 — arrêtée</p>
     <h1>La doctrine, traduite en modules</h1>
-    <p class="lede">Chaque décision du cadrage a désormais <strong>un fichier où elle vit</strong>. Cette carte n'invente rien&nbsp;: elle place les treize familles dans l'hexagone, et dit pour chaque module s'il existe déjà, s'il est à réécrire, ou s'il reste à écrire. Les trois arbitrages de placement sont <strong>tranchés</strong>&nbsp;; l'arborescence des tests et la scission des deux configs y sont entrées.</p>
+    <p class="lede">Chaque décision du cadrage a désormais <strong>un fichier où elle vit</strong>. Cette carte n'invente rien&nbsp;: elle place les treize familles dans l'hexagone, et dit pour chaque module s'il existe déjà, s'il est à réécrire, ou s'il reste à écrire. Les quatre arbitrages de placement sont <strong>tranchés</strong>&nbsp;; l'arborescence des tests et la scission des deux configs y sont entrées.</p>
 
     <div class="caveat">
-      <span class="tag">État réel du dépôt — à savoir avant de lire</span>
-      <p style="margin:0"><code>hooks.py</code> importe aujourd'hui <b>une quinzaine de modules absents de l'arbre</b> (<code>adapters/embedding/*</code>, les <code>client.py</code> de chaque store, <code>audit_repository</code>, <code>run_summary_repository</code>, <code>config/settings.py</code>, <code>pipeline_context</code>, <code>ports/telemetry.py</code>, <code>file_connector</code>, <code>pipeline_registry</code>). C'est la trace de la <b>récupération partielle</b> déjà consignée. Ces modules sont donc marqués <span class="chip new" style="display:inline-block">à écrire</span> — non parce qu'ils sont neufs, mais parce qu'<b>il n'y a rien à lire dans le dépôt</b>. Le code perdu, s'il ressort, sera un point de départ, pas une contrainte.</p>
+      <span class="tag">État réel du dépôt — mesuré le 11 juil. 2026, à savoir avant de lire</span>
+      <p style="margin:0 0 10px"><b><code>ragcore</code> ne s'importe pas.</b> Pas «&nbsp;partiellement cassé&nbsp;»&nbsp;: le tout premier <code>from ragcore…</code> échoue, parce que <code>core/models/__init__.py</code> importe un <code>run_summary</code> qui n'existe plus. <b>Rien ne tourne aujourd'hui</b> — pas même les tests unitaires. Sur les 41 modules du dépôt, <b>18 s'importent, 23 non</b>.</p>
+      <p style="margin:0 0 10px"><b>Mais l'échec a deux causes, et il faut les séparer.</b> <b>(a) Des dépendances non installées</b> dans le venv (<code>motor</code>, <code>neo4j</code>, <code>qdrant_client</code>, <code>spacy</code>) — c'est de l'environnement, pas du code&nbsp;: ces modules-là sont peut-être sains. <b>(b) 22 modules ragcore réellement absents</b>, et <b>trois d'entre eux font tomber presque tout le reste</b>&nbsp;: <code>core/models/run_summary.py</code> (<b>11 modules en dépendent</b>, dont tout <code>adapters/telemetry/</code>), <code>core/ports/telemetry.py</code> (<b>10 importeurs</b>, dont <code>saga.py</code> et <code>ingest_document.py</code>), <code>application/pipeline_context.py</code> (5). <b>Conséquence à retenir&nbsp;:</b> <code>application/</code>, que cette carte marque «&nbsp;garder&nbsp;», <b>ne s'importe même pas</b> — non parce qu'il est mauvais, mais parce que ses ports ont disparu.</p>
+      <p style="margin:0"><b>Ces 22 modules sont définitivement perdus — les trois voies de récupération sont épuisées.</b> L'<b>historique VSCode</b> ne contient rien de plus que ce qui a déjà été restauré le 5 juillet&nbsp;; le commit <code>Save</code> porte <b>exactement le même contenu</b> que le working tree&nbsp;; il n'existe <b>aucun <code>.pyc</code> orphelin</b> à décompiler. <b>C'est une bonne nouvelle&nbsp;:</b> il n'y a plus d'hésitation entre «&nbsp;restaurer&nbsp;» et «&nbsp;réécrire&nbsp;». <span class="chip new" style="display:inline-block">à écrire</span> veut dire <b>écrire</b>, et l'arborescence cible est la <b>seule</b> référence — le code perdu ne viendra plus la contraindre.</p>
     </div>
 
     <div class="legend">
       <span class="legend-item"><span class="chip keep">garder</span>existe et tient — on ne touche pas</span>
       <span class="legend-item"><span class="chip rewrite">réécrire</span>existe mais la doctrine l'a périmé</span>
-      <span class="legend-item"><span class="chip new">à écrire</span>absent du dépôt</span>
+      <span class="legend-item"><span class="chip new">à écrire</span>absent du dépôt — <b>neuf ou perdu, c'est le même travail</b> (rien à récupérer)</span>
       <span class="legend-item"><span class="chip gone">supprimer</span>deadcode ou contredit par la doctrine</span>
     </div>
   </header>
@@ -453,7 +455,7 @@
 
         <div class="row l-app"><span class="name"><span class="branch">├── </span><span class="dir">application/</span></span></div>
         <div class="row l-app"><span class="name"><span class="branch">│   ├── </span>run_context.py</span><span class="why">PipelineContext — run_id, owner_id, source, started_at</span><span class="st new">à écrire</span></div>
-        <div class="row l-app"><span class="name"><span class="branch">│   ├── </span>saga.py</span><span class="why">SagaExecutor — compensation systématique (stratégie A, §8)</span><span class="st keep">garder</span></div>
+        <div class="row l-app"><span class="name"><span class="branch">│   ├── </span>saga.py</span><span class="why">SagaExecutor — compensation systématique (stratégie A, §8). <b>«&nbsp;Garder&nbsp;» = le code tient&nbsp;; il ne s'importe pas pour autant</b> (<code>ports/telemetry</code> perdu).</span><span class="st keep">garder</span></div>
         <div class="row l-app"><span class="name"><span class="branch">│   ├── </span>ingest_document.py</span><span class="why"><b>saga à 3 steps</b>&nbsp;: Mongo → Qdrant → Neo4j(nœud+registre). <b>Les relations en sortent</b> (§11).</span><span class="st rewrite">réécrire</span></div>
         <div class="row l-app"><span class="name"><span class="branch">│   ├── </span>delete_document.py</span><span class="why">le pendant du drop ciblé</span><span class="st keep">garder</span></div>
         <div class="row l-app"><span class="name"><span class="branch">│   ├── </span>ingestion_runner.py</span><span class="why"><b>Le worker pool.</b> N workers, un AsyncRuntime chacun, dispatch <b>par clé document</b>. Testable sans Kedro. (§11)</span><span class="st new">à écrire</span></div>
@@ -742,6 +744,20 @@
       <li><span class="k"><code>fixtures/corpus/</code> est le <b>pont avec la saturation</b>.</span> §3 attend <code>analyze(corpus_complet)</code> sur les cinq arbres. Le corpus qui sature la table de rôles <b>est</b> celui qui alimente les golden d'ingestion. Une seule copie&nbsp;: deux corpus qui divergent, c'est un golden qui atteste d'une doctrine que le pipeline n'applique plus.</li>
       <li><span class="k"><code>integration/</code> reste <b>mince</b>.</span> Deux fichiers, pas vingt&nbsp;: la compensation Neo4j exacte et la barrière bi-phasée. Ce sont les deux endroits où <b>seule une vraie base peut dire la vérité</b> — le reste se teste contre les ports.</li>
       <li><span class="k">Et il tourne sur <b>testcontainers</b>, pas sur le <code>docker-compose</code>.</span> Le motif n'est pas le confort&nbsp;: c'est que <code>docker-compose</code> ferait tester contre une base <b>qui a déjà servi</b>. Or ces deux tests sont exactement ceux où <b>l'état résiduel ment</b> — <code>test_saga_rollback</code> vérifie qu'après compensation il ne reste <b>rien</b>&nbsp;; un nœud laissé par un run précédent le fait passer ou échouer <b>sans rapport avec le code</b>. Un état vierge donne un verdict qui veut dire quelque chose. Et en CI, il n'y a pas d'alternative. <b>Conséquence de conception&nbsp;:</b> Neo4j démarre en plusieurs secondes ⇒ containers <b>scopés session</b>, isolation rétablie par <b>drop des bases entre tests</b> — tenable précisément parce que ces tests sont <b>peu nombreux par conception</b>.</li>
+    </ul>
+  </section>
+
+  <section class="chapter">
+    <div class="ch-head">
+      <h2>Ce que l'état du dépôt impose au plan de migration</h2>
+    </div>
+    <p class="ch-sub">La mesure du 11 juillet ne change pas la <b>cible</b>. Elle change ce qu'il faut faire pour l'atteindre — et elle tranche, de fait, une question que le plan de migration croyait devoir poser.</p>
+    <ul class="d">
+      <li><span class="k">La question «&nbsp;big-bang ou progressif&nbsp;?&nbsp;» est <b>déjà tranchée par les faits</b>.</span> Une migration progressive suppose un pipeline qui <b>tourne à chaque étape</b> — c'est tout son intérêt&nbsp;: on garde un filet, on avance par petits pas vérifiables. <b>Mais rien ne tourne&nbsp;:</b> <code>ragcore</code> ne s'importe pas. Il n'y a <b>pas d'état de marche à préserver</b>, donc pas de filet à tendre&nbsp;: le progressif n'a rien à protéger. Le choix n'est pas «&nbsp;big-bang parce que la v0 l'autorise&nbsp;» (le cadrage le permettait, sans l'imposer) — c'est <b>«&nbsp;big-bang parce qu'il n'y a pas d'alternative&nbsp;»</b>. Nuance qui compte&nbsp;: on ne casse rien, <b>c'est déjà cassé</b>.</li>
+      <li><span class="k">Le premier jalon n'est pas un module&nbsp;: c'est <b>«&nbsp;<code>import ragcore</code> répond&nbsp;»</b>.</span> Trois fichiers absents (<code>run_summary</code>, <code>ports/telemetry</code>, <code>pipeline_context</code>) font tomber la quasi-totalité du package. Tant qu'ils manquent, <b>aucun test ne peut tourner</b> — donc aucune des cinq couches de l'ordre d'écriture n'est vérifiable, pas même la première. Ce n'est pas une étape du plan&nbsp;: c'est <b>sa précondition</b>.</li>
+      <li><span class="k">L'ordre d'écriture en cinq couches <b>résiste</b> à la mesure — et se trouve même confirmé.</span> Il commande de commencer par <code>core/</code> (modèles, ports)&nbsp;: or c'est <b>exactement</b> là que sont les trois modules qui bloquent tout. Le chemin le plus court pour ressusciter le package est <b>le même</b> que celui que la doctrine prescrivait — la contrainte technique et l'ordre architectural pointent au même endroit. Rien à arbitrer.</li>
+      <li><span class="k">Le venv est un chantier <b>distinct</b>, à ne pas confondre avec le code.</span> <code>motor</code>, <code>neo4j</code>, <code>qdrant_client</code>, <code>spacy</code> ne sont pas installés — quatre modules échouent <b>pour cette seule raison</b>. Les compter comme «&nbsp;code cassé&nbsp;» surestimerait la dette&nbsp;; les ignorer masquerait qu'<b>on ne peut rien vérifier tant que l'environnement n'est pas sain</b>. Un <code>pip install -e .</code> qui passe est, au même titre que l'import, une <b>précondition</b> — pas un lot de travail.</li>
+      <li><span class="k">Et il faut <b>committer <code>ragcore</code> sur <code>main</code></b> avant d'y toucher.</span> Le package n'a jamais été suivi&nbsp;: c'est <b>la cause première</b> de la perte du 5 juillet. Un seul commit du working tree actuel — même cassé, <b>surtout</b> cassé — donne un <b>point de retour</b> à la réécriture. On ne réécrit pas 22 modules au-dessus d'un dépôt qui ne sait pas revenir en arrière.</li>
     </ul>
   </section>
 

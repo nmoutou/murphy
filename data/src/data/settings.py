@@ -3,12 +3,14 @@ from the Kedro defaults. For further information, including these default values
 https://docs.kedro.org/en/stable/kedro_project_setup/settings.html."""
 
 import structlog
-from pathlib import Path
-from dotenv import load_dotenv
-import os
 
-env_file = Path(__file__).parent.parent.parent / ".env"
-load_dotenv(env_file, override=False)
+# Pas de `load_dotenv` ici. L'appel qui s'y trouvait pointait sur `data/src/.env` — un
+# fichier qui n'a jamais existé : un no-op silencieux. Il servait le résolveur `oc.env`
+# d'OmegaConf, qu'aucun YAML de `conf/` n'utilise.
+#
+# La configuration est lue par `ragcore.adapters.config.settings`, qui va chercher le
+# fichier UNIQUE de la racine par chemin absolu. Deux endroits qui prétendent savoir « où
+# est le .env » sont précisément ce qui a produit le bug : il n'en reste qu'un.
 
 structlog.configure(
     processors=[
@@ -27,8 +29,9 @@ structlog.configure(
 
 # Instantiated project hooks.
 # Hooks are executed in a Last-In-First-Out (LIFO) order.
+from omegaconf.resolvers import oc  # noqa: E402
+
 from ragcore.orchestration.kedro.hooks import TelemetryHooks  # noqa: E402
-from omegaconf.resolvers import oc
 
 HOOKS = (TelemetryHooks(),)
 

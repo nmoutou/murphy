@@ -7,7 +7,7 @@ from ..models.manifest import ManifestEntry
 @runtime_checkable
 class ManifestRepository(Protocol):
     """Registre d'idempotence — append-only avec deux modes d'indexation.
-    
+
     Mode 1 (valides) : clé (identifier, owner_id) — pour l'idempotence
     Mode 2 (rejetés) : clé (source_path, owner_id) — pour l'audit
     """

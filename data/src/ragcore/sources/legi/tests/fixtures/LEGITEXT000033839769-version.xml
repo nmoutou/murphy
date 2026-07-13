@@ -1,0 +1,166 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<TEXTE_VERSION>
+<META>
+<META_COMMUN>
+<ID>LEGITEXT000033839769</ID>
+<ANCIEN_ID/>
+<ORIGINE>LEGI</ORIGINE>
+<URL>texte/version/LEGI/TEXT/00/00/33/83/97/LEGITEXT000033839769.xml</URL>
+<NATURE>DECRET</NATURE>
+</META_COMMUN>
+<META_SPEC>
+<META_TEXTE_CHRONICLE>
+<CID>JORFTEXT000033736655</CID>
+<NUM>2016-1967</NUM>
+<NUM_PARUTION>0303</NUM_PARUTION>
+<NUM_SEQUENCE>143</NUM_SEQUENCE>
+<NOR>RDFF1631110D</NOR>
+<DATE_PUBLI>2016-12-30</DATE_PUBLI>
+<DATE_TEXTE>2016-12-28</DATE_TEXTE>
+<DERNIERE_MODIFICATION>2025-02-01</DERNIERE_MODIFICATION>
+<VERSIONS_A_VENIR/>
+<ORIGINE_PUBLI>JORF n°0303 du 30 décembre 2016</ORIGINE_PUBLI>
+<PAGE_DEB_PUBLI/>
+<PAGE_FIN_PUBLI/>
+</META_TEXTE_CHRONICLE>
+<META_TEXTE_VERSION>
+
+
+<TITRE>Décret n°2016-1967 du 28 décembre 2016</TITRE>
+<TITREFULL>Décret n° 2016-1967 du 28 décembre 2016 relatif à l'obligation de transmission d'une déclaration d'intérêts prévue à l'article 25 ter de la loi n° 83-634 du 13 juillet 1983 portant droits et obligations des fonctionnaires</TITREFULL>
+
+<ETAT>ABROGE</ETAT>
+<DATE_DEBUT>2016-12-31</DATE_DEBUT>
+<DATE_FIN>2025-02-01</DATE_FIN>
+<AUTORITE/>
+<MINISTERE/>
+<LIENS>
+<LIEN cidtexte="JORFTEXT000000327700" datesignatexte="1964-03-14" id="JORFTEXT000000327700" naturetexte="DECRET" nortexte="" num="" numtexte="64-260" sens="source" typelien="CITATION">Décret n° 64-260 du 14 mars 1964</LIEN>
+<LIEN cidtexte="JORFTEXT000000886460" datesignatexte="1978-01-06" id="JORFTEXT000000886460" naturetexte="LOI" nortexte="" num="" numtexte="78-17" sens="source" typelien="CITATION">LOI n° 78-17 du 6 janvier 1978</LIEN>
+<LIEN cidtexte="JORFTEXT000000504704" datesignatexte="1983-07-13" id="JORFTEXT000000504704" naturetexte="LOI" nortexte="" num="" numtexte="83-634" sens="source" typelien="CITATION">LOI n° 83-634 du 13 juillet 1983</LIEN>
+<LIEN cidtexte="JORFTEXT000000504704" datesignatexte="1983-07-13" id="LEGIARTI000032436501" naturetexte="LOI" nortexte="" num="25 nonies" numtexte="83-634" sens="source" typelien="CITATION">LOI n° 83-634 du 13 juillet 1983 - art. 25 nonies</LIEN>
+<LIEN cidtexte="JORFTEXT000000504704" datesignatexte="1983-07-13" id="LEGIARTI000032435927" naturetexte="LOI" nortexte="" num="25 ter" numtexte="83-634" sens="source" typelien="CITATION">LOI n° 83-634 du 13 juillet 1983 - art. 25 ter</LIEN>
+<LIEN cidtexte="JORFTEXT000000501099" datesignatexte="1984-01-11" id="JORFTEXT000000501099" naturetexte="LOI" nortexte="" num="" numtexte="84-16" sens="source" typelien="CITATION">LOI n° 84-16 du 11 janvier 1984</LIEN>
+<LIEN cidtexte="JORFTEXT000000501099" datesignatexte="1984-01-11" id="LEGIARTI000006450552" naturetexte="LOI" nortexte="" num="24" numtexte="84-16" sens="source" typelien="CITATION">LOI n° 84-16 du 11 janvier 1984 - art. 24</LIEN>
+<LIEN cidtexte="JORFTEXT000000334462" datesignatexte="1985-03-18" id="JORFTEXT000000334462" naturetexte="DECRET" nortexte="" num="" numtexte="85-344" sens="source" typelien="CITATION">Décret n°85-344 du 18 mars 1985</LIEN>
+<LIEN cidtexte="JORFTEXT000000334475" datesignatexte="1987-12-30" id="JORFTEXT000000334475" naturetexte="DECRET" nortexte="INTB8700395D" num="" numtexte="87-1101" sens="source" typelien="CITATION">Décret n° 87-1101 du 30 décembre 1987</LIEN>
+<LIEN cidtexte="JORFTEXT000000548898" datesignatexte="1994-05-24" id="JORFTEXT000000548898" naturetexte="DECRET" nortexte="INTB9400144D" num="" numtexte="94-415" sens="source" typelien="CITATION">Décret n°94-415 du 24 mai 1994</LIEN>
+<LIEN cidtexte="JORFTEXT000000219015" datesignatexte="2000-09-22" id="JORFTEXT000000219015" naturetexte="DECRET" nortexte="FPPA0010013D" num="" numtexte="2000-954" sens="source" typelien="CITATION">Décret n° 2000-954 du 22 septembre 2000</LIEN>
+<LIEN cidtexte="JORFTEXT000000261276" datesignatexte="2005-07-27" id="JORFTEXT000000261276" naturetexte="DECRET" nortexte="PRMX0500111D" num="" numtexte="2005-850" sens="source" typelien="CITATION">Décret n°2005-850 du 27 juillet 2005</LIEN>
+<LIEN cidtexte="JORFTEXT000023335635" datesignatexte="2010-12-30" id="JORFTEXT000023335635" naturetexte="DECRET" nortexte="COTB1029708D" num="" numtexte="2010-1767" sens="source" typelien="CITATION">Décret n°2010-1767 du 30 décembre 2010</LIEN>
+<LIEN cidtexte="JORFTEXT000024192424" datesignatexte="2011-06-15" id="JORFTEXT000024192424" naturetexte="DECRET" nortexte="BCRF1100838D" num="" numtexte="2011-675" sens="source" typelien="CITATION">Décret n°2011-675 du 15 juin 2011</LIEN>
+<LIEN cidtexte="JORFTEXT000025129976" datesignatexte="2012-01-09" id="JORFTEXT000025129976" naturetexte="DECRET" nortexte="PRMG1120637D" num="" numtexte="2012-32" sens="source" typelien="CITATION">Décret n° 2012-32 du 9 janvier 2012</LIEN>
+<LIEN cidtexte="JORFTEXT000028056315" datesignatexte="2013-10-11" id="JORFTEXT000028056315" naturetexte="LOI" nortexte="PRMX1309699L" num="" numtexte="2013-907" sens="source" typelien="CITATION">LOI n° 2013-907 du 11 octobre 2013</LIEN>
+<LIEN cidtexte="JORFTEXT000030920376" datesignatexte="2015-07-23" id="JORFTEXT000030920376" naturetexte="ORDONNANCE" nortexte="EINM1506103R" num="" numtexte="2015-899" sens="source" typelien="CITATION">Ordonnance n° 2015-899 du 23 juillet 2015</LIEN>
+<LIEN cidtexte="JORFTEXT000031939947" datesignatexte="2016-01-29" id="JORFTEXT000031939947" naturetexte="ORDONNANCE" nortexte="EINM1527673R" num="" numtexte="2016-65" sens="source" typelien="CITATION">Ordonnance n° 2016-65 du 29 janvier 2016</LIEN>
+<LIEN cidtexte="JORFTEXT000032433852" datesignatexte="2016-04-20" id="JORFTEXT000032433852" naturetexte="LOI" nortexte="RDFX1314513L" num="" numtexte="2016-483" sens="source" typelien="APPLICATION">LOI n° 2016-483 du 20 avril 2016</LIEN>
+<LIEN cidtexte="JORFTEXT000032433852" datesignatexte="2016-04-20" id="JORFTEXT000032433852" naturetexte="LOI" nortexte="RDFX1314513L" num="" numtexte="2016-483" sens="source" typelien="CITATION">LOI n° 2016-483 du 20 avril 2016</LIEN>
+<LIEN cidtexte="JORFTEXT000050510977" datesignatexte="2024-11-06" id="LEGIARTI000050525114" naturetexte="DECRET" nortexte="TFPF2409103D" num="29" numtexte="2024-1038" sens="cible" typelien="ABROGE">Décret n°2024-1038 du 6 novembre 2024 - art. 29</LIEN>
+<LIEN cidtexte="LEGITEXT000006070633" datesignatexte="2999-01-01" id="LEGITEXT000006070633" naturetexte="CODE" nortexte="" num="" numtexte="" sens="source" typelien="CITATION">Code général des collectivités territoriales</LIEN>
+<LIEN cidtexte="LEGITEXT000006072665" datesignatexte="2999-01-01" id="LEGITEXT000006072665" naturetexte="CODE" nortexte="" num="" numtexte="" sens="source" typelien="CITATION">Code de la santé publique</LIEN>
+</LIENS>
+
+
+</META_TEXTE_VERSION>
+</META_SPEC>
+</META>
+<VISAS>
+<CONTENU>
+<p align="left">
+<br/>Le Premier ministre,<br/>Sur le rapport de la ministre de la fonction publique,<br/>Vu le code général des collectivités territoriales ;<br/>Vu le code de la santé publique ;<br/>Vu la loi n° 78-17 du 6 janvier 1978 modifiée relative à l'informatique, aux fichiers et aux libertés ;<br/>Vu la loi n° 83-634 du 13 juillet 1983 modifiée portant droits et obligations des fonctionnaires, notamment son chapitre IV, ensemble les lois n° 84-16 du 11 janvier 1984 modifiée portant dispositions statutaires relatives à la fonction publique de l'Etat, n° 84-53 du 26 janvier 1984 modifiée portant dispositions statutaires relatives à la fonction publique territoriale et n° 86-33 du 9 janvier 1986 modifiée portant dispositions statutaires relatives à la fonction publique hospitalière ;<br/>Vu la loi n° 2013-907 du 11 octobre 2013 modifiée relative à la transparence de la vie publique ;<br/>Vu la loi n° 2016-483 du 20 avril 2016 relative à la déontologie et aux droits et obligations des fonctionnaires, notamment son article 6 ;<br/>Vu l'ordonnance n° 2015-899 du 23 juillet 2015 modifiée relative aux marchés publics ;<br/>Vu l'ordonnance n° 2016-65 du 29 janvier 2016 modifiée relative aux contrats de concession ;<br/>Vu le décret n° 64-260 du 14 mars 1964 modifié portant statut des sous-préfets ;<br/>Vu le décret n° 85-344 du 18 mars 1985 modifié portant application de l'article 24 de la loi n° 84-16 du 11 janvier 1984 portant dispositions statutaires relatives à la fonction publique de l'Etat ;<br/>Vu le décret n° 87-1101 du 30 décembre 1987 portant dispositions statutaires particulières à certains emplois administratifs de direction des collectivités territoriales et des établissements publics locaux assimilés ;<br/>Vu le décret n° 94-415 du 24 mai 1994 portant dispositions statutaires relatives aux personnels des administrations parisiennes ;<br/>Vu le décret n° 2000-954 du 22 septembre 2000 relatif aux règles d'assimilation des établissements publics locaux aux collectivités territoriales pour la création de certains grades de fonctionnaires territoriaux ;<br/>Vu le décret n° 2005-850 du 27 juillet 2005 modifié relatif aux délégations de signature des membres du Gouvernement ;<br/>Vu le décret n° 2010-1767 du 30 décembre 2010 relatif aux emplois de directeur général des services et de directeur général adjoint des services de mairie d'arrondissement de Paris ;<br/>Vu le décret n° 2011-675 du 15 juin 2011 relatif au dossier individuel des agents publics et à sa gestion sur support électronique ;<br/>Vu le décret n° 2012-32 du 9 janvier 2012 modifié relatif aux emplois de chef de service et de sous-directeur des administrations de l'Etat ;<br/>Vu l'avis du Conseil commun de la fonction publique en date du 7 décembre 2016 ;<br/>Vu l'avis de la Haute Autorité pour la transparence de la vie publique en date du 13 décembre 2016 ;<br/>Vu l'avis du Conseil national d'évaluation des normes en date du 15 décembre 2016 ;<br/>Le Conseil d'Etat (section de l'administration) entendu,<br/>Décrète :</p>
+</CONTENU>
+</VISAS>
+<SIGNATAIRES>
+<CONTENU>
+<div align="left">
+<p>Fait le 28 décembre 2016.</p>
+</div>
+<div align="left">
+<p>Bernard Cazeneuve</p>
+<p>Par le Premier ministre :</p>
+</div>
+<div align="left">
+<p>La ministre de la fonction publique,</p>
+<p>Annick Girardin</p>
+</div>
+<div align="left">
+<p>Le ministre des affaires étrangères et du développement international,</p>
+<p>Jean-Marc Ayrault</p>
+</div>
+<div align="left">
+<p>La ministre de l'environnement, de l'énergie et de la mer, chargée des relations internationales sur le climat,</p>
+<p>Ségolène Royal</p>
+</div>
+<div align="left">
+<p>La ministre de l'éducation nationale, de l'enseignement supérieur et de la recherche,</p>
+<p>Najat Vallaud-Belkacem</p>
+</div>
+<div align="left">
+<p>Le ministre de l'économie et des finances,</p>
+<p>Michel Sapin</p>
+</div>
+<div align="left">
+<p>La ministre des affaires sociales et de la santé,</p>
+<p>Marisol Touraine</p>
+</div>
+<div align="left">
+<p>Le ministre de la défense,</p>
+<p>Jean-Yves Le Drian</p>
+</div>
+<div align="left">
+<p>Le garde des sceaux, ministre de la justice,</p>
+<p>Jean-Jacques Urvoas</p>
+</div>
+<div align="left">
+<p>La ministre du travail, de l'emploi, de la formation professionnelle et du dialogue social,</p>
+<p>Myriam El Khomri</p>
+</div>
+<div align="left">
+<p>Le ministre de l'aménagement du territoire, de la ruralité et des collectivités territoriales,</p>
+<p>Jean-Michel Baylet</p>
+</div>
+<div align="left">
+<p>Le ministre de l'intérieur,</p>
+<p>Bruno Le Roux</p>
+</div>
+<div align="left">
+<p>Le ministre de l'agriculture, de l'agroalimentaire et de la forêt, porte-parole du Gouvernement,</p>
+<p>Stéphane Le Foll</p>
+</div>
+<div align="left">
+<p>La ministre du logement et de l'habitat durable,</p>
+<p>Emmanuelle Cosse</p>
+</div>
+<div align="left">
+<p>La ministre de la culture et de la communication,</p>
+<p>Audrey Azoulay</p>
+</div>
+<div align="left">
+<p>La ministre des familles, de l'enfance et des droits des femmes,</p>
+<p>Laurence Rossignol</p>
+</div>
+<div align="left">
+<p>Le ministre de la ville, de la jeunesse et des sports,</p>
+<p>Patrick Kanner</p>
+</div>
+<div align="left">
+<p>La ministre des outre-mer,</p>
+<p>Ericka Bareigts</p>
+</div>
+</CONTENU>
+</SIGNATAIRES>
+<TP>
+<CONTENU/>
+</TP>
+<NOTA>
+<CONTENU/>
+</NOTA>
+<ABRO>
+<CONTENU/>
+</ABRO>
+<RECT>
+<CONTENU/>
+</RECT>
+
+
+</TEXTE_VERSION>

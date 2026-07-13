@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID, uuid4
 
@@ -63,7 +63,7 @@ def build_event(
     return AuditEvent(
         event_id=uuid4(),
         event_type=event_type,
-        occurred_at=datetime.now(timezone.utc),
+        occurred_at=datetime.now(UTC),
         run_id=run_id,
         owner_id=owner_id,
         document_id=document_id,

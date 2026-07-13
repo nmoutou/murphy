@@ -1,0 +1,45 @@
+"""Exceptions du domaine."""
+
+__all__ = [
+    "EmbeddingModelMismatchError",
+    "ParseError",
+    "RagCoreError",
+    "ValidationError",
+]
+
+
+class RagCoreError(Exception):
+    """Racine de toutes les erreurs du domaine."""
+
+
+class EmbeddingModelMismatchError(RagCoreError):
+    """Le service d'embedding ne sert pas le modèle dont le nom baptise la collection.
+
+    TEI ne sert qu'UN modèle — celui de son ``--model-id`` — et **ignore** le champ
+    ``model`` de la requête. Réclamer `all-mpnet-base-v2` à un service lancé sur
+    `gte-base` ne lève rien : on reçoit les vecteurs de `gte-base`, et on les écrit dans
+    la collection nommée d'après l'empreinte d'`all-mpnet-base-v2` (§6). Deux jeux de
+    vecteurs incomparables dans un même index, et pas une ligne de log — ça ne se voit
+    qu'à la recherche, longtemps après.
+
+    ⚠️ **Cette erreur se lève AVANT le pool, jamais depuis un worker.** ``SagaExecutor``
+    attrape ``Exception`` pour compenser : levée dans une step, elle deviendrait un échec
+    *par document* — compensé N fois, et le run conclurait « ok » avec N échecs, puisqu'un
+    échec partiel ne fait pas échouer le run. Un garde-fou qui dégrade en skip-par-document
+    n'est pas un garde-fou. C'est une **précondition du run**, et elle vit dans le hook.
+    """
+
+
+class ValidationError(RagCoreError):
+    """Le document est lisible, mais il ne satisfait pas une règle métier
+    (ELI absent, ELI mal formé, contenu manquant)."""
+
+
+class ParseError(RagCoreError):
+    """Le document n'a pas pu être lu (XML malformé, structure inattendue)."""
+
+
+# ParseError et ValidationError sont sœurs, jamais l'une sous l'autre :
+# compute_idempotence discrimine `reason="validation_error"` de `reason="parse_error"`
+# par un `except ValidationError` placé avant le `except Exception`. Une relation
+# d'héritage entre elles rendrait l'une des deux branches inatteignable.

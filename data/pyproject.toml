@@ -3,22 +3,33 @@ requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
 [project]
-requires-python = ">=3.10"
+# StrEnum (core/models/enums.py) exige 3.11.
+requires-python = ">=3.11"
 name = "data"
 readme = "README.md"
 dynamic = ["version"]
 dependencies = [
-    "ipython>=8.10",
-    "jupyterlab>=3.0",
-    "notebook",
-    "kedro[jupyter]~=1.1.1",
-    "kedro-datasets[pandas-csvdataset, pandas-exceldataset, pandas-parquetdataset, plotly-plotlydataset, plotly-jsondataset, matplotlib-matplotlibdataset]>=3.0",
-    "kedro-viz>=6.7.0",
-    "lxml>=5.0",
-    "scikit-learn~=1.5.1",
-    "seaborn~=0.12.1",
-    "setuptools; python_version >= '3.12'",
-    "structlog>=25.5.0"
+    # Domaine — core/ ne connaît que pydantic, aucune base.
+    "pydantic~=2.13",
+    # Configuration — lue de l'environnement (config/settings.py), jamais du dépôt.
+    "pydantic-settings~=2.7",
+    # Adaptateurs de stockage — un par base.
+    "motor~=3.7",
+    "pymongo~=4.10",
+    "qdrant-client~=1.12",
+    "neo4j~=5.28",
+    # Embedding distant (service compatible OpenAI / TEI).
+    "httpx~=0.28",
+    # Réduction transitive du graphe (core/services/relation_reduction) : une règle de
+    # DOMAINE, pas un détail de source — la contenance est transitive, la citation ne
+    # l'est pas. C'est du calcul pur, comme `re` : pas de port, pas d'extra.
+    "networkx~=3.4",
+    # Orchestration.
+    "kedro~=1.1.1",
+    "omegaconf~=2.3",
+    "python-dotenv~=1.2",
+    "structlog>=25.5.0",
+    "setuptools; python_version >= '3.12'"
 ]
 
 [project.scripts]
@@ -27,6 +38,30 @@ dependencies = [
 [project.entry-points."kedro.hooks"]
 
 [project.optional-dependencies]
+# Embedding LOCAL uniquement : tire torch (plusieurs centaines de Mo). Les modes
+# `noop` et `openai` n'en ont aucun besoin — d'où l'extra, et l'import paresseux
+# dans local_embedder.py.
+embedding-local = [
+    "sentence-transformers~=3.3"
+]
+# spaCy et son modèle de langue ont quitté le chemin critique au lot 4.
+#
+# Ils servaient à LEMMATISER le contenu des documents : « Le directeur général est nommé
+# par décret » devenait « directeur général nommer décret ». Ce sac de lemmes était ce
+# qui partait dans Mongo — donc ce que le backend affichait à l'utilisateur comme source
+# — et ce qui était embarqué par all-mpnet-base-v2, un modèle de PHRASES entraîné sur du
+# texte naturel. Le texte original n'était stocké nulle part.
+#
+# Les retirer n'est pas un allègement de dépendances : c'est la fin d'une destruction de
+# donnée. Si des lemmes servent un jour à du BM25, ils reviendront comme champ
+# SUPPLÉMENTAIRE — jamais en écrasant le contenu, et l'extra reviendra avec eux.
+# Exploration interactive : jamais importé par ragcore.
+notebooks = [
+    "ipython>=8.10",
+    "jupyterlab>=3.0",
+    "notebook",
+    "kedro-viz>=6.7.0"
+]
 docs = [
     "docutils<0.21",
     "sphinx>=5.3,<7.3",
@@ -41,7 +76,9 @@ docs = [
 dev = [
     "pytest-cov>=3,<7",
     "pytest-mock>=1.7.1, <2.0",
-    "pytest~=7.2",
+    "pytest~=8.3",
+    "pytest-asyncio~=0.25",
+    "testcontainers[mongodb,neo4j]~=4.9",
     "ruff~=0.12.0"
 ]
 
@@ -62,9 +99,15 @@ source_dir = "src"
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]
+# Sans ce mode, tout test `async def` est SAUTÉ en silence.
+asyncio_mode = "auto"
+markers = [
+    "integration: exige des conteneurs (testcontainers) — exclu par défaut"
+]
 addopts = """
 --cov-report term-missing \
---cov src/ragcore -ra"""
+--cov src/ragcore -ra \
+-m 'not integration'"""
 
 [tool.coverage.report]
 fail_under = 0
@@ -89,6 +132,11 @@ select = [
     "T201", # Print Statement
 ]
 ignore = ["E501"]  # Ruff format takes care of line-too-long
+
+[tool.ruff.lint.per-file-ignores]
+# Dans un test, la valeur attendue EST le propos de l'assertion. La remplacer par
+# une constante nommée n'ajoute rien : elle éloigne l'attendu de la vérification.
+"**/tests/**" = ["PLR2004"]
 
 [tool.kedro_telemetry]
 project_id = "a28f45a08efc41b9a86b2737a54c5c34"

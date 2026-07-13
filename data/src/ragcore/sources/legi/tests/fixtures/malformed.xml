@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  FIXTURE SYNTHÉTIQUE — le XML illisible.
+
+  La balise <ARTICLE> n'est jamais refermée. Le parser doit lever ParseError, et NON
+  ValidationError : les appelants comptent sur cette distinction pour qualifier le
+  rejet. Un document illisible n'est pas un document irrecevable — l'un est une panne
+  de lecture, l'autre un refus métier, et le manifest ne les enregistre pas sous la
+  même raison.
+-->
+<ARTICLE>
+<META>
+<META_COMMUN>
+<ID>LEGIARTI000088888888</ID>
+</META_COMMUN>
+</META>
+<BLOC_TEXTUEL>
+<CONTENU>
+<p>Ce document ne se referme pas.

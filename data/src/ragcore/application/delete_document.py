@@ -1,13 +1,13 @@
 from ragcore.core.models import OwnerId, SourceIdentifier
 from ragcore.core.models.audit import build_event
-from ragcore.core.telemetry_events import DOCUMENT_DELETED
 from ragcore.core.ports.document_repository import DocumentRepository
 from ragcore.core.ports.graph_repository import GraphRepository
 from ragcore.core.ports.manifest_repository import ManifestRepository
 from ragcore.core.ports.telemetry import TelemetryPort
 from ragcore.core.ports.vector_repository import VectorRepository
+from ragcore.core.telemetry_events import DOCUMENT_DELETED
 
-from .pipeline_context import PipelineContext
+from .run_context import PipelineContext
 from .saga import SagaExecutor, SagaStep
 
 

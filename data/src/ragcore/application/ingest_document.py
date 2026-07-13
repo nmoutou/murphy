@@ -1,6 +1,16 @@
-"""Use case d'ingestion de document — orchestration saga multi-store."""
+"""Use case d'ingestion d'UN document — la phase 1, en trois steps (§11).
 
-from datetime import datetime, timezone
+Les relations ne sont plus ici. Elles sortaient jadis dans cette même saga, ce qui
+condamnait chaque arête à dépendre de l'ordre d'ingestion : ``upsert_relations``
+fait ``MATCH (a) MATCH (b)``, et si la cible ``b`` n'était pas encore écrite,
+l'arête tombait dans le vide — sans erreur, sans trace, sans rien.
+
+Le document écrit ici n'est donc qu'un NŒUD. Ses arêtes sont écrites en phase 2,
+après que tous les nœuds du run existent (ResolveRelationsService). Cette attente
+n'est pas un ``join()`` caché dans du code applicatif : c'est une arête du DAG.
+"""
+
+from datetime import UTC, datetime
 
 from ragcore.core.models import (
     EmbeddedChunk,
@@ -8,19 +18,22 @@ from ragcore.core.models import (
     Operation,
     OwnerId,
     ParsedDocument,
-    Relation,
     SourceIdentifier,
 )
 from ragcore.core.models.audit import build_event
-from ragcore.core.telemetry_events import DOCUMENT_PERSISTED, RELATION_UPSERTED
 from ragcore.core.ports.document_repository import DocumentRepository
 from ragcore.core.ports.graph_repository import GraphRepository
 from ragcore.core.ports.manifest_repository import ManifestRepository
 from ragcore.core.ports.telemetry import TelemetryPort
 from ragcore.core.ports.vector_repository import VectorRepository
+from ragcore.core.telemetry_events import DOCUMENT_PERSISTED
 
-from .pipeline_context import PipelineContext
+from .run_context import PipelineContext
 from .saga import SagaExecutor, SagaStep
+
+# Le nœud Neo4j existe, mais pas ses arêtes : le dire « neo4j » tout court serait
+# affirmer une complétude que la phase 1 ne livre pas.
+TARGETS_WRITTEN = ["mongo", "qdrant", "neo4j:node"]
 
 
 class IngestDocumentUseCase:
@@ -42,28 +55,15 @@ class IngestDocumentUseCase:
         self,
         parsed: ParsedDocument,
         embedded_chunks: list[EmbeddedChunk],
-        relations: list[Relation],
         operation: Operation,
         context: PipelineContext,
     ) -> None:
         saga = SagaExecutor(self._telemetry)
 
+        # Neo4j en dernier : c'est le seul store qu'on ne peut pas défaire sans
+        # dommage (ses arêtes entrantes viennent d'autres documents). En position
+        # terminale, il n'a jamais à être compensé.
         steps = [
-            SagaStep(
-                name="neo4j_merge_node",
-                forward=lambda: self._graph_repo.merge_document_node(parsed),
-                compensate=lambda: _noop(),  # le nœud Neo4j n'est JAMAIS supprimé
-            ),
-            SagaStep(
-                name="neo4j_upsert_relations",
-                forward=lambda: self._graph_repo.upsert_relations(relations),
-                # Compensation : supprimer les relations seulement s'il y en avait à écrire
-                compensate=lambda: self._graph_repo.delete_relations_from(
-                    parsed.identifier, parsed.owner_id, parsed.source
-                )
-                if relations
-                else _noop(),
-            ),
             SagaStep(
                 name="mongo_upsert",
                 forward=lambda: self._mongo_delete_then_insert(parsed, operation),
@@ -80,13 +80,18 @@ class IngestDocumentUseCase:
                     parsed.identifier, parsed.owner_id
                 ),
             ),
+            SagaStep(
+                name="neo4j_merge_node",
+                forward=lambda: self._graph_repo.merge_document_node(parsed),
+                compensate=lambda: _noop(),  # le nœud Neo4j n'est JAMAIS supprimé
+            ),
         ]
 
-        # La Saga peut lever une exception — le manifest n'est PAS écrit dans ce cas
+        # La saga peut lever — le manifest n'est alors PAS écrit.
         await saga.execute(steps, context)
 
-        # Manifest UNIQUEMENT après succès total de la Saga
-        # Mode append-only : toujours ajouter une entrée, jamais updater
+        # Manifest uniquement après succès total. Append-only : on ajoute, jamais
+        # on ne met à jour.
         await self._manifest_repo.append(
             ManifestEntry(
                 identifier=parsed.identifier,
@@ -94,22 +99,10 @@ class IngestDocumentUseCase:
                 owner_id=parsed.owner_id,
                 operation=operation,
                 reason=None,
-                targets_written=["mongo", "neo4j", "qdrant"],
-                processed_at=datetime.now(timezone.utc),
+                targets_written=list(TARGETS_WRITTEN),
+                processed_at=datetime.now(UTC),
             )
         )
-
-        if relations:
-            self._telemetry.emit(
-                build_event(
-                    event_type=RELATION_UPSERTED,
-                    run_id=context.run_id,
-                    owner_id=parsed.owner_id,
-                    source=parsed.source,
-                    document_id=parsed.identifier.serialize(),
-                    payload={"count": len(relations)},
-                )
-            )
 
         self._telemetry.emit(
             build_event(

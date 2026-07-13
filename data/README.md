@@ -11,13 +11,35 @@ backend never calls into it. The two only share databases, no code.
 > `ragcore` package (not in this repo). `src/data/` is a thin Kedro shell that delegates
 > to `ragcore`. `ragcore` must be installed in the Python env for the project to run.
 
+## Run
+
+The pipeline needs Mongo, Qdrant, Neo4j and the TEI embedding service. They are declared
+**once**, in the parent repo. You do not have to leave this directory to start them:
+
+```bash
+npm run up       # mongo + qdrant + neo4j + embedding-service (GPU). Not backend/frontend.
+npm run logs     # first TEI boot downloads the model — be patient, it is not a hang.
+npm run down     # stop them
+kedro run
+```
+
+## Configuration
+
+There is **one** environment file, and it lives at the repo root: `../.env.dev` (copy it
+from `../.env.example`). There is **no `.env` in this directory** — creating one has no
+effect, since `ragcore/adapters/config/settings.py` reads the root file by absolute path.
+
+One file, because the pipeline and the TEI container must agree on the embedding model:
+if they were two variables they could diverge, and a divergence writes the *wrong* model's
+vectors into the collection named after the *right* one — silently. They are now the same
+variable, and the pipeline additionally checks TEI's `GET /info` before writing anything.
+
+Tuning surface: `conf/base/parameters.yml` (chunking, normalization, embedding — these are
+hashed into the Qdrant collection name; changing one creates a new collection by design).
+
 ## Develop
 
 ```bash
-kedro run
-kedro viz
 ruff check .     # lint/format
-pytest           # config in pyproject.toml
+pytest           # config in pyproject.toml; needs no databases and no .env.dev
 ```
-
-Loads its own `.env` from this directory. Tuning surface: `conf/base/parameters.yml`.

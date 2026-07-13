@@ -1,19 +1,19 @@
 from __future__ import annotations
 
-from ragcore.application.pipeline_context import PipelineContext
+from ragcore.application.run_context import PipelineContext
 from ragcore.core.models.audit import build_event
-from ragcore.core.telemetry_events import DOCUMENT_FETCHED
 from ragcore.core.models.document import RawDocument
 from ragcore.core.ports.connector import BaseConnector
+from ragcore.core.ports.runtime import AsyncRuntime
 from ragcore.core.ports.telemetry import TelemetryPort
-
-from ._async_utils import run_async
+from ragcore.core.telemetry_events import DOCUMENT_FETCHED
 
 
 def connect_node(
     connector: BaseConnector,
     pipeline_context: PipelineContext,
     telemetry: TelemetryPort,
+    pipeline_runtime: AsyncRuntime,
     force_drop_done: dict[str, bool],
 ) -> list[RawDocument]:
     """Fetch all raw documents from the source connector."""
@@ -22,7 +22,10 @@ def connect_node(
     async def _fetch() -> list[RawDocument]:
         return [doc async for doc in connector.fetch_all(pipeline_context.owner_id)]
 
-    documents = run_async(_fetch())
+    # Le pont sync→async passe par le runtime du hook (sa boucle), jamais une globale
+    # (§11 : ``_async_utils.run_async`` tenait une boucle unique, point de
+    # sérialisation que le port ``AsyncRuntime`` supprime par construction).
+    documents = pipeline_runtime.run(_fetch())
 
     telemetry.emit(
         build_event(

@@ -3,10 +3,10 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
-from ragcore.application.pipeline_context import PipelineContext
+from ragcore.application.run_context import PipelineContext
 from ragcore.core.models.audit import build_event
-from ragcore.core.telemetry_events import MAINTENANCE_CLEANUP_EXECUTED
 from ragcore.core.ports.telemetry import TelemetryPort
+from ragcore.core.telemetry_events import MAINTENANCE_CLEANUP_EXECUTED
 
 logger = logging.getLogger(__name__)
 

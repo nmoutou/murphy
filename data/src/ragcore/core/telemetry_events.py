@@ -28,6 +28,8 @@ DOCUMENT_REPLACED                 = "document.replaced"
 DOCUMENT_DELETED                  = "document.deleted"
 
 RELATION_UPSERTED                 = "relation.upserted"
+RELATION_PENDING                  = "relation.pending"    # cible absente → cache §13
+RELATION_PROMOTED                 = "relation.promoted"   # pendante enfin résolue
 
 SAGA_COMPENSATION_STARTED         = "saga.compensation.triggered"
 SAGA_COMPENSATION_COMPLETED       = "saga.compensation.completed"
@@ -89,6 +91,14 @@ EVENT_CATALOG: dict[str, EventBehavior] = {
     # --- Relations ---
     RELATION_UPSERTED: EventBehavior(
         level="warning", log=False, track_jsonl=True, track_mongo=False, aggregate=True,
+    ),
+    RELATION_PENDING: EventBehavior(
+        # Une arête différée est une DONNÉE, pas un vide : elle va en base méta,
+        # au même titre que le cache §13 qu'elle accompagne.
+        level="warning", log=False, track_jsonl=True, track_mongo=True, aggregate=True,
+    ),
+    RELATION_PROMOTED: EventBehavior(
+        level="info", log=False, track_jsonl=True, track_mongo=False, aggregate=True,
     ),
 
     # --- Saga (erreurs de transaction) ---
