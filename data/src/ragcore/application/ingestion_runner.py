@@ -137,7 +137,14 @@ class IngestionRunner:
                     result = self._workload(parsed, operation, runtime, telemetry)
                 except Exception as exc:  # noqa: BLE001
                     # La saga a déjà compensé ; le document est perdu, pas le run.
-                    telemetry.log("error", "ingestion.document.failed", error=str(exc))
+                    # L'identifiant part avec l'erreur : un échec anonyme est un échec
+                    # qu'on ne pourra pas rejouer.
+                    telemetry.log(
+                        "error",
+                        "ingestion.document.failed",
+                        identifier=identifier,
+                        error=str(exc),
+                    )
                     failures.append((identifier, str(exc)))
                     continue
                 relations.extend(result.relations)

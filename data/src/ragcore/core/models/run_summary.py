@@ -18,6 +18,8 @@ from enum import StrEnum
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from ragcore.core.telemetry_events import SAGA_COMPENSATION_STARTED
+
 from .document import SCHEMA_VERSION
 from .enums import SourceName
 from .identifiers import OwnerId, RunId
@@ -28,6 +30,16 @@ __all__ = ["RunStatus", "RunSummary"]
 
 class RunStatus(StrEnum):
     OK = "ok"
+    DEGRADED = "degraded"
+    """Le run est allé au bout, mais il n'a PAS tout ingéré.
+
+    Distinct de FAILED (le pipeline a levé, rien ne garantit l'état des stores) et
+    distinct d'OK (tout ce qui a été vu a été ingéré). Sans ce troisième état, un run
+    qui compense trois sagas — donc qui perd trois documents — se déclare « ok » au
+    seul motif qu'aucune exception n'est remontée à Kedro. C'est le « critère faible »
+    que la doctrine rejette : la complétude se LIT dans les compteurs, elle ne se
+    déduit pas de l'absence d'exception.
+    """
     FAILED = "failed"
 
 
@@ -68,7 +80,14 @@ class RunSummary(BaseModel):
         error_message: str | None = None,
         ended_at: datetime | None = None,
     ) -> "RunSummary":
-        """Attache l'identité du run à l'agrégat réduit — la projection, une fois."""
+        """Attache l'identité du run à l'agrégat réduit — la projection, une fois.
+
+        Le statut annoncé « ok » est **vérifié contre les compteurs**, jamais cru sur
+        parole : l'appelant ne sait que si Kedro a levé, il ne sait pas si des
+        documents ont été perdus en route.
+        """
+        if status is RunStatus.OK:
+            status = _status_from(stats)
         return cls(
             run_id=context_run_id,
             owner_id=owner_id,
@@ -79,3 +98,15 @@ class RunSummary(BaseModel):
             stats=stats,
             error_message=error_message,
         )
+
+
+def _status_from(stats: RunStats) -> RunStatus:
+    """OK seulement si aucune saga n'a compensé.
+
+    Une compensation, c'est un document que la saga a défait dans les trois stores :
+    il a été vu, il n'est pas ingéré, et le run n'est donc pas complet. Le déclarer
+    « ok » ferait mentir le critère de fin (« ingérés + exclus + échoués = total vu »)
+    au moment précis où il compte.
+    """
+    compensated = stats.counts.get(SAGA_COMPENSATION_STARTED, 0)
+    return RunStatus.DEGRADED if compensated else RunStatus.OK

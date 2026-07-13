@@ -53,6 +53,12 @@ def force_drop_node(  # noqa: PLR0913 — le drop touche 3 stores + leurs 3 para
         pipeline_runtime.run(vector_repo.drop_collection())
         dropped["qdrant"] = True
 
+    # Setup partagé, hors du `if` : la collection doit exister avant que le pool
+    # ne démarre, qu'on vienne de la dropper ou qu'on démarre à froid. Laisser les
+    # workers la créer à la volée les met en course, et Qdrant répond `409` à tous
+    # sauf un — perdant un document par worker perdant.
+    pipeline_runtime.run(vector_repo.ensure_collection())
+
     telemetry.emit(
         build_event(
             event_type=MAINTENANCE_FORCE_DROP_EXECUTED,

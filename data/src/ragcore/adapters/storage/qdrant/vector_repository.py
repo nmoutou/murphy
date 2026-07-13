@@ -35,8 +35,17 @@ class QdrantVectorRepository:
         self._collection_name = collection_name
         self._vector_size = vector_size
 
-    async def _ensure_collection(self) -> None:
-        """Create the collection if it does not already exist."""
+    async def ensure_collection(self) -> None:
+        """Crée la collection si elle n'existe pas. **Setup partagé : à appeler une
+        seule fois, avant le pool de workers.**
+
+        Ce `collection_exists` puis `create_collection` est un check-then-act. Appelé
+        depuis les workers, il produit une course : N workers constatent l'absence de
+        la collection, tous la créent, et Qdrant renvoie `409 Conflict` à tous sauf
+        un — que la saga traite alors comme un échec métier et compense, perdant le
+        document. La course ne se rattrape pas, elle s'évite : la collection est un
+        setup de run, pas un travail par document.
+        """
         if not await self._client.collection_exists(self._collection_name):
             await self._client.create_collection(
                 collection_name=self._collection_name,
@@ -47,7 +56,6 @@ class QdrantVectorRepository:
         """Upsert embedded chunks into Qdrant."""
         if not embedded_chunks:
             return
-        await self._ensure_collection()
         points = [
             PointStruct(
                 id=self._stable_hash_id(ec.chunk.chunk_id),
@@ -66,7 +74,7 @@ class QdrantVectorRepository:
     @staticmethod
     def _stable_hash_id(chunk_id: str) -> int:
         """Génère un ID Qdrant stable depuis un chunk_id via SHA-256.
-        
+
         Corrige Bug 6 : remplace abs(hash()) qui n'est pas stable entre processus.
         """
         digest = hashlib.sha256(chunk_id.encode()).hexdigest()
@@ -74,7 +82,6 @@ class QdrantVectorRepository:
 
     async def delete_by_document(self, identifier: SourceIdentifier, owner_id: OwnerId) -> None:
         """Delete all vectors belonging to a given document for a given owner."""
-        await self._ensure_collection()
         await self._client.delete(
             collection_name=self._collection_name,
             points_selector=Filter(
