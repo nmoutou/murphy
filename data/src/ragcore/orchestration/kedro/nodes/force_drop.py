@@ -5,6 +5,7 @@ from typing import Any
 
 from ragcore.adapters.storage.mongo.document_repository import MongoDocumentRepository
 from ragcore.adapters.storage.mongo.manifest_repository import MongoManifestRepository
+from ragcore.adapters.storage.mongo.schemas import ensure_data_indexes
 from ragcore.adapters.storage.neo4j.graph_repository import Neo4jGraphRepository
 from ragcore.adapters.storage.qdrant.vector_repository import QdrantVectorRepository
 from ragcore.application.run_context import PipelineContext
@@ -35,6 +36,11 @@ def force_drop_node(  # noqa: PLR0913 — le drop touche 3 stores + leurs 3 para
         logger.warning("force_drop MongoDB activé : suppression des collections documents + manifest")
         pipeline_runtime.run(doc_repo.drop_collection())
         pipeline_runtime.run(manifest_repo.drop_collection())
+        # Dropper une collection détruit ses index avec elle. Ceux que le hook a
+        # posés en `before_pipeline_run` viennent de disparaître : sans ce rappel,
+        # tout le run réécrit dans des collections nues, et l'unicité de
+        # (identifier, owner_id) ne protège plus rien — en silence.
+        pipeline_runtime.run(ensure_data_indexes(doc_repo.database))
         dropped["mongodb"] = True
 
     if neo4j_params.get("force_drop"):

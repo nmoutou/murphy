@@ -5,14 +5,17 @@ from pymongo import ASCENDING, IndexModel
 async def ensure_data_indexes(db: AsyncIOMotorDatabase) -> None:
     """Indexes pour la DB de données (défaut : LEGIFRANCE).
 
-    - documents : unique (identifier, owner_id) + (source, owner_id) + sparse eli.raw
-    - manifest  : unique (identifier, owner_id)
+    - documents : unique (identifier, owner_id) + (source, owner_id)
+    - manifest  : lookup (identifier_serialized, owner_id) + (source_path, owner_id)
     """
     documents = db["documents"]
     await documents.create_indexes(
         [
+            # `identifier` est la chaîne sérialisée `{kind}:{raw}` (cf.
+            # MongoDocumentRepository), pas un sous-document : indexer
+            # `identifier.raw` indexerait `null` pour tout le monde.
             IndexModel(
-                [("identifier.raw", ASCENDING), ("owner_id", ASCENDING)],
+                [("identifier", ASCENDING), ("owner_id", ASCENDING)],
                 unique=True,
                 name="uq_identifier_owner",
             ),
@@ -20,21 +23,27 @@ async def ensure_data_indexes(db: AsyncIOMotorDatabase) -> None:
                 [("source", ASCENDING), ("owner_id", ASCENDING)],
                 name="idx_source_owner",
             ),
-            IndexModel(
-                [("eli.raw", ASCENDING)],
-                name="idx_eli_raw",
-                sparse=True,
-            ),
         ]
     )
 
     manifest = db["manifest"]
     await manifest.create_indexes(
         [
+            # Le manifest est append-only : plusieurs entrées par document, une
+            # par run (`last_for_identifier` trie par processed_at DESC). Un index
+            # unique le casserait au deuxième run. C'est un index de lookup.
+            # Le champ écrit s'appelle `identifier_serialized` (cf.
+            # MongoManifestRepository), et il est absent des entrées de rejet.
             IndexModel(
-                [("identifier.raw", ASCENDING), ("owner_id", ASCENDING)],
-                unique=True,
-                name="uq_manifest_identifier_owner",
+                [("identifier_serialized", ASCENDING), ("owner_id", ASCENDING)],
+                name="idx_manifest_identifier_owner",
+                sparse=True,
+            ),
+            # Les rejets n'ont pas d'identifier : ils ne sont retrouvables que
+            # par leur chemin source.
+            IndexModel(
+                [("source_path", ASCENDING), ("owner_id", ASCENDING)],
+                name="idx_manifest_source_path_owner",
             ),
         ]
     )
