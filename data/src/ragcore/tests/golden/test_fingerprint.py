@@ -45,7 +45,7 @@ _PARAMETERS_YML = Path(__file__).parents[3].parent / "conf" / "base" / "paramete
 # personne ne fait tourner.
 _LEGI = WorkflowConfig(
     normalization=NormalizationConfig(version="v1"),
-    chunking=ChunkingConfig(strategy="legi-structural-v1", size=128, overlap=25),
+    chunking=ChunkingConfig(strategy="legi-structural-v1", size=384, overlap=25),
     embedding=EmbeddingConfig(
         model_name="sentence-transformers/all-mpnet-base-v2", dimension=768
     ),
@@ -53,11 +53,22 @@ _LEGI = WorkflowConfig(
 
 # ⚠️ FIGÉ. Changer cette valeur, c'est renommer la collection de production.
 #
-# Elle a bougé UNE fois, sciemment : `1ef32cd5…` → `3119c73a…`, quand la normalisation
-# typographique (§4) est passée de `none` à `v1`. Le texte embarqué n'est plus le même,
-# donc les vecteurs non plus, donc la collection non plus. Les deux coexistent — c'est
-# précisément l'A/B que §6 rend possible, et sa première mise à l'épreuve réelle.
-_LEGI_FINGERPRINT = "3119c73ab26b71121e40e079abe5a06c"
+# Elle a bougé DEUX fois, sciemment :
+#
+#   `1ef32cd5…` → `3119c73a…`  la normalisation typographique (§4) passe de `none` à `v1`.
+#   `3119c73a…` → `9424808d…`  `chunk_size` passe de 128 à 384 caractères.
+#
+# Le second changement est un arbitrage MESURÉ, pas un réglage : à 128, un run coûtait
+# 838 s pour 61 975 chunks (l'embedding est 99,9 % du temps). À 384 il coûte 173 s pour
+# 18 090 chunks — et **zéro document perdu**, vérifié au tokenizer du modèle sur les six
+# sources (300 tokens au maximum, sous la fenêtre de 384). Au-delà, on perd des documents :
+# 512 en a perdu 1, 1024 en a perdu 98.
+_LEGI_FINGERPRINT = "9424808d1c636d533648bbf4e77f2496"
+
+_LEGI_FINGERPRINT_CHUNK_128 = "3119c73ab26b71121e40e079abe5a06c"
+"""L'empreinte d'avant le passage à `chunk_size: 384`. Ses vecteurs existent toujours,
+dans leur propre collection — c'est très exactement ce que §6 promet : changer un
+paramètre de traitement ne PIÉTINE pas les vecteurs d'avant, il en crée d'autres à côté."""
 
 _LEGI_FINGERPRINT_AVANT_NORMALISATION = "1ef32cd5c8a3f731b657e0d5aa3a4c03"
 """L'empreinte d'AVANT §4. Gardée pour une raison : c'est le nom de la collection où
@@ -84,7 +95,7 @@ def test_la_forme_canonique_est_figee() -> None:
     le cliquet casse : on voit *ce qui* a changé, pas seulement *que* ça a changé.
     """
     assert canonicalize(_LEGI) == (
-        '{"chunking":{"overlap":25,"size":128,"strategy":"legi-structural-v1"},'
+        '{"chunking":{"overlap":25,"size":384,"strategy":"legi-structural-v1"},'
         '"embedding":{"dimension":768,"model_name":"sentence-transformers/all-mpnet-base-v2"},'
         '"normalization":{"version":"v1"}}'
     )
@@ -168,7 +179,7 @@ def test_l_empreinte_ne_depend_pas_de_l_ordre_de_construction() -> None:
         embedding=EmbeddingConfig(
             dimension=768, model_name="sentence-transformers/all-mpnet-base-v2"
         ),
-        chunking=ChunkingConfig(overlap=25, strategy="legi-structural-v1", size=128),
+        chunking=ChunkingConfig(overlap=25, strategy="legi-structural-v1", size=384),
         normalization=NormalizationConfig(version="v1"),
     )
     assert fingerprint(autre) == _LEGI_FINGERPRINT
@@ -215,11 +226,35 @@ def test_les_vecteurs_ecrits_AVANT_la_normalisation_restent_retrouvables() -> No
     d'avant redonne le nom d'avant, au caractère près. Sans cette propriété, chaque
     changement de normalisation abandonnerait un jeu de vecteurs anonyme dans Qdrant —
     payé, calculé, et introuvable.
+
+    La config historique est écrite **en entier**, pas dérivée de ``_LEGI`` : elle est un
+    fait du passé, elle ne doit pas bouger quand la config courante bouge. La dériver
+    l'avait justement cassée au passage de ``chunk_size`` à 384.
     """
-    avant = _LEGI.model_copy(
-        update={"normalization": _LEGI.normalization.model_copy(update={"version": "none"})}
+    avant = WorkflowConfig(
+        normalization=NormalizationConfig(version="none"),
+        chunking=ChunkingConfig(strategy="legi-structural-v1", size=128, overlap=25),
+        embedding=EmbeddingConfig(
+            model_name="sentence-transformers/all-mpnet-base-v2", dimension=768
+        ),
     )
     assert collection_name(avant) == _LEGI_FINGERPRINT_AVANT_NORMALISATION
+
+
+def test_les_vecteurs_de_chunk_128_restent_retrouvables() -> None:
+    """Même propriété, pour le passage de ``chunk_size`` 128 → 384.
+
+    Les 61 975 vecteurs calculés à 128 vivent toujours dans ``3119c73a…``. Ce test dit
+    qu'on sait encore les nommer — donc les comparer, donc y revenir.
+    """
+    avant = WorkflowConfig(
+        normalization=NormalizationConfig(version="v1"),
+        chunking=ChunkingConfig(strategy="legi-structural-v1", size=128, overlap=25),
+        embedding=EmbeddingConfig(
+            model_name="sentence-transformers/all-mpnet-base-v2", dimension=768
+        ),
+    )
+    assert collection_name(avant) == _LEGI_FINGERPRINT_CHUNK_128
 
 
 def test_le_yaml_REEL_produit_bien_l_empreinte_figee() -> None:

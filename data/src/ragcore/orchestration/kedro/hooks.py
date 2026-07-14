@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import logging
+from collections.abc import Iterable
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -61,26 +62,40 @@ from ragcore.core.config import (
 from ragcore.core.models.audit import build_event
 from ragcore.core.models.enums import SourceName
 from ragcore.core.models.identifiers import OwnerId
+from ragcore.core.models.run_stats import RunStats
 from ragcore.core.ports.telemetry import WorkerTelemetry
 from ragcore.core.services.telemetry_registry import TelemetryRegistry
 from ragcore.core.telemetry_events import (
+    CHUNK_TRUNCATED,
     EVENT_CATALOG,
     PIPELINE_RUN_COMPLETED,
     PIPELINE_RUN_FAILED,
     PIPELINE_RUN_STARTED,
 )
 from ragcore.orchestration.kedro.workload import build_document_workload
+from ragcore.sources.composite import (
+    CompositeConnector,
+    RoutingParser,
+    RoutingRelationExtractor,
+)
 from ragcore.sources.generic import (
     GenericParser,
     GenericRelationExtractor,
     StructuralChunker,
 )
-from ragcore.sources.registry import definition_for
+from ragcore.sources.registry import all_sources, definition_for
 
 logger = logging.getLogger(__name__)
 
 # Le pool de la phase 1. Un jour un paramètre ; pour l'instant une constante nommée,
 # et non un « 4 » nu perdu dans le constructeur du runner.
+#
+# **Ne pas l'augmenter en espérant un gain : c'est mesuré, ça n'en donne pas.** 99,9 % du
+# temps d'un document part dans l'embedding (parse 0,9 ms, chunk 0,1 ms, embed 1364 ms),
+# et le mur est le GPU lui-même, pas le nombre de requêtes qu'on lui envoie. Un banc
+# d'essai isolé promettait ×4 en passant à 16 workers ; le run réel n'a rien gagné
+# (751 s → 738 s). Le seul levier réel est de calculer MOINS de vecteurs, c.-à-d.
+# `chunk_size` (cf. la note de perf dans ETAT.md).
 _WORKER_COUNT = 4
 
 
@@ -96,6 +111,7 @@ class TelemetryHooks:
         self._context: PipelineContext | None = None
         self._stats_dir: Path | None = None
         self._summary_repo: MongoRunSummaryRepository | None = None
+        self._embedder: object | None = None
         self._runtime_instance: AsyncioRuntime | None = None
 
     @property
@@ -216,23 +232,37 @@ class TelemetryHooks:
         extra = run_params.get("extra_params") or {}
         owner_id = extra.get("owner_id", settings.owner_id)
 
-        # La SOURCE du run — plus câblée en dur sur LEGI. Six sources sont ingérables
-        # (`sources/registry.py`), et on en choisit une :
+        # Les SOURCES du run. Un run nu les ingère TOUTES ; on peut le restreindre :
         #
-        #     kedro run --params source=cass
+        #     kedro run                          → les six sources
+        #     kedro run --params source=cass     → CASS seule
+        #     kedro run --params source=cass,jade → CASS et JADE
         #
-        # Une seule source par run, délibérément : le manifest, les agrégats et le
-        # RunSummary sont tous indexés par source, et un run qui en mélangerait deux
-        # rendrait son propre bilan illisible. Ingérer les cinq juri, c'est cinq runs —
-        # ce qui est aussi ce que permet de les rejouer indépendamment.
-        source = _resolve_source(extra.get("source", settings.source))
-        definition = definition_for(source)
+        # **Ce que ça change, et qu'il faut assumer.** L'ancienne règle « une seule source
+        # par run » protégeait la lisibilité du bilan : un run qui mélange deux sources doit
+        # pouvoir dire *laquelle* a échoué.
+        #
+        # ⚠️ DETTE OUVERTE : il ne le peut pas encore. `RunStats.breakdowns` ne ventile que
+        # `reason` et `operation` (cf. `adapters/telemetry/aggregator.py`), PAS la source.
+        # Un run à six sources rend donc un bilan agrégé où l'échec est anonyme quant à sa
+        # provenance. La restriction par paramètre garde la voie du rejeu ciblé ouverte,
+        # mais le bilan ne dit pas encore *quoi* rejouer.
+        sources = _resolve_sources(extra.get("source", settings.source))
+        definitions = {source: definition_for(source) for source in sources}
 
+        # `source=None` dans le contexte signifie « ce run n'est pas mono-source ». Le
+        # modèle le prévoyait déjà (`SourceName | None`) : la porte était ouverte, on ne
+        # force rien. Un run mono-source garde SA source dans le contexte — les événements
+        # qu'il émet restent donc attribuables exactement comme avant.
         self._context = PipelineContext.create(
             owner_id=OwnerId(owner_id),
-            source=source,
+            source=sources[0] if len(sources) == 1 else None,
         )
-        logger.info("Source du run : %s", source.value)
+        logger.info(
+            "Sources du run (%d) : %s",
+            len(sources),
+            ", ".join(s.value for s in sources),
+        )
 
         # Telemetry stack — configurable par registry
         meta_root = Path(settings.meta_jsonl_dir)
@@ -265,20 +295,39 @@ class TelemetryHooks:
         )
 
         # **Aucun nom de source ici.** Le parser, le chunker et l'extracteur sont
-        # génériques (§3) ; le connecteur vient du registre. Ce bloc est identique pour
-        # LEGI et pour les cinq juri — c'est très exactement la mesure du succès :
+        # génériques (§3) ; les connecteurs viennent du registre. Ce bloc est identique
+        # pour LEGI et pour les cinq juri — c'est très exactement la mesure du succès :
         # ajouter une source n'a demandé aucune ligne dans le hook.
+        #
+        # Une brique PAR source (chacune a sa table de rôles — elles sont quatre
+        # distinctes), et un routeur au-dessus qui aiguille sur `document.source`. Les
+        # nœuds, eux, ne voient qu'un connecteur et qu'un parser : les routeurs respectent
+        # les mêmes ports, donc le DAG ignore qu'il y a six sources derrière.
         #
         # Purs (chunker, parser, extracteur) ou créant leur client à l'appel (embedder) :
         # partageables entre workers sans risque.
-        connector = definition.connector(
-            Path(settings.xml_source_path) / definition.subdirectory
+        xml_root = Path(settings.xml_source_path)
+        connector = CompositeConnector(
+            {
+                source: definition.connector(xml_root / definition.subdirectory)
+                for source, definition in definitions.items()
+            }
         )
-        parser = GenericParser(definition.table, source)
+        parser = RoutingParser(
+            {
+                source: GenericParser(definition.table, source)
+                for source, definition in definitions.items()
+            }
+        )
         chunker = StructuralChunker(
             max_chunk_size=workflow.chunking.size, overlap=workflow.chunking.overlap
         )
-        relation_extractor = GenericRelationExtractor(definition.table, source)
+        relation_extractor = RoutingRelationExtractor(
+            {
+                source: GenericRelationExtractor(definition.table, source)
+                for source, definition in definitions.items()
+            }
+        )
 
         # Embedding : le MODÈLE et la DIMENSION viennent du workflow (ils décident des
         # vecteurs, donc ils sont hashés) ; le PROVIDER et son transport viennent de
@@ -299,6 +348,10 @@ class TelemetryHooks:
                 batch_size=embedding_settings.batch_size,
                 base_url=embedding_settings.service_url,
             )
+        # Gardé pour l'interroger en fin de run : un chunk qu'il a dû raccourcir pour tenir
+        # dans la fenêtre du modèle est un chunk dont la fin n'est PAS indexée. Le document
+        # est sauvé, le run est complet — mais le bilan doit le dire.
+        self._embedder = embedder
 
         # --- Le pool de la phase 1 : des FABRIQUES, pas des instances (§11) ---------
         runner = self._build_runner(
@@ -323,6 +376,10 @@ class TelemetryHooks:
         catalog.save("resolve_service", resolve_service)
         catalog.save("pipeline_context", self._context)
         catalog.save("telemetry", self._telemetry)
+        # L'agrégat du run, injecté comme les autres objets. C'est le node `report` qui y
+        # POUSSE les stats des phases : le hook ne peut pas les tirer du catalogue après
+        # coup, Kedro y libère les MemoryDataset dès leur dernier lecteur (cf. `absorb`).
+        catalog.save("run_stats_sink", self)
         # Le runtime du hook, injecté aux nœuds non parallélisés (maintenance + phase 2)
         # comme pont sync→async — l'équivalent déclaré de l'ancienne globale run_async.
         catalog.save("pipeline_runtime", self._runtime)
@@ -341,7 +398,7 @@ class TelemetryHooks:
         self,
         chunker: StructuralChunker,
         embedder: object,
-        extractor: GenericRelationExtractor,
+        extractor: RoutingRelationExtractor,
         qdrant_collection: str,
         workflow: WorkflowConfig,
     ) -> IngestionRunner:
@@ -416,6 +473,52 @@ class TelemetryHooks:
             worker_count=_WORKER_COUNT,
         )
 
+    def absorb(self, stats: RunStats) -> None:
+        """Reçoit l'agrégat d'une PHASE. **Sans ça, le bilan ment.**
+
+        Chaque worker tient son propre ``RunStats`` (§11) ; ``IngestionRunner`` les réduit
+        et les rend dans ``IngestionOutcome.stats``. Mais ce résultat repartait dans un
+        ``MemoryDataset`` que **personne ne lisait** : le hook finalisait *son* agrégateur,
+        qui n'avait vu que les events du process principal. Le ``document.persisted`` des
+        workers — et surtout leurs **compensations** — n'atteignaient jamais le RunSummary,
+        donc ``_status_from`` rendait *toujours* ``ok``.
+
+        **Pourquoi le DAG POUSSE au lieu que le hook TIRE.** J'ai d'abord fait lire le
+        catalogue au hook en ``after_pipeline_run``. C'était faux, et silencieusement :
+        Kedro **libère** un ``MemoryDataset`` dès son dernier consommateur
+        (``_release_datasets``). ``ingestion_outcome`` meurt donc avec le node ``report``,
+        et le ``load()`` d'après-run échoue. Le catalogue n'est pas un lieu de rendez-vous
+        post-run — c'est un tuyau entre nodes, et il se vide derrière eux.
+        """
+        if self._aggregator is not None:
+            self._aggregator.absorb(stats)
+
+    def _declare_truncations(self) -> None:
+        """Un chunk raccourci n'est pas une perte, mais ce n'est pas rien : il se DÉCLARE.
+
+        Le document est ingéré (donc l'équation de complétude tombe juste, à raison), mais
+        la fin du chunk n'est pas indexée. Un compteur non nul veut dire une seule chose :
+        **le `chunk_size` configuré n'est pas compatible avec la fenêtre du modèle**. Le
+        run est sauvé ; la configuration, elle, est à corriger.
+        """
+        truncations = getattr(self._embedder, "truncations", 0)
+        if not truncations or self._telemetry is None or self._context is None:
+            return
+        self._telemetry.emit(
+            build_event(
+                event_type=CHUNK_TRUNCATED,
+                run_id=self._context.run_id,
+                owner_id=self._context.owner_id,
+                source=self._context.source,
+                payload={"count": truncations},
+            )
+        )
+        logger.warning(
+            "%d chunk(s) raccourci(s) pour tenir dans la fenêtre du modèle. Le corpus est "
+            "complet, mais la fin de ces chunks n'est pas indexée : baisser `chunk_size`.",
+            truncations,
+        )
+
     def _persist_run_summary(
         self, status: str, error_message: str | None = None
     ) -> None:
@@ -442,6 +545,16 @@ class TelemetryHooks:
                     payload={"pipeline": run_params.get("pipeline_name", "__default__")},
                 )
             )
+        # Les chunks que l'embedder a dû raccourcir. Le compteur vit sur l'embedder (il
+        # est le seul à voir le refus du service) et il est lu ICI, une fois, en fin de
+        # run : pas de concurrence à gérer, et le port `BaseEmbedder` n'a pas à connaître
+        # la télémétrie pour un détail qui ne concerne qu'une de ses implémentations.
+        self._declare_truncations()
+
+        # Les stats des workers ont déjà été POUSSÉES ici par le node `report` (cf.
+        # `absorb`). `_persist_run_summary` dérive le statut de ces compteurs : sans eux,
+        # pas un seul document perdu ne serait visible, et le run serait `ok` quoi qu'il
+        # arrive.
         self._persist_run_summary(status="ok")
         # Draine les écritures d'audit en vol, puis ferme. C'est ici que se joue
         # l'at-least-once : fermer sans drainer, c'est perdre la trace du run.
@@ -464,6 +577,10 @@ class TelemetryHooks:
                     error_message=str(error),
                 )
             )
+        # ⚠️ Le bilan sera PAUVRE : les stats des workers ne remontent que par le node
+        # `report`, qui est terminal. Un pipeline qui casse avant lui ne persiste que les
+        # compteurs du process principal. Le statut `failed` reste vrai — c'est son
+        # détail qui manque.
         self._persist_run_summary(status="failed", error_message=str(error))
         # Draine les écritures d'audit en vol, puis ferme. C'est ici que se joue
         # l'at-least-once : fermer sans drainer, c'est perdre la trace du run.
@@ -507,18 +624,50 @@ def _build_workflow_config(params: dict[str, Any]) -> WorkflowConfig:
     )
 
 
-def _resolve_source(value: str | SourceName) -> SourceName:
-    """La source demandée, ou une erreur qui dit quoi faire.
+def _resolve_sources(value: str | SourceName | Iterable[str] | None) -> tuple[SourceName, ...]:
+    """Les sources demandées, ou une erreur qui dit quoi faire.
+
+    Accepte ce qu'un opérateur écrit réellement en ligne de commande :
+
+    - rien / ``"all"``       → **toutes** les sources ingérables (le défaut)
+    - ``"cass"``             → une seule
+    - ``"cass,jade"``        → plusieurs (Kedro passe les ``--params`` en chaîne)
+    - une liste YAML         → plusieurs, si le paramètre vient d'un fichier de conf
 
     Un ``--params source=cas`` (faute de frappe) doit échouer **au démarrage**, en nommant
     les sources valides. Sans ça, Kedro partirait sur une source inconnue et le run
-    n'ingérerait rien — un échec silencieux qui ressemble à un corpus vide.
+    n'ingérerait rien — un échec silencieux qui ressemble à un corpus vide. C'est la même
+    raison qui fait qu'on ne *filtre* pas les inconnues d'une liste : ``cass,jade`` avec
+    une coquille sur ``jade`` doit se plaindre, pas ingérer CASS en silence.
     """
+    if value is None:
+        return all_sources()
+
     if isinstance(value, SourceName):
-        return value
-    try:
-        return SourceName(str(value).lower())
-    except ValueError as exc:
-        connues = ", ".join(sorted(s.value for s in SourceName))
-        msg = f"Source inconnue : {value!r}. Sources déclarées : {connues}."
-        raise ValueError(msg) from exc
+        return (value,)
+
+    if isinstance(value, str):
+        # « all » est le nom explicite du défaut. Il existe pour qu'un `.env` ou un
+        # `--params` puisse *demander* le comportement par défaut, plutôt que de devoir
+        # énumérer six sources pour dire « toutes ».
+        if value.strip().lower() in {"", "all", "*"}:
+            return all_sources()
+        names: list[str] = [part.strip() for part in value.split(",") if part.strip()]
+    else:
+        names = [str(part).strip() for part in value]
+
+    if not names:
+        return all_sources()
+
+    resolved: list[SourceName] = []
+    for name in names:
+        try:
+            source = SourceName(name.lower())
+        except ValueError as exc:
+            connues = ", ".join(s.value for s in all_sources())
+            msg = f"Source inconnue : {name!r}. Sources ingérables : {connues}."
+            raise ValueError(msg) from exc
+        if source not in resolved:
+            resolved.append(source)
+
+    return tuple(resolved)

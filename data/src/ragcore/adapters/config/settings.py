@@ -105,8 +105,18 @@ class InfraSettings(BaseSettings):
     document. Un corpus vide et un run « réussi » sont indiscernables. Absolu, donc, parce
     que le corpus ne vit dans aucun des deux dépôts."""
 
-    source: str = "legi"
-    """La source ingérée par défaut. Surchargeable : `kedro run --params source=cass`.
+    source: str = "all"
+    """Les sources ingérées par défaut. **`all` = toutes les sources ingérables.**
+
+    Surchargeable : `kedro run --params source=cass`, ou `source=cass,jade` pour un
+    sous-ensemble.
+
+    **Pourquoi « toutes » est le bon défaut.** Le défaut d'un pipeline d'ingestion doit
+    être *ingérer le corpus*, pas *ingérer un sixième du corpus*. `legi` en défaut était
+    un vestige de l'époque où LEGI était la seule source écrite : il faisait qu'un
+    `kedro run` nu laissait cinq bases sur six intactes — sans le dire, et en se
+    terminant « ok ». Un run qui n'ingère pas ce qu'on croit qu'il ingère est exactement
+    la famille d'échec silencieux que ce pipeline s'interdit.
 
     Elle est ici — dans l'INFRA — et pas dans le `WorkflowConfig` : changer de source ne
     change pas la façon de produire les vecteurs, donc n'invalide pas ceux déjà écrits.

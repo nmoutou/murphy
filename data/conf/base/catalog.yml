@@ -50,6 +50,13 @@ telemetry:
   type: MemoryDataset
   copy_mode: assign
 
+# Le hook lui-même, vu par le node `report` comme un simple `RunStatsSink`.
+# `copy_mode: assign` n'est pas cosmétique : sans lui Kedro COPIERAIT le hook, et le node
+# pousserait les stats des workers dans un clone que personne ne finalise.
+run_stats_sink:
+  type: MemoryDataset
+  copy_mode: assign
+
 pipeline_runtime:
   type: MemoryDataset
   copy_mode: assign

@@ -18,7 +18,12 @@ from enum import StrEnum
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from ragcore.core.telemetry_events import SAGA_COMPENSATION_STARTED
+from ragcore.core.telemetry_events import (
+    DOCUMENT_FAILED,
+    DOCUMENT_FETCHED,
+    DOCUMENT_INVALIDATED,
+    DOCUMENT_PERSISTED,
+)
 
 from .document import SCHEMA_VERSION
 from .enums import SourceName
@@ -101,12 +106,50 @@ class RunSummary(BaseModel):
 
 
 def _status_from(stats: RunStats) -> RunStatus:
-    """OK seulement si aucune saga n'a compensé.
+    """``OK`` seulement si TOUT ce qui a été vu a été ingéré — ou écarté sciemment.
 
-    Une compensation, c'est un document que la saga a défait dans les trois stores :
-    il a été vu, il n'est pas ingéré, et le run n'est donc pas complet. Le déclarer
-    « ok » ferait mentir le critère de fin (« ingérés + exclus + échoués = total vu »)
-    au moment précis où il compte.
+    Deux propriétés distinctes, qu'il ne faut pas confondre, et qui mènent toutes deux à
+    ``DEGRADED`` :
+
+    1. **Le run a-t-il tout ingéré ?**  ``échoués == 0``.
+       Un document qui échoue est un document perdu, *même déclaré*. Le déclarer le rend
+       rejouable ; ça ne le rend pas ingéré.
+
+    2. **Le run est-il HONNÊTE ?**  ``vus == ingérés + exclus + échoués``.
+       C'est l'équation de complétude. Si elle ne tombe pas juste, des documents ont
+       disparu **sans que rien ne les compte** — le pire cas, car il est invisible.
+
+    ``DEGRADED`` = « le run est allé au bout, mais il n'a pas tout ingéré ». Les deux
+    situations le méritent ; seule la seconde est un bug du pipeline lui-même.
+
+    **Pourquoi ce n'est plus « aucune compensation ».** L'ancienne version ne regardait
+    que ``SAGA_COMPENSATION_STARTED`` — elle ratait donc toute fuite survenue AVANT la
+    saga. C'est exactement ce qui est arrivé : 98 documents rejetés à l'embedding (chunk
+    hors fenêtre du modèle) n'ont jamais atteint la saga, donc jamais compensé, donc le
+    run s'est déclaré ``ok`` en ayant perdu 8 % du corpus. **Un critère qui nomme UNE
+    cause ne voit pas les autres.** L'équation, elle, ne nomme aucune cause : elle les
+    attrape toutes, y compris celles qu'on n'a pas encore rencontrées.
+
+    Le référentiel est ``document.fetched``, jamais ``document.parsed`` : un document
+    invalidé n'est *pas* parsé (``compute_idempotence`` émet ``INVALIDATED`` **à la place**
+    de ``PARSED``, puis ``continue``). Prendre ``parsed`` pour total exclurait les
+    invalides du dénominateur — l'équation tomberait juste en oubliant précisément ceux
+    qu'elle doit compter.
     """
-    compensated = stats.counts.get(SAGA_COMPENSATION_STARTED, 0)
-    return RunStatus.DEGRADED if compensated else RunStatus.OK
+    seen = stats.counts.get(DOCUMENT_FETCHED, 0)
+    if not seen:
+        # Rien vu, rien à rendre : un run à vide est complet, pas dégradé.
+        return RunStatus.OK
+
+    failed = stats.counts.get(DOCUMENT_FAILED, 0)
+    accounted = (
+        stats.counts.get(DOCUMENT_PERSISTED, 0)
+        + stats.counts.get(DOCUMENT_INVALIDATED, 0)
+        + failed
+    )
+
+    # `!=` et non `<` : un excédent est une anomalie aussi (double comptage) et doit se
+    # voir, plutôt que de passer pour un succès.
+    if failed or accounted != seen:
+        return RunStatus.DEGRADED
+    return RunStatus.OK

@@ -112,8 +112,18 @@ formatting:
     version: v1
 
   chunking:
+    # ⚠️ chunk_size est en CARACTÈRES, la fenêtre du modèle en TOKENS. Le ratio n'est pas
+    # constant : mesuré sur ce corpus, 3,08 car/token en moyenne mais **0,33 au pire**
+    # (chunks de sigles et de ponctuation). 384 est le plus grand qui tienne : mesuré au
+    # tokenizer du modèle sur les six sources, il produit 300 tokens au maximum — sous la
+    # fenêtre de 384 — et **zéro document perdu**. 512 en perdait 1, 1024 en perdait 98.
+    #
+    # C'est aussi le bon compromis de coût : l'embedding est 99,9 % du temps d'un run, et
+    # passer de 128 à 384 l'a divisé par ~5 (838 s → 173 s) en supprimant 44 000 chunks
+    # inutiles. Au-delà de 384 on ne gagne presque plus rien (le GPU travaille au token,
+    # pas au chunk) — on ne fait que perdre des documents.
     strategy: legi-structural-v1
-    chunk_size: 128
+    chunk_size: 384
     chunk_overlap: 25
 
   relations:

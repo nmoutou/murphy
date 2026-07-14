@@ -123,3 +123,18 @@ def definition_for(source: SourceName) -> SourceDefinition:
         )
         raise ValueError(msg)
     return definition
+
+
+def all_sources() -> tuple[SourceName, ...]:
+    """Toutes les sources ingérables — ce qu'un ``kedro run`` nu doit traiter.
+
+    **C'est ``SOURCES`` qui fait foi, pas ``SourceName``.** L'enum déclare le vocabulaire
+    (``JORF``, ``UPLOAD``…) ; ce registre déclare ce qui est réellement *ingérable*.
+    Dériver le défaut de l'enum ferait planter le run nu sur ``JORF``, dont le connecteur
+    n'est pas écrit — et le ferait planter à chaque *ajout* de vocabulaire, ce qui
+    punirait précisément le geste qu'on veut rendre anodin.
+
+    Ordre stable (celui de ``SOURCES``) : LEGI d'abord, puis les cinq juri. Un run doit
+    être reproductible jusque dans l'ordre où il lit.
+    """
+    return tuple(SOURCES)

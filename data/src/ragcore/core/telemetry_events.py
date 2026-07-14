@@ -24,8 +24,14 @@ DOCUMENT_INVALIDATED              = "document.invalidated"
 DOCUMENT_CHUNKED                  = "document.chunked"
 DOCUMENT_EMBEDDED                 = "document.embedded"
 DOCUMENT_PERSISTED                = "document.persisted"
+DOCUMENT_FAILED                   = "document.failed"    # vu, jamais ingéré — la FUITE
 DOCUMENT_REPLACED                 = "document.replaced"
 DOCUMENT_DELETED                  = "document.deleted"
+
+# Un chunk trop long pour la fenêtre du modèle, raccourci pour sauver son document. Ce
+# n'est PAS une fuite (le document est ingéré) mais ce n'est pas rien : la fin du chunk
+# n'est pas indexée. Non nul = le `chunk_size` configuré est incompatible avec le modèle.
+CHUNK_TRUNCATED                   = "chunk.truncated"
 
 RELATION_UPSERTED                 = "relation.upserted"
 RELATION_PENDING                  = "relation.pending"    # cible absente → cache §13
@@ -80,6 +86,16 @@ EVENT_CATALOG: dict[str, EventBehavior] = {
     # --- Traitement ---
     DOCUMENT_PERSISTED: EventBehavior(
         level="info", log=True, track_jsonl=True, track_mongo=True, aggregate=True,
+    ),
+    # La FUITE : un document vu, parsé, jamais ingéré. `aggregate=True` est tout l'enjeu —
+    # l'échec partait auparavant en `telemetry.log()`, donc en console SEULEMENT : il était
+    # tracé sans être compté, et le run se déclarait « ok » en ayant perdu 98 documents.
+    # Un échec qui ne compte pas est un échec qui n'existe pas pour le bilan.
+    DOCUMENT_FAILED: EventBehavior(
+        level="error", log=True, track_jsonl=True, track_mongo=True, aggregate=True,
+    ),
+    CHUNK_TRUNCATED: EventBehavior(
+        level="warning", log=True, track_jsonl=True, track_mongo=True, aggregate=True,
     ),
     DOCUMENT_REPLACED: EventBehavior(
         level="info", log=True, track_jsonl=True, track_mongo=True, aggregate=True,

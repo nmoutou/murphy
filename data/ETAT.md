@@ -1,195 +1,233 @@
-# État des lieux — 13 juillet 2026
+# État des lieux — 14 juillet 2026
 
-> **Document temporaire.** Point d'étape après le franchissement du critère de fin de la
-> migration. À supprimer une fois son contenu absorbé (dans les artéfacts, ou dans un
-> commit qui rend ce texte inutile).
-
----
-
-## 🔴 URGENT — rien n'est commité, et ce n'est pas une négligence bénigne
-
-**106 fichiers `.py` de ragcore sur 159 ne sont pas suivis par git.**
-Dernier commit : `39be0ac "Save"` — celui d'**avant** la migration.
-
-Cinq lots de travail, plus celui d'aujourd'hui, n'existent **que sur ce disque**.
-
-Ce n'est pas une hypothèse de risque, c'est une **répétition**. Le mémo
-`etat-reel-depot-ragcore` dit :
-
-> « N'avoir jamais été suivi par git est **la cause première** de la perte du 5 juillet. »
-> (22 modules perdus définitivement, 3 voies de récupération épuisées.)
-
-La consigne qui en avait été tirée — *« committer ragcore sur `main` AVANT d'y toucher,
-même (surtout) cassé »* — **n'a jamais été appliquée**. Depuis, le pipeline s'est mis à
-**fonctionner**. Ce qu'on perdrait aujourd'hui est incomparablement plus grand qu'en juillet.
-
-**À faire avant toute autre chose.** Deux dépôts : `data/` → `murphy-data`, puis le
-pointeur de sous-module dans `murphy`.
+> **Document temporaire.** À supprimer une fois son contenu absorbé (dans les artéfacts, ou
+> dans un commit qui rend ce texte inutile).
+>
+> ⚠️ **Ce fichier vieillit mal.** Sa version précédente affirmait « le RunSummary est
+> aveugle » (corrigé), « `chunk_size` est une mesure à faire » (faite, tranchée) et ignorait
+> le vrai mur de performance. **Le code et les bases répondent ; ce document, lui, se
+> souvient.** Vérifier avant de croire.
 
 ---
 
-## ✅ Ce qui est acquis aujourd'hui
-
-### Le lancement des services
-
-Depuis `data/`, sans changer de répertoire :
-
-```bash
-npm run up      # mongo + qdrant + neo4j + TEI (GPU). Ni backend, ni frontend.
-kedro run
-npm run down
-```
-
-- **Profils Compose** à la racine : `ingest` (bases + TEI) / `serve` (+ backend/frontend).
-  Les 3 bases ne portent **aucun** profil : socle commun, déclaré **une seule fois**.
-- `data/package.json` = un simple renvoi (`npm --prefix ..`). Aucun code Node ici.
-- ⚠️ `docker compose down` **sans** `--profile` ne stoppe **pas** les services profilés : il
-  rapporte un succès en les laissant tourner. Les scripts nomment les deux profils.
-
-### Un seul `.env`, et la règle qui l'explique
-
-**`.env.dev` à la RACINE. Plus de `.env` dans `data/`** (en créer un n'a aucun effet :
-`adapters/config/settings.py` lit la racine par chemin absolu).
-
-> **Une variable dont la valeur diffère entre l'hôte et le conteneur ne doit pas avoir un
-> seul nom.**
-
-Le pipeline tourne sur l'**hôte**, les bases en **conteneur** (`localhost:27017` vs
-`mongo:27017`). Le fichier porte donc les URLs **côté hôte** — l'hôte est celui qu'on ne
-*peut pas* surcharger — et **compose surcharge les conteneurs en littéral dans le YAML**.
-
-`MONGODB_DATABASE` et `EMBEDDING_MODEL_NAME` sont **dérivés** par compose, jamais saisis :
-*une valeur jamais tapée deux fois ne peut pas être tapée différemment deux fois.*
-
-### Le garde-fou TEI (§6 rendue vérifiable)
-
-TEI ne sert **que** le modèle de son `--model-id` et **ignore le champ `model` de la
-requête**. Une divergence avec `parameters.yml` écrirait les vecteurs du **mauvais** modèle
-dans la collection nommée d'après le **bon** — sans lever, sans logguer, visible seulement
-à la recherche.
-
-`assert_service_serves_model()` interroge **`GET /info`** et refuse de démarrer sur un écart.
-**Vérifié en le faisant échouer pour de vrai** contre le vrai service.
-
-- ⚠️ `/info` est à l'**origine**, PAS sous `/v1` : s'y tromper donne un 404, donc un garde-fou
-  qui ne se déclenche **jamais** — pire que pas de garde-fou.
-- ⚠️ **Il vit dans le HOOK, pas dans l'embedder**, et c'est structurel : `SagaExecutor` attrape
-  `Exception` pour compenser. Levée dans un worker, l'erreur deviendrait un échec *par
-  document*, compensé N fois, et le run conclurait **« ok »**.
-  *Un garde-fou qui dégrade en skip-par-document n'est pas un garde-fou.*
-
-### Le `kedro run` RÉEL passe — le critère de fin est atteint
-
-**7/7 nœuds, 92 secondes, contre les vraies bases** (LEGI) :
+## L'état, mesuré
 
 | | |
 |---|---|
-| documents | **766** (Mongo = manifest = nœuds Neo4j) |
-| chunks vectorisés | **10 919** |
-| arêtes Neo4j | **1 167** (`references`, `cites`, `modifies`, `contains` — types **dynamiques**) |
-| échecs / inconnus | **0 / 0** |
-| collection Qdrant | **`3119c73ab26b71121e40e079abe5a06c`** — l'empreinte figée par le golden |
-| **vecteurs** | **766/768 dimensions non nulles** → **VRAIS** vecteurs (TEI sur RTX 3050) |
+| documents | **1121** (769 LEGI + capp 1, cass 92, inca 1, jade 256, constit 2) |
+| complétude | `fetched 1121 == persisted 1121` — **0 perdu**, statut `ok` **dérivé** |
+| durée d'un run | **150 s** (contre 838 s le 13 juillet) |
+| chunks | 18 090 (`chunk_size: 384`) |
+| Qdrant | `9424808d…` — 18 090 vecteurs, 766/768 dims non nulles |
+| Neo4j | 352 `Document`, 68 `Unknown`, 19 032 relations pendantes |
+| tests | **235 verts** |
 
-Le contrôle des vecteurs non nuls est **le seul test qui distingue « ça a tourné » de « ça a
-tourné juste »** — la verrue `noop` écrit des vecteurs **nuls** dans la collection du vrai
-modèle, où plus rien ne les distingue ensuite. À refaire systématiquement.
+**Rien n'est commité.** 16 fichiers modifiés.
 
-### Le bug qui bloquait tout — et que personne ne pouvait voir
+---
 
-`kedro run` **ne démarrait pas** : `TypeError: cannot pickle '_contextvars.Context'`.
+## Ce que la journée a changé
 
-**Cause :** `TelemetryHooks.__init__` allouait une boucle asyncio. Or `src/data/settings.py`
-instancie le hook **à l'import**, et Kedro fait un `deepcopy` de ses settings dans
-`KedroSession._init_store`. Une boucle asyncio n'est pas copiable.
+### ✅ `kedro run` nu ingère les SIX sources
 
-Bug **pré-existant du lot 5**. Le smoke SequentialRunner ne pouvait pas l'attraper : il
-construisait le pipeline **sans passer par `KedroSession`**. Il vivait exactement dans
-l'angle mort entre « le DAG s'exécute » et « Kedro sait l'ouvrir ».
+Le défaut était `legi` : un `kedro run` nu laissait **cinq bases sur six intactes**, sans le
+dire, et se terminait « ok ». `sources/composite.py` : `CompositeConnector` +
+`RoutingParser` / `RoutingRelationExtractor` (aiguillent sur `document.source`). Les trois
+respectent les ports existants ⇒ **aucun nœud du DAG n'a bougé**. Restriction toujours
+possible : `--params source=cass,jade`.
 
-**Correctif :** `_runtime` devient une `@property` paresseuse.
-**Règle :** *un `__init__` pose des attributs ; il n'alloue pas de ressource système.*
+> **La leçon :** changer `InfraSettings.source = "all"` en Python n'a **rien** fait —
+> `.env.dev` portait `SOURCE=legi`, et pydantic-settings donne (à raison) priorité à
+> l'environnement. *Le vrai défaut vivait dans le `.env`, pas dans le code.*
 
-### Trois bugs latents tués au passage
+### ✅ Le RunSummary voit enfin les workers
 
-1. `src/data/settings.py` chargeait `data/src/.env` — **un fichier qui n'a jamais existé**.
-   No-op silencieux depuis toujours. Supprimé : deux endroits qui prétendent savoir « où est
-   le .env » sont la cause même du bug.
-2. `EMBEDDING_API_KEY=` / `QDRANT_API_KEY=` parsaient en `''` / `SecretStr('')`, **pas `None`**
-   → validators « vide → None ».
-3. `OpenAIEmbedder` sans `base_url` retombait sur `https://api.openai.com/v1` : un
-   `EMBEDDING_SERVICE_URL` oublié aurait envoyé **tout le corpus chez OpenAI**, facturé, avec
-   un autre modèle. `base_url` est désormais **obligatoire**.
+Les `RunStats` des workers ne remontaient **jamais** au hook : `report_node` les rendait dans
+un `MemoryDataset` que personne ne lisait. Le compteur de compensations était donc
+**structurellement nul**, et le statut **structurellement `ok`**.
 
-### ⚠️ Le piège des deux parsers (il a mordu pour de vrai)
+Le node `report` **pousse** désormais l'agrégat dans le hook (`RunStatsSink`). Il ne peut pas
+tirer : **Kedro libère un `MemoryDataset` dès son dernier lecteur** (`_release_datasets`) — un
+`catalog.load()` en `after_pipeline_run` tombe sur un dataset vide. *Le catalogue est un
+tuyau entre nodes, pas un lieu de rendez-vous post-run.*
 
-**Jamais de commentaire en fin de ligne dans un `.env`.** `docker-compose` les strippe,
-**pydantic-settings NON** : il prend tout le reste de la ligne comme valeur.
-`EMBEDDING_API_KEY=   # TEI needs none` a donné la chaîne littérale `'# TEI needs none'`,
-qui serait partie en `Authorization: Bearer # TEI needs none`.
-**Les commentaires vont au-dessus.** (Documenté en tête de `.env.example`.)
+### ✅ Le statut se dérive de l'ÉQUATION DE COMPLÉTUDE
 
-**194 tests unitaires verts, lint propre** (sans base ni `.env.dev` : la boucle hors-ligne tient).
+```
+vus == ingérés + exclus + échoués        et        échoués == 0
+```
+
+Deux propriétés distinctes, qu'il ne faut pas confondre : **le run est-il honnête ?**
+(l'équation tombe-t-elle ?) et **a-t-il tout ingéré ?** (un échec *déclaré* reste un document
+perdu). Les deux mènent à `degraded`.
+
+> **Un critère qui nomme UNE cause ne voit pas les autres.** L'ancien ne regardait que
+> `SAGA_COMPENSATION_STARTED` — il a laissé passer 98 documents rejetés **avant** la saga.
+> L'équation ne nomme aucune cause : elle attrapera la prochaine fuite, celle qu'on n'a pas
+> encore rencontrée.
+
+Il manquait la matière : **`document.failed` n'existait pas**. L'échec partait en
+`telemetry.log()` — console seulement, *tracé mais jamais compté*. C'est **exactement** pour
+ça que la fuite était invisible.
+
+⚠️ Le référentiel est `document.fetched`, **jamais** `parsed` : un document invalidé n'est
+*pas* parsé (`compute_idempotence` émet `INVALIDATED` **à la place**, puis `continue`).
+
+### ✅ Le run est 5,6× plus rapide — `chunk_size: 384`
+
+**L'embedding est 99,9 % du temps** (1364 ms/doc contre 0,9 ms de parse, 0,1 ms de chunk).
+Tout le reste est du bruit. Le mur est le **GPU** : RTX 3050 Laptop plafonnée à **25 W**,
+~90 textes/s au mieux, saturée.
+
+| chunk_size | run | chunks | documents perdus |
+|---|---|---|---|
+| 128 | 838 s | 61 975 | 0 |
+| **384** | **150 s** | 18 090 | **0** |
+| 512 | 160 s | 13 469 | **1** |
+| 1024 | 153 s | 5 606 | **98** |
+
+384 est **le plus grand qui tienne** : mesuré au tokenizer du modèle sur les six sources,
+300 tokens au maximum (fenêtre : 384). Au-delà de 384 on ne gagne presque plus rien (le GPU
+travaille **au token**, pas au chunk) — on ne fait que perdre des documents.
+
+Empreinte : `3119c73a…` → **`9424808d…`**. Le golden a refusé le changement (son rôle) ; il
+a été **enregistré**, pas contourné. Les vecteurs de 128 restent nommables.
+
+### ✅ Fallback d'embedding — un chunk trop long est SAUVÉ
+
+Le service rejette (`413`) un lot hors fenêtre, sans dire **lequel** déborde. L'embedder
+**dichotomise** : couper en deux, réessayer ⇒ en `log(n)` requêtes le coupable est isolé, et
+**lui seul** est raccourci de moitié, récursivement. **La récursion termine par
+construction**, et surtout : **la garde ne connaît pas la fenêtre du modèle — elle la
+découvre.** Elle survivra à un changement de modèle.
+
+Prouvé sur le vrai TEI à `chunk_size=1024` (la config qui perdait 98 documents) :
+**0 perdu**, 111 chunks raccourcis, et le bilan **le déclare** (`chunk.truncated: 111`).
+Le cas nominal ne paie rien.
+
+---
+
+## ⚠️ Les pièges actifs
+
+### `force_drop` est GLOBAL
+
+Il efface **tout le corpus** en tête de chaque run — pas seulement la source du run. Donc
+`--params source=cass` **efface les six sources**. La restriction par paramètre promet un
+« rejeu ciblé » qui **n'est pas ciblé**.
+
+**En v0 ce n'est PAS une urgence** (les données sont jetables, le corpus se régénère en
+2 min). C'est une gêne, pas une perte. La décision de doctrine reste à prendre : scoper le
+drop par source, ou assumer que `force_drop` = « je repars de zéro ».
+
+⚠️ *Corollaire de méthode :* ne **jamais** lancer un `kedro run` sous un `timeout` court —
+non pour sauver les données, mais parce qu'un run coupé donne une **mesure fausse**.
+
+### Le tokenizer et le chunker ne parlent pas la même langue
+
+`chunk_size` est en **caractères**, la fenêtre du modèle en **tokens**. Le ratio n'est pas
+constant : mesuré, **3,08 car/token en moyenne mais 0,33 au pire** (chunks de sigles et de
+ponctuation). **Aucune valeur en caractères n'est sûre par construction.** Le fallback
+rattrape ; la cause demeure.
 
 ---
 
 ## Ce qui reste
 
-### 1. Committer — **aujourd'hui** (cf. l'alarme en tête)
+### 1. 🔴 Le serving est cassé d'avance — et c'est PIRE qu'avant
 
-### 2. Clore formellement le critère de fin : les 5 sources juri contre les vraies bases
+Le backend lit `QDRANT_COLLECTION=chunks` — **qui n'existe pas**. Et l'A/B a laissé **quatre
+collections** (`3119c73a…` 61 975, `9424808d…` 18 090, `a71d883b…` 6 824, `b3058161…`
+13 420) : il n'y a plus *une* candidate mais quatre, et **rien ne dit laquelle fait foi**.
 
-Le run d'aujourd'hui était **LEGI**. Le critère (`migration-ragcore-artefact`) dit « les
-**cinq** sources juri ». Les connectors juri existent et ont été mesurés (352 docs, 0 inconnu),
-mais **jamais contre de vraies bases**.
+**Correctif décidé :** le pipeline écrit un **document de méta « collection courante »** que
+le backend lit au boot. **Seul un run `ok` met à jour le pointeur** — un run `degraded` a
+laissé un corpus incomplet, et le publier propagerait la fuite jusqu'à l'utilisateur. C'est
+là que l'équation de complétude cesse d'être un outil de diagnostic pour devenir **la
+condition de publication**.
 
-C'est un `kedro run --params source=cass` (puis `capp`, `inca`, `jade`, `constit`).
-**Une exécution, pas un chantier.**
+### 2. Prouver que la télémétrie ne perd rien
 
-### 3. Le lot B — la dette de doctrine
+**Il n'y a AUCUNE fuite aujourd'hui** — vérifié event par event. `document.fetched` et
+`document.parsed` ont `track_mongo=False` **délibérément** (agrégés, pas archivés ligne à
+ligne : 1121 lignes pour dire « j'ai parsé » serait du volume sans information).
 
-*Audité contre le code le 13 juillet, par ordre de gravité :*
+Mais le système **compte ce qu'il émet ; il ne vérifie pas que ce qu'il a émis est arrivé**.
+`MongoAuditTelemetryAdapter.emit()` **avale ses erreurs d'écriture** dans un
+`_LOGGER.warning`. Si Mongo refusait une ligne, rien ne le saurait.
 
-| | État | Enjeu |
-|---|---|---|
-| **§1 registre d'alias** | `AliasRegistry` / `CanonicalKey` **absents** | Ce n'est plus une dette orthogonale : c'est le **chemin critique de la résolution juri** — et il ne suffit pas (il faut *aussi* un extracteur de références juridiques) |
-| **§9 MLflow / `ExperimentTracker`** | **absents** | « MLflow dès v0 » ; sans lui le hash de collection reste **opaque** |
-| **§12 backends typés** | les clés-strings `"log"`/`"jsonl"`/`"mongo"`/`"aggregate"` sont **toujours là** (`adapters/telemetry/factory.py:86-89`) | la doctrine les **condamne nommément** |
-| **§8 manifest dans la saga** | **hors** de la saga | + compensation Neo4j exacte absente (pas de tag `run_id`, pas de DETACH conditionnel) |
-| **§5 `structural_path` → `source_path`** | jamais renommé | cosmétique |
-| `tests/contract/` | **absent** | la substituabilité des ports n'est prouvée par aucun test exécutable |
-| `nodes/discover.py` | **absent** | le node de diagnostic du delta (§1, emplacement « C ») |
-| deadcode `src/data/pipelines/embedding/` | **toujours là** | à supprimer |
+**Proposition :** appliquer l'équation de complétude **à la télémétrie elle-même** — pour les
+events `track_mongo=True`, `émis == persisté`, et un écart dégrade le run. Même idée qu'au
+niveau des documents, un étage plus bas.
 
-### 4. Ce que le run d'aujourd'hui a fait *apparaître*
+### 3. `on_pipeline_error` rend un bilan pauvre
 
-**🔴 Le serving est cassé d'avance.** Le backend lit `QDRANT_COLLECTION=chunks` ; le pipeline
-écrit dans la collection **dérivée du fingerprint** (`3119c73a…`). Le premier
-`npm run serve:up` interrogera une collection **vide**, et renverra zéro résultat **sans
-erreur**. C'est le prochain vrai bug fonctionnel.
-*Correctif architectural* (pas une valeur à changer à la main) : soit le backend **dérive** le
-même hash, soit le pipeline **écrit la collection courante** dans un document de méta Mongo que
-le backend lit au boot. La seconde est bien moins chère.
-Un commentaire hurlant est posé dans `.env.example`.
+Les stats des workers ne remontent que par le node `report`, **terminal**. Un pipeline qui
+casse avant lui ne persiste que les compteurs du process principal — au moment précis où on a
+le plus besoin du détail. Corriger demanderait un point de remontée **par phase**.
 
-**19 011 relations pendantes pour 1 167 arêtes.** §13 fonctionne (rien n'est perdu, tout est
-différé) — mais ça **chiffre** l'ampleur du travail de résolution. Et c'est, gratuitement,
-**la liste priorisée du prochain corpus à ingérer**.
+### 4. Le chunker devrait compter en TOKENS
 
-**`chunk_size: 128` est en CARACTÈRES** → ~20 mots par chunk. Trop court pour porter du sens.
-Le fingerprint existe précisément pour rendre cet **A/B** possible. À **mesurer**, pas à
-décider à vide.
+Le fallback rattrape les débordements, mais rien ne garantit l'alignement. **Piste :
+embarquer le tokenizer localement** (`tokenizers`, quelques Mo, pas de réseau). Le chunker
+resterait **pur et synchrone** mais compterait dans la bonne unité — dépendant du **modèle**,
+pas du **service**. Et le modèle est *déjà* dans le fingerprint : chunking et embedding
+partagent déjà une identité, il est cohérent qu'ils partagent le tokenizer.
+
+### 5. Le lot B — la dette de doctrine
+
+| | État |
+|---|---|
+| **§1 registre d'alias** (`AliasRegistry`, `CanonicalKey`) | zéro occurrence |
+| **§9 MLflow / `ExperimentTracker`** | zéro occurrence (« MLflow dès v0 ») |
+| **§12 backends typés** | clés-strings toujours là (`adapters/telemetry/factory.py`) |
+| **§8 manifest dans la saga** | il est **après** elle |
+| **§8 compensation Neo4j exacte** | pas de tag `run_id`, pas de DETACH conditionnel |
+| **§5 `structural_path` → `source_path`** | jamais renommé |
+| `tests/contract/` · `nodes/discover.py` | absents |
+| deadcode `src/data/pipelines/embedding/` | toujours là |
+| **§12 breakdown par SOURCE** | absent — sur un run à six sources, le bilan ne dit pas *laquelle* a échoué |
+
+**Le §1 est le chemin critique de la résolution juri** — et **il ne suffit pas**. Les `<LIEN>`
+juri **décrivent** leur cible en français au lieu de l'identifier ⇒ il faut *aussi* un
+**extracteur de références juridiques**. Deux briques, pas une. Aucune ré-ingestion
+nécessaire : la phrase est déjà dans le graphe.
+
+### 6. Deux questions ouvertes, pas des tâches
+
+- **La pertinence n'est PAS mesurée.** `chunk_size: 384` est un compromis de *performance*.
+  Personne n'a vérifié qu'il **retrouve le bon article de loi**. Le fingerprint existe pour
+  cet A/B, et les quatre collections sont déjà là, côte à côte. Il manque un jeu de questions
+  de référence. *Décision prise : on garde 384 pour l'instant (dev rapide) ; un système de
+  benchmark itératif exhaustif viendra.*
+- **Le matériel est-il le bon ?** Le GPU est le plafond absolu. Une carte correcte diviserait
+  encore le temps par dix et rendrait le débat sur `chunk_size` beaucoup moins contraint.
 
 ---
 
 ## Recommandation d'ordre
 
-1. **Committer** (aujourd'hui, sans discussion).
-2. **Les 5 sources juri** contre les vraies bases — clôt formellement le critère de fin.
-3. Puis **choisir** :
-   - **le serving** → rendre le produit *utilisable* (la collection Qdrant est le seul verrou) ;
-   - **le lot B** → payer la dette de doctrine.
+1. **Le pointeur de collection** — c'est ce qui **bloque le produit**, et c'est net.
+2. **La preuve de non-fuite télémétrique** — pas une urgence (rien ne fuit), mais c'est
+   l'instrument qui garantit tous les autres.
+3. **Le chunker en tokens** — supprime la cause plutôt que de la rattraper.
+4. Puis le **lot B**.
 
-Ces deux-là ne sont pas dans le même registre : le premier livre de la valeur, le second
-protège l'avenir. Le §1 (registre d'alias) est le point où ils se rejoignent — il est à la
-fois dette de doctrine **et** chemin critique de la résolution juri.
+---
+
+## La leçon de la journée — et elle est sur MOI
+
+**Trois fois** j'ai conclu sur une mesure mal lue, et chaque fois j'ai perdu plus de temps que
+le bug ne m'en aurait coûté :
+
+- « les shards sont vides » — ils ne l'étaient pas (le logger Kedro **enveloppe** ses lignes,
+  mon `grep` coupait les compteurs) ;
+- « le run a tourné pendant que j'éditais » — faux ;
+- « `chunk.truncated` fuit » — **il n'y a aucune fuite** : ma requête cherchait 111 lignes sur
+  un run qui n'avait eu **aucune** troncature.
+
+> **Ne jamais conclure sur l'absence d'un motif dans un `grep`.** Lire la mesure en entier.
+
+Et celle du code, qui a servi quatre fois :
+
+> **Un correctif validé sur un test unitaire ne prouve rien du chemin réel.** Le test vérifie
+> la *fonction* ; seul un run vérifie le *câblage*.

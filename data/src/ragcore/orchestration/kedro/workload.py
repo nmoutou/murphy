@@ -66,6 +66,20 @@ def build_document_workload(
     fois PAR worker avec la télémétrie de ce worker.
     """
 
+    # Le use case d'un worker, mémorisé. La fabrique crée TROIS clients (Mongo, Neo4j,
+    # Qdrant) : l'appeler par document en créait 1121 jeux au lieu de 4 — ce que sa propre
+    # docstring interdisait déjà (« un use case PAR worker »). La clé est la télémétrie,
+    # qui est justement l'objet-identité du worker : le runner en construit une par shard.
+    use_cases: dict[int, IngestDocumentUseCase] = {}
+
+    def _use_case_for(telemetry: WorkerTelemetry) -> IngestDocumentUseCase:
+        key = id(telemetry)
+        use_case = use_cases.get(key)
+        if use_case is None:
+            use_case = use_case_factory(telemetry)
+            use_cases[key] = use_case
+        return use_case
+
     def workload(
         parsed: ParsedDocument,
         operation: Operation,
@@ -85,10 +99,10 @@ def build_document_workload(
         extraction = extractor.extract(parsed)
         _declare_unknowns(telemetry, extraction.unknowns)
 
-        # Le use case est fabriqué sur la télémétrie du worker. La saga n'écrit qu'un
-        # NŒUD (mongo → qdrant → neo4j:node) ; signature à 4 arguments depuis le lot 4 :
-        # les relations ne passent plus par le use case.
-        use_case = use_case_factory(telemetry)
+        # Le use case du worker — construit UNE fois, réutilisé sur tous ses documents.
+        # La saga n'écrit qu'un NŒUD (mongo → qdrant → neo4j:node) ; signature à 4
+        # arguments depuis le lot 4 : les relations ne passent plus par le use case.
+        use_case = _use_case_for(telemetry)
         runtime.run(use_case.execute(parsed, embedded, operation, context))
 
         # Les relations ne sont PAS écrites ici : elles remontent vers la phase 2.

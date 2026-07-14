@@ -110,7 +110,15 @@ def create_ingestion_pipeline() -> Pipeline:
             ),
             node(
                 func=report_node,
-                inputs=["ingestion_outcome", "resolution_outcome", "to_skip"],
+                inputs=[
+                    "ingestion_outcome",
+                    "resolution_outcome",
+                    "to_skip",
+                    # Le node POUSSE les stats des workers vers le hook. Kedro libère les
+                    # MemoryDataset dès leur dernier lecteur : après ce node, plus
+                    # personne ne peut relire `ingestion_outcome`.
+                    "run_stats_sink",
+                ],
                 outputs="run_report",
                 name="report",
             ),

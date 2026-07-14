@@ -1,10 +1,23 @@
 """Nœud report — le bilan du run, assemblé à partir des deux phases.
 
 C'est le nœud terminal du DAG. Il ne fait aucune I/O : il compose une donnée à partir
-des deux outcomes (phase 1 + phase 2) et des documents écartés au parsing. Le hook, en
-``after_pipeline_run``, finalise l'agrégat des workers en ``RunSummary`` et le persiste ;
-ce report est la vue lisible côté pipeline, et le point où l'on rend explicite ce qui,
-sinon, resterait éparpillé entre trois outcomes.
+des deux outcomes (phase 1 + phase 2) et des documents écartés au parsing.
+
+**Ce nœud est aussi le seul point de remontée des stats des workers.** Il reçoit
+``ingestion_outcome.stats`` — la fusion des ``RunStats`` de tous les workers — et la
+POUSSE dans le ``RunStatsSink`` (le hook). Sans cela, le hook ne finalisait que *son*
+agrégateur, celui du process principal, qui ne voit **jamais une compensation** : le
+compteur restait nul et ``_status_from`` rendait **toujours** ``ok``.
+
+Pourquoi ici et pas dans le hook : ``ingestion_outcome`` est un ``MemoryDataset``, et
+Kedro le **libère** dès son dernier lecteur — ce nœud. Un ``catalog.load()`` en
+``after_pipeline_run`` tombe donc sur un dataset vide. Le DAG doit pousser ; le hook ne
+peut pas tirer.
+
+⚠️ **Limite assumée :** ce nœud est terminal. Si le pipeline casse AVANT lui, les stats
+des workers ne remontent pas et ``on_pipeline_error`` ne persiste que les compteurs du
+process principal. Le run est alors ``failed`` — ce qui reste vrai — mais son bilan est
+pauvre. Le corriger demanderait un point de remontée par phase, pas un seul en fin de DAG.
 
 **Un échec partiel NE fait PAS échouer le run.** Un document dont la saga a échoué (et
 a compensé) est compté et NOMMÉ dans ``failures`` — il n'arrête pas le corpus, et il
@@ -15,19 +28,40 @@ vocabulaire, elle aussi, se lit ici (``unknowns`` vide = la source a tout couver
 
 from __future__ import annotations
 
+from typing import Protocol
+
 from ragcore.application.ingestion_runner import IngestionOutcome
 from ragcore.application.resolve_relations import ResolutionOutcome
+from ragcore.core.models.run_stats import RunStats
 
-__all__ = ["report_node"]
+__all__ = ["RunStatsSink", "report_node"]
+
+
+class RunStatsSink(Protocol):
+    """Ce qui reçoit l'agrégat des phases. Implémenté par le hook, sans que le node
+    connaisse Kedro : le DAG pousse une donnée, il n'appelle pas un orchestrateur."""
+
+    def absorb(self, stats: RunStats) -> None: ...
 
 
 def report_node(
     ingestion_outcome: IngestionOutcome,
     resolution_outcome: ResolutionOutcome,
     to_skip: list[str],
+    run_stats_sink: RunStatsSink,
 ) -> dict:
     """Compose le bilan du run — documents, relations, échecs, inconnus."""
     stats = ingestion_outcome.stats
+
+    # L'agrégat des WORKERS remonte ICI, et seulement ici. `ingestion_outcome` est un
+    # `MemoryDataset` que Kedro LIBÈRE dès son dernier lecteur — ce node. Après lui, plus
+    # personne ne peut le relire : c'est donc lui, et lui seul, qui peut le transmettre.
+    #
+    # ⚠️ La phase 2 n'est PAS poussée : `ResolveRelationsService` tourne sur la boucle du
+    # hook et émet donc déjà sur SA télémétrie — ses compteurs sont dans l'agrégat. Les
+    # pousser ici les compterait DEUX fois (mesuré : `relation.pending` à 38 064 pour
+    # 19 032 réelles). Seuls les workers ont un agrégat orphelin ; eux seuls remontent.
+    run_stats_sink.absorb(ingestion_outcome.stats)
 
     return {
         "documents_written": len(ingestion_outcome.written_node_ids),

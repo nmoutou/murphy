@@ -20,6 +20,12 @@ GOLDEN: dict[str, tuple[str, bool, bool, bool, bool]] = {
     "document.invalidated":            ("warning", True,  True,  True,  True),
     "document.skipped":                ("warning", False, True,  False, False),
     "document.persisted":              ("info",    True,  True,  True,  True),
+    # La FUITE : vu, jamais ingéré. `aggregate=True` (5e) est l'enjeu — sans lui l'échec
+    # est tracé mais pas compté, et le run se déclare « ok » en perdant des documents.
+    "document.failed":                 ("error",   True,  True,  True,  True),
+    # Pas une fuite (le document est ingéré) mais pas rien : la fin du chunk n'est pas
+    # indexée. Non nul = `chunk_size` incompatible avec la fenêtre du modèle.
+    "chunk.truncated":                 ("warning", True,  True,  True,  True),
     "document.replaced":               ("info",    True,  True,  True,  True),
     "document.deleted":                ("info",    True,  True,  True,  True),
     "relation.upserted":               ("warning", False, True,  False, True),

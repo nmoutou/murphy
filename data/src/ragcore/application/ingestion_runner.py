@@ -23,8 +23,10 @@ from dataclasses import dataclass, field
 from hashlib import blake2b
 
 from ragcore.core.models import Operation, ParsedDocument, Relation, RunStats
+from ragcore.core.models.audit import build_event
 from ragcore.core.ports.runtime import AsyncRuntime, AsyncRuntimeFactory
 from ragcore.core.ports.telemetry import TelemetryFactory, WorkerTelemetry
+from ragcore.core.telemetry_events import DOCUMENT_FAILED
 
 from .run_context import PipelineContext
 
@@ -122,7 +124,6 @@ class IngestionRunner:
         context: PipelineContext,
     ) -> tuple[list[Relation], set[str], list[tuple[str, str]], RunStats]:
         """Le travail d'UN worker : sa boucle, ses backends, son agrégat."""
-        del context  # le workload le porte déjà ; le shard n'en a pas d'usage propre
         runtime = self._runtime_factory.build(worker_id)
         telemetry = self._telemetry_factory.build(worker_id, runtime)
 
@@ -136,14 +137,26 @@ class IngestionRunner:
                 try:
                     result = self._workload(parsed, operation, runtime, telemetry)
                 except Exception as exc:  # noqa: BLE001
-                    # La saga a déjà compensé ; le document est perdu, pas le run.
-                    # L'identifiant part avec l'erreur : un échec anonyme est un échec
-                    # qu'on ne pourra pas rejouer.
-                    telemetry.log(
-                        "error",
-                        "ingestion.document.failed",
-                        identifier=identifier,
-                        error=str(exc),
+                    # Le document est perdu, pas le run. Mais il doit être COMPTÉ : cet
+                    # échec partait auparavant en `telemetry.log()`, donc en console
+                    # seulement — jamais dans l'agrégat. Résultat : le RunSummary
+                    # annonçait « ok » sur un run qui avait perdu 98 documents.
+                    #
+                    # La `reason` est le TYPE de l'exception, pas son message : le message
+                    # porte des identifiants et des chiffres, il ferait exploser le
+                    # breakdown en autant de clés que d'échecs. Le type, lui, regroupe —
+                    # et c'est ce qu'on veut lire : « 98 fuites, toutes sur le même mur ».
+                    telemetry.emit(
+                        build_event(
+                            event_type=DOCUMENT_FAILED,
+                            run_id=context.run_id,
+                            owner_id=context.owner_id,
+                            source=parsed.source,
+                            document_id=identifier,
+                            payload={"reason": type(exc).__name__, "error": str(exc)},
+                            success=False,
+                            error_message=str(exc),
+                        )
                     )
                     failures.append((identifier, str(exc)))
                     continue
