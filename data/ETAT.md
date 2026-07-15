@@ -225,13 +225,18 @@ constant : mesuré, **3,08 car/token en moyenne mais 0,33 au pire** (chunks de s
 ponctuation). **Aucune valeur en caractères n'est sûre par construction.** Le fallback
 rattrape ; la cause demeure.
 
-### 🔴 4 tests d'intégration Qdrant sont CASSÉS — et ils l'étaient déjà
+### ✅ Les 4 tests d'intégration Qdrant sont RÉPARÉS
 
-`test_qdrant_vector_repository.py` : 4 échecs sur `Collection 'chunks_test' doesn't exist`.
-**Vérifié en stashant** : ils tombent à l'identique sur `bf6d717` — ce n'est **pas** une
-régression de la non-fuite télémétrique. Mais c'est un vrai bug (création de collection), et
-il n'était **mentionné nulle part**. Un test rouge qu'on s'habitue à voir rouge cesse d'être
-un test.
+Ils échouaient sur `Collection 'chunks_test' doesn't exist` : la fixture n'appelait pas
+`ensure_collection()`, alors que la création de collection avait été **délibérément sortie**
+d'`upsert` (un check-then-act depuis N workers produit une course 409 que la saga prend pour
+un échec métier). Les tests exerçaient donc un contrat **volontairement abandonné**.
+
+Corrigé dans `1d68f21` (même commit que la non-fuite) : la fixture appelle désormais
+`ensure_collection()`, comme le vrai pipeline. **Vérifié le 15 juillet contre un vrai Qdrant
+(testcontainers `v1.12.4`) : 6/6 verts.** Lancer avec `pytest -m integration` (le `addopts`
+porte `-m 'not integration'`, exclu par défaut). NB : `qdrant-client 1.18.0` râle contre le
+serveur `1.12.4` du conteneur — cosmétique, côté test uniquement.
 
 ### La stack d'ingestion se lance par `npm run ingest:up`, JAMAIS à la main
 
@@ -290,13 +295,14 @@ cassé **dit** si sa trace est trouée), mais les compteurs *des workers* resten
 bilan d'un run qui casse tôt. La télémétrie est honnête sur ce qu'elle a ; elle n'a toujours
 pas tout.
 
-### 3. Le chunker devrait compter en TOKENS
+### 3. Le chunker devrait compter en TOKENS → **DÉPLACÉ dans le Lot C**
 
-Le fallback rattrape les débordements, mais rien ne garantit l'alignement. **Piste :
-embarquer le tokenizer localement** (`tokenizers`, quelques Mo, pas de réseau). Le chunker
-resterait **pur et synchrone** mais compterait dans la bonne unité — dépendant du **modèle**,
-pas du **service**. Et le modèle est *déjà* dans le fingerprint : chunking et embedding
-partagent déjà une identité, il est cohérent qu'ils partagent le tokenizer.
+Le fallback rattrape les débordements, mais rien ne garantit l'alignement. Ce point **n'est
+plus autonome** : son tokenizer d'autorité est *celui qui embed*, donc il dépend de quel
+service d'embedding on utilise. Il devient un **livrable du Lot C** (embedding maison), acté
+le 15 juillet — voir l'artéfact de cadrage. Décisions déjà prises : tokeniser **avec offsets**
+(jamais re-décoder, pour préserver l'invariant char_start/char_end), port `TokenCounter`
+injecté (chunker pur/sync). Le service maison exposera `/tokenize` rendant les offsets.
 
 ### 4. Le lot B — la dette de doctrine
 
@@ -335,16 +341,23 @@ nécessaire : la phrase est déjà dans le graphe.
 que le plan ne voyait pas). C'était l'instrument qui garantit tous les autres : **le statut
 d'un run vaut désormais ce que valent ses compteurs, et ses compteurs se surveillent.**
 
+~~2. Réparer les 4 tests Qdrant~~ — ✅ **fait** (corrigé dans `1d68f21`, 6/6 verts contre un
+vrai Qdrant le 15 juillet).
+
+~~3. Le chunker en tokens~~ — **déplacé dans le Lot C** (son tokenizer d'autorité dépend du
+service d'embedding).
+
 Reste, dans l'ordre :
 
-1. **Le pointeur de collection** — le **seul point qui bloque le produit**, et il est net.
-   Sa condition de publication (`status == ok`) repose sur la brique qu'on vient de poser.
-2. **Réparer les 4 tests Qdrant** — un test rouge toléré cesse d'être un test, et ceux-là
-   couvrent précisément la base que le pointeur va désigner. À faire *avant* le point 1,
-   ou avec lui.
-3. **Le chunker en tokens** — supprime la cause plutôt que de la rattraper.
-4. Puis le **lot B** (dont le **§1 registre d'alias**, seul élément de la liste qui débloque
-   une *capacité* — la résolution juri — au lieu de consolider l'existant).
+1. **Le pointeur de collection** — le **seul point qui bloque le produit**. Côté ingestion il
+   est **déjà câblé** (`1d68f21` : le hook publie l'empreinte si `status == ok`, via
+   `PublishedCollection` + `MongoPublishedCollectionRepository`). Reste **le backend** qui doit
+   le lire au boot au lieu de `QDRANT_COLLECTION=chunks` — *hors de ce repo* (submodule
+   `backend/`).
+2. Le **lot B** (dont le **§1 registre d'alias**, seul élément de la liste qui débloque une
+   *capacité* — la résolution juri — au lieu de consolider l'existant).
+3. Le **Lot C** — embedding maison (+ chunker en tokens). Nouveau chantier, cadré le
+   15 juillet ; ne bloque pas le produit.
 
 ---
 
