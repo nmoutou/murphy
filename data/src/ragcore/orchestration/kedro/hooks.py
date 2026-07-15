@@ -29,6 +29,9 @@ from ragcore.adapters.storage.mongo.manifest_repository import MongoManifestRepo
 from ragcore.adapters.storage.mongo.pending_repository import (
     MongoPendingRelationRepository,
 )
+from ragcore.adapters.storage.mongo.published_collection_repository import (
+    MongoPublishedCollectionRepository,
+)
 from ragcore.adapters.storage.mongo.run_summary_repository import (
     MongoRunSummaryRepository,
 )
@@ -62,11 +65,14 @@ from ragcore.core.config import (
 from ragcore.core.models.audit import build_event
 from ragcore.core.models.enums import SourceName
 from ragcore.core.models.identifiers import OwnerId
+from ragcore.core.models.published_collection import PublishedCollection
 from ragcore.core.models.run_stats import RunStats
+from ragcore.core.models.run_summary import RunStatus, RunSummary
 from ragcore.core.ports.telemetry import WorkerTelemetry
 from ragcore.core.services.telemetry_registry import TelemetryRegistry
 from ragcore.core.telemetry_events import (
     CHUNK_TRUNCATED,
+    DOCUMENT_PERSISTED,
     EVENT_CATALOG,
     PIPELINE_RUN_COMPLETED,
     PIPELINE_RUN_FAILED,
@@ -111,6 +117,13 @@ class TelemetryHooks:
         self._context: PipelineContext | None = None
         self._stats_dir: Path | None = None
         self._summary_repo: MongoRunSummaryRepository | None = None
+        self._published_repo: MongoPublishedCollectionRepository | None = None
+        self._qdrant_collection: str | None = None
+        """L'empreinte que ce run écrit. Retenue ici pour être PUBLIÉE si le run est `ok`.
+
+        Elle est déjà dérivée en tête de run (``collection_name(workflow)``) ; la garder
+        évite une seconde dérivation, et deux dérivations sont deux occasions de diverger.
+        """
         self._embedder: object | None = None
         self._runtime_instance: AsyncioRuntime | None = None
 
@@ -213,7 +226,7 @@ class TelemetryHooks:
         self._runtime.run(ensure_meta_indexes(mongo_client[meta_db]))
 
         # Repositories du HOOK — posés sur SA boucle (self._runtime). Ils servent les
-        # nœuds de maintenance (forceDrop, connect, computeIdempotence) et la phase 2,
+        # nœuds de maintenance (nukeAll, connect, computeIdempotence) et la phase 2,
         # qui ne sont pas parallélisés. Les WORKERS de la phase 1 fabriquent LES LEURS
         # (cf. use_case_factory plus bas) : un dépôt Mongo est lié à la boucle qui l'a
         # touché en premier, donc partager ceux-ci avec les workers ferait revenir la
@@ -222,6 +235,7 @@ class TelemetryHooks:
         manifest_repo = MongoManifestRepository(mongo_client, data_db)
         audit_repo = MongoAuditRepository(mongo_client, meta_db)
         summary_repo = MongoRunSummaryRepository(mongo_client, meta_db)
+        published_repo = MongoPublishedCollectionRepository(mongo_client, meta_db)
         pending_repo = MongoPendingRelationRepository(mongo_client, meta_db)
         graph_repo = Neo4jGraphRepository(neo4j_driver)
         vector_repo = QdrantVectorRepository(
@@ -278,6 +292,8 @@ class TelemetryHooks:
         self._stats_dir = meta_root / "stats"
         self._stats_dir.mkdir(parents=True, exist_ok=True)
         self._summary_repo = summary_repo
+        self._published_repo = published_repo
+        self._qdrant_collection = qdrant_collection
         self._aggregator = RunStatsAggregator(
             run_id=self._context.run_id,
             owner_id=self._context.owner_id,
@@ -519,12 +535,38 @@ class TelemetryHooks:
             truncations,
         )
 
+    def _drain_and_declare(self) -> None:
+        """Attend les écritures d'audit en vol, et DÉCLARE celles qui ont échoué.
+
+        À appeler avant ``_persist_run_summary`` : le compte doit entrer dans l'agrégat
+        pour que ``_status_from`` le voie. Après, le bilan est déjà écrit.
+
+        Le drain n'est pas la fermeture — ``_persist_run_summary`` a encore besoin de la
+        boucle (il y écrit le sommaire, de façon *synchrone* : il n'y laisse donc rien en
+        vol). C'est bien pour ça que le port sépare ``drain()`` de ``close()``.
+        """
+        report = self._runtime.drain()
+        if not report.failed:
+            return
+        if self._aggregator is not None:
+            self._aggregator.record_audit_failure("drain", report.failed)
+        logger.error(
+            "%d écriture(s) d'audit PERDUE(S) : le bilan de ce run repose sur des "
+            "compteurs incomplets — il est déclaré `degraded`.",
+            report.failed,
+        )
+
     def _persist_run_summary(
         self, status: str, error_message: str | None = None
-    ) -> None:
-        """Finalise l'agrégateur et persiste le RunSummary (fichier JSON + Mongo)."""
+    ) -> RunSummary | None:
+        """Finalise l'agrégateur et persiste le RunSummary (fichier JSON + Mongo).
+
+        Rend le bilan : le statut annoncé n'est **pas** celui qui sort (``finalize``
+        le re-dérive des compteurs). L'appelant qui veut savoir si le run est vraiment
+        `ok` — pour publier, par exemple — doit lire le bilan, pas ce qu'il a demandé.
+        """
         if self._aggregator is None or self._stats_dir is None or self._summary_repo is None:
-            return
+            return None
         summary = self._aggregator.finalize(status=status, error_message=error_message)  # type: ignore[arg-type]
         path = self._stats_dir / _stats_filename(summary.run_id, summary.started_at)
         path.write_text(
@@ -532,6 +574,42 @@ class TelemetryHooks:
             encoding="utf-8",
         )
         self._runtime.run(self._summary_repo.upsert(summary))
+        return summary
+
+    def _publish_collection(self, summary: RunSummary | None) -> None:
+        """Publie l'empreinte de ce run — **si et seulement si** le run est `ok`.
+
+        C'est ici que l'équation de complétude cesse d'être un outil de diagnostic pour
+        devenir **la condition de publication**. Un run `degraded` a laissé un corpus
+        incomplet : publier son empreinte propagerait la fuite jusqu'à l'utilisateur, qui
+        n'aurait aucun moyen de le savoir. Le corpus précédent, lui, était complet — le
+        pointeur ne bouge pas, et le serving continue de servir le dernier bon.
+
+        Le statut est LU dans le bilan, jamais re-dérivé : deux dérivations sont deux
+        occasions de diverger, et celle-ci déciderait de ce que voit l'utilisateur.
+        """
+        if summary is None or self._published_repo is None or self._qdrant_collection is None:
+            return
+
+        if summary.status is not RunStatus.OK:
+            logger.warning(
+                "Run `%s` : le pointeur de collection n'est PAS mis à jour. Le corpus de "
+                "ce run est incomplet, le serving continue de servir le précédent.",
+                summary.status.value,
+            )
+            return
+
+        published = PublishedCollection.of(
+            self._qdrant_collection,
+            run_id=summary.run_id,
+            document_count=summary.stats.counts.get(DOCUMENT_PERSISTED, 0),
+        )
+        self._runtime.run(self._published_repo.publish(published))
+        logger.info(
+            "Collection publiée : `%s` (%d documents) — c'est elle que le serving lira.",
+            published.collection_name,
+            published.document_count,
+        )
 
     @hook_impl
     def after_pipeline_run(self, run_params: dict) -> None:
@@ -551,13 +629,23 @@ class TelemetryHooks:
         # la télémétrie pour un détail qui ne concerne qu'une de ses implémentations.
         self._declare_truncations()
 
+        # Le drain AVANT le bilan, et l'ordre est tout l'enjeu : c'est lui qui révèle
+        # les écritures d'audit perdues, et un bilan persisté avant de le savoir ne peut
+        # pas en tenir compte. Il déclarerait `ok` un run dont il ne peut plus prouver la
+        # complétude — exactement le mensonge qu'on cherche à rendre impossible.
+        self._drain_and_declare()
+
         # Les stats des workers ont déjà été POUSSÉES ici par le node `report` (cf.
         # `absorb`). `_persist_run_summary` dérive le statut de ces compteurs : sans eux,
         # pas un seul document perdu ne serait visible, et le run serait `ok` quoi qu'il
         # arrive.
-        self._persist_run_summary(status="ok")
-        # Draine les écritures d'audit en vol, puis ferme. C'est ici que se joue
-        # l'at-least-once : fermer sans drainer, c'est perdre la trace du run.
+        summary = self._persist_run_summary(status="ok")
+
+        # Et SEULEMENT si ce bilan dit `ok`, on publie l'empreinte : c'est ce que le
+        # serving lira. Un run dégradé ne publie pas — le dernier corpus complet reste
+        # en place. La publication est la CONSÉQUENCE du bilan, jamais son présupposé.
+        self._publish_collection(summary)
+
         self._runtime.close()
 
     @hook_impl
@@ -577,13 +665,17 @@ class TelemetryHooks:
                     error_message=str(error),
                 )
             )
+        # Drainer AVANT le bilan, ici aussi : le statut restera `failed` de toute façon
+        # (il ne se dérive pas des compteurs), mais le compteur `audit.write.failed`
+        # doit figurer dans le bilan — sur un run qui a cassé, savoir si la trace elle
+        # aussi est trouée décide de ce qu'on peut conclure du reste.
+        self._drain_and_declare()
+
         # ⚠️ Le bilan sera PAUVRE : les stats des workers ne remontent que par le node
         # `report`, qui est terminal. Un pipeline qui casse avant lui ne persiste que les
         # compteurs du process principal. Le statut `failed` reste vrai — c'est son
         # détail qui manque.
         self._persist_run_summary(status="failed", error_message=str(error))
-        # Draine les écritures d'audit en vol, puis ferme. C'est ici que se joue
-        # l'at-least-once : fermer sans drainer, c'est perdre la trace du run.
         self._runtime.close()
 
 

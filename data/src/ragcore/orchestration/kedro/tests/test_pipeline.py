@@ -3,7 +3,7 @@
 Un pipeline Kedro n'est correct que si ses dépendances de données EXPRIMENT l'ordre
 voulu. Deux arêtes ne sont pas décoratives, et ce fichier les exécute :
 
-- ``force_drop_done`` → ``connect`` : on n'ouvre pas la source pendant qu'on efface.
+- ``nuke_done`` → ``connect`` : on n'ouvre pas la source pendant qu'on efface.
 - ``ingestion_outcome`` → ``resolveRelations`` : LA barrière phase-1/phase-2. Sans
   elle, la phase 2 écrirait des arêtes vers des nœuds pas encore créés.
 
@@ -47,7 +47,7 @@ def test_les_sept_noeuds_sont_la() -> None:
 
     assert names == {
         "cleanup",
-        "forceDrop",
+        "nukeAll",
         "connect",
         "computeIdempotence",
         "ingest",
@@ -68,15 +68,15 @@ def test_la_barriere_phase1_phase2_est_une_arete() -> None:
     assert "ingestion_outcome" in set(ingest.outputs)
 
 
-def test_forceDrop_precede_connect() -> None:
-    """``connect`` prend ``force_drop_done`` en input signal-only : on n'ouvre pas la
+def test_nukeAll_precede_connect() -> None:
+    """``connect`` prend ``nuke_done`` en input signal-only : on n'ouvre pas la
     source pendant qu'on efface les stores.
     """
     pipeline = _pipeline()
 
-    assert "force_drop_done" in _inputs(pipeline, "connect")
-    (force_drop,) = (n for n in pipeline.nodes if n.name == "forceDrop")
-    assert "force_drop_done" in set(force_drop.outputs)
+    assert "nuke_done" in _inputs(pipeline, "connect")
+    (nuke_all,) = (n for n in pipeline.nodes if n.name == "nukeAll")
+    assert "nuke_done" in set(nuke_all.outputs)
 
 
 def test_le_report_est_terminal() -> None:
@@ -104,4 +104,4 @@ def test_le_pipeline_est_un_DAG_coherent() -> None:
     ordered = [n.name for n in pipeline.nodes]
     assert ordered.index("ingest") < ordered.index("resolveRelations")
     assert ordered.index("resolveRelations") < ordered.index("report")
-    assert ordered.index("forceDrop") < ordered.index("connect")
+    assert ordered.index("nukeAll") < ordered.index("connect")

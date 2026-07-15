@@ -31,10 +31,14 @@ GOLDEN: dict[str, tuple[str, bool, bool, bool, bool]] = {
     "relation.upserted":               ("warning", False, True,  False, True),
     "relation.pending":                ("warning", False, True,  True,  True),
     "relation.promoted":               ("info",    False, True,  False, True),
+    # La télémétrie qui n'a pas su s'écrire. `track_mongo=False` (4e) est DÉLIBÉRÉ :
+    # écrire en Mongo qu'on n'a pas su écrire en Mongo échouerait à son tour. Le compteur
+    # vit dans l'agrégat (mémoire) et voyage par le monoïde `RunStats`.
+    "audit.write.failed":              ("error",   True,  True,  False, True),
     "saga.compensation.triggered":     ("error",   True,  True,  True,  True),
     "saga.compensation.completed":     ("warning", True,  True,  True,  True),
     "maintenance.cleanup.executed":    ("info",    True,  True,  False, False),
-    "maintenance.force_drop.executed": ("warning", True,  True,  True,  False),
+    "maintenance.nuke_all.executed":   ("warning", True,  True,  True,  False),
 }
 
 

@@ -56,10 +56,23 @@ def qdrant_url():
 
 @pytest.fixture
 async def repo(qdrant_url):
+    """Le repository, sur une collection NEUVE — créée par ``ensure_collection``.
+
+    C'est ce que fait le vrai pipeline, et le test doit l'imiter : la création de la
+    collection est un **setup de run**, plus un effet de bord d'``upsert``. Elle en a
+    été sortie parce qu'un check-then-act depuis N workers produit une course (tous
+    constatent l'absence, tous créent, Qdrant renvoie 409 à tous sauf un — que la saga
+    prend pour un échec métier et compense, perdant le document).
+
+    La fixture ne l'appelait pas, et les quatre tests qui écrivent tombaient sur un 404.
+    Ils testaient un contrat **volontairement abandonné**.
+    """
     client = create_qdrant_client(qdrant_url)
     if await client.collection_exists(COLLECTION):
         await client.delete_collection(COLLECTION)
-    yield QdrantVectorRepository(client, COLLECTION, DIM)
+    repository = QdrantVectorRepository(client, COLLECTION, DIM)
+    await repository.ensure_collection()
+    yield repository
     await client.close()
 
 
@@ -67,9 +80,21 @@ async def _count(repo: QdrantVectorRepository) -> int:
     return (await repo._client.count(COLLECTION)).count  # noqa: SLF001
 
 
-async def test_upsert_creates_the_collection_and_stores_the_points(repo) -> None:
+async def test_ensure_collection_creates_it_and_upsert_stores_the_points(repo) -> None:
+    """La fixture a appelé ``ensure_collection`` : la collection existe, ``upsert`` écrit."""
     await repo.upsert([_embedded("LEGIARTI000000000001", 0)])
 
+    assert await _count(repo) == 1
+
+
+async def test_ensure_collection_is_idempotent(repo) -> None:
+    """Le setup de run peut être rejoué : deux appels ne se marchent pas dessus.
+
+    C'est ce qui rend l'appel sûr en tête de pipeline, y compris sur un corpus déjà là.
+    """
+    await repo.ensure_collection()  # la fixture l'a déjà fait une fois
+
+    await repo.upsert([_embedded("LEGIARTI000000000001", 0)])
     assert await _count(repo) == 1
 
 
@@ -123,4 +148,7 @@ async def test_reupserting_the_same_chunk_does_not_duplicate_it(repo) -> None:
 
 
 async def test_an_empty_upsert_is_a_noop(repo) -> None:
-    await repo.upsert([])  # ne doit pas créer la collection ni lever
+    """Un lot vide ne lève pas et n'écrit rien — le cas d'un shard sans travail."""
+    await repo.upsert([])
+
+    assert await _count(repo) == 0

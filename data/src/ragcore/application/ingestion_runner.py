@@ -163,8 +163,23 @@ class IngestionRunner:
                 relations.extend(result.relations)
                 written_node_ids.add(identifier)
         finally:
-            # Le drain d'abord (at-least-once), la boucle ensuite : fermer la
-            # boucle avant les backends perdrait les écritures encore en vol.
+            # L'ordre est un invariant, pas une préférence :
+            #
+            #   1. `drain()` — attend les écritures d'audit en vol ET dit combien ont
+            #      levé. Avant, ce compte était jeté : une écriture ratée en contexte
+            #      async ne produisait rien, pas même un log.
+            #   2. `record_audit_failure` — le compte entre dans l'agrégat, donc dans
+            #      le `snapshot()` rendu ligne suivante, donc dans le bilan du run.
+            #      Il DOIT passer avant `telemetry.close()` : après, la pile est morte.
+            #   3. `telemetry.close()` — vide les backends (le JSONL sur disque).
+            #   4. `runtime.close()` — ferme la boucle, qui n'a plus rien à porter.
+            #
+            # Drainer après avoir fermé la télémétrie « marcherait » (l'agrégat vit en
+            # mémoire, son close() ne fait rien) — mais ce serait s'appuyer sur un
+            # détail d'implémentation pour un invariant de correction.
+            report = runtime.drain()
+            if report.failed:
+                telemetry.record_audit_failure("drain", report.failed)
             telemetry.close()
             runtime.close()
 

@@ -105,3 +105,17 @@ class QdrantVectorRepository:
         """
         if await self._client.collection_exists(self._collection_name):
             await self._client.delete_collection(collection_name=self._collection_name)
+
+    async def drop_all_collections(self) -> None:
+        """Drop EVERY collection of the Qdrant store. Irreversible.
+
+        Contrairement à ``drop_collection`` (scopé à la collection dérivée du
+        fingerprint courant), ceci vide le store entier : les collections des
+        stratégies d'embedding abandonnées — un autre ``chunk_size``, un autre
+        modèle — traînent sinon sur le disque sans que le fingerprint courant les
+        connaisse. C'est le levier disque du mode ``nuke_all``. À ne jamais appeler
+        hors d'un environnement jetable.
+        """
+        collections = await self._client.get_collections()
+        for descriptor in collections.collections:
+            await self._client.delete_collection(collection_name=descriptor.name)

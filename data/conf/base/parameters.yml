@@ -162,11 +162,9 @@ exportation:
   neo4j:
     include_path: false
     include_content: false
-    force_drop: true
 
   mongodb:
     include_path: true
-    force_drop: true
     database: "LEGIFRANCE"
     collection: "chunks"
 
@@ -174,9 +172,6 @@ exportation:
     # PAS de `collection:` — elle est DÉRIVÉE de l'empreinte du WorkflowConfig (§6),
     # jamais écrite à la main. La nommer ici permettrait d'écraser les vecteurs d'une
     # stratégie avec ceux d'une autre sans que rien ne le signale.
-    # `force_drop` reste scopé à CETTE collection, jamais au store Qdrant entier :
-    # deux configs ⇒ deux collections, chacune droppable indépendamment.
-    force_drop: true
     distance: "Cosine"
     batch_size: 100
 
@@ -190,3 +185,10 @@ maintenance:
   cache_paths:
     - "data/cache"
     - "data/meta/events"
+
+  # `nuke_all` efface TOUTES les données de TOUTES les bases (Mongo documents+manifest,
+  # graphe Neo4j, TOUTES les collections Qdrant) en tête de run — la base méta
+  # MURPHY_META est PRÉSERVÉE. C'est le levier disque du développement : les données
+  # sont jetables en v0. Le node `nukeAll` REFUSE de tourner si ENVIRONMENT != "dev"
+  # (garde-fou : absence de ENVIRONMENT ⇒ prod ⇒ refus). À NE PAS activer en prod.
+  nuke_all: true

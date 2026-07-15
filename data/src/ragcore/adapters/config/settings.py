@@ -83,6 +83,19 @@ class InfraSettings(BaseSettings):
 
     model_config = SettingsConfigDict(env_file=ROOT_ENV_FILE, extra="ignore")
 
+    environment: str = "prod"
+    """L'environnement d'exécution. **Le défaut est `prod`, et c'est délibéré.**
+
+    Il ne sert qu'à *une* chose : garder le mode `nuke_all` (voir
+    `nodes/nuke_all.py`), qui efface TOUTES les données de TOUTES les bases, du seul
+    environnement où l'effacement est sans conséquence. Le node refuse de tourner si
+    `environment != "dev"`.
+
+    Le défaut penche vers le refus, pas vers l'autorisation : un `.env` sans
+    `ENVIRONMENT` est traité comme de la prod, donc protégé. Un garde-fou dont le
+    défaut *ouvre* la trappe ne protège rien — il suffirait d'oublier une variable
+    pour vider une prod. On rend l'effacement accidentel impossible, pas déconseillé."""
+
     mongodb_uri: str = "mongodb://localhost:27017"
     mongodb_data_db_name: str = "LEGIFRANCE"
     mongodb_meta_db_name: str = "MURPHY_META"

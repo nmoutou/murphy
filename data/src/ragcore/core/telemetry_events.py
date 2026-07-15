@@ -37,11 +37,16 @@ RELATION_UPSERTED                 = "relation.upserted"
 RELATION_PENDING                  = "relation.pending"    # cible absente → cache §13
 RELATION_PROMOTED                 = "relation.promoted"   # pendante enfin résolue
 
+# La télémétrie qui n'a pas su s'écrire. L'audit observe le run ; ce compteur observe
+# l'audit — sans lui, un backend défaillant rendrait TOUS les autres compteurs
+# invérifiables sans que rien ne le dise.
+AUDIT_WRITE_FAILED                = "audit.write.failed"
+
 SAGA_COMPENSATION_STARTED         = "saga.compensation.triggered"
 SAGA_COMPENSATION_COMPLETED       = "saga.compensation.completed"
 
 MAINTENANCE_CLEANUP_EXECUTED      = "maintenance.cleanup.executed"
-MAINTENANCE_FORCE_DROP_EXECUTED   = "maintenance.force_drop.executed"
+MAINTENANCE_NUKE_ALL_EXECUTED     = "maintenance.nuke_all.executed"
 
 
 # ---------------------------------------------------------------------------
@@ -117,6 +122,21 @@ EVENT_CATALOG: dict[str, EventBehavior] = {
         level="info", log=False, track_jsonl=True, track_mongo=False, aggregate=True,
     ),
 
+    # --- La télémétrie qui se surveille elle-même ---
+    # `track_mongo=False`, et ce n'est pas un oubli : écrire en Mongo qu'on n'a pas su
+    # écrire en Mongo est un serpent qui se mord la queue — au mieux ça échoue aussi, au
+    # pire ça récurse. Le compteur vit dans l'AGRÉGAT (mémoire, ne peut pas échouer sur du
+    # réseau) et voyage jusqu'au bilan par le monoïde `RunStats`, comme les autres.
+    #
+    # `aggregate=True` est tout l'enjeu, exactement comme pour `document.failed` : les
+    # quatre points qui avalaient une écriture ratée la LOGGAIENT déjà (`_LOGGER.warning`).
+    # Le problème n'a jamais été qu'on ne le disait pas — c'est qu'on ne le COMPTAIT pas,
+    # donc que le bilan ne pouvait pas en tenir compte. Un échec qui ne compte pas est un
+    # échec qui n'existe pas pour le statut du run.
+    AUDIT_WRITE_FAILED: EventBehavior(
+        level="error", log=True, track_jsonl=True, track_mongo=False, aggregate=True,
+    ),
+
     # --- Saga (erreurs de transaction) ---
     SAGA_COMPENSATION_STARTED: EventBehavior(
         level="error", log=True, track_jsonl=True, track_mongo=True, aggregate=True,
@@ -129,7 +149,7 @@ EVENT_CATALOG: dict[str, EventBehavior] = {
     MAINTENANCE_CLEANUP_EXECUTED: EventBehavior(
         level="info", log=True, track_jsonl=True, track_mongo=False, aggregate=False,
     ),
-    MAINTENANCE_FORCE_DROP_EXECUTED: EventBehavior(
+    MAINTENANCE_NUKE_ALL_EXECUTED: EventBehavior(
         level="warning", log=True, track_jsonl=True, track_mongo=True, aggregate=False,
     ),
 }

@@ -65,7 +65,7 @@ pipeline_runtime:
 # Données inter-nœuds — produites et consommées dans le run
 # ============================================================
 
-force_drop_done:
+nuke_done:
   type: MemoryDataset
   copy_mode: assign
 

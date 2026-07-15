@@ -3,8 +3,8 @@
 Kedro ordonnance à partir des inputs/outputs des nœuds : il n'y a aucun ``join()``,
 aucun ordre impératif. Deux arêtes portent tout le sens de cet ordre :
 
-- **``force_drop_done`` → ``connect``** : ``connect`` prend ce signal en input, donc
-  Kedro ne peut pas le lancer avant que ``forceDrop`` ait fini. Sans cette arête, on
+- **``nuke_done`` → ``connect``** : ``connect`` prend ce signal en input, donc
+  Kedro ne peut pas le lancer avant que ``nukeAll`` ait fini. Sans cette arête, on
   pourrait lire la source pendant qu'on efface les stores.
 
 - **``ingestion_outcome`` → ``resolveRelations``** : c'est LA barrière phase-1/phase-2.
@@ -25,7 +25,7 @@ from kedro.pipeline import Pipeline, node, pipeline
 from .nodes.cleanup import cleanup_node
 from .nodes.compute_idempotence import compute_idempotence_node
 from .nodes.connect import connect_node
-from .nodes.force_drop import force_drop_node
+from .nodes.nuke_all import nuke_all_node
 from .nodes.ingest import ingest_node
 from .nodes.report import report_node
 from .nodes.resolve_relations import resolve_relations_node
@@ -34,7 +34,7 @@ __all__ = ["create_ingestion_pipeline"]
 
 
 def create_ingestion_pipeline() -> Pipeline:
-    """cleanup → forceDrop → connect → computeIdempotence → ingest → resolve → report."""
+    """cleanup → nukeAll → connect → computeIdempotence → ingest → resolve → report."""
     return pipeline(
         [
             node(
@@ -48,21 +48,19 @@ def create_ingestion_pipeline() -> Pipeline:
                 name="cleanup",
             ),
             node(
-                func=force_drop_node,
+                func=nuke_all_node,
                 inputs=[
                     "doc_repo",
                     "manifest_repo",
                     "graph_repo",
                     "vector_repo",
-                    "params:exportation.mongodb",
-                    "params:exportation.neo4j",
-                    "params:exportation.qdrant",
+                    "params:maintenance",
                     "pipeline_context",
                     "telemetry",
                     "pipeline_runtime",
                 ],
-                outputs="force_drop_done",
-                name="forceDrop",
+                outputs="nuke_done",
+                name="nukeAll",
             ),
             node(
                 func=connect_node,
@@ -71,8 +69,8 @@ def create_ingestion_pipeline() -> Pipeline:
                     "pipeline_context",
                     "telemetry",
                     "pipeline_runtime",
-                    # signal-only : impose forceDrop AVANT connect (arête du DAG).
-                    "force_drop_done",
+                    # signal-only : impose nukeAll AVANT connect (arête du DAG).
+                    "nuke_done",
                 ],
                 outputs="raw_documents",
                 name="connect",

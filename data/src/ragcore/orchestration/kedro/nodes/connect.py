@@ -14,10 +14,10 @@ def connect_node(
     pipeline_context: PipelineContext,
     telemetry: TelemetryPort,
     pipeline_runtime: AsyncRuntime,
-    force_drop_done: dict[str, bool],
+    nuke_done: dict[str, bool],
 ) -> list[RawDocument]:
     """Fetch all raw documents from the source connector."""
-    del force_drop_done  # signal-only input: ensures forceDrop runs before connect
+    del nuke_done  # signal-only input: ensures nukeAll runs before connect
 
     async def _fetch() -> list[RawDocument]:
         return [doc async for doc in connector.fetch_all(pipeline_context.owner_id)]

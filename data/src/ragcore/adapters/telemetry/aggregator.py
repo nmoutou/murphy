@@ -17,6 +17,7 @@ from ragcore.core.models.identifiers import OwnerId, RunId
 from ragcore.core.models.run_stats import RunStats
 from ragcore.core.models.run_summary import RunStatus, RunSummary
 from ragcore.core.telemetry_events import (
+    AUDIT_WRITE_FAILED,
     DOCUMENT_FAILED,
     DOCUMENT_INVALIDATED,
     DOCUMENT_PERSISTED,
@@ -27,6 +28,7 @@ _BREAKDOWN_KEY: dict[str, str] = {
     DOCUMENT_INVALIDATED: "reason",   # breakdown par raison de rejet
     DOCUMENT_PERSISTED: "operation",  # breakdown par opération (INSERT/UPDATE)
     DOCUMENT_FAILED: "reason",        # breakdown par CAUSE de la fuite
+    AUDIT_WRITE_FAILED: "backend",    # breakdown par backend défaillant (mongo, drain…)
 }
 
 
@@ -107,6 +109,21 @@ class RunStatsAggregator:
     def record_unknown(self, category: str, value: str) -> None:
         """Un vocabulaire non reconnu se DÉCLARE — il ne se jette pas en silence."""
         self._stats = self._stats.with_unknown(category, value)
+
+    def record_audit_failure(self, backend: str, n: int = 1) -> None:
+        """Une écriture d'audit perdue — comptée ICI, jamais réémise.
+
+        Elle ne repasse **pas** par le fan-out, et c'est la seule façon de couper la
+        récursion : réémettre un ``AuditEvent`` depuis le chemin d'émission qui vient
+        d'échouer, c'est risquer qu'il échoue à son tour, donc qu'il se réémette. Ici
+        on écrit dans un dictionnaire en mémoire — ça ne peut pas rater sur du réseau.
+
+        Le compteur voyage jusqu'au bilan par le monoïde, comme tout le reste : c'est
+        ``snapshot()`` qui le rendra, et la fusion inter-workers le sommera.
+        """
+        self._stats = self._stats.with_count(AUDIT_WRITE_FAILED, n).with_breakdown(
+            AUDIT_WRITE_FAILED, backend, n
+        )
 
     def snapshot(self) -> RunStats:
         """L'agrégat local, à fusionner avec celui des autres workers."""
