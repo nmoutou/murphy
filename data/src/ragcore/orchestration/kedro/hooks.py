@@ -51,6 +51,8 @@ from ragcore.adapters.telemetry import (
 from ragcore.adapters.telemetry.console_log import ConsoleLogTelemetry
 from ragcore.adapters.telemetry.factory import WorkerTelemetryFactory
 from ragcore.adapters.telemetry.registry_aware import RegistryAwareTelemetry
+from ragcore.adapters.telemetry.worker_backends import WorkerBackends
+from ragcore.adapters.tracking import build_experiment_tracker
 from ragcore.application.ingest_document import IngestDocumentUseCase
 from ragcore.application.ingestion_runner import IngestionRunner
 from ragcore.application.resolve_relations import ResolveRelationsService
@@ -64,10 +66,11 @@ from ragcore.core.config import (
 )
 from ragcore.core.models.audit import build_event
 from ragcore.core.models.enums import SourceName
-from ragcore.core.models.identifiers import OwnerId
+from ragcore.core.models.identifiers import OwnerId, RunId
 from ragcore.core.models.published_collection import PublishedCollection
 from ragcore.core.models.run_stats import RunStats
 from ragcore.core.models.run_summary import RunStatus, RunSummary
+from ragcore.core.ports.experiment_tracker import ExperimentTracker
 from ragcore.core.ports.telemetry import WorkerTelemetry
 from ragcore.core.services.telemetry_registry import TelemetryRegistry
 from ragcore.core.telemetry_events import (
@@ -126,6 +129,10 @@ class TelemetryHooks:
         """
         self._embedder: object | None = None
         self._runtime_instance: AsyncioRuntime | None = None
+        self._tracker: ExperimentTracker | None = None
+        """Le tracker d'expériences (§9). Ouvert en tête de run, fermé en fin — dans
+        `after_pipeline_run` ET `on_pipeline_error`, pour qu'un run cassé ne laisse pas
+        un run MLflow ouvert que le suivant viendrait polluer. `noop` par défaut."""
 
     @property
     def _runtime(self) -> AsyncioRuntime:
@@ -174,6 +181,15 @@ class TelemetryHooks:
         logger.info(
             "Collection Qdrant dérivée de la config de workflow : %s", qdrant_collection
         )
+
+        # Le tracking d'expériences (§9). Le run-id EST le nom de collection — donc le
+        # fingerprint du workflow — parce que `collection_name` n'est rien d'autre que
+        # `fingerprint` : les deux ne peuvent pas diverger, ils sortent du même calcul.
+        # C'est ce qui lie le run MLflow à sa collection Qdrant, et lève l'opacité du
+        # hash en portant la `WorkflowConfig` en clair. `noop` par défaut : aucun serveur
+        # requis, aucune dépendance ajoutée au chemin critique.
+        self._tracker = build_experiment_tracker(settings)
+        self._tracker.start_run(RunId(qdrant_collection), workflow)
 
         # Le modèle qui vient de BAPTISER la collection est-il celui que le service SERT ?
         #
@@ -302,12 +318,12 @@ class TelemetryHooks:
         )
         self._telemetry = RegistryAwareTelemetry(
             registry=registry,
-            backends={
-                "log": ConsoleLogTelemetry(),
-                "jsonl": jsonl_telemetry,
-                "mongo": MongoAuditTelemetryAdapter(audit_repo, self._runtime),
-                "aggregate": self._aggregator,
-            },
+            backends=WorkerBackends(
+                log=ConsoleLogTelemetry(),
+                jsonl=jsonl_telemetry,
+                mongo=MongoAuditTelemetryAdapter(audit_repo, self._runtime),
+                aggregate=self._aggregator,
+            ),
         )
 
         # **Aucun nom de source ici.** Le parser, le chunker et l'extracteur sont
@@ -611,6 +627,26 @@ class TelemetryHooks:
             published.document_count,
         )
 
+    def _track_and_close(self, summary: RunSummary | None) -> None:
+        """Enregistre le bilan dans le tracker, puis ferme le run — **toujours**.
+
+        Appelé depuis `after_pipeline_run` ET `on_pipeline_error` : quel que soit le
+        sort du pipeline, le run d'expérience doit être clos, sinon le suivant se
+        grefferait sur un run resté ouvert. `end_run` est en `finally` pour cette
+        raison — une exception dans `log_summary` (backend injoignable) ne doit pas
+        laisser le run pendant.
+
+        Un `summary` à `None` (agrégateur/dépôts non initialisés) n'a rien à logguer,
+        mais le run peut malgré tout avoir été ouvert : on ferme quand même.
+        """
+        if self._tracker is None:
+            return
+        try:
+            if summary is not None:
+                self._tracker.log_summary(summary)
+        finally:
+            self._tracker.end_run()
+
     @hook_impl
     def after_pipeline_run(self, run_params: dict) -> None:
         if self._telemetry and self._context:
@@ -646,6 +682,11 @@ class TelemetryHooks:
         # en place. La publication est la CONSÉQUENCE du bilan, jamais son présupposé.
         self._publish_collection(summary)
 
+        # Le bilan part aussi vers le tracker (§9), et le run d'expérience se ferme. En
+        # `noop` c'est sans effet ; en MLflow, c'est ici que le fingerprint devient un
+        # run consultable, paramètres et compteurs en clair.
+        self._track_and_close(summary)
+
         self._runtime.close()
 
     @hook_impl
@@ -675,7 +716,13 @@ class TelemetryHooks:
         # `report`, qui est terminal. Un pipeline qui casse avant lui ne persiste que les
         # compteurs du process principal. Le statut `failed` reste vrai — c'est son
         # détail qui manque.
-        self._persist_run_summary(status="failed", error_message=str(error))
+        summary = self._persist_run_summary(status="failed", error_message=str(error))
+
+        # Même sur un run cassé, le run d'expérience doit être clos — un run MLflow
+        # laissé ouvert verrait le prochain lancement s'y greffer. Le bilan est pauvre
+        # (cf. plus haut), mais son statut `failed` est vrai et mérite d'être tracé.
+        self._track_and_close(summary)
+
         self._runtime.close()
 
 

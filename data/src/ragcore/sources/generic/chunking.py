@@ -137,7 +137,7 @@ class StructuralChunker:
             owner_id=document.owner_id,
             ordinal=ordinal,
             text=text,
-            structural_path=path,
+            tag_path=path,
             char_start=char_start,
             char_end=char_end,
             metadata=document.metadata,

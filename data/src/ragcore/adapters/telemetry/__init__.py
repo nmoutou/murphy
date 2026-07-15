@@ -5,6 +5,7 @@ from .jsonl_file import JsonlFileTelemetry
 from .mongo_audit import MongoAuditTelemetryAdapter
 from .noop import NoopTelemetry
 from .registry_aware import RegistryAwareTelemetry
+from .worker_backends import WorkerBackends
 
 __all__ = [
     "ConsoleLogTelemetry",
@@ -13,5 +14,6 @@ __all__ = [
     "NoopTelemetry",
     "RegistryAwareTelemetry",
     "RunStatsAggregator",
+    "WorkerBackends",
     "WorkerTelemetryFactory",
 ]

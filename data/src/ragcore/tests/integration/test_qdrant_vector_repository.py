@@ -37,7 +37,7 @@ def _embedded(
             owner_id=owner,
             ordinal=ordinal,
             text=f"texte {ordinal}",
-            structural_path=[],
+            tag_path=[],
             char_start=0,
             char_end=10,
             metadata={},

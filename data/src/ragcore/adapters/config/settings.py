@@ -139,6 +139,26 @@ class InfraSettings(BaseSettings):
 
     owner_id: str = "default"
 
+    tracking_provider: Literal["noop", "mlflow"] = "noop"
+    """Le backend de tracking d'expériences (§9). **Défaut `noop` : aucune dépendance.**
+
+    MLflow tire une lourde arborescence (scipy, pandas, un serveur) et vit dans l'extra
+    `tracking` — un `kedro run` nu ne l'exige pas. Passer à `mlflow` suppose l'extra
+    installé et lève l'opacité du hash de collection : le fingerprint devient un run
+    portant la `WorkflowConfig` en clair. C'est de l'infra, pas du workflow — choisir où
+    on lit l'A/B ne change aucun vecteur."""
+
+    mlflow_tracking_uri: str | None = None
+    """L'URI du serveur MLflow. `None` laisse MLflow sur sa config ambiante (`mlruns/`
+    local). Ignoré quand `tracking_provider=noop`."""
+
+    @field_validator("mlflow_tracking_uri", mode="after")
+    @classmethod
+    def _uri_vide_vaut_absent(cls, value: str | None) -> str | None:
+        """`MLFLOW_TRACKING_URI=` dans un `.env` produit `''`, pas `None` — même piège
+        que les autres champs optionnels : la chaîne vide est l'absence, pas une URI."""
+        return value or None
+
     @field_validator("qdrant_api_key", mode="after")
     @classmethod
     def _secret_vide_vaut_absent(cls, value: SecretStr | None) -> SecretStr | None:

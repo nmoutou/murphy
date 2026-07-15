@@ -22,6 +22,7 @@ from pathlib import Path
 from ragcore.core.models.enums import SourceName
 from ragcore.core.models.identifiers import OwnerId, RunId
 from ragcore.core.ports.runtime import AsyncRuntime
+from ragcore.core.ports.telemetry import TelemetryPort
 from ragcore.core.services.telemetry_registry import TelemetryRegistry
 from ragcore.core.telemetry_events import EVENT_CATALOG
 
@@ -31,6 +32,7 @@ from .jsonl_file import JsonlFileTelemetry
 from .mongo_audit import MongoAuditTelemetryAdapter
 from .noop import NoopTelemetry
 from .registry_aware import RegistryAwareTelemetry
+from .worker_backends import WorkerBackends
 
 __all__ = ["WorkerTelemetryFactory"]
 
@@ -75,17 +77,17 @@ class WorkerTelemetryFactory:
             started_at=self._started_at,
         )
 
-        mongo: object = NoopTelemetry()
+        mongo: TelemetryPort = NoopTelemetry()
         if self._audit_repo_factory is not None:
             audit_repo = self._audit_repo_factory(runtime)  # type: ignore[operator]
             mongo = MongoAuditTelemetryAdapter(audit_repo, runtime)
 
         return RegistryAwareTelemetry(
             registry=self._registry,
-            backends={
-                "log": ConsoleLogTelemetry(),
-                "jsonl": jsonl,
-                "mongo": mongo,  # type: ignore[dict-item]
-                "aggregate": aggregator,
-            },
+            backends=WorkerBackends(
+                log=ConsoleLogTelemetry(),
+                jsonl=jsonl,
+                mongo=mongo,
+                aggregate=aggregator,
+            ),
         )

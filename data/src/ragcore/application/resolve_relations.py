@@ -77,7 +77,10 @@ class ResolveRelationsService:
         reduced_count = submitted - len(relations)
 
         # 1. Écriture en batch. Ce qui ne s'écrit pas ressort — rien ne s'évapore.
-        result = await self._graph_repo.upsert_relations(relations)
+        #    Chaque arête écrite est taguée du `run_id` (§8) : c'est ce qui la rend
+        #    compensable à la maille du run (delete_relations_by_run), sans emporter
+        #    les arêtes qu'un autre run a posées sur le même document.
+        result = await self._graph_repo.upsert_relations(relations, context.run_id)
 
         # 2. Les trous sont une donnée : ils vont au cache, et on le DIT.
         if result.pending:
@@ -131,7 +134,7 @@ class ResolveRelationsService:
             return 0
 
         result = await self._graph_repo.upsert_relations(
-            [candidate.to_relation() for candidate in candidates]
+            [candidate.to_relation() for candidate in candidates], context.run_id
         )
 
         if result.pending:

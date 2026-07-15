@@ -3,7 +3,7 @@ from typing import Protocol, runtime_checkable
 
 from ..models.document import ParsedDocument
 from ..models.enums import SourceName
-from ..models.identifiers import OwnerId, SourceIdentifier
+from ..models.identifiers import OwnerId, RunId, SourceIdentifier
 from ..models.relation import Relation
 
 
@@ -35,12 +35,33 @@ class GraphRepository(Protocol):
 
     async def merge_document_node(self, document: ParsedDocument) -> None: ...
 
-    async def upsert_relations(self, relations: list[Relation]) -> RelationWriteResult:
+    async def upsert_relations(
+        self, relations: list[Relation], run_id: RunId
+    ) -> RelationWriteResult:
         """Écrit les arêtes et RAPPORTE celles dont la cible n'existait pas.
 
         Une arête dont le ``MATCH (b)`` échoue n'est ni écrite, ni jetée : elle
         remonte dans ``.pending``. C'est l'appelant (ResolveRelationsService) qui
         décide de son sort — le repository, lui, ne connaît pas le cache §13.
+
+        ``run_id`` **tague chaque arête écrite** (§8). Il n'est pas une propriété de la
+        ``Relation`` — la même arête peut être (ré)écrite par des runs différents — mais
+        du *geste d'écriture* : c'est lui qui rend la compensation par run possible
+        (``delete_relations_by_run``). Sans lui, compenser un run reviendrait à supprimer
+        TOUTES les arêtes sortantes d'un document, y compris celles qu'un autre run
+        avait légitimement posées.
+        """
+        ...
+
+    async def delete_relations_by_run(self, run_id: RunId, owner_id: OwnerId) -> None:
+        """Supprime les arêtes écrites par CE run — et elles seules (§8).
+
+        C'est la compensation à la maille du run : ``stratégie A`` (compensation
+        systématique). Elle détache exactement ce que ``upsert_relations`` a tagué de ce
+        ``run_id``, jamais plus. La sur-suppression que ``delete_relations_from`` risque
+        (toutes les sortantes d'un nœud, quel qu'en soit l'auteur) est précisément ce que
+        cette maille évite : un run rejoué ou annulé ne peut défaire que son propre
+        ouvrage.
         """
         ...
 
@@ -58,4 +79,26 @@ class GraphRepository(Protocol):
         self, identifier: SourceIdentifier, owner_id: OwnerId, source: SourceName
     ) -> None:
         """Supprime uniquement les relations sortantes (préserve les entrantes)."""
+        ...
+
+    async def compensate_document_node(
+        self, identifier: SourceIdentifier, owner_id: OwnerId
+    ) -> None:
+        """Défait le nœud d'un document dont la saga a échoué — **sans casser le graphe**
+        (§8, fin du ``_noop``).
+
+        Le nœud n'est pas librement supprimable : d'AUTRES documents peuvent le citer
+        (arêtes entrantes). Le supprimer emporterait leurs citations — une perte muette
+        chez un tiers. La compensation est donc **conditionnelle** :
+
+        - **aucune arête entrante** → le nœud n'existe que pour ce document raté :
+          ``DETACH DELETE`` le retire entièrement ;
+        - **au moins une arête entrante** → le nœud est une CIBLE citée : on ne le
+          supprime pas, on le **dé-hydrate** en ``:Unknown`` (il perd son contenu de
+          document et redevient une cible décrite, exactement le statut d'une citation
+          non encore résolue — cf. ``upsert_relations`` côté ``:Unknown``).
+
+        C'est ce qui remplace le ``_noop`` : le nœud orphelin ne survit plus à un échec,
+        mais une cible citée n'est jamais arrachée au graphe d'autrui.
+        """
         ...

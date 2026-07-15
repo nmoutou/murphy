@@ -10,7 +10,7 @@ import neo4j
 
 from ragcore.core.models.document import ParsedDocument
 from ragcore.core.models.enums import SourceName
-from ragcore.core.models.identifiers import OwnerId, SourceIdentifier
+from ragcore.core.models.identifiers import OwnerId, RunId, SourceIdentifier
 from ragcore.core.models.relation import Relation
 from ragcore.core.ports.graph_repository import RelationWriteResult
 
@@ -74,7 +74,9 @@ class Neo4jGraphRepository:
                 props=props,
             )
 
-    async def upsert_relations(self, relations: list[Relation]) -> RelationWriteResult:
+    async def upsert_relations(
+        self, relations: list[Relation], run_id: RunId
+    ) -> RelationWriteResult:
         """Crée ou met à jour les relations, et rapporte celles qui n'ont pas pris.
 
         **Le type d'arête est le VERBE, et c'est le point.** L'ancienne version écrivait
@@ -106,7 +108,7 @@ class Neo4jGraphRepository:
             "MATCH (a {identifier: $source_identifier, owner_id: $owner_id})"
             " MATCH (b {identifier: $target_identifier, owner_id: $owner_id})"
             " MERGE (a)-[r:$($relation_type)]->(b)"
-            " SET r += $props RETURN r"
+            " SET r += $props SET r.run_id = $run_id, r.owner_id = $owner_id RETURN r"
         )
 
         # La cible DÉCRITE, elle, ne peut PAS être attendue : elle n'arrivera jamais.
@@ -127,7 +129,7 @@ class Neo4jGraphRepository:
             " MERGE (b:Unknown {identifier: $target_identifier, owner_id: $owner_id})"
             " SET b.text = $target_text"
             " MERGE (a)-[r:$($relation_type)]->(b)"
-            " SET r += $props RETURN r"
+            " SET r += $props SET r.run_id = $run_id, r.owner_id = $owner_id RETURN r"
         )
 
         async with self._driver.session() as session:
@@ -143,6 +145,7 @@ class Neo4jGraphRepository:
                     owner_id=relation.owner_id,
                     relation_type=relation.relation_type,
                     props=dict(relation.metadata),
+                    run_id=run_id,
                 )
                 record = await result.single()
                 if record is None:
@@ -187,6 +190,96 @@ class Neo4jGraphRepository:
         async with self._driver.session() as session:
             await session.run(
                 query,
+                identifier=identifier_value,
+                owner_id=owner_id,
+            )
+
+    async def delete_relations_by_run(self, run_id: RunId, owner_id: OwnerId) -> None:
+        """Détache les arêtes taguées de ce ``run_id`` — et elles seules (§8).
+
+        La maille de compensation. ``upsert_relations`` pose ``r.run_id`` sur chaque
+        arête écrite ; ici on ne défait QUE celles-là. La différence avec
+        ``delete_relations_from`` est le cœur du §8 : cette dernière supprime *toutes*
+        les sortantes d'un nœud, quel qu'en soit l'auteur — un run rejoué emporterait les
+        arêtes qu'un autre run avait posées. Filtrer sur ``run_id`` borne la suppression
+        à l'ouvrage du run, exactement.
+
+        ``owner_id`` reste une composante de la sélection : deux tenants n'ont aucune
+        raison de partager un ``run_id``, mais un filtre qui l'ignore serait la première
+        exception à l'invariant « ``owner_id`` est partout une clé ».
+        """
+        query = (
+            "MATCH ()-[r]->() WHERE r.run_id = $run_id AND r.owner_id = $owner_id"
+            " DELETE r"
+        )
+        async with self._driver.session() as session:
+            await session.run(query, run_id=run_id, owner_id=owner_id)
+
+    async def compensate_document_node(
+        self, identifier: SourceIdentifier, owner_id: OwnerId
+    ) -> None:
+        """Défait le nœud d'un document raté sans arracher les citations d'autrui (§8).
+
+        Conditionnel sur l'existence d'une arête ENTRANTE :
+
+        - aucune entrante → ``DETACH DELETE`` : le nœud n'existait que pour ce document ;
+        - au moins une entrante → **dé-hydratation** : le nœud est cité, on ne le
+          supprime pas. On lui retire ses labels métier et ses propriétés de document
+          pour le ramener au statut de cible décrite (``:Unknown``), celui-là même qu'une
+          citation non résolue produit. La citation entrante survit ; le contenu du
+          document raté, non.
+
+        **Lire le nombre d'entrantes, puis brancher** — deux requêtes, pas une acrobatie
+        Cypher mêlant ``DETACH DELETE`` et ``REMOVE`` sous condition dans la même passe
+        (fragile, et interdite d'APOC en prod). La fenêtre entre la lecture et l'écriture
+        n'est pas un risque ici : la compensation survient dans la saga d'UN document, et
+        l'invariant 2 du §11 (dispatch par clé) garantit qu'un seul worker touche ce nœud
+        à la fois — personne n'ajoute d'entrante en parallèle sur cet identifiant.
+
+        La ré-hydratation d'un ``:Unknown`` vers un vrai document, quand le document
+        revient, est déjà le comportement de ``merge_document_node`` (le ``MERGE`` sur
+        ``identifier`` retombe sur le même nœud et réécrit ses props) : dé-hydrater n'est
+        donc pas une impasse, c'est un retour à l'état « cible en attente ».
+        """
+        identifier_value = identifier.serialize()
+        async with self._driver.session() as session:
+            record = await (
+                await session.run(
+                    "MATCH (n {identifier: $identifier, owner_id: $owner_id})"
+                    " OPTIONAL MATCH (n)<-[incoming]-()"
+                    " RETURN count(incoming) AS entrantes",
+                    identifier=identifier_value,
+                    owner_id=owner_id,
+                )
+            ).single()
+
+            # Le nœud n'existe pas (la saga a échoué AVANT le merge du nœud) : rien à
+            # défaire. La compensation est idempotente — c'est ce que la saga attend.
+            if record is None:
+                return
+
+            if record["entrantes"] == 0:
+                await session.run(
+                    "MATCH (n {identifier: $identifier, owner_id: $owner_id})"
+                    " DETACH DELETE n",
+                    identifier=identifier_value,
+                    owner_id=owner_id,
+                )
+                return
+
+            # `apoc.create.removeLabels` n'est pas garanti (pas d'APOC en prod) : on
+            # retire les labels connus par `REMOVE`. Neo4j ignore silencieusement le
+            # retrait d'un label absent — la liste couvre donc tous les labels métier
+            # sans avoir à savoir lequel ce nœud portait.
+            removable = ":".join(
+                label for label in _KNOWN_LABELS if label != "Unknown"
+            )
+            await session.run(
+                "MATCH (n {identifier: $identifier, owner_id: $owner_id})"
+                f" REMOVE n:{removable}"
+                " SET n:Unknown"
+                " SET n.text = coalesce(n.title, n.identifier)"
+                " REMOVE n.title, n.source, n.schema_version",
                 identifier=identifier_value,
                 owner_id=owner_id,
             )

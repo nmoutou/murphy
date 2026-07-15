@@ -25,6 +25,7 @@ from typing import Any
 from ragcore.adapters.runtime.asyncio_runtime import AsyncioRuntime
 from ragcore.adapters.telemetry.aggregator import RunStatsAggregator
 from ragcore.adapters.telemetry.registry_aware import RegistryAwareTelemetry
+from ragcore.adapters.telemetry.worker_backends import WorkerBackends
 from ragcore.core.models.audit import AuditEvent, build_event
 from ragcore.core.models.enums import SourceName
 from ragcore.core.models.identifiers import OwnerId, RunId
@@ -106,18 +107,18 @@ def _telemetry(
     )
     return RegistryAwareTelemetry(
         registry=registry,
-        backends={
-            "log": SilentBackend(),
-            "jsonl": SilentBackend(),
-            "mongo": mongo,  # type: ignore[dict-item]
-            "aggregate": aggregator
+        backends=WorkerBackends(
+            log=SilentBackend(),
+            jsonl=SilentBackend(),
+            mongo=mongo,  # type: ignore[arg-type]
+            aggregate=aggregator
             or RunStatsAggregator(
                 run_id=RunId("r-1"),
                 owner_id=OwnerId("o-1"),
                 source=SourceName.LEGI,
                 started_at=datetime.now(UTC),
             ),
-        },
+        ),
     )
 
 

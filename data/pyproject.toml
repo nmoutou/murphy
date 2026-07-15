@@ -44,6 +44,13 @@ dependencies = [
 embedding-local = [
     "sentence-transformers~=3.3"
 ]
+# Tracking d'expériences (§9) : MLflow tire une lourde arborescence (scipy, pandas, un
+# serveur). Même raison que `embedding-local`/torch — un extra, et un import paresseux
+# dans `mlflow_tracker.py`. Le défaut `tracking_provider=noop` ne l'exige jamais : un
+# `kedro run` nu tourne sans lui. On l'installe pour LIRE l'A/B, pas pour ingérer.
+tracking = [
+    "mlflow~=2.19"
+]
 # spaCy et son modèle de langue ont quitté le chemin critique au lot 4.
 #
 # Ils servaient à LEMMATISER le contenu des documents : « Le directeur général est nommé

@@ -41,10 +41,15 @@ from ragcore.adapters.telemetry import (
     RunStatsAggregator,
     WorkerTelemetryFactory,
 )
+from ragcore.adapters.tracking import (
+    MlflowExperimentTracker,
+    NoopExperimentTracker,
+)
 from ragcore.core.models.enums import SourceName
 from ragcore.core.ports.audit_repository import AuditRepository
 from ragcore.core.ports.document_repository import DocumentRepository
 from ragcore.core.ports.embedder import BaseEmbedder
+from ragcore.core.ports.experiment_tracker import ExperimentTracker
 from ragcore.core.ports.graph_repository import GraphRepository
 from ragcore.core.ports.manifest_repository import ManifestRepository
 from ragcore.core.ports.pending_repository import PendingRelationRepository
@@ -241,8 +246,8 @@ class TestTelemetry:
             # si les workers écrivaient dans le même.
             assert first.snapshot() is not None
             assert (
-                first._backends["jsonl"]._path  # noqa: SLF001
-                != second._backends["jsonl"]._path  # noqa: SLF001
+                first._backends.jsonl._path  # noqa: SLF001
+                != second._backends.jsonl._path  # noqa: SLF001
             )
         finally:
             r0.close()
@@ -260,3 +265,19 @@ class TestTelemetry:
             assert stack.snapshot().unknowns == {"balise": ["TRUC_INCONNU"]}
         finally:
             runtime.close()
+
+
+class TestExperimentTracker:
+    """Les deux trackers du §9 satisfont-ils le port ?
+
+    Construire ``MlflowExperimentTracker`` n'importe PAS ``mlflow`` (l'import est
+    paresseux, dans ``_mlflow()``) : la conformité se vérifie donc sans l'extra
+    ``tracking`` installé — exactement ce qu'on veut d'un adaptateur qui ne doit jamais
+    peser sur le chemin critique.
+    """
+
+    def test_noop_tracker(self) -> None:
+        assert isinstance(NoopExperimentTracker(), ExperimentTracker)
+
+    def test_mlflow_tracker(self) -> None:
+        assert isinstance(MlflowExperimentTracker(), ExperimentTracker)

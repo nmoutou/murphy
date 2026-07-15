@@ -66,7 +66,7 @@ class _StubChunker:
                 owner_id=document.owner_id,
                 ordinal=0,
                 text=document.content,
-                structural_path=[],
+                tag_path=[],
                 char_start=0,
                 char_end=len(document.content),
                 metadata={},

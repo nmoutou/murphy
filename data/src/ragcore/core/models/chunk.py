@@ -18,7 +18,7 @@ class Chunk(BaseModel):
 
     ordinal: int
     text: str
-    structural_path: list[str]
+    tag_path: list[str]
     char_start: int
     char_end: int
     metadata: dict[str, Any] = Field(default_factory=dict)

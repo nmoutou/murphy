@@ -2,7 +2,7 @@
 
 from ragcore.core.models.chunk import EmbeddedChunk
 from ragcore.core.models.document import ParsedDocument
-from ragcore.core.models.identifiers import OwnerId, SourceIdentifier
+from ragcore.core.models.identifiers import OwnerId, RunId, SourceIdentifier
 from ragcore.core.models.manifest import ManifestEntry
 from ragcore.core.models.pending import PendingKey, PendingRelation
 from ragcore.core.models.relation import Relation
@@ -106,8 +106,11 @@ class InMemoryGraphRepository:
     """
 
     def __init__(self) -> None:
+        # Une cible DÉCRITE (`:Unknown`) est un nœud comme un autre côté fake : c'est
+        # l'ensemble `nodes` qui rejoue le `MATCH`. `edges` porte (arête, run_id) pour
+        # que la compensation par run (§8) ait de quoi filtrer.
         self.nodes: set[str] = set()
-        self.edges: list[Relation] = []
+        self.edges: list[tuple[Relation, RunId]] = []
 
     async def initialize(self) -> None:
         return
@@ -115,14 +118,22 @@ class InMemoryGraphRepository:
     async def merge_document_node(self, document: ParsedDocument) -> None:
         self.nodes.add(document.identifier.serialize())
 
-    async def upsert_relations(self, relations: list[Relation]) -> RelationWriteResult:
+    async def upsert_relations(
+        self, relations: list[Relation], run_id: RunId
+    ) -> RelationWriteResult:
         written: list[Relation] = []
         pending: list[Relation] = []
         for relation in relations:
             source_present = relation.source_identifier.serialize() in self.nodes
-            target_present = relation.target_identifier.serialize() in self.nodes
+            target = relation.target_identifier
+            # La cible DÉCRITE (`unknown:`) est CRÉÉE, jamais différée — comme le vrai
+            # repo : elle n'arrivera jamais par un run futur (cf. graph_repository).
+            is_described = target.kind == "unknown"
+            target_present = target.serialize() in self.nodes or is_described
             if source_present and target_present:
-                self.edges.append(relation)
+                if is_described:
+                    self.nodes.add(target.serialize())
+                self.edges.append((relation, run_id))
                 written.append(relation)
             else:
                 pending.append(relation)
@@ -140,12 +151,36 @@ class InMemoryGraphRepository:
         del source
         key = identifier.serialize()
         self.edges = [
-            e
-            for e in self.edges
+            (e, rid)
+            for e, rid in self.edges
             if not (
                 e.source_identifier.serialize() == key and e.owner_id == owner_id
             )
         ]
+
+    async def delete_relations_by_run(self, run_id: RunId, owner_id: OwnerId) -> None:
+        """§8 : ne défait QUE les arêtes taguées de ce run — pas toutes les sortantes."""
+        self.edges = [
+            (e, rid)
+            for e, rid in self.edges
+            if not (rid == run_id and e.owner_id == owner_id)
+        ]
+
+    async def compensate_document_node(
+        self, identifier: SourceIdentifier, owner_id: OwnerId
+    ) -> None:
+        """§8 : orphelin → supprimé ; cité → dé-hydraté (reste une cible `:Unknown`).
+
+        Le fake modélise la dé-hydratation par « le nœud reste dans `nodes` » : il
+        demeure une cible matchable, ce qui est tout ce dont les appelants ont besoin.
+        """
+        del owner_id
+        key = identifier.serialize()
+        has_incoming = any(
+            e.target_identifier.serialize() == key for e, _ in self.edges
+        )
+        if not has_incoming:
+            self.nodes.discard(key)
 
 
 class InMemoryPendingRepository:

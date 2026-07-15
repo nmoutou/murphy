@@ -144,7 +144,7 @@ def test_le_chemin_structurel_est_porte_par_le_chunk(fixtures_dir: Path) -> None
     document = _parse(fixtures_dir, f"{ARTICLE_SIMPLE}.xml")
     chunks = _chunker().chunk(document)
 
-    assert all(chunk.structural_path == ["ARTICLE", "BLOC_TEXTUEL"] for chunk in chunks)
+    assert all(chunk.tag_path == ["ARTICLE", "BLOC_TEXTUEL"] for chunk in chunks)
 
 
 def test_sans_section_declaree_le_document_entier_est_un_bloc() -> None:
@@ -155,7 +155,7 @@ def test_sans_section_declaree_le_document_entier_est_un_bloc() -> None:
     chunks = _chunker().chunk(document)
 
     assert len(chunks) > 1
-    assert all(chunk.structural_path == [] for chunk in chunks)
+    assert all(chunk.tag_path == [] for chunk in chunks)
     assert chunks[-1].char_end == 300
 
 

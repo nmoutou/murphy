@@ -8,20 +8,11 @@ from typing import Any
 
 from ragcore.core.models.audit import AuditEvent
 from ragcore.core.models.run_stats import RunStats
-from ragcore.core.ports.telemetry import TelemetryPort
 from ragcore.core.services.telemetry_registry import TelemetryRegistry
 
-from .aggregator import RunStatsAggregator
+from .worker_backends import WorkerBackends
 
 _LOGGER = logging.getLogger(__name__)
-
-_AGGREGATE = "aggregate"
-"""La clé du backend d'agrégat — celui qui PORTE les échecs des autres.
-
-Nommée parce qu'elle n'est plus une clé de dictionnaire parmi quatre : c'est le
-backend de dernier recours, celui qui doit survivre aux autres pour pouvoir compter
-leur mort.
-"""
 
 
 class RegistryAwareTelemetry:
@@ -37,20 +28,22 @@ class RegistryAwareTelemetry:
     local (``snapshot``) et fermer ses backends (``close``). Sans cela le pool ne
     pourrait pas la consommer — un fan-out qui ne sait pas se réduire n'est pas une
     pile de worker, c'est un tuyau.
+
+    Les backends sont un ``WorkerBackends`` typé (§12) : plus de clés-chaînes, plus
+    de garde ``isinstance`` sur l'agrégat — chaque rôle est un champ, et ``aggregate``
+    EST un ``RunStatsAggregator`` par construction.
     """
 
     def __init__(
         self,
         registry: TelemetryRegistry,
-        backends: dict[str, TelemetryPort],
+        backends: WorkerBackends,
     ):
         """
         Args:
             registry: TelemetryRegistry qui map event_type → EventBehavior
-            backends: Dict des backends wired en amont.
-                Clés attendues : "log", "jsonl", "mongo", "aggregate"
-                Le backend "aggregate" DOIT être un RunStatsAggregator : c'est lui
-                qui porte le RunStats que snapshot() rend au pool.
+            backends: WorkerBackends — les 4 rôles (log/jsonl/mongo/aggregate) wirés
+                en amont. ``aggregate`` porte le RunStats que snapshot() rend au pool.
         """
         self._registry = registry
         self._backends = backends
@@ -59,7 +52,9 @@ class RegistryAwareTelemetry:
         """Dispatche vers les backends selon le EventBehavior.
 
         Le `event_type` est préservé tel quel — le registry contrôle le routage,
-        pas le contenu.
+        pas le contenu. L'appariement est un pour un avec les champs du behavior :
+        ``log``→``log``, ``track_jsonl``→``jsonl``, ``track_mongo``→``mongo``,
+        ``aggregate``→``aggregate``.
 
         Un backend qui lève ne fait pas tomber les autres, et ne fait pas tomber
         l'ingestion — mais il est désormais COMPTÉ (cf. ``_deliver``).
@@ -67,15 +62,15 @@ class RegistryAwareTelemetry:
         behavior = self._registry.behavior_for(event.event_type)
 
         if behavior.log:
-            self._deliver("log", event)
+            self._deliver("log", self._backends.log, event)
         if behavior.track_jsonl:
-            self._deliver("jsonl", event)
+            self._deliver("jsonl", self._backends.jsonl, event)
         if behavior.track_mongo:
-            self._deliver("mongo", event)
+            self._deliver("mongo", self._backends.mongo, event)
         if behavior.aggregate:
-            self._deliver(_AGGREGATE, event)
+            self._deliver("aggregate", self._backends.aggregate, event)
 
-    def _deliver(self, name: str, event: AuditEvent) -> None:
+    def _deliver(self, name: str, backend: Any, event: AuditEvent) -> None:
         """Un backend, une livraison, et un échec qui SE COMPTE.
 
         L'isolement des exceptions n'est pas négociable : la télémétrie observe
@@ -86,7 +81,7 @@ class RegistryAwareTelemetry:
         arrivée en base.
         """
         try:
-            self._backends[name].emit(event)
+            backend.emit(event)
         except Exception as exc:
             _LOGGER.warning(
                 "telemetry backend '%s' error on %s: %s", name, event.event_type, exc
@@ -103,7 +98,7 @@ class RegistryAwareTelemetry:
         dégrade pas le run.
         """
         try:
-            self._backends["log"].log(level, message, **context)
+            self._backends.log.log(level, message, **context)
         except Exception as exc:
             _LOGGER.warning("telemetry backend 'log' error on log(): %s", exc)
 
@@ -113,9 +108,7 @@ class RegistryAwareTelemetry:
         Va droit à l'agrégat : un inconnu n'est pas un événement d'audit, c'est un
         aveu d'ignorance que le bilan du run doit porter (``RunStats.unknowns``).
         """
-        aggregate = self._backends.get(_AGGREGATE)
-        if isinstance(aggregate, RunStatsAggregator):
-            aggregate.record_unknown(category, value)
+        self._backends.aggregate.record_unknown(category, value)
 
     def record_audit_failure(self, backend: str, n: int = 1) -> None:
         """Compte une écriture d'audit perdue — sans jamais la réémettre.
@@ -125,16 +118,11 @@ class RegistryAwareTelemetry:
         rater. Au mieux ils rateraient encore, au pire la récursion serait infinie.
         Un compteur en mémoire, lui, ne peut pas échouer sur du réseau.
         """
-        aggregate = self._backends.get(_AGGREGATE)
-        if isinstance(aggregate, RunStatsAggregator):
-            aggregate.record_audit_failure(backend, n)
+        self._backends.aggregate.record_audit_failure(backend, n)
 
     def snapshot(self) -> RunStats:
         """L'agrégat local de ce worker, à fusionner avec celui des autres."""
-        aggregate = self._backends.get(_AGGREGATE)
-        if isinstance(aggregate, RunStatsAggregator):
-            return aggregate.snapshot()
-        return RunStats.empty()
+        return self._backends.aggregate.snapshot()
 
     def close(self) -> None:
         """Ferme les backends de ce worker. Un backend qui refuse de mourir ne doit
@@ -144,13 +132,13 @@ class RegistryAwareTelemetry:
         disque, qu'un buffer part à la poubelle. Elle se compte donc comme un échec
         d'écriture, au même titre qu'un ``emit`` raté.
 
-        L'ordre compte : l'agrégat (``_AGGREGATE``) est fermé **en dernier**, sans quoi
-        il ne serait plus là pour enregistrer les échecs de ceux qui le suivent. En
-        pratique son ``close()`` ne fait rien (l'agrégat vit en mémoire) — mais s'en
-        remettre à ça, c'est dépendre du détail d'implémentation d'un autre module.
+        L'ordre compte : l'agrégat est fermé **en dernier** (``closable_in_order``),
+        sans quoi il ne serait plus là pour enregistrer les échecs de ceux qui le
+        suivent. En pratique son ``close()`` ne fait rien (l'agrégat vit en mémoire) —
+        mais s'en remettre à ça, c'est dépendre du détail d'implémentation d'un autre
+        module.
         """
-        ordered = sorted(self._backends.items(), key=lambda kv: kv[0] == _AGGREGATE)
-        for name, backend in ordered:
+        for name, backend in self._backends.closable_in_order():
             closer = getattr(backend, "close", None)
             if closer is None:
                 continue
