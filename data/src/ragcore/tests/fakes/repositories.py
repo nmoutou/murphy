@@ -22,14 +22,6 @@ class InMemoryDocumentRepository:
         self.deleted.append(key)
         self.documents.pop(key, None)
 
-    async def get(
-        self, identifier: SourceIdentifier, owner_id: OwnerId
-    ) -> ParsedDocument | None:
-        return self.documents.get((identifier.serialize(), owner_id))
-
-    async def exists(self, identifier: SourceIdentifier, owner_id: OwnerId) -> bool:
-        return (identifier.serialize(), owner_id) in self.documents
-
 
 class InMemoryVectorRepository:
     def __init__(self) -> None:
@@ -70,16 +62,6 @@ class InMemoryManifestRepository:
             if e.identifier is not None
             and e.identifier.serialize() == identifier.serialize()
             and e.owner_id == owner_id
-        ]
-        return matches[-1] if matches else None
-
-    async def last_for_source_path(
-        self, source_path: str, owner_id: OwnerId
-    ) -> ManifestEntry | None:
-        matches = [
-            e
-            for e in self.entries
-            if e.source_path == source_path and e.owner_id == owner_id
         ]
         return matches[-1] if matches else None
 

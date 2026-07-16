@@ -48,33 +48,6 @@ class MongoDocumentRepository:
             }
         )
 
-    async def get(
-        self, identifier: SourceIdentifier, owner_id: OwnerId
-    ) -> ParsedDocument | None:
-        doc = await self._collection.find_one(
-            {
-                "identifier": _serialize_identifier(identifier),
-                "owner_id": owner_id,
-            }
-        )
-        if doc is None:
-            return None
-        doc.pop("_id", None)
-        # Le champ "identifier" sérialisé n'est pas dans le modèle ParsedDocument
-        # Il sera reconstruit à partir du champ source-spécifique
-        doc.pop("identifier", None)
-        return ParsedDocument.model_validate(doc)
-
-    async def exists(self, identifier: SourceIdentifier, owner_id: OwnerId) -> bool:
-        count = await self._collection.count_documents(
-            {
-                "identifier": _serialize_identifier(identifier),
-                "owner_id": owner_id,
-            },
-            limit=1,
-        )
-        return count > 0
-
     async def drop_collection(self) -> None:
         """Drop the entire collection. Irreversible — wipes all owners."""
         await self._collection.drop()

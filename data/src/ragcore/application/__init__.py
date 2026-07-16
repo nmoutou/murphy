@@ -1,4 +1,3 @@
-from .delete_document import DeleteDocumentUseCase
 from .ingest_document import IngestDocumentUseCase
 from .ingestion_runner import (
     DocumentWorkload,
@@ -11,7 +10,6 @@ from .run_context import PipelineContext
 from .saga import SagaExecutor, SagaStep
 
 __all__ = [
-    "DeleteDocumentUseCase",
     "DocumentWorkload",
     "IngestDocumentUseCase",
     "IngestionOutcome",

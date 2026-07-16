@@ -26,8 +26,6 @@ GOLDEN: dict[str, tuple[str, bool, bool, bool, bool]] = {
     # Pas une fuite (le document est ingéré) mais pas rien : la fin du chunk n'est pas
     # indexée. Non nul = `chunk_size` incompatible avec la fenêtre du modèle.
     "chunk.truncated": ("warning", True, True, True, True),
-    "document.replaced": ("info", True, True, True, True),
-    "document.deleted": ("info", True, True, True, True),
     "relation.upserted": ("warning", False, True, False, True),
     "relation.pending": ("warning", False, True, True, True),
     "relation.promoted": ("info", False, True, False, True),

@@ -4,7 +4,6 @@ Permet une granularité fine du routage des événements vers les backends.
 """
 
 from dataclasses import dataclass
-from typing import Any
 
 
 @dataclass(frozen=True)
@@ -55,41 +54,6 @@ class TelemetryRegistry:
         sinon retourne le comportement par défaut.
         """
         return self._behaviors.get(event_type, self._default)
-
-    @classmethod
-    def from_params(cls, params: dict[str, Any]) -> "TelemetryRegistry":
-        """Construit le registry depuis la config parameters.yml.
-
-        Args:
-            params: Config dict {
-                "default": {...EventBehavior fields...},
-                "events": {
-                    "event.type.1": {...EventBehavior fields...},
-                    ...
-                }
-            }
-        """
-
-        def _build(cfg: dict[str, Any], base: EventBehavior) -> EventBehavior:
-            """Construis un EventBehavior depuis une config partielle, hérittant du base."""
-            return EventBehavior(
-                level=cfg.get("level", base.level),
-                log=cfg.get("log", base.log),
-                track_jsonl=cfg.get("track_jsonl", base.track_jsonl),
-                track_mongo=cfg.get("track_mongo", base.track_mongo),
-                aggregate=cfg.get("aggregate", base.aggregate),
-            )
-
-        # Comportement par défaut (peut override _DEFAULT_BEHAVIOR)
-        default = _build(params.get("default", {}), _DEFAULT_BEHAVIOR)
-
-        # Comportements spécifiques par event_type
-        behaviors = {
-            event_type: _build(cfg, default)
-            for event_type, cfg in params.get("events", {}).items()
-        }
-
-        return cls(behaviors=behaviors, default=default)
 
     @classmethod
     def from_catalog(

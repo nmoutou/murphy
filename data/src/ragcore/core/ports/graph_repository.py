@@ -72,6 +72,10 @@ class GraphRepository(Protocol):
 
         Retourne des chaînes sérialisées : la comparaison avec les clés du cache
         (§13) se fait ainsi dans le même vocabulaire.
+
+        Aucun chemin de production ne l'appelle encore (le §13 rejeu ciblé n'est pas
+        câblé) : elle sert de point d'observation aux tests d'intégration Neo4j —
+        contrat assumé vers v1, pas code mort.
         """
         ...
 

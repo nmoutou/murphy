@@ -46,20 +46,6 @@ class MongoManifestRepository:
         doc.pop("identifier_serialized", None)  # Pas besoin après le fetch
         return ManifestEntry.model_validate(doc)
 
-    async def last_for_source_path(
-        self, source_path: str, owner_id: OwnerId
-    ) -> ManifestEntry | None:
-        """Récupère la dernière entrée pour ce chemin source (pour audit des rejets)."""
-        doc = await self._collection.find_one(
-            {"source_path": source_path, "owner_id": owner_id},
-            sort=[("processed_at", -1)],
-        )
-        if doc is None:
-            return None
-        doc.pop("_id", None)
-        doc.pop("identifier_serialized", None)
-        return ManifestEntry.model_validate(doc)
-
     async def delete(self, identifier: SourceIdentifier, owner_id: OwnerId) -> None:
         """Supprime toutes les entrées pour cet identifier."""
         await self._collection.delete_many(

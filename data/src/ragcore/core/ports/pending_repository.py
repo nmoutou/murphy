@@ -38,5 +38,10 @@ class PendingRelationRepository(Protocol):
         ...
 
     async def count_for_owner(self, owner_id: OwnerId) -> int:
-        """Taille du backlog d'un propriétaire — un indicateur, pas une alarme."""
+        """Taille du backlog d'un propriétaire — un indicateur, pas une alarme.
+
+        Aucun chemin de production ne la lit (le prod suit `pending_count`, le delta
+        de la run, en mémoire). Elle est le point d'observation du backlog pour les
+        tests d'intégration — contrat assumé, pas oubli.
+        """
         ...

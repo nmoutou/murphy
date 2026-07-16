@@ -22,12 +22,6 @@ class ManifestRepository(Protocol):
         """Récupère la dernière entrée pour cet identifier (tri par processed_at DESC)."""
         ...
 
-    async def last_for_source_path(
-        self, source_path: str, owner_id: OwnerId
-    ) -> ManifestEntry | None:
-        """Récupère la dernière entrée pour ce chemin source (pour audit des rejets)."""
-        ...
-
     async def delete(self, identifier: SourceIdentifier, owner_id: OwnerId) -> None:
         """Supprime toutes les entrées pour cet identifier."""
         ...

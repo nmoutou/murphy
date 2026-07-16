@@ -83,11 +83,6 @@ class ELI(BaseModel):
         return DocumentId(f"{self.kind}:{self.raw}")
 
     @property
-    def as_document_id(self) -> DocumentId:
-        """Rétrocompatibilité temporaire : convertion vers DocumentId."""
-        return DocumentId(self.raw)
-
-    @property
     def document_type(self) -> str:
         """Déduit le type (article, texte, ...) depuis le préfixe ELI."""
         prefix = self.raw[4:8]
