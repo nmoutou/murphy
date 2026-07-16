@@ -1,4 +1,11 @@
-"""Implémentation MongoDB du DocumentRepository."""
+"""Implémentation MongoDB du DocumentRepository.
+
+L'``upsert`` remplace le document **en place et atomiquement** (``replace_one`` avec
+``upsert=True``). Le remplacement d'une version existante n'a jamais d'instant à vide :
+là où un ``delete`` suivi d'un ``insert`` exposait une fenêtre où l'identifiant
+n'existait plus, ``replace_one`` échange ancien→neuf en une seule opération indivisible,
+ou crée le document s'il est absent. La saga n'a donc rien à détruire avant d'écrire.
+"""
 
 from ragcore.adapters.storage.mongo.client import MongoClient, MongoDatabase
 from ragcore.core.models.document import ParsedDocument
@@ -11,7 +18,7 @@ def _serialize_identifier(identifier: SourceIdentifier) -> str:
 
 
 class MongoDocumentRepository:
-    """MongoDB implementation of DocumentRepository (delete-then-insert upsert)."""
+    """MongoDB implementation of DocumentRepository (atomic replace upsert)."""
 
     def __init__(
         self,
@@ -28,17 +35,21 @@ class MongoDocumentRepository:
         return self._database
 
     async def upsert(self, document: ParsedDocument) -> None:
-        """Delete existing entry then insert the new document."""
+        """Remplace le document en place (atomique), ou le crée s'il est absent.
+
+        ``replace_one(..., upsert=True)`` sur la clé ``(identifier, owner_id)`` : un seul
+        aller-retour indivisible. Aucun instant où l'identifiant n'existe plus — c'est ce
+        qui retire à la saga tout besoin de détruire l'ancien avant d'écrire le neuf.
+        """
         identifier_key = _serialize_identifier(document.identifier)
         filter_ = {
             "identifier": identifier_key,
             "owner_id": document.owner_id,
         }
-        await self._collection.delete_many(filter_)
         data = document.model_dump(mode="json")
-        # Ajouter le champ sérialisé pour l'indexation
+        # Le champ sérialisé porte l'indexation ; il double la clé du filtre.
         data["identifier"] = identifier_key
-        await self._collection.insert_one(data)
+        await self._collection.replace_one(filter_, data, upsert=True)
 
     async def delete(self, identifier: SourceIdentifier, owner_id: OwnerId) -> None:
         await self._collection.delete_many(

@@ -305,17 +305,19 @@
     <p class="kicker">Cadrage · Lot C · ragcore</p>
     <h1>Maîtriser <span class="accent">l'embedding</span>, de bout en bout</h1>
     <p class="standfirst">
-      Aujourd'hui les vecteurs sortent de <strong>TEI</strong> — un service qu'on
-      subit&nbsp;: il impose son catalogue de modèles, et il détient le tokenizer qui
-      devrait faire autorité pour le chunker. Le Lot C reprend ce contrôle sans alourdir
-      le pipeline&nbsp;: <strong>un service d'embedding qu'on écrit et qu'on héberge</strong>,
-      derrière la frontière que <code>ragcore</code> a déjà posée.
+      Ce cadrage reposait sur une prémisse&nbsp;: <em>TEI détient le tokenizer qui devrait
+      faire autorité pour le chunker, et il est hors de portée</em>. Un <code>curl</code> l'a
+      démentie le 16 juillet — <strong>TEI expose déjà <code>/tokenize</code>, avec des
+      offsets littéraux, en 7,9 ms</strong>. Le lot ne disparaît pas&nbsp;: il se
+      <strong>scinde</strong>. Ce qui avait une valeur mesurée (le chunker en tokens) se fait
+      maintenant, contre TEI. Ce qui reposait sur un principe (remplacer le service) attend
+      un fait.
     </p>
     <div class="meta-row">
-      <span><b>Statut</b> — cadrage en cours</span>
+      <span><b>Statut</b> — <span class="accent">scindé</span> : C1 à faire · C2 gelé</span>
       <span><b>Prérequis produit</b> — aucun (le pointeur de collection reste devant)</span>
-      <span><b>Absorbe</b> — le « point 3 » (chunker en tokens)</span>
-      <span><b>Rév.</b> 1 · 15 juillet 2026</span>
+      <span><b>Le point 3</b> — se décroche du socle, devient C1</span>
+      <span><b>Rév.</b> 2 · 16 juillet 2026</span>
     </div>
   </div>
 </header>
@@ -327,29 +329,41 @@
     <section class="fam" id="pourquoi">
       <div class="fam-head">
         <span class="fam-num">§C.0</span>
-        <h2>Pourquoi un lot, et pas un correctif</h2>
+        <h2>La prémisse était fausse — ce que la mesure a défait</h2>
         <span class="tag archi">archi</span>
       </div>
       <p class="lede">
-        Le « point 3 » du bilan — <em>faire compter le chunker en tokens plutôt qu'en
-        caractères</em> — semblait une tâche isolée. Il ne l'est pas. Son tokenizer
-        d'autorité, celui qui doit dire « ce chunk fait 300 tokens », est <strong>celui
-        qui embed réellement</strong>. Tant que l'embedding vit dans un service tiers dont
-        on ne choisit ni le modèle ni la révision, ce tokenizer est hors de portée&nbsp;:
-        l'aligner sur TEI reviendrait à figer une correspondance qu'un simple changement
-        d'image casserait en silence.
+        La rév. 1 tenait que le chunker et le service d'embedding étaient <em>la même
+        question par deux bouts</em>&nbsp;: le tokenizer d'autorité étant celui qui embed, il
+        resterait hors de portée tant que l'embedding vivrait dans un service tiers. Tout le
+        lot découlait de là. <strong>C'était faux.</strong>
       </p>
+      <div class="block piege">
+        <p class="block-label">Mesuré le 16 juillet — contre le service qui tournait</p>
+        <ul>
+          <li><strong><code>POST /tokenize</code> répond <span class="num">200</span></strong>,
+            et accepte les listes comme <code>/embeddings</code>.</li>
+          <li><strong>Les offsets sont littéraux</strong>, vérifiés&nbsp;:
+            <code>texte[start:stop] == token.text</code> est vrai sur tous les tokens
+            non-spéciaux. C'est exactement l'invariant que le §C.3 exigeait.</li>
+          <li><strong><span class="num">7,9 ms</span> par appel</strong> — contre ~800 ms de
+            frais fixes pour <code>/embeddings</code>. Négligeable.</li>
+          <li><strong>C'est le tokenizer <em>du modèle qui embed</em></strong> — l'autorité est
+            bonne par construction, sans qu'on ait rien à posséder.</li>
+        </ul>
+      </div>
       <p>
-        La question du chunker et la question du service d'embedding sont donc
-        <strong>la même question par deux bouts</strong> — exactement comme le nommage de
-        collection et la config de workflow l'étaient au §6. On les traite ensemble.
+        La prémisse était <em>raisonnable</em> — rien dans le code n'appelait
+        <code>/tokenize</code>, et ni <code>tokenizers</code> ni <code>transformers</code> ne
+        sont installés dans l'environnement d'ingestion. Elle n'a simplement jamais été
+        testée. <strong>Les deux questions n'en font donc plus qu'une seule&nbsp;: elles se
+        séparent.</strong> Le chunker en tokens ne dépend plus du choix de socle — il est
+        faisable aujourd'hui, contre TEI, sans rien remplacer.
       </p>
       <div class="pull">
-        Le vrai verrou n'est pas « écrire un embedder ». Il existe déjà —
-        <code>LocalEmbedder</code>, <code>OpenAIEmbedder</code>, <code>NoopEmbedder</code>,
-        tous derrière le port <code>BaseEmbedder</code>. Le verrou est
-        <strong>de qui dépend le tokenizer d'autorité</strong>.
-        <span class="src">Constat mesuré le 15 juillet — la porte était déjà entrebâillée.</span>
+        Une prémisse plausible et jamais mesurée a porté un lot entier pendant un jour.
+        Le <code>curl</code> qui l'a défaite a coûté trente secondes.
+        <span class="src">16 juillet 2026 — « mesurer avant de planifier », troisième fois.</span>
       </div>
     </section>
 
@@ -387,45 +401,66 @@
     <section class="fam" id="cible">
       <div class="fam-head">
         <span class="fam-num">§C.2</span>
-        <h2>La cible d'exécution — un service qu'on contrôle</h2>
+        <h2>La cible d'exécution — C2, gelé faute de fait déclencheur</h2>
         <span class="tag archi">archi</span>
       </div>
       <p>
-        Deux voies mènent à l'autonomie&nbsp;: rapatrier le calcul <em>dans</em> le process
-        d'ingestion (<code>LocalEmbedder</code>, <code>sentence-transformers</code> en
-        mémoire), ou garder l'architecture service HTTP mais <strong>remplacer TEI par un
-        service maison</strong> dont on choisit les modèles.
+        La forme reste juste&nbsp;: <strong>si</strong> on remplace TEI un jour, ce sera par un
+        <em>service</em> et jamais en in-process — la lourdeur (<code>torch</code>, les poids)
+        doit rester isolée derrière l'URL, pour que l'ingestion ne gagne aucune dépendance
+        (elle parle déjà <code>httpx</code>). Ce qui change en rév. 2, c'est le
+        <strong>quand</strong>, et il ne dépend plus de nous&nbsp;: le seul motif restant est
+        <em>une gêne de principe, sans modèle bloquant identifié</em>.
       </p>
+      <div class="block piege">
+        <p class="block-label">Les deux faits qui gèlent C2 — mesurés le 16 juillet</p>
+        <ul>
+          <li><strong><span class="num">4 Go</span> de VRAM au total</strong> (RTX 3050 Laptop,
+            3,4 Go libres). <em>C'est le matériel qui borne la liberté de modèle, pas TEI.</em>
+            Le catalogue TEI (BERT, RoBERTa, XLM-R, NomicBert, Qwen2, Mistral) couvre déjà à peu
+            près tout ce qui tient dans 4 Go — on paierait une liberté que le GPU ne laisse pas
+            exercer.</li>
+          <li><strong>TEI est du Rust à batching dynamique.</strong> Un FastAPI +
+            <code>sentence-transformers</code> maison serait vraisemblablement
+            <em>plus lent</em> — une régression au seul endroit qui coûte&nbsp;: l'embedding est
+            99,9 % du run, sur un GPU déjà saturé à 25 W.</li>
+        </ul>
+      </div>
       <div class="block tranche">
-        <p class="block-label">Tranché — service maison, pas in-process</p>
+        <p class="block-label">Tranché — C2 attend un fait, pas un principe</p>
         <p>
-          On garde le port et son client HTTP (<code>OpenAIEmbedder</code>), et on remplace
-          l'implémentation derrière l'URL. La lourdeur — <code>torch</code>, les poids des
-          modèles — reste <strong>isolée dans le service</strong>&nbsp;; l'environnement
-          d'ingestion ne gagne <em>aucune</em> dépendance (il parle déjà <code>httpx</code>).
-        </p>
-        <p>
-          Ce choix sert directement l'objectif du lot — <em>le moins de dépendances possible
-          dans le pipeline</em> — tout en levant la contrainte de TEI&nbsp;: le service étant
-          à nous, son catalogue de modèles est <strong>le nôtre</strong>.
+          Le déclencheur de C2 est nommé&nbsp;: <strong>le jour où un modèle qu'on veut
+          essayer n'est pas au catalogue TEI <em>et</em> tient dans 4 Go.</strong> Ce jour-là,
+          son architecture décidera du socle. Choisir aujourd'hui, c'est choisir un socle pour
+          un besoin qu'on ne connaît pas encore — et donc probablement mal.
         </p>
       </div>
       <div class="tablewrap">
         <table>
-          <caption>Ce que la bascule change</caption>
+          <caption>Ce que la bascule changerait — le tableau de la rév. 1, corrigé par la mesure</caption>
           <thead>
-            <tr><th scope="col">Contrainte</th><th scope="col">Avec TEI (aujourd'hui)</th><th scope="col">Service maison (Lot C)</th></tr>
+            <tr><th scope="col">Contrainte</th><th scope="col">Avec TEI (mesuré, 16 juil.)</th><th scope="col">Service maison (C2)</th></tr>
           </thead>
           <tbody>
             <tr>
               <th scope="row">Choix des modèles</th>
-              <td class="warn">limité au catalogue TEI</td>
-              <td class="ok">n'importe quel modèle qu'on décide de servir</td>
+              <td>limité au catalogue TEI — <em>mais le GPU borne avant lui</em></td>
+              <td>libre <em>en théorie</em> ; toujours ≤ 4 Go de VRAM</td>
             </tr>
             <tr>
               <th scope="row">Tokenizer d'autorité</th>
-              <td class="warn">enfermé dans l'image TEI</td>
-              <td class="ok">exposé par notre service (<code>/tokenize</code> + offsets)</td>
+              <td class="ok"><code>/tokenize</code> + offsets littéraux, 7,9 ms — <strong>déjà là</strong></td>
+              <td>identique — <em>rien à gagner</em></td>
+            </tr>
+            <tr>
+              <th scope="row">Fenêtre du modèle</th>
+              <td class="ok"><code>/info</code> l'annonce (<code>max_input_length: 384</code>)</td>
+              <td>identique — <em>rien à gagner</em></td>
+            </tr>
+            <tr>
+              <th scope="row">Débit</th>
+              <td class="ok">Rust, batching dynamique — la référence</td>
+              <td class="warn">probable régression (Python)</td>
             </tr>
             <tr>
               <th scope="row">Dépendances du pipeline</th>
@@ -433,26 +468,21 @@
               <td><code>httpx</code> — inchangé</td>
             </tr>
             <tr>
-              <th scope="row">Poids lourds (torch)</th>
-              <td>dans TEI</td>
-              <td>dans <em>notre</em> service, isolés</td>
-            </tr>
-            <tr>
               <th scope="row">Maîtrise du déploiement</th>
-              <td class="warn">image tierce, GPU contraint</td>
+              <td class="warn">image tierce</td>
               <td class="ok">de bout en bout</td>
             </tr>
           </tbody>
         </table>
       </div>
       <div class="block ouvert">
-        <p class="block-label">Reste ouvert — la forme du service</p>
+        <p class="block-label">Reste ouvert — mais sans objet tant que C2 dort</p>
         <p>
-          Cadre non figé&nbsp;: quel socle sert les modèles (un petit serveur
-          <code>sentence-transformers</code> maison&nbsp;? un runtime ONNX pour se passer de
-          torch au service&nbsp;?), quel contrat d'API au-delà de <code>/embeddings</code> et
-          <code>/tokenize</code>, et comment le service déclare le modèle qu'il sert (le
-          garde-fou <code>/info</code> attend déjà un <code>model_id</code>).
+          Le socle (serveur <code>sentence-transformers</code> maison&nbsp;? runtime ONNX pour
+          se passer de torch&nbsp;?) et le contrat d'API restent non figés — <strong>et c'est
+          très bien ainsi</strong>. Le modèle déclencheur dictera la réponse&nbsp;: son
+          architecture dit si ONNX est exportable, sa taille si les 4 Go suffisent. Trancher
+          maintenant serait répondre avant d'avoir la question.
         </p>
       </div>
     </section>
@@ -461,20 +491,21 @@
     <section class="fam" id="tokenizer">
       <div class="fam-head">
         <span class="fam-num">§C.3</span>
-        <h2>Le tokenizer d'autorité — résolu par construction</h2>
+        <h2>C1 — le chunker en tokens, la seule partie vivante</h2>
         <span class="tag archi">archi</span>
       </div>
       <p>
-        C'est ici que le lot rembourse sa dette. Puisque le service est à nous, on lui fait
-        exposer un endpoint <code>/tokenize</code> qui rend, pour chaque token,
-        <strong>ses bornes en caractères</strong> (<em>offsets</em>). Le chunker consomme
-        ces offsets — il découpe <em>en tokens</em> mais lit <code>char_start</code> /
-        <code>char_end</code> dans les positions littérales du contenu.
+        C'est ici que le lot rembourse sa dette — et la mesure ne l'a pas affaibli, elle l'a
+        <strong>libéré</strong>. Il n'y a plus d'endpoint à écrire&nbsp;: <code>/tokenize</code>
+        rend déjà, pour chaque token, ses bornes en caractères. Le chunker consomme ces
+        offsets — il découpe <em>en tokens</em> mais lit <code>char_start</code> /
+        <code>char_end</code> dans les positions littérales du contenu. <strong>Faisable
+        aujourd'hui, contre TEI, sans rien remplacer.</strong>
       </p>
       <div class="pull">
         Le tokenizer qui compte les tokens du chunk <strong>est</strong>, par construction,
-        celui qui embed le chunk. Le décalage qu'on cherchait à supprimer ne peut plus
-        exister — il n'y a plus deux tokenizers à désaligner.
+        celui qui embed le chunk. C'était vrai — mais ça l'était <em>déjà</em>, sans qu'on ait
+        rien à posséder.
       </div>
       <div class="block tranche">
         <p class="block-label">Tranché — décisions héritées de la discussion du 15 juillet</p>
@@ -489,14 +520,23 @@
         </ul>
       </div>
       <div class="block piege">
-        <p class="block-label">Le piège qu'on ferme</p>
+        <p class="block-label">Le piège qu'on ferme — et qui coûte, aujourd'hui, en silence</p>
         <p>
-          Le chunker compte aujourd'hui en <strong>caractères</strong>, la fenêtre du modèle
-          en <strong>tokens</strong>&nbsp;; le ratio va de <span class="num">3,08</span>
+          Le chunker compte en <strong>caractères</strong>, la fenêtre du modèle en
+          <strong>tokens</strong>&nbsp;; le ratio va de <span class="num">3,08</span>
           car/token en moyenne à <span class="num">0,33</span> au pire (sigles, ponctuation).
           <strong>Aucune valeur en caractères n'est sûre par construction.</strong>
-          Le fallback par dichotomie de l'embedder rattrape le débordement — il ne le
-          <em>supprime</em> pas. Le §C.3 supprime la cause.
+          <code>_embed_oversized</code> rattrape le débordement par dichotomie sur des 413 — il
+          ne le <em>supprime</em> pas&nbsp;: du texte est tronqué, et seul un
+          <code>warning</code> le dit.
+        </p>
+        <p>
+          Or <code>GET /info</code> <strong>annonce la fenêtre</strong> —
+          <code>max_input_length: 384</code>, <code>auto_truncate: false</code>. La dichotomie
+          <em>découvre</em> par tâtonnement une limite qu'il suffit de lire. Compter en tokens
+          rend la troncature impossible <strong>par construction</strong>&nbsp;:
+          <code>_embed_oversized</code> ne devient pas une ceinture, il devient
+          <strong>supprimable</strong>.
         </p>
       </div>
     </section>
@@ -534,30 +574,43 @@
         <span class="fam-num">§C.5</span>
         <h2>Les livrables du lot</h2>
       </div>
-      <p class="lede">Dans l'ordre de dépendance — chacun débloque le suivant.</p>
+      <p class="lede">
+        La rév. 1 mettait le service en tête, « chacun débloque le suivant ». Il ne débloquait
+        rien&nbsp;: les trois autres livrables tiennent sans lui.
+      </p>
+      <p class="lede"><strong>C1 — à faire, contre TEI.</strong></p>
       <ol class="deliv">
         <li>
-          <span class="d-title">Le service d'embedding maison</span> —
-          <span class="d-body">sert les modèles qu'on choisit, expose <code>/embeddings</code>,
-          <code>/tokenize</code> (avec offsets) et <code>/info</code>. La lourdeur y est
-          confinée&nbsp;; le pipeline ne parle que HTTP.</span>
-        </li>
-        <li>
           <span class="d-title">Le port <code>TokenCounter</code> + son adapter</span> —
-          <span class="d-body">abstraction pure côté chunker, client HTTP côté adapter.
-          Un <em>fake</em> pour les tests unitaires.</span>
+          <span class="d-body">abstraction pure côté chunker (sync, testable avec un
+          <em>fake</em> trivial), client HTTP vers <code>/tokenize</code> côté adapter.</span>
         </li>
         <li>
           <span class="d-title">Le chunker compte en tokens</span> —
           <span class="d-body">« l'ex-point 3 »&nbsp;: fenêtrage sur les tokens, bornes lues
-          dans les offsets. La cause du débordement disparaît&nbsp;; le fallback de
-          l'embedder devient une ceinture, plus la seule protection.</span>
+          dans les offsets rendus par le service, fenêtre lue dans <code>/info</code>. La cause
+          du débordement disparaît.</span>
         </li>
         <li>
-          <span class="d-title">Bascule du hook sur le service maison</span> —
+          <span class="d-title">Retrait de <code>_embed_oversized</code></span> —
+          <span class="d-body">la dichotomie sur les 413 n'a plus d'objet une fois la
+          troncature impossible par construction. <em>Après</em> un run réel qui confirme zéro
+          troncature — pas avant.</span>
+        </li>
+      </ol>
+      <p class="lede" style="margin-top:1.4em"><strong>C2 — gelé.</strong> Réveillé par un modèle hors catalogue TEI qui tient dans 4 Go.</p>
+      <ol class="deliv" start="4">
+        <li>
+          <span class="d-title">Le service d'embedding maison</span> —
+          <span class="d-body">socle décidé par le modèle déclencheur. Expose
+          <code>/embeddings</code>, <code>/tokenize</code>, <code>/info</code> — le contrat que
+          TEI honore déjà, ce qui rend la bascule mécanique le jour venu.</span>
+        </li>
+        <li>
+          <span class="d-title">Bascule du hook</span> —
           <span class="d-body"><code>OpenAIEmbedder</code> pointe sur la nouvelle URL&nbsp;;
-          <code>assert_service_serves_model</code> valide l'alignement modèle ↔ collection
-          contre le nouveau <code>/info</code>. Aucun nœud du DAG ne bouge.</span>
+          <code>assert_service_serves_model</code> valide contre le nouveau <code>/info</code>.
+          Aucun nœud du DAG ne bouge.</span>
         </li>
       </ol>
     </section>
@@ -596,9 +649,18 @@
       métier.
     </p>
     <p>
-      <b>Décisions actées le 15 juillet</b> — cible = service maison · point 3 = livrable du
-      lot · tokeniser avec offsets · <code>TokenCounter</code> injecté.
-      <b>Reste ouvert</b> — forme du service, contrat d'API, révision dans le fingerprint.
+      <b>Rév. 2 — 16 juillet.</b> Le lot est <b>scindé</b> par la mesure&nbsp;: TEI expose déjà
+      <code>/tokenize</code> avec offsets littéraux (7,9 ms) et annonce sa fenêtre dans
+      <code>/info</code> — la prémisse de la rév. 1 était fausse.
+      <b>C1</b> (chunker en tokens, contre TEI) est à faire&nbsp;; <b>C2</b> (remplacer TEI) est
+      gelé, faute de modèle bloquant — et parce que 4 Go de VRAM bornent la liberté avant le
+      catalogue, tandis que le Rust de TEI borne la perf d'un remplaçant Python.
+    </p>
+    <p>
+      <b>Tient toujours de la rév. 1</b> — service et jamais in-process · tokeniser avec offsets,
+      jamais re-décoder · <code>TokenCounter</code> injecté · fingerprint inchangé (il dérive de
+      <code>model_name</code>). <b>Reste ouvert</b> — le socle de C2, décidé par le modèle qui
+      le réveillera.
     </p>
   </div>
 </footer>

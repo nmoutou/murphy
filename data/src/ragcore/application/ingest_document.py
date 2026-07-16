@@ -60,6 +60,20 @@ class IngestDocumentUseCase:
     ) -> None:
         saga = SagaExecutor(self._telemetry)
 
+        # Compensation Mongo et le « trou » de l'UPDATE — la vérité, écrite ici.
+        # Le forward Mongo (`document_repo.upsert`) remplace en place ATOMIQUEMENT
+        # (`replace_one upsert=True`) : il ne détruit plus rien de lui-même, donc il n'y a
+        # plus de fenêtre à vide créée par notre propre code. La compensation
+        # `document_repo.delete` est le rollback JUSTE d'un INSERT (rien avant → supprimer).
+        # Sur un UPDATE, elle supprime au lieu de restaurer l'ancien — mais ce chemin n'est
+        # atteint que si un step ULTÉRIEUR (Qdrant, Neo4j) échoue, et il ne survient jamais
+        # après un `nuke_all` (manifest effacé → tout est INSERT). Ce résiduel n'existe donc
+        # que sur le run INCRÉMENTAL — un chemin v1 — et retombe sur l'at-least-once (§13) :
+        # le run suivant re-traite le document (le manifest ne l'a pas enregistré). Le vrai
+        # rollback versionné (snapshoter l'ancien pour le réinsérer) est un choix EXPLICITE
+        # de v1 : il paie un store de versions et une compensation qui peut elle-même
+        # échouer, pour fermer un trou qu'aucun run v0 n'emprunte.
+        #
         # Neo4j en dernier : c'est le store le moins librement compensable (ses arêtes
         # entrantes viennent d'autres documents). En position terminale, sa compensation
         # n'est appelée que si LUI échoue — mais elle existe désormais (§8) : conditionnelle
@@ -67,7 +81,7 @@ class IngestDocumentUseCase:
         steps = [
             SagaStep(
                 name="mongo_upsert",
-                forward=lambda: self._mongo_delete_then_insert(parsed, operation),
+                forward=lambda: self._document_repo.upsert(parsed),
                 compensate=lambda: self._document_repo.delete(
                     parsed.identifier, parsed.owner_id
                 ),
@@ -121,40 +135,29 @@ class IngestDocumentUseCase:
             )
         )
 
-    async def _mongo_delete_then_insert(
-        self, parsed: ParsedDocument, operation: Operation
-    ) -> None:
-        """Sur UPDATE : supprimer l'ancien, PUIS insérer le neuf.
-
-        **Décision assumée en v0 — un UPDATE compensé laisse un TROU, et il faut le dire.**
-        Le forward efface l'ancienne version avant d'écrire la nouvelle ; la compensation
-        (``document_repo.delete``, cf. le step ``mongo_upsert``) efface la NOUVELLE. Si la
-        saga casse après ce step, l'ancienne version est déjà partie et la nouvelle vient
-        d'être retirée : Mongo n'a **plus rien** pour cet identifiant, alors que le manifest
-        — écrit seulement en cas de succès total — ne le croit pas non plus présent. Les
-        deux sont donc cohérents sur l'absence, mais un document qui existait a bel et bien
-        DISPARU le temps d'un run raté.
-
-        Pourquoi c'est tenable ici : l'ingestion est **at-least-once** (§13). Le run suivant
-        re-traite ce document (le manifest ne l'a pas enregistré) et le ré-écrit. L'état
-        intermédiaire ment — il montre une absence là où le corpus attendait une version —
-        mais il est TRANSITOIRE et auto-réparé, et aucune donnée d'AUTORITÉ n'est perdue
-        (la source XML reste la vérité, on la relit).
-
-        Ce qu'on n'a PAS fait, et pourquoi : sauvegarder l'ancienne version pour la
-        restaurer en compensation (un vrai rollback) demanderait un store de versions et
-        une compensation qui réinsère l'ancien document — de la complexité que v0 ne paie
-        pas pour un état qui se répare seul. La décision est ici, ÉCRITE, pas découverte.
-        """
-        if operation == Operation.UPDATE:
-            await self._document_repo.delete(parsed.identifier, parsed.owner_id)
-        await self._document_repo.upsert(parsed)
-
     async def _qdrant_delete_then_insert(
         self,
         identifier: SourceIdentifier,
         owner_id: OwnerId,
         embedded_chunks: list[EmbeddedChunk],
     ) -> None:
+        """Supprimer TOUS les points de ce document, PUIS insérer ceux du neuf.
+
+        **Le ``delete`` n'est PAS une scorie ici — ne pas le retirer.** Contrairement à
+        Mongo (un document = un enregistrement, remplaçable atomiquement par ``replace_one``),
+        un document tient dans Qdrant en N points, un par chunk. Sur un UPDATE dont la
+        nouvelle version a MOINS de chunks que l'ancienne, un simple ``upsert`` écrase les
+        points communs mais laisse les surnuméraires de l'ancienne version orphelins dans
+        l'index — du contenu périmé qui remonterait aux recherches. Le ``delete_by_document``
+        les emporte d'abord. Qdrant n'offre pas de « remplace tous les points de ce document »
+        atomique : ce delete-puis-insert est le modèle, pas un défaut à corriger.
+
+        Il subsiste donc, sur ce store et sur ce seul chemin, une fenêtre intra-step où les
+        vecteurs du document sont absents. Comme le résiduel de la saga (cf. la docstring de
+        classe), elle ne concerne QUE le run incrémental (après un ``nuke_all`` le manifest
+        est vide, tout est INSERT, ``delete_by_document`` ne trouve rien) et retombe sur
+        l'at-least-once : le run suivant ré-écrit le document. Aucune donnée d'autorité
+        n'est perdue — la source XML reste la vérité.
+        """
         await self._vector_repo.delete_by_document(identifier, owner_id)
         await self._vector_repo.upsert(embedded_chunks)

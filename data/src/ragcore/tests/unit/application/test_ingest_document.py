@@ -150,6 +150,27 @@ async def test_a_failed_compensation_is_counted_and_told_truthfully(stores, cont
     assert completed[0].payload["failed_compensations"] == ["mongo_upsert"]
 
 
+async def test_an_update_replaces_in_place_without_a_preceding_delete(stores, context) -> None:  # noqa: ANN001
+    """F16 — le trou fermé : un UPDATE ne pré-supprime plus l'ancienne version.
+
+    Avant, le forward Mongo faisait ``delete`` PUIS ``insert`` — une fenêtre où
+    l'identifiant n'existait plus, et un rollback qui la rendait durable. Le forward est
+    maintenant un ``upsert`` atomique (``replace_one``). L'observable : sur un UPDATE
+    RÉUSSI, aucun ``delete`` n'a été poussé sur le document (la liste ``deleted`` du fake
+    ne se remplit que par une compensation, qui n'a pas lieu ici). Le document neuf est
+    en place, seul sous son identifiant.
+    """
+    use_case = IngestDocumentUseCase(**stores)
+
+    await use_case.execute(_doc(), [], Operation.UPDATE, context)
+
+    assert stores["document_repo"].deleted == []
+    assert list(stores["document_repo"].documents) == [
+        ("eli:LEGIARTI000000000001", "owner-1")
+    ]
+    assert len(stores["telemetry"].events_of(DOCUMENT_PERSISTED)) == 1
+
+
 async def test_the_node_survives_a_later_failure(stores, context) -> None:  # noqa: ANN001
     """Neo4j est en position terminale : rien ne peut échouer APRÈS lui, donc son
     nœud n'a jamais à être compensé — ce qui préserve les arêtes entrantes que

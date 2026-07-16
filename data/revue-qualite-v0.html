@@ -445,13 +445,19 @@
   <details class="finding p3" id="F16">
     <summary><span class="fid">F16</span>
       <span class="ftitle">La compensation d'un UPDATE détruit l'ancienne version
-        <span class="loc">application/ingest_document.py — _mongo_delete_then_insert</span></span>
-      <span class="chip done">documenté</span></summary>
+        <span class="loc">application/ingest_document.py + adapters/storage/mongo/document_repository.py</span></span>
+      <span class="chip done">corrigé</span></summary>
     <div class="fbody">
-      <p>Le forward supprime l'ancien document <em>avant</em> d'insérer ; la compensation supprime le nouveau. Après
-      une saga ratée sur UPDATE, le document est <strong>absent</strong> des stores alors que le manifest le croit
-      présent. L'at-least-once auto-répare au run suivant — mais l'état intermédiaire ment, et rien ne le dit. Décision
-      assumable en v0 ; elle doit être <em>écrite</em> dans la docstring de la saga, pas découverte.</p>
+      <p>Le forward Mongo faisait <code>delete</code> <em>puis</em> <code>insert</code> — une fenêtre à vide créée par
+      notre propre code, que le rollback rendait durable. <strong>Corrigé</strong> : l'<code>upsert</code> Mongo est
+      désormais un <code>replace_one(..., upsert=True)</code> <em>atomique</em> ; la branche <code>if UPDATE: delete</code>
+      et le helper <code>_mongo_delete_then_insert</code> ont disparu. Plus aucun instant à vide côté document.</p>
+      <p>Deux faits ont recadré la portée : (1) <code>nuke_all</code> efface le manifest → après un nuke, <em>tout</em> est
+      INSERT et le chemin UPDATE est inatteignable ; le trou ne concerne donc que le run <strong>incrémental</strong>, un
+      chemin <strong>v1</strong>. (2) Qdrant garde son <code>delete-then-insert</code> — <em>nécessaire</em> (un document =
+      N points ; un UPDATE plus court laisserait des points orphelins qu'un simple upsert n'enlève pas) et documenté comme
+      tel pour qu'on ne le « corrige » pas par erreur. Le résiduel saga-multi-store retombe sur l'at-least-once ; le vrai
+      rollback versionné est un choix <em>explicite</em> de v1, écrit dans la docstring de la saga.</p>
     </div>
   </details>
 
