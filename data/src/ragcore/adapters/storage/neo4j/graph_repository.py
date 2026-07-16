@@ -43,9 +43,23 @@ class Neo4jGraphRepository:
                 )
 
     async def merge_document_node(self, document: ParsedDocument) -> None:
-        """Merge un nœud document avec le label déduit de l'identifier.
+        """Merge un nœud document, et RÉ-HYDRATE une cible ``:Unknown`` s'il en existe une.
 
         Le label est calculé depuis document.identifier.document_type (pour ELI).
+
+        **Le ``MERGE`` ne porte PAS le label — et c'est le point.** ``MERGE`` matche le
+        motif ENTIER, label compris : ``MERGE (d:Article {identifier: X})`` et le nœud
+        ``(:Unknown {identifier: X})`` qu'une citation juri a déjà créé sont, pour Neo4j,
+        deux motifs différents — le second n'est pas trouvé, et un SECOND nœud de même
+        identifiant est créé. La citation reste alors accrochée à l'``:Unknown`` orphelin,
+        le contenu réel vit sur l'``:Article``, et la « ré-hydratation » que ce dépôt
+        promet n'a jamais lieu.
+
+        On ``MERGE`` donc sur le seul ``identifier`` (sans label), ce qui retombe sur le
+        nœud existant quel que soit son label, PUIS on pose le label réel et on retire le
+        placeholder ``:Unknown`` (Neo4j ignore le retrait d'un label absent — sûr quand le
+        nœud vient d'être créé). La cible décrite devient le vrai document, en place, sans
+        rien ré-ingérer.
         """
         # Déduire le label depuis l'identifier
         label = "Document"
@@ -57,8 +71,12 @@ class Neo4jGraphRepository:
         identifier_value = document.identifier.serialize()
 
         query = (
-            f"MERGE (d:{label} {{identifier: $identifier, owner_id: $owner_id}})"
-            " SET d += $props RETURN d"
+            "MERGE (d {identifier: $identifier, owner_id: $owner_id})"
+            " SET d:$($label)"
+            " REMOVE d:Unknown"
+            " SET d += $props"
+            " REMOVE d.text"  # la phrase de citation d'un ex-:Unknown : le contenu réel la remplace
+            " RETURN d"
         )
 
         props: dict[str, Any] = {
@@ -72,6 +90,7 @@ class Neo4jGraphRepository:
                 query,
                 identifier=identifier_value,
                 owner_id=document.owner_id,
+                label=label,
                 props=props,
             )
 

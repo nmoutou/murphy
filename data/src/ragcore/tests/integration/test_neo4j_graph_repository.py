@@ -446,6 +446,48 @@ async def test_compensating_a_cited_node_dehydrates_it(repo) -> None:
     assert await _edge_count(repo) == 1
 
 
+async def test_reingesting_a_dehydrated_node_rehydrates_it_in_place(repo) -> None:
+    """LE test de F5, contre une vraie base. Un ``:Unknown`` qui partage l'``identifier``
+    d'un document (né d'une dé-hydratation) doit REDEVENIR ce document, en UN seul nœud —
+    pas un second à côté du premier.
+
+    L'ancien ``MERGE (d:Article {identifier})`` matchait le motif AVEC le label : il ne
+    retombait pas sur le ``:Unknown`` (label différent) et créait un DOUBLON. La citation
+    entrante restait sur l'``:Unknown`` orphelin, le contenu frais sur un ``:Article``
+    neuf — la ré-hydratation que le dépôt promet n'avait jamais lieu. Le ``MERGE`` sans
+    label la rend réelle.
+    """
+    # Mise en place : 1 cite 2, puis 2 échoue et se fait dé-hydrater en :Unknown
+    # (identifier `eli:…002` conservé, label métier perdu, citation entrante gardée).
+    await repo.merge_document_node(_doc(1))
+    await repo.merge_document_node(_doc(2))
+    await repo.upsert_relations([_relation(1, 2)], RUN)
+    await repo.compensate_document_node(ELI(raw="LEGIARTI000000000002"), OWNER)
+    assert await _labels_of(repo, "eli:LEGIARTI000000000002") == {"Unknown"}
+
+    # 2 est ré-ingéré avec succès : re-merge du nœud.
+    await repo.merge_document_node(_doc(2))
+
+    # UN SEUL nœud porte cet identifier (pas de doublon).
+    async with repo._driver.session() as session:  # noqa: SLF001
+        record = await (
+            await session.run(
+                "MATCH (n {identifier: 'eli:LEGIARTI000000000002'})"
+                " RETURN count(n) AS n, collect(n.title)[0] AS title, n.text AS text"
+            )
+        ).single()
+    assert record["n"] == 1, "un seul nœud — la ré-hydratation ne DOUBLE pas le nœud"
+
+    # …ré-hydraté : label métier retrouvé, :Unknown retiré, contenu réel revenu, phrase
+    # de citation effacée.
+    assert await _labels_of(repo, "eli:LEGIARTI000000000002") == {"Article"}
+    assert record["title"] == "Article 2", "le contenu du document est de retour"
+    assert record["text"] is None, "la phrase de l'ex-:Unknown est effacée"
+
+    # …et la citation entrante de 1 tient toujours sur ce même nœud.
+    assert await _edge_count(repo) == 1
+
+
 async def test_compensating_an_absent_node_is_a_noop(repo) -> None:
     """La saga peut échouer AVANT le merge du nœud : compenser un nœud qui n'existe
     pas ne doit pas lever. La compensation est idempotente — c'est ce que la saga
