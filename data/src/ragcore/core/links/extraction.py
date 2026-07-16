@@ -30,7 +30,11 @@ from typing import Any
 from ..models.enums import SourceName
 from ..models.identifiers import OwnerId, SourceIdentifier, UnknownRef
 from ..models.relation import Relation
-from ..services.unknown_categories import CATEGORY_SENS, CATEGORY_TYPELIEN
+from ..services.unknown_categories import (
+    CATEGORY_IDENTIFIER,
+    CATEGORY_SENS,
+    CATEGORY_TYPELIEN,
+)
 from .vocabulary import CONTAINS, RelationVerb, TranslationTable, translate
 
 __all__ = ["ExtractedLinks", "LinkTable", "extract_links"]
@@ -165,7 +169,7 @@ def extract_links(  # noqa: PLR0913 — six faits distincts, tous nommés : les 
             relations.append(relation)
 
     for ancestor in ancestors:
-        relation = _from_ancestor(ancestor, table, subject)
+        relation = _from_ancestor(ancestor, table, subject, unknowns)
         if relation is not None:
             relations.append(relation)
 
@@ -178,7 +182,7 @@ def _from_reference(
     subject: _Subject,
     unknowns: dict[str, list[str]],
 ) -> Relation | None:
-    linked = _target(reference, table)
+    linked = _target(reference, table, unknowns)
     if linked is None:
         # Ni identifiant, ni libellé : il n'y a **rien** — pas même une description. Ce
         # n'est pas un renoncement, c'est l'absence de donnée. La déclarer en `unknowns`
@@ -230,12 +234,13 @@ def _from_ancestor(
     ancestor: Mapping[str, Any],
     table: LinkTable,
     subject: _Subject,
+    unknowns: dict[str, list[str]],
 ) -> Relation | None:
     """L'ancêtre CONTIENT le document courant. Orientation fixe, jamais ambiguë."""
     if ancestor.get("kind") not in table.ancestor_kinds:
         return None
 
-    linked = _identifier(ancestor.get("id", ""), table)
+    linked = _identifier(ancestor.get("id", ""), table, unknowns)
     if linked is None:
         return None
 
@@ -265,7 +270,11 @@ def _orient(
     return None
 
 
-def _target(reference: Mapping[str, Any], table: LinkTable) -> SourceIdentifier | None:
+def _target(
+    reference: Mapping[str, Any],
+    table: LinkTable,
+    unknowns: dict[str, list[str]],
+) -> SourceIdentifier | None:
     """La cible d'un lien : **identifiée** si on peut, **décrite** sinon.
 
     Deux façons de désigner une cible, et il faut les deux — c'est une mesure, pas une
@@ -287,7 +296,7 @@ def _target(reference: Mapping[str, Any], table: LinkTable) -> SourceIdentifier 
     ici : ``core/links`` ne sait pas ce qu'est un code juridique, et le lui apprendre
     remettrait de la sémantique là où on vient de l'en sortir.
     """
-    identified = _identifier(reference.get("id", ""), table)
+    identified = _identifier(reference.get("id", ""), table, unknowns)
     if identified is not None:
         return identified
 
@@ -303,12 +312,19 @@ def _target(reference: Mapping[str, Any], table: LinkTable) -> SourceIdentifier 
     return UnknownRef(raw=label)
 
 
-def _identifier(raw_id: str, table: LinkTable) -> SourceIdentifier | None:
+def _identifier(
+    raw_id: str, table: LinkTable, unknowns: dict[str, list[str]]
+) -> SourceIdentifier | None:
     if not raw_id or table.identifier_for is None:
+        # `@id` vide ou source qui n'identifie pas : une ABSENCE, pas un inconnu.
         return None
     try:
         return table.identifier_for(raw_id)
     except Exception:
+        # `@id` présent mais illisible : la source a écrit une référence qu'on ne sait
+        # pas transformer. La taire ferait disparaître l'arête en silence ; on la
+        # DÉCLARE, pour que le bilan la porte et que la table apprenne.
+        _declare(unknowns, CATEGORY_IDENTIFIER, raw_id)
         return None
 
 

@@ -24,7 +24,14 @@ CATEGORY_TAG = "balise"
 CATEGORY_ROOT = "racine"
 """Une racine XML d'une famille de documents que la source ne connaît pas."""
 
+CATEGORY_IDENTIFIER = "identifiant"
+"""Un ``@id`` PRÉSENT mais que la table de la source ne sait pas transformer en
+identifiant (format inattendu). À distinguer d'un ``@id`` VIDE, qui est une absence
+de donnée, pas un inconnu. Le taire ferait disparaître l'arête en silence — le lien
+existait pourtant, la source l'a écrit."""
+
 __all__ = [
+    "CATEGORY_IDENTIFIER",
     "CATEGORY_ROOT",
     "CATEGORY_SENS",
     "CATEGORY_TAG",

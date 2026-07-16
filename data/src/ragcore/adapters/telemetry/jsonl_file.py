@@ -7,14 +7,11 @@ Un worker qui écrit dans son propre fichier n'a personne avec qui se coordonner
 """
 
 import json
-import logging
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
 from ragcore.core.models.audit import AuditEvent
-
-_LOGGER = logging.getLogger(__name__)
 
 
 class JsonlFileTelemetry:
@@ -29,13 +26,14 @@ class JsonlFileTelemetry:
         self._path.parent.mkdir(parents=True, exist_ok=True)
 
     def emit(self, event: AuditEvent) -> None:
+        # On NE rattrape PAS l'OSError ici : l'avaler d'un `warning` empêchait le
+        # fan-out (`RegistryAwareTelemetry._deliver`) de la compter en
+        # `AUDIT_WRITE_FAILED`. Une ligne d'audit perdue doit dégrader le run — et
+        # c'est `_deliver` qui isole ET compte. L'invariant « la télémétrie ne fait
+        # jamais échouer l'ingestion » tient là-haut, pas ici.
         line = json.dumps(event.model_dump(mode="json"), ensure_ascii=False)
-        try:
-            with self._path.open("a", encoding="utf-8") as handle:
-                handle.write(line + "\n")
-        except OSError as exc:
-            # La télémétrie ne fait jamais échouer l'ingestion qu'elle observe.
-            _LOGGER.warning("jsonl telemetry: écriture impossible (%s)", exc)
+        with self._path.open("a", encoding="utf-8") as handle:
+            handle.write(line + "\n")
 
     def log(self, level: str, message: str, **context: Any) -> None:
         return

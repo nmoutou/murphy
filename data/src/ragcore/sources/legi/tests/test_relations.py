@@ -16,7 +16,11 @@ from ragcore.core.models.enums import SourceName
 from ragcore.core.models.enums import SourceName as _SN
 from ragcore.core.models.identifiers import ELI, JorfId, OwnerId
 from ragcore.core.ports.relation_extractor import BaseRelationExtractor
-from ragcore.core.services.unknown_categories import CATEGORY_SENS, CATEGORY_TYPELIEN
+from ragcore.core.services.unknown_categories import (
+    CATEGORY_IDENTIFIER,
+    CATEGORY_SENS,
+    CATEGORY_TYPELIEN,
+)
 from ragcore.sources.generic import GenericParser, GenericRelationExtractor
 from ragcore.sources.legi.file_connector import _to_tree
 from ragcore.sources.legi.table import LEGI_ROLE_TABLE
@@ -264,6 +268,24 @@ def test_un_id_vide_ne_pollue_PAS_les_inconnus() -> None:
 
     assert result.relations == []
     assert result.unknowns == {}
+
+
+def test_un_id_PRESENT_mais_illisible_est_DECLARE_pas_jete() -> None:
+    """La distinction jumelle de l'`id` vide : un `id` PRÉSENT mais que la table ne sait
+    pas transformer (format inattendu) n'est PAS une absence — la source a écrit une
+    référence. La taire (l'ancien `except: return None`) faisait disparaître l'arête en
+    silence. Elle se DÉCLARE désormais en `identifiant`, pour que le bilan la porte.
+    """
+    document = _document_with_references(
+        [{"kind": "LIEN", "id": "GARBAGE", "typelien": "CITATION", "sens": "source"}]
+    )
+
+    result = GenericRelationExtractor(LEGI_ROLE_TABLE, SourceName.LEGI).extract(
+        document
+    )
+
+    assert result.relations == [], "l'arête n'est pas inventée : la cible est illisible"
+    assert result.unknowns == {CATEGORY_IDENTIFIER: ["GARBAGE"]}
 
 
 def _document_with_references(references: list[dict[str, Any]]) -> ParsedDocument:

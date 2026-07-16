@@ -22,6 +22,8 @@ from ragcore.core.telemetry_events import (
     DOCUMENT_FAILED,
     DOCUMENT_INVALIDATED,
     DOCUMENT_PERSISTED,
+    DOCUMENT_SKIPPED,
+    SAGA_COMPENSATION_FAILED,
 )
 
 # Events dont on veut un breakdown par clé de payload.
@@ -29,7 +31,9 @@ _BREAKDOWN_KEY: dict[str, str] = {
     DOCUMENT_INVALIDATED: "reason",  # breakdown par raison de rejet
     DOCUMENT_PERSISTED: "operation",  # breakdown par opération (INSERT/UPDATE)
     DOCUMENT_FAILED: "reason",  # breakdown par CAUSE de la fuite
+    DOCUMENT_SKIPPED: "reason",  # breakdown par raison d'écart (artefact / illisible)
     AUDIT_WRITE_FAILED: "backend",  # breakdown par backend défaillant (mongo, drain…)
+    SAGA_COMPENSATION_FAILED: "step",  # breakdown par store dont le rollback a raté
 }
 
 

@@ -20,7 +20,10 @@ from pathlib import Path
 from ragcore.core.links import CANONICAL_VERBS, CONTAINS
 from ragcore.core.models.enums import SourceName as _SN
 from ragcore.core.models.identifiers import OwnerId
-from ragcore.core.services.exclusion_reasons import REASON_EXPORT_ARTIFACT
+from ragcore.core.services.exclusion_reasons import (
+    REASON_EXPORT_ARTIFACT,
+    REASON_UNREADABLE,
+)
 from ragcore.core.services.relation_reduction import reduce_transitively
 from ragcore.sources.generic import (
     GenericParser,
@@ -108,7 +111,11 @@ def test_la_chaine_complete_est_figee() -> None:
 
     assert result["files"] == 10
     assert result["documents"] == 9
-    assert result["skipped"] == {REASON_EXPORT_ARTIFACT: 1}
+    # `malformed.xml` (illisible) était SILENCIEUSEMENT sauté : le connecteur le
+    # `continue`-ait sans le compter, et ce golden était aveugle à sa disparition.
+    # Depuis F3 il est écarté EN ÉTANT COMPTÉ (`unreadable`). Le golden bouge d'un
+    # écart nommé — la fixture le contenait exprès, personne ne l'affirmait.
+    assert result["skipped"] == {REASON_EXPORT_ARTIFACT: 1, REASON_UNREADABLE: 1}
 
     assert result["before_reduction"] == 123
     assert result["after_reduction"] == 116

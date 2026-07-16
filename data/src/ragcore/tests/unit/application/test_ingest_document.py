@@ -20,6 +20,7 @@ from ragcore.core.telemetry_events import (
     DOCUMENT_PERSISTED,
     RELATION_UPSERTED,
     SAGA_COMPENSATION_COMPLETED,
+    SAGA_COMPENSATION_FAILED,
 )
 from ragcore.tests.fakes import (
     InMemoryDocumentRepository,
@@ -115,6 +116,38 @@ async def test_a_failed_saga_compensates_what_it_had_written(stores, context) ->
 
     assert stores["document_repo"].documents == {}
     assert len(stores["telemetry"].events_of(SAGA_COMPENSATION_COMPLETED)) == 1
+
+
+async def test_a_failed_compensation_is_counted_and_told_truthfully(stores, context) -> None:  # noqa: ANN001
+    """Le forward de Qdrant casse ⇒ compensation ; MAIS le rollback de Mongo casse
+    aussi. L'écrit partiel qui subsiste doit être COMPTÉ (SAGA_COMPENSATION_FAILED,
+    breakdown par `step`) et l'audit ne doit PAS prétendre à un rollback propre.
+    """
+
+    async def boom(*args, **kwargs):  # noqa: ANN002, ANN003, ANN202
+        raise RuntimeError("qdrant est tombé")
+
+    async def boom_rollback(*args, **kwargs):  # noqa: ANN002, ANN003, ANN202
+        raise RuntimeError("mongo refuse de se défaire")
+
+    stores["vector_repo"].upsert = boom  # déclenche la compensation
+    stores["document_repo"].delete = boom_rollback  # …dont le rollback rate
+    use_case = IngestDocumentUseCase(**stores)
+
+    with pytest.raises(RuntimeError, match="qdrant est tombé"):
+        await use_case.execute(_doc(), [], Operation.INSERT, context)
+
+    # La compensation ratée est comptée, ventilée par le store fautif.
+    failed = stores["telemetry"].events_of(SAGA_COMPENSATION_FAILED)
+    assert len(failed) == 1
+    assert failed[0].payload["step"] == "mongo_upsert"
+    assert failed[0].success is False
+
+    # …et le bilan de compensation dit la vérité : rollback NON propre.
+    completed = stores["telemetry"].events_of(SAGA_COMPENSATION_COMPLETED)
+    assert len(completed) == 1
+    assert completed[0].success is False
+    assert completed[0].payload["failed_compensations"] == ["mongo_upsert"]
 
 
 async def test_the_node_survives_a_later_failure(stores, context) -> None:  # noqa: ANN001

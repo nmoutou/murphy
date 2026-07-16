@@ -7,6 +7,7 @@ from ragcore.core.models.audit import build_event
 from ragcore.core.ports.telemetry import TelemetryPort
 from ragcore.core.telemetry_events import (
     SAGA_COMPENSATION_COMPLETED,
+    SAGA_COMPENSATION_FAILED,
     SAGA_COMPENSATION_STARTED,
 )
 
@@ -56,14 +57,31 @@ class SagaExecutor:
                 )
             )
 
+            failed_compensations: list[str] = []
             for step in reversed(completed):
                 try:
                     await step.compensate()
                 except Exception as comp_exc:
+                    # Une compensation qui rate laisse un écrit partiel derrière elle.
+                    # Le `logger.error` seul le rendait invisible au bilan : on émet
+                    # donc un événement COMPTÉ (breakdown par `step`), pour que l'état
+                    # corrompu apparaisse dans le RunSummary — pas de perte sans compteur.
                     logger.error(
                         "compensation.failed step=%s error=%s",
                         step.name,
                         str(comp_exc),
+                    )
+                    failed_compensations.append(step.name)
+                    self._telemetry.emit(
+                        build_event(
+                            event_type=SAGA_COMPENSATION_FAILED,
+                            run_id=context.run_id,
+                            owner_id=context.owner_id,
+                            source=context.source,
+                            payload={"step": step.name, "failed_step": failed_name},
+                            success=False,
+                            error_message=str(comp_exc),
+                        )
                     )
 
             self._telemetry.log("info", "saga.compensation.completed")
@@ -76,8 +94,12 @@ class SagaExecutor:
                     payload={
                         "failed_step": failed_name,
                         "compensated_steps": [s.name for s in completed],
+                        "failed_compensations": failed_compensations,
                     },
-                    success=True,
+                    # `success` dit la VÉRITÉ : une seule compensation ratée et le
+                    # rollback n'est pas propre. L'affirmer `True` inconditionnellement
+                    # faisait mentir l'audit sur l'intégrité de l'état.
+                    success=not failed_compensations,
                 )
             )
 

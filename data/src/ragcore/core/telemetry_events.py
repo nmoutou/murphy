@@ -40,6 +40,10 @@ AUDIT_WRITE_FAILED = "audit.write.failed"
 
 SAGA_COMPENSATION_STARTED = "saga.compensation.triggered"
 SAGA_COMPENSATION_COMPLETED = "saga.compensation.completed"
+# Une compensation qui échoue laisse un écrit partiel (ex. Mongo inséré, son rollback
+# raté) que RIEN d'autre ne compte : le document, lui, est déjà compté FAILED. Sans ce
+# compteur, l'état corrompu resterait invisible au bilan — une perte sans compteur.
+SAGA_COMPENSATION_FAILED = "saga.compensation.failed"
 
 MAINTENANCE_CLEANUP_EXECUTED = "maintenance.cleanup.executed"
 MAINTENANCE_NUKE_ALL_EXECUTED = "maintenance.nuke_all.executed"
@@ -187,6 +191,13 @@ EVENT_CATALOG: dict[str, EventBehavior] = {
     ),
     SAGA_COMPENSATION_COMPLETED: EventBehavior(
         level="warning",
+        log=True,
+        track_jsonl=True,
+        track_mongo=True,
+        aggregate=True,
+    ),
+    SAGA_COMPENSATION_FAILED: EventBehavior(
+        level="error",
         log=True,
         track_jsonl=True,
         track_mongo=True,

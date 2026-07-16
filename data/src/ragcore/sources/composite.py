@@ -100,8 +100,9 @@ class CompositeConnector:
 
             # Après épuisement, jamais avant : `skipped` se remplit au fil de la lecture.
             # Le lire trop tôt rendrait zéro — et un compteur d'exclusions vide est
-            # indiscernable d'une absence d'exclusion.
-            for reason, count in getattr(connector, "skipped", {}).items():
+            # indiscernable d'une absence d'exclusion. `skipped` fait partie du port
+            # (plus de `getattr` défensif) : tout connecteur l'expose.
+            for reason, count in connector.skipped.items():
                 self.skipped[reason] = self.skipped.get(reason, 0) + count
 
 

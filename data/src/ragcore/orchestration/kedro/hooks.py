@@ -164,12 +164,22 @@ class TelemetryHooks:
         settings = get_infra_settings()
         embedding_settings = get_embedding_runtime_settings()
 
-        # Charger les paramètres Kedro (parameters.yml)
+        # Charger les paramètres Kedro (parameters.yml). PAS de fallback silencieux
+        # vers `{}` : `_build_workflow_config({})` produirait la config par DÉFAUT
+        # (chunk_size=128…), donc un `collection_name` par défaut — et le run
+        # écrirait tout le corpus dans une collection nommée d'après une stratégie
+        # que l'utilisateur n'a pas choisie, en écrasant potentiellement l'A/B d'un
+        # autre run. Un config illisible n'est pas un run par défaut : c'est un run
+        # qu'on ARRÊTE, avec une erreur claire (fail-fast, cf. doctrine du projet).
         try:
             params = catalog.load("parameters")
-        except Exception:
-            # Si les paramètres ne sont pas disponibles, utiliser des valeurs par défaut
-            params = {}
+        except Exception as exc:
+            raise RuntimeError(
+                "Impossible de charger `parameters.yml` : le run est interrompu. "
+                "Continuer avec les défauts baptiserait la collection Qdrant d'après "
+                "une config que personne n'a choisie — une perte silencieuse de la "
+                "stratégie d'ingestion."
+            ) from exc
 
         # La config de workflow — LA référence (§9). `parameters.yml` n'est qu'une façon
         # de la peupler : c'est ici que Kedro cesse d'être la vérité et redevient un

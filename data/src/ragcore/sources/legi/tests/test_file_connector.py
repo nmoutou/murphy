@@ -7,7 +7,10 @@ import pytest
 
 from ragcore.core.models.identifiers import OwnerId
 from ragcore.core.ports.connector import BaseConnector
-from ragcore.core.services.exclusion_reasons import REASON_EXPORT_ARTIFACT
+from ragcore.core.services.exclusion_reasons import (
+    REASON_EXPORT_ARTIFACT,
+    REASON_UNREADABLE,
+)
 from ragcore.sources.legi.file_connector import LegiFileConnector
 
 from .conftest import (
@@ -81,6 +84,26 @@ async def test_lartefact_dexport_est_ecarte_ET_compte(corpus: Path) -> None:
 
     assert connector.skipped == {REASON_EXPORT_ARTIFACT: 1}
     assert not any("JORFCONT" in doc_id for doc_id in docs)
+
+
+@pytest.mark.asyncio
+async def test_un_xml_illisible_est_ecarte_ET_compte(tmp_path: Path) -> None:
+    """Un XML qui ne parse pas (tronqué, corrompu) n'a pas d'arbre à transcrire.
+
+    L'ancien code le ``continue``-ait en silence : le fichier disparaissait AVANT
+    ``document.fetched``, donc hors de l'équation de complétude — une perte que rien
+    ne signalait. Il est désormais écarté EN ÉTANT COMPTÉ (``unreadable``).
+    """
+    (tmp_path / "malformed.xml").write_text(
+        "<ARTICLE><META><ID>LEGIARTI000000000042</ID>",  # jamais refermé
+        encoding="utf-8",
+    )
+
+    connector = LegiFileConnector(tmp_path)
+    docs = await _collect(connector)
+
+    assert docs == {}
+    assert connector.skipped == {REASON_UNREADABLE: 1}
 
 
 @pytest.mark.asyncio

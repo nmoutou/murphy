@@ -35,6 +35,7 @@ GOLDEN: dict[str, tuple[str, bool, bool, bool, bool]] = {
     "audit.write.failed": ("error", True, True, False, True),
     "saga.compensation.triggered": ("error", True, True, True, True),
     "saga.compensation.completed": ("warning", True, True, True, True),
+    "saga.compensation.failed": ("error", True, True, True, True),
     "maintenance.cleanup.executed": ("info", True, True, False, False),
     "maintenance.nuke_all.executed": ("warning", True, True, True, False),
 }

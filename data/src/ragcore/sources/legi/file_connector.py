@@ -45,7 +45,10 @@ from xml.etree import ElementTree as ET
 from ragcore.core.models.document import RawDocument
 from ragcore.core.models.enums import SourceName
 from ragcore.core.models.identifiers import OwnerId
-from ragcore.core.services.exclusion_reasons import REASON_EXPORT_ARTIFACT
+from ragcore.core.services.exclusion_reasons import (
+    REASON_EXPORT_ARTIFACT,
+    REASON_UNREADABLE,
+)
 
 __all__ = ["LegiFileConnector"]
 
@@ -86,7 +89,12 @@ class LegiFileConnector:
         for path in sorted(self._root.rglob("*.xml")):
             root = self._read(path)
             if root is None:
-                continue  # illisible : le parser n'en saura rien, il n'y a rien à parser
+                # Illisible : pas d'arbre à transcrire. Le parser n'en saura jamais
+                # rien — donc si le connecteur ne le compte pas ici, ce fichier
+                # disparaît AVANT même d'entrer dans `seen` : une perte invisible à
+                # l'équation de complétude. On l'écarte en le COMPTANT.
+                self._skip(REASON_UNREADABLE)
+                continue
 
             if self._is_export_artifact(path, root):
                 self._skip(REASON_EXPORT_ARTIFACT)

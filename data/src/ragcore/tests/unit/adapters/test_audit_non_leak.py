@@ -20,10 +20,12 @@ savait le faire : ils vérifiaient tous le chemin nominal, où rien ne rate.
 
 import asyncio
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any
 
 from ragcore.adapters.runtime.asyncio_runtime import AsyncioRuntime
 from ragcore.adapters.telemetry.aggregator import RunStatsAggregator
+from ragcore.adapters.telemetry.jsonl_file import JsonlFileTelemetry
 from ragcore.adapters.telemetry.registry_aware import RegistryAwareTelemetry
 from ragcore.adapters.telemetry.worker_backends import WorkerBackends
 from ragcore.core.models.audit import AuditEvent, build_event
@@ -181,6 +183,68 @@ class CountingExplodingBackend(ExplodingBackend):
     def emit(self, event: AuditEvent) -> None:
         self.attempts += 1
         raise RuntimeError("mongo refuse la ligne")
+
+
+def _jsonl_telemetry(jsonl: JsonlFileTelemetry) -> RegistryAwareTelemetry:
+    """Une pile centrée sur le backend jsonl RÉEL et l'agrégat qui compte."""
+    registry = TelemetryRegistry.from_catalog(
+        {
+            DOCUMENT_PERSISTED: EventBehavior(
+                level="info",
+                log=False,
+                track_jsonl=True,
+                track_mongo=False,
+                aggregate=True,
+            ),
+        }
+    )
+    return RegistryAwareTelemetry(
+        registry=registry,
+        backends=WorkerBackends(
+            log=SilentBackend(),
+            jsonl=jsonl,
+            mongo=SilentBackend(),  # type: ignore[arg-type]
+            aggregate=RunStatsAggregator(
+                run_id=RunId("r-1"),
+                owner_id=OwnerId("o-1"),
+                source=SourceName.LEGI,
+                started_at=datetime.now(UTC),
+            ),
+        ),
+    )
+
+
+class TestTheJsonlWriteThatFailsIsCounted:
+    """Le 5e trou : ``JsonlFileTelemetry.emit`` avalait son OSError d'un ``warning``,
+    donc le fan-out ne pouvait pas le compter. Il le laisse désormais remonter."""
+
+    def test_an_unwritable_jsonl_target_is_counted_as_a_failure(
+        self, tmp_path: Path
+    ) -> None:
+        jsonl = JsonlFileTelemetry(
+            events_dir=tmp_path, run_id="r-1", started_at=datetime.now(UTC)
+        )
+        # On rend l'écriture impossible : le chemin cible est un RÉPERTOIRE. Ouvrir un
+        # répertoire en append lève IsADirectoryError (une OSError) — que l'ancien code
+        # avalait, et que `_deliver` doit maintenant compter.
+        jsonl._path.mkdir(parents=True, exist_ok=True)  # noqa: SLF001
+        telemetry = _jsonl_telemetry(jsonl)
+
+        telemetry.emit(_event())
+
+        stats = telemetry.snapshot()
+        assert stats.counts[AUDIT_WRITE_FAILED] == 1
+        assert stats.breakdowns[AUDIT_WRITE_FAILED] == {"jsonl": 1}
+
+    def test_the_ingestion_still_does_not_fail(self, tmp_path: Path) -> None:
+        """Compter la perte ne la transforme pas en exception : `_deliver` isole."""
+        jsonl = JsonlFileTelemetry(
+            events_dir=tmp_path, run_id="r-1", started_at=datetime.now(UTC)
+        )
+        jsonl._path.mkdir(parents=True, exist_ok=True)  # noqa: SLF001
+        telemetry = _jsonl_telemetry(jsonl)
+
+        telemetry.emit(_event())  # ne lève pas
 
 
 class TestTheCloseCountsWhatItSwallows:
