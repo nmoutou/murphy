@@ -100,7 +100,10 @@ def _telemetry(
     registry = TelemetryRegistry.from_catalog(
         {
             DOCUMENT_PERSISTED: EventBehavior(
-                level="info", log=False, track_jsonl=False, track_mongo=True,
+                level="info",
+                log=False,
+                track_jsonl=False,
+                track_mongo=True,
                 aggregate=True,
             ),
         }

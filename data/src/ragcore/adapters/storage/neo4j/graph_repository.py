@@ -6,6 +6,8 @@ Changements post-refonte :
 - Label dérivé du document.identifier.document_type
 """
 
+from typing import Any
+
 import neo4j
 
 from ragcore.core.models.document import ParsedDocument
@@ -37,8 +39,7 @@ class Neo4jGraphRepository:
         async with self._driver.session() as session:
             for label in _KNOWN_LABELS:
                 await session.run(
-                    f"CREATE INDEX IF NOT EXISTS"
-                    f" FOR (n:{label}) ON (n.identifier)"
+                    f"CREATE INDEX IF NOT EXISTS FOR (n:{label}) ON (n.identifier)"
                 )
 
     async def merge_document_node(self, document: ParsedDocument) -> None:
@@ -60,7 +61,7 @@ class Neo4jGraphRepository:
             " SET d += $props RETURN d"
         )
 
-        props: dict = {
+        props: dict[str, Any] = {
             "title": document.title,
             "source": document.source.value,
             "schema_version": document.schema_version,
@@ -184,8 +185,7 @@ class Neo4jGraphRepository:
         identifier_value = identifier.serialize()
 
         query = (
-            "MATCH (d {identifier: $identifier, owner_id: $owner_id})-[r]->()"
-            " DELETE r"
+            "MATCH (d {identifier: $identifier, owner_id: $owner_id})-[r]->() DELETE r"
         )
         async with self._driver.session() as session:
             await session.run(
@@ -271,9 +271,7 @@ class Neo4jGraphRepository:
             # retire les labels connus par `REMOVE`. Neo4j ignore silencieusement le
             # retrait d'un label absent — la liste couvre donc tous les labels métier
             # sans avoir à savoir lequel ce nœud portait.
-            removable = ":".join(
-                label for label in _KNOWN_LABELS if label != "Unknown"
-            )
+            removable = ":".join(label for label in _KNOWN_LABELS if label != "Unknown")
             await session.run(
                 "MATCH (n {identifier: $identifier, owner_id: $owner_id})"
                 f" REMOVE n:{removable}"

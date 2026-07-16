@@ -10,11 +10,11 @@ from .identifiers import OwnerId, SourceIdentifier
 
 class ManifestEntry(BaseModel):
     """Entrée du registre de traitement — append-only.
-    
+
     Trackage de toutes les tentatives de traitement :
     - Valides : `identifier` rempli, `source_path` optionnel (debug)
     - Rejetés : `identifier=None`, `source_path` obligatoire, `reason` obligatoire
-    
+
     Deux modes d'indexation coexistent :
     1. Pour idempotence (valides) : clé (identifier, owner_id)
     2. Pour audit des rejets : clé (source_path, owner_id)
@@ -28,7 +28,7 @@ class ManifestEntry(BaseModel):
 
     # Clés d'indexation (mutuellement exclusives selon operation)
     identifier: SourceIdentifier | None = None  # Non-null pour valides
-    source_path: str | None = None              # Pour rejets et debug
+    source_path: str | None = None  # Pour rejets et debug
 
     # Contexte
     owner_id: OwnerId

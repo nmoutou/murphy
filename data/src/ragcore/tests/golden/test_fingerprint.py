@@ -119,21 +119,27 @@ def test_la_forme_canonique_est_figee() -> None:
         (
             "strategy",
             _LEGI.model_copy(
-                update={"chunking": _LEGI.chunking.model_copy(update={"strategy": "flat"})}
+                update={
+                    "chunking": _LEGI.chunking.model_copy(update={"strategy": "flat"})
+                }
             ),
         ),
         (
             "modele",
             _LEGI.model_copy(
                 update={
-                    "embedding": _LEGI.embedding.model_copy(update={"model_name": "camembert"})
+                    "embedding": _LEGI.embedding.model_copy(
+                        update={"model_name": "camembert"}
+                    )
                 }
             ),
         ),
         (
             "dimension",
             _LEGI.model_copy(
-                update={"embedding": _LEGI.embedding.model_copy(update={"dimension": 1024})}
+                update={
+                    "embedding": _LEGI.embedding.model_copy(update={"dimension": 1024})
+                }
             ),
         ),
         (
@@ -142,7 +148,11 @@ def test_la_forme_canonique_est_figee() -> None:
             # évolue encore, produira-t-elle bien une collection neuve ?
             "norm_version",
             _LEGI.model_copy(
-                update={"normalization": _LEGI.normalization.model_copy(update={"version": "v2"})}
+                update={
+                    "normalization": _LEGI.normalization.model_copy(
+                        update={"version": "v2"}
+                    )
+                }
             ),
         ),
         (
@@ -160,7 +170,9 @@ def test_la_forme_canonique_est_figee() -> None:
         ),
     ],
 )
-def test_tout_champ_semantique_change_l_empreinte(champ: str, config: WorkflowConfig) -> None:
+def test_tout_champ_semantique_change_l_empreinte(
+    champ: str, config: WorkflowConfig
+) -> None:
     """Chacun de ces champs invalide les vecteurs déjà produits. Chacun doit donc créer
     une collection neuve — sans quoi deux stratégies s'écraseraient en silence dans la
     même collection, et l'A/B de §6 mesurerait un mélange.
@@ -170,7 +182,9 @@ def test_tout_champ_semantique_change_l_empreinte(champ: str, config: WorkflowCo
     collection (``1ef32cd5…`` → ``3119c73a…``). Ce champ a fait son travail tout seul,
     sans qu'on ait eu à y penser — c'était l'objet du dispositif.
     """
-    assert fingerprint(config) != _LEGI_FINGERPRINT, f"{champ} n'a pas bougé l'empreinte"
+    assert fingerprint(config) != _LEGI_FINGERPRINT, (
+        f"{champ} n'a pas bougé l'empreinte"
+    )
 
 
 def test_l_empreinte_ne_depend_pas_de_l_ordre_de_construction() -> None:

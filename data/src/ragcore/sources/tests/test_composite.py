@@ -39,7 +39,9 @@ def _raw(source: SourceName, doc_id: str) -> RawDocument:
 class _FakeConnector:
     """Connecteur de test : émet N documents estampillés de SA source, comme les vrais."""
 
-    def __init__(self, source: SourceName, count: int, skipped: dict[str, int] | None = None) -> None:
+    def __init__(
+        self, source: SourceName, count: int, skipped: dict[str, int] | None = None
+    ) -> None:
         self._source = source
         self._count = count
         self.skipped = skipped or {}
@@ -92,7 +94,10 @@ async def test_composite_preserves_source_stamp() -> None:
         }
     )
 
-    by_id = {d.source_document_id: d.source for d in [doc async for doc in composite.fetch_all(OWNER)]}
+    by_id = {
+        d.source_document_id: d.source
+        for d in [doc async for doc in composite.fetch_all(OWNER)]
+    }
 
     assert by_id["jade-0"] is SourceName.JADE
     assert by_id["constit-0"] is SourceName.CONSTIT
@@ -107,8 +112,12 @@ async def test_composite_merges_skipped_counters() -> None:
     """
     composite = CompositeConnector(
         {
-            SourceName.CASS: _FakeConnector(SourceName.CASS, 1, skipped={"unreadable": 2}),
-            SourceName.JADE: _FakeConnector(SourceName.JADE, 1, skipped={"unreadable": 3}),
+            SourceName.CASS: _FakeConnector(
+                SourceName.CASS, 1, skipped={"unreadable": 2}
+            ),
+            SourceName.JADE: _FakeConnector(
+                SourceName.JADE, 1, skipped={"unreadable": 3}
+            ),
         }
     )
 

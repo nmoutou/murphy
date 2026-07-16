@@ -4,6 +4,7 @@ Permet une granularité fine du routage des événements vers les backends.
 """
 
 from dataclasses import dataclass
+from typing import Any
 
 
 @dataclass(frozen=True)
@@ -29,7 +30,7 @@ _DEFAULT_BEHAVIOR = EventBehavior(
 
 class TelemetryRegistry:
     """Mappe chaque event_type à son EventBehavior.
-    
+
     Construit depuis un EVENT_CATALOG Python (méthode préférée)
     ou depuis parameters.yml pour des overrides ponctuels.
     """
@@ -49,16 +50,16 @@ class TelemetryRegistry:
 
     def behavior_for(self, event_type: str) -> EventBehavior:
         """Récupère le comportement pour cet event_type.
-        
+
         Retourne le comportement spécifique s'il est dans la registry,
         sinon retourne le comportement par défaut.
         """
         return self._behaviors.get(event_type, self._default)
 
     @classmethod
-    def from_params(cls, params: dict) -> "TelemetryRegistry":
+    def from_params(cls, params: dict[str, Any]) -> "TelemetryRegistry":
         """Construit le registry depuis la config parameters.yml.
-        
+
         Args:
             params: Config dict {
                 "default": {...EventBehavior fields...},
@@ -69,7 +70,7 @@ class TelemetryRegistry:
             }
         """
 
-        def _build(cfg: dict, base: EventBehavior) -> EventBehavior:
+        def _build(cfg: dict[str, Any], base: EventBehavior) -> EventBehavior:
             """Construis un EventBehavior depuis une config partielle, hérittant du base."""
             return EventBehavior(
                 level=cfg.get("level", base.level),

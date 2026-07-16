@@ -125,9 +125,7 @@ class LegiFileConnector:
         document, et il doit être émis. Écarter sur le nom seul, c'est faire d'une
         convention de nommage une règle métier — et perdre le jour où elle change.
         """
-        return (
-            path.name == _EXPORT_ARTIFACT_NAME and root.tag in _EXPORT_ARTIFACT_ROOTS
-        )
+        return path.name == _EXPORT_ARTIFACT_NAME and root.tag in _EXPORT_ARTIFACT_ROOTS
 
     def _skip(self, reason: str) -> None:
         self.skipped[reason] = self.skipped.get(reason, 0) + 1

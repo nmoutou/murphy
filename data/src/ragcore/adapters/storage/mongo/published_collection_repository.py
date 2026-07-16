@@ -5,8 +5,7 @@
 question — à l'intérieur même du mécanisme censé y répondre.
 """
 
-from motor.motor_asyncio import AsyncIOMotorClient
-
+from ragcore.adapters.storage.mongo.client import MongoClient
 from ragcore.core.models.published_collection import POINTER_KEY, PublishedCollection
 
 __all__ = ["MongoPublishedCollectionRepository"]
@@ -17,7 +16,7 @@ class MongoPublishedCollectionRepository:
 
     def __init__(
         self,
-        client: AsyncIOMotorClient,
+        client: MongoClient,
         db_name: str,
         collection: str = "meta_published_collection",
     ) -> None:

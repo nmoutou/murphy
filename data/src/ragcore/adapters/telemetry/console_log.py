@@ -20,7 +20,7 @@ _LEVEL_MAP = {
 
 class ConsoleLogTelemetry:
     """Implémente .log() vers le logging Python standard.
-    
+
     .emit(event) est un no-op — les logs textuels et les audit events sont indépendants.
     """
 
@@ -30,7 +30,7 @@ class ConsoleLogTelemetry:
 
     def log(self, level: str, message: str, **context: Any) -> None:
         """Log un message textuel via le logger standard.
-        
+
         Args:
             level: "debug" | "info" | "warning" | "error"
             message: Message texte

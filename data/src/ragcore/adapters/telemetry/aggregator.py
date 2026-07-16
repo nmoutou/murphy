@@ -6,6 +6,7 @@ que chaque ``emit`` remplace — il n'y a plus d'état à corrompre, donc plus r
 verrouiller. C'est l'invariant 1 du pool (§11) appliqué ici : le verrou disparaît
 par construction, pas par discipline.
 """
+
 from __future__ import annotations
 
 from datetime import UTC, datetime
@@ -25,10 +26,10 @@ from ragcore.core.telemetry_events import (
 
 # Events dont on veut un breakdown par clé de payload.
 _BREAKDOWN_KEY: dict[str, str] = {
-    DOCUMENT_INVALIDATED: "reason",   # breakdown par raison de rejet
+    DOCUMENT_INVALIDATED: "reason",  # breakdown par raison de rejet
     DOCUMENT_PERSISTED: "operation",  # breakdown par opération (INSERT/UPDATE)
-    DOCUMENT_FAILED: "reason",        # breakdown par CAUSE de la fuite
-    AUDIT_WRITE_FAILED: "backend",    # breakdown par backend défaillant (mongo, drain…)
+    DOCUMENT_FAILED: "reason",  # breakdown par CAUSE de la fuite
+    AUDIT_WRITE_FAILED: "backend",  # breakdown par backend défaillant (mongo, drain…)
 }
 
 

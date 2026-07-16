@@ -156,7 +156,9 @@ def test_un_typelien_inconnu_produit_une_ARETE_et_pas_un_vide() -> None:
     assert len(raw_edges) == 1, "l'unique typelien non traduit de la fixture"
     edge = raw_edges[0]
 
-    assert edge.relation_type == "zorglub", "le mot brut, normalisé, EST le type d'arête"
+    assert edge.relation_type == "zorglub", (
+        "le mot brut, normalisé, EST le type d'arête"
+    )
     assert edge.metadata["typelien"] == "ZORGLUB", "et l'original survit en métadonnée"
 
     # …et il est déclaré. L'arête existe, l'aveu aussi.
@@ -223,9 +225,7 @@ def test_les_citations_traversent_la_reduction_INTACTES() -> None:
     """
     result = _run()
 
-    before = collections.Counter(
-        r.relation_type for r in result["relations"]
-    )["cites"]
+    before = collections.Counter(r.relation_type for r in result["relations"])["cites"]
 
     assert result["by_type"]["cites"] == before
 

@@ -17,9 +17,9 @@ Trois décisions du cadrage se jouent ici, et chacune est une ligne de Mongo :
    l'extérieur du corpus — pas une erreur à faire expirer.
 """
 
-from motor.motor_asyncio import AsyncIOMotorClient
 from pymongo import UpdateOne
 
+from ragcore.adapters.storage.mongo.client import MongoClient
 from ragcore.core.models.identifiers import OwnerId
 from ragcore.core.models.pending import PendingKey, PendingRelation
 
@@ -45,7 +45,7 @@ class MongoPendingRelationRepository:
 
     def __init__(
         self,
-        client: AsyncIOMotorClient,
+        client: MongoClient,
         db_name: str,
         collection: str = "meta_pending_relations",
     ) -> None:

@@ -94,9 +94,7 @@ def test_le_cliquet_est_CAPABLE_d_echouer() -> None:
 
     async def run() -> dict[str, list[str]]:
         async for raw in LegiFileConnector(FIXTURES).fetch_all(OWNER):
-            if any(
-                Path(f).name == _FIXTURE_PATHOLOGIQUE for f in raw.payload["files"]
-            ):
+            if any(Path(f).name == _FIXTURE_PATHOLOGIQUE for f in raw.payload["files"]):
                 return parser.parse(raw).unknowns
         pytest.fail(f"La fixture {_FIXTURE_PATHOLOGIQUE} est introuvable")
 
@@ -129,7 +127,9 @@ def test_les_quatre_roles_sont_TOUS_utilises_par_LEGI() -> None:
     routage complet avant d'y brancher cinq sources neuves.
     """
     exerces = set(LEGI_ROLE_TABLE.roles.values())
-    assert exerces == set(Role), f"Rôles jamais exercés par LEGI : {set(Role) - exerces}"
+    assert exerces == set(Role), (
+        f"Rôles jamais exercés par LEGI : {set(Role) - exerces}"
+    )
 
 
 def test_la_table_LEGI_ne_contient_AUCUNE_logique() -> None:
@@ -140,8 +140,12 @@ def test_la_table_LEGI_ne_contient_AUCUNE_logique() -> None:
     corriger, pas la source qu'il faut laisser diverger. C'est ainsi qu'on se retrouve
     avec six parsers.
     """
-    modules = {p.name for p in (Path(__file__).parents[2] / "sources" / "legi").glob("*.py")}
+    modules = {
+        p.name for p in (Path(__file__).parents[2] / "sources" / "legi").glob("*.py")
+    }
 
-    assert "parser.py" not in modules, "Le parser est GÉNÉRIQUE : LEGI n'apporte qu'une table"
+    assert "parser.py" not in modules, (
+        "Le parser est GÉNÉRIQUE : LEGI n'apporte qu'une table"
+    )
     assert "chunking.py" not in modules, "Le chunker est GÉNÉRIQUE"
     assert {"table.py", "vocabulary.py", "file_connector.py"} <= modules

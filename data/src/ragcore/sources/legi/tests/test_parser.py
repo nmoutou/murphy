@@ -60,7 +60,9 @@ def test_le_contenu_reste_du_FRANCAIS(fixtures_dir: Path) -> None:
     Les mots vides (« le », « est », « par », « une ») sont la preuve que le texte est
     intact : ce sont exactement eux que la lemmatisation supprimait.
     """
-    parsed = GenericParser(LEGI_ROLE_TABLE, _SN.LEGI).parse(_raw(fixtures_dir, f"{ARTICLE_SIMPLE}.xml"))
+    parsed = GenericParser(LEGI_ROLE_TABLE, _SN.LEGI).parse(
+        _raw(fixtures_dir, f"{ARTICLE_SIMPLE}.xml")
+    )
 
     assert "Le directeur général est nommé par décret" in parsed.content
     assert "pour une durée de trois ans renouvelable" in parsed.content
@@ -72,7 +74,9 @@ def test_lidentifiant_vient_du_ID_car_il_nexiste_aucune_balise_ELI(
     """Vérifié sur les 2564 fichiers : ``<ELI>`` n'existe nulle part. Le nom du modèle
     est historique ; la donnée est un ``<ID>``.
     """
-    parsed = GenericParser(LEGI_ROLE_TABLE, _SN.LEGI).parse(_raw(fixtures_dir, f"{ARTICLE_SIMPLE}.xml"))
+    parsed = GenericParser(LEGI_ROLE_TABLE, _SN.LEGI).parse(
+        _raw(fixtures_dir, f"{ARTICLE_SIMPLE}.xml")
+    )
 
     assert parsed.identifier.raw == ARTICLE_SIMPLE
     assert parsed.identifier.serialize() == f"eli:{ARTICLE_SIMPLE}"
@@ -97,7 +101,9 @@ def test_les_deux_facettes_du_texte_donnent_UN_document_avec_son_titre(
 
     assert parsed.identifier.raw == TEXTE_DEUX_FACETTES
     assert parsed.title.startswith("Décret n°2016-1967")  # vient de TEXTE_VERSION
-    assert _kinds(parsed.structure["references"]) & {"LIEN_SECTION_TA"}  # vient de TEXTELR
+    assert _kinds(parsed.structure["references"]) & {
+        "LIEN_SECTION_TA"
+    }  # vient de TEXTELR
 
 
 def test_le_texte_dun_decret_nest_PAS_dans_un_BLOC_TEXTUEL(fixtures_dir: Path) -> None:
@@ -126,7 +132,9 @@ def test_chaque_section_est_un_morceau_LITTERAL_du_contenu(fixtures_dir: Path) -
     ne pointent nulle part dans ``content`` — des offsets qui mentent, et que rien ne
     signale.
     """
-    parsed = GenericParser(LEGI_ROLE_TABLE, _SN.LEGI).parse(_raw(fixtures_dir, f"{ARTICLE_SIMPLE}.xml"))
+    parsed = GenericParser(LEGI_ROLE_TABLE, _SN.LEGI).parse(
+        _raw(fixtures_dir, f"{ARTICLE_SIMPLE}.xml")
+    )
 
     assert parsed.structure["sections"]
     for section in parsed.structure["sections"]:
@@ -140,7 +148,9 @@ def test_une_section_na_pas_de_contenu_et_ce_nest_pas_un_echec(
     structure, pas un porteur de texte. Rendre la chaîne vide est la VÉRITÉ — et le
     chunker n'en fera aucun chunk, plutôt qu'un chunk vide.
     """
-    parsed = GenericParser(LEGI_ROLE_TABLE, _SN.LEGI).parse(_raw(fixtures_dir, f"{SECTION_ARTICLES}.xml"))
+    parsed = GenericParser(LEGI_ROLE_TABLE, _SN.LEGI).parse(
+        _raw(fixtures_dir, f"{SECTION_ARTICLES}.xml")
+    )
 
     assert parsed.content == ""
     assert parsed.structure["sections"] == []
@@ -154,7 +164,9 @@ def test_le_parser_rend_les_liens_BRUTS_sans_les_typer(fixtures_dir: Path) -> No
     modules à la fois — et le jour où l'un des deux dérive, les arêtes changent de sens
     sans qu'on sache lequel a raison.
     """
-    parsed = GenericParser(LEGI_ROLE_TABLE, _SN.LEGI).parse(_raw(fixtures_dir, f"{ARTICLE_SIMPLE}.xml"))
+    parsed = GenericParser(LEGI_ROLE_TABLE, _SN.LEGI).parse(
+        _raw(fixtures_dir, f"{ARTICLE_SIMPLE}.xml")
+    )
 
     (lien,) = [r for r in parsed.structure["references"] if r["kind"] == "LIEN"]
     assert lien["typelien"] == "CREE"  # le mot de LEGI, pas CREATES
@@ -165,7 +177,9 @@ def test_le_contexte_porte_la_fermeture_des_ancetres(fixtures_dir: Path) -> None
     """``<CONTEXTE>`` déclare TOUS les ancêtres d'un coup — la fermeture transitive, pas
     le seul parent. C'est ce qui rend la réduction nécessaire en aval.
     """
-    parsed = GenericParser(LEGI_ROLE_TABLE, _SN.LEGI).parse(_raw(fixtures_dir, f"{ARTICLE_SIMPLE}.xml"))
+    parsed = GenericParser(LEGI_ROLE_TABLE, _SN.LEGI).parse(
+        _raw(fixtures_dir, f"{ARTICLE_SIMPLE}.xml")
+    )
 
     context = parsed.structure["context"]
     assert len(context) > 1, "un seul ancêtre ne serait pas une fermeture"
@@ -181,7 +195,9 @@ def test_une_balise_inconnue_est_DECLAREE_pas_ignoree(fixtures_dir: Path) -> Non
     un test qui n'observe jamais d'inconnu ne démontre pas qu'on saurait en déclarer un.
     D'où cette fixture synthétique.
     """
-    parsed = GenericParser(LEGI_ROLE_TABLE, _SN.LEGI).parse(_raw(fixtures_dir, "unknown_vocabulary.xml"))
+    parsed = GenericParser(LEGI_ROLE_TABLE, _SN.LEGI).parse(
+        _raw(fixtures_dir, "unknown_vocabulary.xml")
+    )
 
     assert parsed.unknowns == {CATEGORY_TAG: ["ZORG"]}
     assert parsed.identifier.raw == ARTICLE_INCONNU

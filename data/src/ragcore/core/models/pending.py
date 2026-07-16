@@ -13,7 +13,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from .document import SCHEMA_VERSION
 from .enums import SourceName
-from .identifiers import OwnerId, RunId, deserialize_identifier
+from .identifiers import DocumentId, OwnerId, RunId, deserialize_identifier
 from .relation import Relation
 from .verbs import ValidatedVerb
 
@@ -33,8 +33,8 @@ class PendingKey(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     owner_id: OwnerId
-    source_id: str  # identifiant sérialisé
-    target_id: str  # identifiant sérialisé
+    source_id: DocumentId  # identifiant sérialisé
+    target_id: DocumentId  # identifiant sérialisé
     relation_type: ValidatedVerb
 
 
@@ -54,8 +54,8 @@ class PendingRelation(BaseModel):
     schema_version: int = SCHEMA_VERSION
 
     owner_id: OwnerId
-    source_id: str
-    target_id: str
+    source_id: DocumentId
+    target_id: DocumentId
     relation_type: ValidatedVerb
     source: SourceName
     metadata: dict[str, Any] = Field(default_factory=dict)

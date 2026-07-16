@@ -28,7 +28,7 @@ vocabulaire, elle aussi, se lit ici (``unknowns`` vide = la source a tout couver
 
 from __future__ import annotations
 
-from typing import Protocol
+from typing import Any, Protocol
 
 from ragcore.application.ingestion_runner import IngestionOutcome
 from ragcore.application.resolve_relations import ResolutionOutcome
@@ -49,7 +49,7 @@ def report_node(
     resolution_outcome: ResolutionOutcome,
     to_skip: list[str],
     run_stats_sink: RunStatsSink,
-) -> dict:
+) -> dict[str, Any]:
     """Compose le bilan du run — documents, relations, échecs, inconnus."""
     stats = ingestion_outcome.stats
 

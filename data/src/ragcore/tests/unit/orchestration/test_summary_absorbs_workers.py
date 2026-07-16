@@ -82,7 +82,9 @@ def test_a_declared_failure_still_degrades() -> None:
     """
     aggregator = _aggregator()
     aggregator.absorb(
-        RunStats(counts={DOCUMENT_FETCHED: 10, DOCUMENT_PERSISTED: 9, DOCUMENT_FAILED: 1})
+        RunStats(
+            counts={DOCUMENT_FETCHED: 10, DOCUMENT_PERSISTED: 9, DOCUMENT_FAILED: 1}
+        )
     )
 
     summary = aggregator.finalize(status=RunStatus.OK)
@@ -98,7 +100,9 @@ def test_the_silent_leak_that_started_all_this() -> None:
     ne demande pas *pourquoi* — seulement si le compte tombe juste.
     """
     aggregator = _aggregator()
-    aggregator.absorb(RunStats(counts={DOCUMENT_FETCHED: 1121, DOCUMENT_PERSISTED: 1023}))
+    aggregator.absorb(
+        RunStats(counts={DOCUMENT_FETCHED: 1121, DOCUMENT_PERSISTED: 1023})
+    )
 
     summary = aggregator.finalize(status=RunStatus.OK)
 

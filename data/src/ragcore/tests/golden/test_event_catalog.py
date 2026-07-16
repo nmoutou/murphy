@@ -12,33 +12,33 @@ from ragcore.core.telemetry_events import EVENT_CATALOG
 
 # event_type -> (level, log, track_jsonl, track_mongo, aggregate)
 GOLDEN: dict[str, tuple[str, bool, bool, bool, bool]] = {
-    "pipeline.run.started":            ("info",    True,  True,  True,  True),
-    "pipeline.run.completed":          ("info",    True,  True,  True,  True),
-    "pipeline.run.failed":             ("error",   True,  True,  True,  True),
-    "document.fetched":                ("info",    False, True,  False, True),
-    "document.parsed":                 ("info",    False, True,  False, True),
-    "document.invalidated":            ("warning", True,  True,  True,  True),
-    "document.skipped":                ("warning", False, True,  False, False),
-    "document.persisted":              ("info",    True,  True,  True,  True),
+    "pipeline.run.started": ("info", True, True, True, True),
+    "pipeline.run.completed": ("info", True, True, True, True),
+    "pipeline.run.failed": ("error", True, True, True, True),
+    "document.fetched": ("info", False, True, False, True),
+    "document.parsed": ("info", False, True, False, True),
+    "document.invalidated": ("warning", True, True, True, True),
+    "document.skipped": ("warning", False, True, False, False),
+    "document.persisted": ("info", True, True, True, True),
     # La FUITE : vu, jamais ingéré. `aggregate=True` (5e) est l'enjeu — sans lui l'échec
     # est tracé mais pas compté, et le run se déclare « ok » en perdant des documents.
-    "document.failed":                 ("error",   True,  True,  True,  True),
+    "document.failed": ("error", True, True, True, True),
     # Pas une fuite (le document est ingéré) mais pas rien : la fin du chunk n'est pas
     # indexée. Non nul = `chunk_size` incompatible avec la fenêtre du modèle.
-    "chunk.truncated":                 ("warning", True,  True,  True,  True),
-    "document.replaced":               ("info",    True,  True,  True,  True),
-    "document.deleted":                ("info",    True,  True,  True,  True),
-    "relation.upserted":               ("warning", False, True,  False, True),
-    "relation.pending":                ("warning", False, True,  True,  True),
-    "relation.promoted":               ("info",    False, True,  False, True),
+    "chunk.truncated": ("warning", True, True, True, True),
+    "document.replaced": ("info", True, True, True, True),
+    "document.deleted": ("info", True, True, True, True),
+    "relation.upserted": ("warning", False, True, False, True),
+    "relation.pending": ("warning", False, True, True, True),
+    "relation.promoted": ("info", False, True, False, True),
     # La télémétrie qui n'a pas su s'écrire. `track_mongo=False` (4e) est DÉLIBÉRÉ :
     # écrire en Mongo qu'on n'a pas su écrire en Mongo échouerait à son tour. Le compteur
     # vit dans l'agrégat (mémoire) et voyage par le monoïde `RunStats`.
-    "audit.write.failed":              ("error",   True,  True,  False, True),
-    "saga.compensation.triggered":     ("error",   True,  True,  True,  True),
-    "saga.compensation.completed":     ("warning", True,  True,  True,  True),
-    "maintenance.cleanup.executed":    ("info",    True,  True,  False, False),
-    "maintenance.nuke_all.executed":   ("warning", True,  True,  True,  False),
+    "audit.write.failed": ("error", True, True, False, True),
+    "saga.compensation.triggered": ("error", True, True, True, True),
+    "saga.compensation.completed": ("warning", True, True, True, True),
+    "maintenance.cleanup.executed": ("info", True, True, False, False),
+    "maintenance.nuke_all.executed": ("warning", True, True, True, False),
 }
 
 

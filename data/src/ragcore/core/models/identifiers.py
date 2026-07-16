@@ -48,7 +48,9 @@ class ELI(BaseModel):
     @classmethod
     def validate_format(cls, v: str) -> str:
         if not re.match(ELI_PATTERN, v):
-            raise ValueError(f"Format ELI invalide : {v!r} (attendu : 8 majuscules + 12 chiffres)")
+            raise ValueError(
+                f"Format ELI invalide : {v!r} (attendu : 8 majuscules + 12 chiffres)"
+            )
         return v
 
     @classmethod
@@ -71,9 +73,14 @@ class ELI(BaseModel):
             # comme une erreur de parsing.
             raise ValidationError(f"Format ELI invalide : {eli_str!r}") from exc
 
-    def serialize(self) -> str:
-        """Représentation sérialisée : 'eli:LEGIARTI000006419264'."""
-        return f"{self.kind}:{self.raw}"
+    def serialize(self) -> DocumentId:
+        """Représentation sérialisée : 'eli:LEGIARTI000006419264'.
+
+        C'est l'identifiant CANONIQUE d'un document (clé Mongo, document_id des
+        événements d'audit) : on le typé `DocumentId` pour que le contrat remonte
+        jusqu'aux sites d'émission, sans changer la valeur produite.
+        """
+        return DocumentId(f"{self.kind}:{self.raw}")
 
     @property
     def as_document_id(self) -> DocumentId:
@@ -95,8 +102,8 @@ class JorfId(BaseModel):
     kind: Literal["jorf"] = "jorf"
     raw: str
 
-    def serialize(self) -> str:
-        return f"{self.kind}:{self.raw}"
+    def serialize(self) -> DocumentId:
+        return DocumentId(f"{self.kind}:{self.raw}")
 
 
 class DecisionId(BaseModel):
@@ -130,8 +137,8 @@ class DecisionId(BaseModel):
             )
         return v
 
-    def serialize(self) -> str:
-        return f"{self.kind}:{self.raw}"
+    def serialize(self) -> DocumentId:
+        return DocumentId(f"{self.kind}:{self.raw}")
 
     @property
     def jurisdiction(self) -> str:
@@ -147,8 +154,8 @@ class UploadId(BaseModel):
     kind: Literal["upload"] = "upload"
     raw: str
 
-    def serialize(self) -> str:
-        return f"{self.kind}:{self.raw}"
+    def serialize(self) -> DocumentId:
+        return DocumentId(f"{self.kind}:{self.raw}")
 
 
 class UnknownRef(BaseModel):
@@ -182,8 +189,8 @@ class UnknownRef(BaseModel):
     kind: Literal["unknown"] = "unknown"
     raw: str
 
-    def serialize(self) -> str:
-        return f"{self.kind}:{self.raw}"
+    def serialize(self) -> DocumentId:
+        return DocumentId(f"{self.kind}:{self.raw}")
 
 
 # Union discriminée — Pydantic route automatiquement via le champ 'kind'

@@ -231,9 +231,7 @@ class GenericParser:
                 for parent in _find_all(facet, container):
                     for tag in self._table.ancestor_tags:
                         for node in _find_all(parent, tag):
-                            ancestor = _first_attr(
-                                node, self._table.ancestor_id_attrs
-                            )
+                            ancestor = _first_attr(node, self._table.ancestor_id_attrs)
                             if ancestor:
                                 context.append(
                                     {
@@ -304,9 +302,7 @@ class GenericParser:
 
     # ── Source UNIQUE de `_content` et `_sections` ─────────────────────────────
 
-    def _text_blocks(
-        self, facets: list[dict[str, Any]]
-    ) -> list[tuple[list[str], str]]:
+    def _text_blocks(self, facets: list[dict[str, Any]]) -> list[tuple[list[str], str]]:
         """Les blocs de texte, dans l'ordre : ``(chemin structurel, texte)``.
 
         **Les faire diverger de ``_content``, c'est garantir que les offsets des chunks
@@ -361,7 +357,7 @@ def _first_attr(node: dict[str, Any], names: Sequence[str]) -> str:
     for name in names:
         value = node["attrib"].get(name)
         if value:
-            return value
+            return str(value)
     return ""
 
 

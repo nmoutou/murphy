@@ -37,7 +37,16 @@ class DeleteDocumentUseCase:
         steps = [
             SagaStep(
                 name="neo4j_delete_relations",
-                forward=lambda: self._graph_repo.delete_relations_from(identifier, owner_id, context.source),
+                forward=lambda: self._graph_repo.delete_relations_from(
+                    # `context.source` peut être None (run multi-source) alors que le
+                    # port exige une SourceName. On ne corrige PAS ce site : tout ce
+                    # use-case est du code mort (aucun appelant réel) qui viole en plus
+                    # le modèle append-only — il est marqué pour suppression en Lot 2
+                    # (F8). Typer un cadavre n'a pas de sens.
+                    identifier,
+                    owner_id,
+                    context.source,  # type: ignore[arg-type]  # F8 : à supprimer, pas à corriger
+                ),
                 compensate=lambda: _noop(),  # pas de compensation possible sur delete relations
             ),
             SagaStep(
@@ -47,7 +56,9 @@ class DeleteDocumentUseCase:
             ),
             SagaStep(
                 name="qdrant_delete",
-                forward=lambda: self._vector_repo.delete_by_document(identifier, owner_id),
+                forward=lambda: self._vector_repo.delete_by_document(
+                    identifier, owner_id
+                ),
                 compensate=lambda: _noop(),
             ),
         ]

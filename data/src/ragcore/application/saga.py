@@ -35,7 +35,9 @@ class SagaExecutor:
                 completed.append(step)
         except Exception as original_exc:
             failed_index = len(completed)
-            failed_name = steps[failed_index].name if failed_index < len(steps) else "unknown"
+            failed_name = (
+                steps[failed_index].name if failed_index < len(steps) else "unknown"
+            )
 
             self._telemetry.log(
                 "warning",

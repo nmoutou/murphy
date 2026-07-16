@@ -1,14 +1,13 @@
 """Implémentation MongoDB du ManifestRepository — append-only avec deux modes d'indexation."""
 
-from motor.motor_asyncio import AsyncIOMotorClient
-
+from ragcore.adapters.storage.mongo.client import MongoClient
 from ragcore.core.models.identifiers import OwnerId, SourceIdentifier
 from ragcore.core.models.manifest import ManifestEntry
 
 
 class MongoManifestRepository:
     """MongoDB implementation of ManifestRepository (append-only, dual-indexed).
-    
+
     Deux modes d'indexation coexistent :
     - Index sur (identifier_serialized, owner_id) pour l'idempotence (valides)
     - Index sur (source_path, owner_id) pour l'audit des rejets
@@ -16,7 +15,7 @@ class MongoManifestRepository:
 
     def __init__(
         self,
-        client: AsyncIOMotorClient,
+        client: MongoClient,
         db_name: str,
         collection: str = "manifest",
     ) -> None:

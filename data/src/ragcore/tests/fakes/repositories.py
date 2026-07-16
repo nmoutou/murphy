@@ -153,9 +153,7 @@ class InMemoryGraphRepository:
         self.edges = [
             (e, rid)
             for e, rid in self.edges
-            if not (
-                e.source_identifier.serialize() == key and e.owner_id == owner_id
-            )
+            if not (e.source_identifier.serialize() == key and e.owner_id == owner_id)
         ]
 
     async def delete_relations_by_run(self, run_id: RunId, owner_id: OwnerId) -> None:

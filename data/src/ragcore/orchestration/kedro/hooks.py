@@ -1,4 +1,5 @@
 """Kedro hooks: pipeline lifecycle wiring for ragcore."""
+
 from __future__ import annotations
 
 import json
@@ -109,7 +110,10 @@ _WORKER_COUNT = 4
 
 
 def _stats_filename(run_id: str, started_at: datetime) -> str:
-    iso = started_at.strftime("%Y-%m-%dT%H.%M.%S.") + f"{started_at.microsecond // 1000:03d}Z"
+    iso = (
+        started_at.strftime("%Y-%m-%dT%H.%M.%S.")
+        + f"{started_at.microsecond // 1000:03d}Z"
+    )
     return f"{iso}_{run_id}.json"
 
 
@@ -155,7 +159,7 @@ class TelemetryHooks:
 
     @hook_impl
     def before_pipeline_run(  # noqa: PLR0915 — pur câblage : construire les clients puis POSER chaque objet au catalogue est un inventaire, pas de la logique ; le fractionner disperserait l'assemblage
-        self, run_params: dict, catalog: DataCatalog
+        self, run_params: dict[str, Any], catalog: DataCatalog
     ) -> None:
         settings = get_infra_settings()
         embedding_settings = get_embedding_runtime_settings()
@@ -232,7 +236,9 @@ class TelemetryHooks:
         )
         qdrant_client = create_qdrant_client(
             settings.qdrant_url,
-            settings.qdrant_api_key.get_secret_value() if settings.qdrant_api_key else None,
+            settings.qdrant_api_key.get_secret_value()
+            if settings.qdrant_api_key
+            else None,
         )
 
         # Créer les indexes MongoDB
@@ -581,7 +587,11 @@ class TelemetryHooks:
         le re-dérive des compteurs). L'appelant qui veut savoir si le run est vraiment
         `ok` — pour publier, par exemple — doit lire le bilan, pas ce qu'il a demandé.
         """
-        if self._aggregator is None or self._stats_dir is None or self._summary_repo is None:
+        if (
+            self._aggregator is None
+            or self._stats_dir is None
+            or self._summary_repo is None
+        ):
             return None
         summary = self._aggregator.finalize(status=status, error_message=error_message)  # type: ignore[arg-type]
         path = self._stats_dir / _stats_filename(summary.run_id, summary.started_at)
@@ -604,7 +614,11 @@ class TelemetryHooks:
         Le statut est LU dans le bilan, jamais re-dérivé : deux dérivations sont deux
         occasions de diverger, et celle-ci déciderait de ce que voit l'utilisateur.
         """
-        if summary is None or self._published_repo is None or self._qdrant_collection is None:
+        if (
+            summary is None
+            or self._published_repo is None
+            or self._qdrant_collection is None
+        ):
             return
 
         if summary.status is not RunStatus.OK:
@@ -648,7 +662,7 @@ class TelemetryHooks:
             self._tracker.end_run()
 
     @hook_impl
-    def after_pipeline_run(self, run_params: dict) -> None:
+    def after_pipeline_run(self, run_params: dict[str, Any]) -> None:
         if self._telemetry and self._context:
             self._telemetry.emit(
                 build_event(
@@ -656,7 +670,9 @@ class TelemetryHooks:
                     run_id=self._context.run_id,
                     owner_id=self._context.owner_id,
                     source=self._context.source,
-                    payload={"pipeline": run_params.get("pipeline_name", "__default__")},
+                    payload={
+                        "pipeline": run_params.get("pipeline_name", "__default__")
+                    },
                 )
             )
         # Les chunks que l'embedder a dû raccourcir. Le compteur vit sur l'embedder (il
@@ -690,7 +706,7 @@ class TelemetryHooks:
         self._runtime.close()
 
     @hook_impl
-    def on_pipeline_error(self, error: Exception, run_params: dict) -> None:
+    def on_pipeline_error(self, error: Exception, run_params: dict[str, Any]) -> None:
         if self._telemetry and self._context:
             self._telemetry.emit(
                 build_event(
@@ -763,7 +779,9 @@ def _build_workflow_config(params: dict[str, Any]) -> WorkflowConfig:
     )
 
 
-def _resolve_sources(value: str | SourceName | Iterable[str] | None) -> tuple[SourceName, ...]:
+def _resolve_sources(
+    value: str | SourceName | Iterable[str] | None,
+) -> tuple[SourceName, ...]:
     """Les sources demandées, ou une erreur qui dit quoi faire.
 
     Accepte ce qu'un opérateur écrit réellement en ligne de commande :

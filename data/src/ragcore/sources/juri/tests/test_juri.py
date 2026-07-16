@@ -133,7 +133,9 @@ def test_les_trois_racines_ont_leur_table() -> None:
         "TEXTE_JURI_ADMIN",
         "TEXTE_JURI_CONSTIT",
     }
-    assert ROLE_TABLE_BY_ROOT["TEXTE_JURI_JUDI"] is ROLE_TABLE_BY_ROOT["TEXTE_JURI_JUDI"]
+    assert (
+        ROLE_TABLE_BY_ROOT["TEXTE_JURI_JUDI"] is ROLE_TABLE_BY_ROOT["TEXTE_JURI_JUDI"]
+    )
 
 
 def test_la_juri_n_a_AUCUN_role_version() -> None:

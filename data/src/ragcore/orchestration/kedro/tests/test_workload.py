@@ -78,7 +78,10 @@ class _StubEmbedder:
     async def embed(self, chunks: list[Chunk]) -> list[EmbeddedChunk]:
         return [
             EmbeddedChunk(
-                chunk=chunk, embedding=[0.0] * 3, embedding_model="stub", embedding_dim=3
+                chunk=chunk,
+                embedding=[0.0] * 3,
+                embedding_model="stub",
+                embedding_dim=3,
             )
             for chunk in chunks
         ]

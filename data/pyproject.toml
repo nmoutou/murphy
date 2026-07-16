@@ -86,7 +86,11 @@ dev = [
     "pytest~=8.3",
     "pytest-asyncio~=0.25",
     "testcontainers[mongodb,neo4j]~=4.9",
-    "ruff~=0.12.0"
+    "ruff~=0.12.0",
+    # Vérification statique des types. `strict` sur tout ragcore : le code est déjà
+    # fait pour (pydantic 2, annotations partout). Le plugin pydantic apprend à mypy
+    # la sémantique des BaseModel (champs, validators, defaults).
+    "mypy~=1.14"
 ]
 
 [tool.setuptools.dynamic]
@@ -144,6 +148,43 @@ ignore = ["E501"]  # Ruff format takes care of line-too-long
 # Dans un test, la valeur attendue EST le propos de l'assertion. La remplacer par
 # une constante nommée n'ajoute rien : elle éloigne l'attendu de la vérification.
 "**/tests/**" = ["PLR2004"]
+
+[tool.mypy]
+# Pas de `python_version` figée : mypy analyse avec la grammaire de l'interpréteur
+# courant (le venv). Notre plancher 3.11 est garanti par `requires-python` ; forcer
+# la grammaire 3.11 casserait l'analyse des stubs tiers écrits en 3.12+ (numpy).
+# `strict` active tout le paquet de règles fortes en un mot : no-implicit-optional,
+# disallow-untyped-defs, warn-return-any, etc. Le code est déjà écrit pour ça.
+strict = true
+plugins = ["pydantic.mypy"]
+# On type le DOMAINE et les adaptateurs, pas les tests : un test manipule
+# légitimement des mocks non typés et des internes, ce que `strict` rejette.
+# Les tests sont co-localisés (sources/tests/, legi/tests/, …), donc le motif
+# doit attraper TOUT segment `tests/`, pas un seul chemin central.
+files = ["src/ragcore"]
+exclude = ["/tests/"]
+
+[[tool.mypy.overrides]]
+# Dépendances sans stubs publiés : on ne réclame pas leurs types, sans pour autant
+# relâcher le strict sur NOTRE code.
+module = [
+    "kedro.*",
+    "omegaconf.*",
+    "qdrant_client.*",
+    "neo4j.*",
+    "networkx.*",
+    "sentence_transformers.*",
+    "mlflow.*",
+    # numpy est tiré transitivement ; ses stubs 3.12 cassent l'analyse sous 3.11.
+    "numpy.*",
+]
+ignore_missing_imports = true
+follow_imports = "silent"
+
+[tool.pydantic-mypy]
+init_forbid_extra = true
+init_typed = true
+warn_required_dynamic_aliases = true
 
 [tool.kedro_telemetry]
 project_id = "a28f45a08efc41b9a86b2737a54c5c34"

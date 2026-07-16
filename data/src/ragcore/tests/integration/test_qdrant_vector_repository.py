@@ -26,9 +26,7 @@ DIM = 8
 COLLECTION = "chunks_test"
 
 
-def _embedded(
-    document: str, ordinal: int, owner: OwnerId = OWNER
-) -> EmbeddedChunk:
+def _embedded(document: str, ordinal: int, owner: OwnerId = OWNER) -> EmbeddedChunk:
     identifier = ELI(raw=document)
     return EmbeddedChunk(
         chunk=Chunk(

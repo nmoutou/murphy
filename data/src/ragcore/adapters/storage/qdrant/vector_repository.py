@@ -49,7 +49,9 @@ class QdrantVectorRepository:
         if not await self._client.collection_exists(self._collection_name):
             await self._client.create_collection(
                 collection_name=self._collection_name,
-                vectors_config=VectorParams(size=self._vector_size, distance=Distance.COSINE),
+                vectors_config=VectorParams(
+                    size=self._vector_size, distance=Distance.COSINE
+                ),
             )
 
     async def upsert(self, embedded_chunks: list[EmbeddedChunk]) -> None:
@@ -80,7 +82,9 @@ class QdrantVectorRepository:
         digest = hashlib.sha256(chunk_id.encode()).hexdigest()
         return int(digest, 16) % (2**63)
 
-    async def delete_by_document(self, identifier: SourceIdentifier, owner_id: OwnerId) -> None:
+    async def delete_by_document(
+        self, identifier: SourceIdentifier, owner_id: OwnerId
+    ) -> None:
         """Delete all vectors belonging to a given document for a given owner."""
         await self._client.delete(
             collection_name=self._collection_name,

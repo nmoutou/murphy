@@ -1,7 +1,6 @@
 """Implémentation MongoDB du DocumentRepository."""
 
-from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
-
+from ragcore.adapters.storage.mongo.client import MongoClient, MongoDatabase
 from ragcore.core.models.document import ParsedDocument
 from ragcore.core.models.identifiers import OwnerId, SourceIdentifier
 
@@ -16,16 +15,17 @@ class MongoDocumentRepository:
 
     def __init__(
         self,
-        client: AsyncIOMotorClient,
+        client: MongoClient,
         db_name: str,
         collection: str = "documents",
     ) -> None:
-        self._collection = client[db_name][collection]
+        self._database = client[db_name]
+        self._collection = self._database[collection]
 
     @property
-    def database(self) -> AsyncIOMotorDatabase:
+    def database(self) -> MongoDatabase:
         """La DB qui porte la collection — de quoi reposer les index après un drop."""
-        return self._collection.database
+        return self._database
 
     async def upsert(self, document: ParsedDocument) -> None:
         """Delete existing entry then insert the new document."""

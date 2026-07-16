@@ -96,7 +96,9 @@ async def _edge_types(repo) -> list[str]:
         return sorted([record["t"] async for record in result])
 
 
-async def test_a_described_target_becomes_a_node_instead_of_a_pending_edge(repo) -> None:
+async def test_a_described_target_becomes_a_node_instead_of_a_pending_edge(
+    repo,
+) -> None:
     """LE test du lot juri, contre une vraie base. Sans lui, le graphe serait vide.
 
     **La mesure qui a imposé ce chemin.** Les 68 ``<LIEN>`` du corpus de jurisprudence ont
@@ -290,7 +292,9 @@ async def test_deleting_outgoing_edges_preserves_the_node(repo) -> None:
     await repo.merge_document_node(_doc(2))
     await repo.upsert_relations([_relation(1, 2)], RUN)
 
-    await repo.delete_relations_from(ELI(raw="LEGIARTI000000000001"), OWNER, SourceName.LEGI)
+    await repo.delete_relations_from(
+        ELI(raw="LEGIARTI000000000001"), OWNER, SourceName.LEGI
+    )
 
     remaining = await repo.existing_node_ids(
         [ELI(raw="LEGIARTI000000000001"), ELI(raw="LEGIARTI000000000002")], OWNER
@@ -411,7 +415,9 @@ async def test_compensating_a_cited_node_dehydrates_it(repo) -> None:
     """
     await repo.merge_document_node(_doc(1))  # le citant
     await repo.merge_document_node(_doc(2))  # le cité, qu'on va compenser
-    await repo.upsert_relations([_relation(1, 2)], RUN)  # 1 cite 2 : arête entrante sur 2
+    await repo.upsert_relations(
+        [_relation(1, 2)], RUN
+    )  # 1 cite 2 : arête entrante sur 2
 
     await repo.compensate_document_node(ELI(raw="LEGIARTI000000000002"), OWNER)
 

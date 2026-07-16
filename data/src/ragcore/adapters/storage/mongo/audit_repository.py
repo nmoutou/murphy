@@ -7,8 +7,7 @@ supprimer. Ici, le repository est async parce que Motor l'est ; c'est l'appelant
 synchrone (les nœuds Kedro) qui traverse le pont, via SON runtime.
 """
 
-from motor.motor_asyncio import AsyncIOMotorClient
-
+from ragcore.adapters.storage.mongo.client import MongoClient
 from ragcore.core.models.audit import AuditEvent
 
 __all__ = ["MongoAuditRepository"]
@@ -19,7 +18,7 @@ class MongoAuditRepository:
 
     def __init__(
         self,
-        client: AsyncIOMotorClient,
+        client: MongoClient,
         db_name: str,
         collection: str = "meta_audit_events",
     ) -> None:

@@ -49,7 +49,10 @@ def compute_idempotence_node(  # noqa: PLR0913 — l'identité d'un nœud Kedro 
 
     run_id = pipeline_context.run_id
     owner_id = pipeline_context.owner_id
-    source = pipeline_context.source
+    # La source n'est PAS lue du contexte : en run multi-source, `context.source`
+    # vaut None et effacerait l'attribution de source sur CHAQUE événement et entrée
+    # de manifeste. Chaque `raw` porte sa vraie origine (`raw.source`), même quand le
+    # parsing échoue — c'est elle qui doit être tracée.
 
     for raw in raw_documents:
         try:
@@ -62,7 +65,7 @@ def compute_idempotence_node(  # noqa: PLR0913 — l'identité d'un nœud Kedro 
                     event_type=DOCUMENT_INVALIDATED,
                     run_id=run_id,
                     owner_id=owner_id,
-                    source=source,
+                    source=raw.source,
                     payload={
                         "reason": REASON_VALIDATION_ERROR,
                         "uid": raw.source_document_id,
@@ -79,7 +82,7 @@ def compute_idempotence_node(  # noqa: PLR0913 — l'identité d'un nœud Kedro 
                         identifier=None,
                         source_path=raw.source_document_id,
                         owner_id=owner_id,
-                        source=source,
+                        source=raw.source,
                         operation=Operation.EXCLUDED,
                         reason=str(exc),
                         processed_at=datetime.now(UTC),
@@ -90,13 +93,15 @@ def compute_idempotence_node(  # noqa: PLR0913 — l'identité d'un nœud Kedro 
             continue
         except Exception as exc:  # noqa: BLE001
             # Autre erreur de parsing
-            logger.warning("Erreur parsing document %s — rejeté", raw.source_document_id)
+            logger.warning(
+                "Erreur parsing document %s — rejeté", raw.source_document_id
+            )
             telemetry.emit(
                 build_event(
                     event_type=DOCUMENT_INVALIDATED,
                     run_id=run_id,
                     owner_id=owner_id,
-                    source=source,
+                    source=raw.source,
                     payload={
                         "reason": REASON_PARSE_ERROR,
                         "uid": raw.source_document_id,
@@ -112,7 +117,7 @@ def compute_idempotence_node(  # noqa: PLR0913 — l'identité d'un nœud Kedro 
                         identifier=None,
                         source_path=raw.source_document_id,
                         owner_id=owner_id,
-                        source=source,
+                        source=raw.source,
                         operation=Operation.EXCLUDED,
                         reason=f"{REASON_PARSE_ERROR}: {exc}",
                         processed_at=datetime.now(UTC),
@@ -133,7 +138,7 @@ def compute_idempotence_node(  # noqa: PLR0913 — l'identité d'un nœud Kedro 
                 event_type=DOCUMENT_PARSED,
                 run_id=run_id,
                 owner_id=owner_id,
-                source=source,
+                source=raw.source,
                 document_id=parsed.identifier.serialize(),
                 payload={"operation": operation.value},
             )

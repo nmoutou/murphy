@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
+from typing import Any
 
 from ragcore.application.run_context import PipelineContext
 from ragcore.core.models.audit import build_event
@@ -15,7 +16,7 @@ def cleanup_node(
     cache_paths: list[str],
     pipeline_context: PipelineContext,
     telemetry: TelemetryPort,
-) -> dict:
+) -> dict[str, Any]:
     """Delete all files under the parameterized cache paths (no hardcoded paths)."""
     total_deleted = 0
     cleaned: list[str] = []

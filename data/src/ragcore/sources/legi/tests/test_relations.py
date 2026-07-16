@@ -44,7 +44,10 @@ def _parse(fixtures_dir: Path, *names: str) -> ParsedDocument:
 
 
 def test_lextracteur_satisfait_son_port() -> None:
-    assert isinstance(GenericRelationExtractor(LEGI_ROLE_TABLE, SourceName.LEGI), BaseRelationExtractor)
+    assert isinstance(
+        GenericRelationExtractor(LEGI_ROLE_TABLE, SourceName.LEGI),
+        BaseRelationExtractor,
+    )
 
 
 def test_UN_lien_donne_UNE_arete(fixtures_dir: Path) -> None:
@@ -58,7 +61,9 @@ def test_UN_lien_donne_UNE_arete(fixtures_dir: Path) -> None:
     à la construction, depuis ``sens``.
     """
     document = _parse(fixtures_dir, f"{ARTICLE_RICHE}.xml")
-    result = GenericRelationExtractor(LEGI_ROLE_TABLE, SourceName.LEGI).extract(document)
+    result = GenericRelationExtractor(LEGI_ROLE_TABLE, SourceName.LEGI).extract(
+        document
+    )
 
     liens = [r for r in document.structure["references"] if r["id"]]
     ancestors = document.structure["context"]
@@ -75,7 +80,9 @@ def test_sens_cible_signifie_que_LAUTRE_pointe_vers_MOI(fixtures_dir: Path) -> N
     rédaction. C'est l'AUTRE qui le cite : l'arête va du lié vers moi.
     """
     document = _parse(fixtures_dir, f"{ARTICLE_RICHE}.xml")
-    result = GenericRelationExtractor(LEGI_ROLE_TABLE, SourceName.LEGI).extract(document)
+    result = GenericRelationExtractor(LEGI_ROLE_TABLE, SourceName.LEGI).extract(
+        document
+    )
 
     cibles = [r for r in result.relations if r.metadata.get("sens") == "cible"]
     assert cibles, "l'article riche porte des liens sens=cible"
@@ -87,7 +94,9 @@ def test_sens_cible_signifie_que_LAUTRE_pointe_vers_MOI(fixtures_dir: Path) -> N
 
 def test_sens_source_signifie_que_JE_pointe_vers_LAUTRE(fixtures_dir: Path) -> None:
     document = _parse(fixtures_dir, f"{ARTICLE_RICHE}.xml")
-    result = GenericRelationExtractor(LEGI_ROLE_TABLE, SourceName.LEGI).extract(document)
+    result = GenericRelationExtractor(LEGI_ROLE_TABLE, SourceName.LEGI).extract(
+        document
+    )
 
     sources = [r for r in result.relations if r.metadata.get("sens") == "source"]
     assert sources, "l'article riche porte des liens sens=source"
@@ -103,7 +112,9 @@ def test_les_paires_actives_et_passives_partagent_leur_verbe(
     verbe, vu de ses deux bouts. Ce qui les distingue est l'orientation, pas le type.
     """
     document = _parse(fixtures_dir, f"{ARTICLE_RICHE}.xml")
-    result = GenericRelationExtractor(LEGI_ROLE_TABLE, SourceName.LEGI).extract(document)
+    result = GenericRelationExtractor(LEGI_ROLE_TABLE, SourceName.LEGI).extract(
+        document
+    )
 
     modifies = [r for r in result.relations if r.relation_type == MODIFIES]
     typeliens = {r.metadata["typelien"] for r in modifies}
@@ -120,11 +131,11 @@ def test_le_typelien_dorigine_SURVIT_dans_les_metadonnees(fixtures_dir: Path) ->
     prix d'un oubli.
     """
     document = _parse(fixtures_dir, f"{ARTICLE_RICHE}.xml")
-    result = GenericRelationExtractor(LEGI_ROLE_TABLE, SourceName.LEGI).extract(document)
+    result = GenericRelationExtractor(LEGI_ROLE_TABLE, SourceName.LEGI).extract(
+        document
+    )
 
-    references = [
-        r for r in result.relations if r.relation_type == REFERENCES
-    ]
+    references = [r for r in result.relations if r.relation_type == REFERENCES]
     assert {r.metadata["typelien"] for r in references} >= {"CODIFICATION"}
 
 
@@ -134,7 +145,9 @@ def test_la_hierarchie_devient_des_aretes_CONTAINS(fixtures_dir: Path) -> None:
     sous lequel s'écrire.
     """
     document = _parse(fixtures_dir, f"{SECTION_ARTICLES}.xml")
-    result = GenericRelationExtractor(LEGI_ROLE_TABLE, SourceName.LEGI).extract(document)
+    result = GenericRelationExtractor(LEGI_ROLE_TABLE, SourceName.LEGI).extract(
+        document
+    )
 
     contains = [r for r in result.relations if r.relation_type == CONTAINS]
     articles = [r for r in contains if r.metadata.get("kind") == "LIEN_ART"]
@@ -149,9 +162,15 @@ def test_les_ancetres_du_contexte_CONTIENNENT_le_document(fixtures_dir: Path) ->
     et l'arête va de l'ancêtre VERS lui. Orientation fixe, jamais ambiguë.
     """
     document = _parse(fixtures_dir, f"{ARTICLE_SIMPLE}.xml")
-    result = GenericRelationExtractor(LEGI_ROLE_TABLE, SourceName.LEGI).extract(document)
+    result = GenericRelationExtractor(LEGI_ROLE_TABLE, SourceName.LEGI).extract(
+        document
+    )
 
-    ancestors = [r for r in result.relations if r.metadata.get("kind") in {"TITRE_TXT", "TITRE_TM"}]
+    ancestors = [
+        r
+        for r in result.relations
+        if r.metadata.get("kind") in {"TITRE_TXT", "TITRE_TM"}
+    ]
 
     assert len(ancestors) == 7
     for relation in ancestors:
@@ -183,7 +202,9 @@ def test_un_verbe_inconnu_ENTRE_mais_un_sens_inconnu_NON(
     qu'on ne sait pas. Les deux cas sont déclarés — l'aveu, lui, est dû dans tous les cas.
     """
     document = _parse(fixtures_dir, "unknown_vocabulary.xml")
-    result = GenericRelationExtractor(LEGI_ROLE_TABLE, SourceName.LEGI).extract(document)
+    result = GenericRelationExtractor(LEGI_ROLE_TABLE, SourceName.LEGI).extract(
+        document
+    )
 
     assert result.unknowns == {
         CATEGORY_TYPELIEN: ["ZORGLUB"],
@@ -192,8 +213,7 @@ def test_un_verbe_inconnu_ENTRE_mais_un_sens_inconnu_NON(
 
     verbs = {r.relation_type for r in result.relations}
     assert verbs == {CITES, "zorglub"}, (
-        "le lien valide ET le verbe inconnu produisent une arête ; "
-        "le sens inconnu, non"
+        "le lien valide ET le verbe inconnu produisent une arête ; le sens inconnu, non"
     )
 
     unknown_edge = next(r for r in result.relations if r.relation_type == "zorglub")
@@ -219,7 +239,11 @@ def test_une_cible_JORF_ne_devient_JAMAIS_un_ELI() -> None:
         ]
     )
 
-    (relation,) = GenericRelationExtractor(LEGI_ROLE_TABLE, SourceName.LEGI).extract(document).relations
+    (relation,) = (
+        GenericRelationExtractor(LEGI_ROLE_TABLE, SourceName.LEGI)
+        .extract(document)
+        .relations
+    )
 
     assert isinstance(relation.target_identifier, JorfId)
     assert relation.target_identifier.serialize() == "jorf:JORFTEXT000000357650"
@@ -234,7 +258,9 @@ def test_un_id_vide_ne_pollue_PAS_les_inconnus() -> None:
         [{"kind": "LIEN", "id": "", "typelien": "CITATION", "sens": "source"}]
     )
 
-    result = GenericRelationExtractor(LEGI_ROLE_TABLE, SourceName.LEGI).extract(document)
+    result = GenericRelationExtractor(LEGI_ROLE_TABLE, SourceName.LEGI).extract(
+        document
+    )
 
     assert result.relations == []
     assert result.unknowns == {}

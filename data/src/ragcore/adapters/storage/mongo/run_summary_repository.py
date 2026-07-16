@@ -5,8 +5,7 @@ son bilan, pas en empiler un second — sinon « combien de runs ont tourné ? �
 n'a plus de réponse.
 """
 
-from motor.motor_asyncio import AsyncIOMotorClient
-
+from ragcore.adapters.storage.mongo.client import MongoClient
 from ragcore.core.models.identifiers import RunId
 from ragcore.core.models.run_summary import RunSummary
 
@@ -18,7 +17,7 @@ class MongoRunSummaryRepository:
 
     def __init__(
         self,
-        client: AsyncIOMotorClient,
+        client: MongoClient,
         db_name: str,
         collection: str = "meta_run_summaries",
     ) -> None:

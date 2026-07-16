@@ -28,14 +28,23 @@ from ragcore.core.services.unknown_categories import (
 )
 
 SOURCE_NAMES = {
-    "legi", "jorf", "upload",
-    "capp", "cass", "inca", "jade", "constit",   # les cinq juri
+    "legi",
+    "jorf",
+    "upload",
+    "capp",
+    "cass",
+    "inca",
+    "jade",
+    "constit",  # les cinq juri
 }
 OPERATIONS = {"insert", "update", "delete", "excluded"}
 TARGET_STORES = {"mongo", "neo4j", "qdrant"}
 EXCLUSION_REASONS = {
-    "no_eli", "invalid_eli_format",
-    "parse_error", "validation_error", "missing_content",
+    "no_eli",
+    "invalid_eli_format",
+    "parse_error",
+    "validation_error",
+    "missing_content",
     "export_artifact",
     # Un XML qui ne parse pas : exclusion de LECTURE, distincte du `parse_error` qui est un
     # échec d'INTERPRÉTATION. Les confondre masquerait une source corrompue derrière un bug

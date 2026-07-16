@@ -42,7 +42,11 @@ def test_counts_and_breakdown_reach_the_stats(aggregator: RunStatsAggregator) ->
     )
     aggregator.emit(
         build_event(
-            DOCUMENT_INVALIDATED, RUN, OWNER, payload={"reason": "no_eli"}, success=False
+            DOCUMENT_INVALIDATED,
+            RUN,
+            OWNER,
+            payload={"reason": "no_eli"},
+            success=False,
         )
     )
 
@@ -52,7 +56,9 @@ def test_counts_and_breakdown_reach_the_stats(aggregator: RunStatsAggregator) ->
     assert summary.stats.breakdowns[DOCUMENT_INVALIDATED]["no_eli"] == 1
 
 
-def test_status_accepts_the_literals_the_hooks_pass(aggregator: RunStatsAggregator) -> None:
+def test_status_accepts_the_literals_the_hooks_pass(
+    aggregator: RunStatsAggregator,
+) -> None:
     """Les hooks passent "ok"/"failed" en chaînes brutes, pas en RunStatus."""
     assert aggregator.finalize("ok").status is RunStatus.OK
     assert aggregator.finalize("failed", "boom").status is RunStatus.FAILED
@@ -111,7 +117,9 @@ def test_the_summary_projects_the_reduction_of_n_workers() -> None:
     """
     workers = [
         RunStats(counts={DOCUMENT_PERSISTED: 3}, unknowns={"field": ["NOTA"]}),
-        RunStats(counts={DOCUMENT_PERSISTED: 2}, unknowns={"field": ["NOTA", "CONTENU"]}),
+        RunStats(
+            counts={DOCUMENT_PERSISTED: 2}, unknowns={"field": ["NOTA", "CONTENU"]}
+        ),
     ]
 
     summary = RunSummary.of(

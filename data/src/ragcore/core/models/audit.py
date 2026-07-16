@@ -47,7 +47,7 @@ class AuditEvent(BaseModel):
         return self
 
 
-def build_event(
+def build_event(  # noqa: PLR0913 — façade : exposer tous les champs de l'événement EST le propos
     event_type: str,
     run_id: RunId,
     owner_id: OwnerId,

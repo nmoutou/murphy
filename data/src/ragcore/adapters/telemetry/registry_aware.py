@@ -145,5 +145,7 @@ class RegistryAwareTelemetry:
             try:
                 closer()
             except Exception as exc:
-                _LOGGER.warning("telemetry backend '%s' error on close(): %s", name, exc)
+                _LOGGER.warning(
+                    "telemetry backend '%s' error on close(): %s", name, exc
+                )
                 self.record_audit_failure(name)

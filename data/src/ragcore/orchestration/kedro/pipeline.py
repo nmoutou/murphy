@@ -25,8 +25,8 @@ from kedro.pipeline import Pipeline, node, pipeline
 from .nodes.cleanup import cleanup_node
 from .nodes.compute_idempotence import compute_idempotence_node
 from .nodes.connect import connect_node
-from .nodes.nuke_all import nuke_all_node
 from .nodes.ingest import ingest_node
+from .nodes.nuke_all import nuke_all_node
 from .nodes.report import report_node
 from .nodes.resolve_relations import resolve_relations_node
 

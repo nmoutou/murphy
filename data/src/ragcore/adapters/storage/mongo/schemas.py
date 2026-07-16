@@ -1,8 +1,9 @@
-from motor.motor_asyncio import AsyncIOMotorDatabase
 from pymongo import ASCENDING, IndexModel
 
+from ragcore.adapters.storage.mongo.client import MongoDatabase
 
-async def ensure_data_indexes(db: AsyncIOMotorDatabase) -> None:
+
+async def ensure_data_indexes(db: MongoDatabase) -> None:
     """Indexes pour la DB de données (défaut : LEGIFRANCE).
 
     - documents : unique (identifier, owner_id) + (source, owner_id)
@@ -49,7 +50,7 @@ async def ensure_data_indexes(db: AsyncIOMotorDatabase) -> None:
     )
 
 
-async def ensure_meta_indexes(db: AsyncIOMotorDatabase) -> None:
+async def ensure_meta_indexes(db: MongoDatabase) -> None:
     """Indexes for the meta DB (default: MURPHY_META).
 
     - meta_audit_events      : (owner_id, occurred_at), (document_id, occurred_at), (run_id,)

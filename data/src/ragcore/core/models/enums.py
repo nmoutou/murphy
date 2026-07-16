@@ -7,20 +7,20 @@ class SourceName(StrEnum):
     UPLOAD = "upload"
 
     # Jurisprudence : une valeur par base.
-    CAPP = "capp"          # cours d'appel
-    CASS = "cass"          # Cour de cassation
-    INCA = "inca"          # inédits Cour de cassation
-    JADE = "jade"          # juridictions administratives
-    CONSTIT = "constit"    # Conseil constitutionnel
+    CAPP = "capp"  # cours d'appel
+    CASS = "cass"  # Cour de cassation
+    INCA = "inca"  # inédits Cour de cassation
+    JADE = "jade"  # juridictions administratives
+    CONSTIT = "constit"  # Conseil constitutionnel
 
 
 class Operation(StrEnum):
     """Opération effectuée sur un document lors du manifest."""
 
-    INSERT = "insert"       # première ingestion (identifier inconnu du manifest)
-    UPDATE = "update"       # ré-ingestion (identifier déjà connu)
-    DELETE = "delete"       # suppression
-    EXCLUDED = "excluded"   # rejet de validation, jamais ingéré
+    INSERT = "insert"  # première ingestion (identifier inconnu du manifest)
+    UPDATE = "update"  # ré-ingestion (identifier déjà connu)
+    DELETE = "delete"  # suppression
+    EXCLUDED = "excluded"  # rejet de validation, jamais ingéré
 
 
 class TargetStore(StrEnum):

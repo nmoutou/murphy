@@ -22,7 +22,9 @@ BASE_URL = "http://tei.test:80/v1"
 class _ServiceFactice:
     """Un TEI en carton qui enregistre ce qu'on lui a demandé."""
 
-    def __init__(self, *, model_id: str | None = ATTENDU, info_status: int = 200) -> None:
+    def __init__(
+        self, *, model_id: str | None = ATTENDU, info_status: int = 200
+    ) -> None:
         self._model_id = model_id
         self._info_status = info_status
         self.chemins: list[str] = []
@@ -55,7 +57,9 @@ def _patch_client(monkeypatch: pytest.MonkeyPatch):
     return _installe
 
 
-async def test_un_service_qui_sert_un_autre_modele_fait_echouer_le_run(_patch_client) -> None:
+async def test_un_service_qui_sert_un_autre_modele_fait_echouer_le_run(
+    _patch_client,
+) -> None:
     """LE test qui justifie la feature : le run doit s'arrêter, pas produire des vecteurs.
 
     Sans lui, on écrit les vecteurs de `gte-base` dans la collection dont le nom est
@@ -80,7 +84,9 @@ async def test_le_bon_modele_passe(_patch_client) -> None:
     await assert_service_serves_model(BASE_URL, ATTENDU)  # ne lève pas
 
 
-async def test_info_est_interroge_a_l_ORIGINE_pas_sous_le_prefixe(_patch_client) -> None:
+async def test_info_est_interroge_a_l_ORIGINE_pas_sous_le_prefixe(
+    _patch_client,
+) -> None:
     """`/info` est à la racine du service, pas sous `/v1`.
 
     S'y tromper donne un 404 — donc un garde-fou qui ne se déclenche JAMAIS, ce qui est

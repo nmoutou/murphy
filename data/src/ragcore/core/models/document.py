@@ -23,7 +23,7 @@ class RawDocument(BaseModel):
 
 class ParsedDocument(BaseModel):
     """Document après parsing : structuré, prêt pour chunking.
-    
+
     Changements post-refonte :
     - `identifier: SourceIdentifier` remplace `document_id` et `eli` (union discriminée)
     - `content_hash` supprimé (idempotence simplifiée)

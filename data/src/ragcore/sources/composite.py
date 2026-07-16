@@ -37,7 +37,9 @@ from ragcore.sources.generic.relations import GenericRelationExtractor
 __all__ = ["CompositeConnector", "RoutingParser", "RoutingRelationExtractor"]
 
 
-def _unroutable(source: SourceName, known: Iterable[SourceName], role: str) -> ValueError:
+def _unroutable(
+    source: SourceName, known: Iterable[SourceName], role: str
+) -> ValueError:
     """L'erreur d'un document qu'on ne sait pas router.
 
     Ce cas ne devrait pas exister : le composite ne produit que des documents des sources

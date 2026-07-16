@@ -42,5 +42,8 @@ class JsonlFileTelemetry:
 
 
 def _events_filename(run_id: str, started_at: datetime) -> str:
-    iso = started_at.strftime("%Y-%m-%dT%H.%M.%S.") + f"{started_at.microsecond // 1000:03d}Z"
+    iso = (
+        started_at.strftime("%Y-%m-%dT%H.%M.%S.")
+        + f"{started_at.microsecond // 1000:03d}Z"
+    )
     return f"{iso}_{run_id}.jsonl"
