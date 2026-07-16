@@ -34,6 +34,7 @@ from ..services.unknown_categories import (
     CATEGORY_IDENTIFIER,
     CATEGORY_SENS,
     CATEGORY_TYPELIEN,
+    declare_unknown,
 )
 from .vocabulary import CONTAINS, RelationVerb, TranslationTable, translate
 
@@ -201,20 +202,20 @@ def _from_reference(
     if relation_verb is None:
         # Le mot ne peut pas ÊTRE un verbe (vide, caractères interdits) : il n'y a rien
         # à écrire dans le graphe. Ce n'est pas un renoncement — c'est l'absence de mot.
-        _declare(unknowns, CATEGORY_TYPELIEN, raw_typelien or "<vide>")
+        declare_unknown(unknowns, CATEGORY_TYPELIEN, raw_typelien or "<vide>")
         return None
 
     if not known:
         # Le verbe entre dans le graphe SOUS SON NOM BRUT, et le fait est déclaré.
         # L'arête existe : c'est là toute la différence avec la version qu'on remplace.
-        _declare(unknowns, CATEGORY_TYPELIEN, raw_typelien)
+        declare_unknown(unknowns, CATEGORY_TYPELIEN, raw_typelien)
 
     raw_sens = reference.get("sens", "")
     oriented = _orient(subject.current, linked, raw_sens)
     if oriented is None:
         # Une arête qu'on ne sait pas orienter, on ne l'écrit pas au hasard : un graphe
         # faux ne se distingue pas d'un graphe vrai. On dit qu'on n'a pas su.
-        _declare(unknowns, CATEGORY_SENS, raw_sens or "<vide>")
+        declare_unknown(unknowns, CATEGORY_SENS, raw_sens or "<vide>")
         return None
 
     edge_source, edge_target = oriented
@@ -324,7 +325,7 @@ def _identifier(
         # `@id` présent mais illisible : la source a écrit une référence qu'on ne sait
         # pas transformer. La taire ferait disparaître l'arête en silence ; on la
         # DÉCLARE, pour que le bilan la porte et que la table apprenne.
-        _declare(unknowns, CATEGORY_IDENTIFIER, raw_id)
+        declare_unknown(unknowns, CATEGORY_IDENTIFIER, raw_id)
         return None
 
 
@@ -343,10 +344,3 @@ def _relation(
         source=subject.source,
         metadata={key: value for key, value in metadata.items() if value},
     )
-
-
-def _declare(unknowns: dict[str, list[str]], category: str, value: str) -> None:
-    """Un ensemble, pas un compteur : « ce typelien est inconnu » est vrai une fois."""
-    known = unknowns.setdefault(category, [])
-    if value not in known:
-        known.append(value)

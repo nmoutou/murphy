@@ -6,6 +6,8 @@ vérification, une divergence entre le conteneur et ``parameters.yml`` écrit le
 d'un modèle dans la collection nommée d'après un autre — sans lever, sans logguer.
 """
 
+import json
+
 import httpx
 import pytest
 
@@ -14,9 +16,26 @@ from ragcore.adapters.embedding.openai_embedder import (
     assert_service_serves_model,
 )
 from ragcore.core.exceptions import EmbeddingModelMismatchError
+from ragcore.core.models.chunk import Chunk
+from ragcore.core.models.identifiers import ELI, OwnerId
 
 ATTENDU = "sentence-transformers/all-mpnet-base-v2"
 BASE_URL = "http://tei.test:80/v1"
+DIM = 4
+
+
+def _chunk(chunk_id: str, text: str) -> Chunk:
+    return Chunk(
+        chunk_id=chunk_id,
+        parent_identifier=ELI(raw="LEGIARTI000006419264"),
+        owner_id=OwnerId("owner-1"),
+        ordinal=0,
+        text=text,
+        tag_path=[],
+        char_start=0,
+        char_end=len(text),
+        metadata={},
+    )
 
 
 class _ServiceFactice:
@@ -120,3 +139,75 @@ def test_une_base_url_absente_est_refusee() -> None:
 async def test_embed_d_une_liste_vide_ne_touche_pas_au_reseau() -> None:
     embedder = OpenAIEmbedder(model_name=ATTENDU, dimension=768, base_url=BASE_URL)
     assert await embedder.embed([]) == []
+
+
+class _ServiceAFenetre:
+    """Un TEI factice à fenêtre finie : il REJETTE (413) tout texte plus long que ``limite``.
+
+    C'est exactement le mur que ``_embed_oversized`` doit franchir : le service ne dit pas
+    QUEL texte déborde, seulement que le lot déborde. On peut donc rejouer la dichotomie
+    réelle, sans mock partiel de l'embedder.
+    """
+
+    def __init__(self, limite: int) -> None:
+        self._limite = limite
+
+    def handler(self, request: httpx.Request) -> httpx.Response:
+        textes = json.loads(request.content)["input"]
+        if any(len(t) > self._limite for t in textes):
+            return httpx.Response(413)
+        data = [{"index": i, "embedding": [0.0] * DIM} for i in range(len(textes))]
+        return httpx.Response(200, json={"data": data})
+
+    def embedder(self) -> OpenAIEmbedder:
+        emb = OpenAIEmbedder(
+            model_name=ATTENDU, dimension=DIM, batch_size=32, base_url=BASE_URL
+        )
+        # On câble le transport factice dans le client que l'embedder construira.
+        vrai = httpx.AsyncClient
+
+        def _fabrique(*a: object, **k: object) -> httpx.AsyncClient:
+            k["transport"] = httpx.MockTransport(self.handler)
+            return vrai(*a, **k)  # type: ignore[arg-type]
+
+        emb._client = lambda: _fabrique()  # type: ignore[method-assign]
+        return emb
+
+
+class TestLeCompteurDeTruncations:
+    async def test_un_chunk_raccourci_TROIS_fois_compte_UN(self) -> None:
+        """Le cœur de F14 : on compte le CHUNK, pas les moitiés successives.
+
+        Le texte fait 8 caractères, la fenêtre 1 : la dichotomie va le raccourcir
+        8→4→2→1, soit trois raccourcissements du MÊME chunk. L'ancien compteur en
+        aurait dit 3. Il ne doit en dire qu'un.
+        """
+        service = _ServiceAFenetre(limite=1)
+        embedder = service.embedder()
+
+        await embedder.embed([_chunk("c-unique", "textelong")])
+
+        assert embedder.truncations == 1
+
+    async def test_deux_chunks_debordent_le_compte_est_DEUX(self) -> None:
+        """Deux chunks distincts, chacun trop long : deux truncations, pas plus."""
+        service = _ServiceAFenetre(limite=2)
+        embedder = service.embedder()
+
+        await embedder.embed(
+            [
+                _chunk("c-1", "beaucoup trop long"),
+                _chunk("c-2", "long aussi celui la"),
+                _chunk("c-3", "ok"),  # tient dans la fenêtre : pas raccourci
+            ]
+        )
+
+        assert embedder.truncations == 2
+
+    async def test_aucun_debordement_ne_compte_rien(self) -> None:
+        service = _ServiceAFenetre(limite=100)
+        embedder = service.embedder()
+
+        await embedder.embed([_chunk("c-1", "court"), _chunk("c-2", "bref")])
+
+        assert embedder.truncations == 0

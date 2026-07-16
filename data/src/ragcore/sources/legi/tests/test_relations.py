@@ -21,8 +21,7 @@ from ragcore.core.services.unknown_categories import (
     CATEGORY_SENS,
     CATEGORY_TYPELIEN,
 )
-from ragcore.sources.generic import GenericParser, GenericRelationExtractor
-from ragcore.sources.legi.file_connector import _to_tree
+from ragcore.sources.generic import GenericParser, GenericRelationExtractor, to_tree
 from ragcore.sources.legi.table import LEGI_ROLE_TABLE
 
 from .conftest import ARTICLE_RICHE, ARTICLE_SIMPLE, SECTION_ARTICLES
@@ -37,7 +36,7 @@ def _parse(fixtures_dir: Path, *names: str) -> ParsedDocument:
             source_document_id=names[0],
             payload={
                 "content": [
-                    _to_tree(ET.parse(fixtures_dir / name).getroot()) for name in names
+                    to_tree(ET.parse(fixtures_dir / name).getroot()) for name in names
                 ],
                 "files": list(names),
             },

@@ -417,7 +417,7 @@
     <summary><span class="fid">F14</span>
       <span class="ftitle"><code>truncations</code> : course entre workers, comptage par moitié, absent du run failed
         <span class="loc">adapters/embedding/openai_embedder.py:262 · hooks.py</span></span>
-      <span class="chip todo">à corriger</span></summary>
+      <span class="chip done">corrigé</span></summary>
     <div class="fbody">
       <p>L'embedder est partagé entre workers : <code>self.truncations += 1</code> est une
       lecture-modification-écriture non atomique entre threads (incréments perdables). Il compte les <em>moitiés</em>
@@ -432,7 +432,7 @@
     <summary><span class="fid">F15</span>
       <span class="ftitle">Sémantique de compteur incohérente : <code>upserted</code> par batch, <code>pending</code> par arête
         <span class="loc">application/resolve_relations.py:97-110 · telemetry/aggregator.py:_weight_of</span></span>
-      <span class="chip todo">à documenter</span></summary>
+      <span class="chip done">corrigé</span></summary>
     <div class="fbody">
       <p><code>RELATION_PENDING</code> est émis et compté par arête ; <code>RELATION_UPSERTED</code> une fois par batch,
       le vrai compte dans <code>payload["count"]</code> — repêché par <code>_weight_of</code> uniquement parce que la clé
@@ -446,7 +446,7 @@
     <summary><span class="fid">F16</span>
       <span class="ftitle">La compensation d'un UPDATE détruit l'ancienne version
         <span class="loc">application/ingest_document.py — _mongo_delete_then_insert</span></span>
-      <span class="chip doc">à documenter</span></summary>
+      <span class="chip done">documenté</span></summary>
     <div class="fbody">
       <p>Le forward supprime l'ancien document <em>avant</em> d'insérer ; la compensation supprime le nouveau. Après
       une saga ratée sur UPDATE, le document est <strong>absent</strong> des stores alors que le manifest le croit
@@ -459,7 +459,7 @@
     <summary><span class="fid">F17</span>
       <span class="ftitle">Le connecteur juri importe le privé de legi et recopie le reste
         <span class="loc">sources/juri/file_connector.py:36</span></span>
-      <span class="chip todo">à corriger</span></summary>
+      <span class="chip done">corrigé</span></summary>
     <div class="fbody">
       <p><code>from ragcore.sources.legi.file_connector import _to_tree</code> — un import privé inter-sources — plus
       <code>_read</code>/<code>_skip</code>/<code>_locate_id</code> recopiés. La transcription XML→arbre est générique
@@ -472,7 +472,7 @@
     <summary><span class="fid">F18</span>
       <span class="ftitle">Micro-duplications et scories
         <span class="loc">divers — voir détail</span></span>
-      <span class="chip todo">à corriger</span></summary>
+      <span class="chip done">corrigé</span></summary>
     <div class="fbody">
       <p><code>_events_filename</code> (jsonl) ≡ <code>_stats_filename</code> (hooks) : trois fois le même format ISO ;
       <code>_declare</code> en double (extraction.py, parser.py) ; <code>_key_tuple</code> recompose ce que
@@ -487,7 +487,7 @@
     <summary><span class="fid">F19</span>
       <span class="ftitle">Docstrings historiques (« post-refonte », « corrige Bug 4/6 ») et typos
         <span class="loc">models/document.py:27 · neo4j/graph_repository.py:3 · qdrant/vector_repository.py:3 · telemetry_registry.py · identifiers.py</span></span>
-      <span class="chip todo">à corriger</span></summary>
+      <span class="chip done">corrigé</span></summary>
     <div class="fbody">
       <p>Elles parlent au reviewer d'hier, plus au lecteur de demain — le critère du dépôt les condamne. Les modules les
       plus anciens (<code>telemetry_registry.py</code>, <code>identifiers.py</code>) portent aussi les seules typos

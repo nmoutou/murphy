@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from ragcore.core.models.audit import AuditEvent
+from ragcore.core.services.run_artifacts import run_scoped_filename
 
 
 class JsonlFileTelemetry:
@@ -22,7 +23,9 @@ class JsonlFileTelemetry:
     """
 
     def __init__(self, events_dir: Path, run_id: str, started_at: datetime) -> None:
-        self._path = Path(events_dir) / _events_filename(run_id, started_at)
+        self._path = Path(events_dir) / run_scoped_filename(
+            run_id, started_at, ".jsonl"
+        )
         self._path.parent.mkdir(parents=True, exist_ok=True)
 
     def emit(self, event: AuditEvent) -> None:
@@ -37,11 +40,3 @@ class JsonlFileTelemetry:
 
     def log(self, level: str, message: str, **context: Any) -> None:
         return
-
-
-def _events_filename(run_id: str, started_at: datetime) -> str:
-    iso = (
-        started_at.strftime("%Y-%m-%dT%H.%M.%S.")
-        + f"{started_at.microsecond // 1000:03d}Z"
-    )
-    return f"{iso}_{run_id}.jsonl"

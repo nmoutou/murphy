@@ -37,6 +37,22 @@ class PendingKey(BaseModel):
     target_id: DocumentId  # identifiant sérialisé
     relation_type: ValidatedVerb
 
+    @classmethod
+    def from_relation(cls, relation: Relation) -> "PendingKey":
+        """La clé d'une relation RÉSOLUE — la même identité qu'une pendante.
+
+        Une pendante et la relation qui la résout portent la MÊME clé : c'est ce qui
+        permet de dire « cette pendante vient d'être écrite ». Recomposer un tuple à la
+        main aux deux endroits (ce que faisait ``_key_tuple``) laissait les deux formes
+        diverger en silence — l'unicité est un fait du modèle, elle vit ici.
+        """
+        return cls(
+            owner_id=relation.owner_id,
+            source_id=relation.source_identifier.serialize(),
+            target_id=relation.target_identifier.serialize(),
+            relation_type=relation.relation_type,
+        )
+
 
 class PendingRelation(BaseModel):
     """Relation dont la cible n'existait pas au moment de l'écriture.

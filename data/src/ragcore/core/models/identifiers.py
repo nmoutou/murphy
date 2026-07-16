@@ -31,12 +31,11 @@ _JURISDICTIONS = {
 
 
 class ELI(BaseModel):
-    """European Legislation Identifier — identifiant métier LEGI.
+    """European Legislation Identifier — l'identifiant métier d'un document LEGI.
 
-    Responsibilités :
-    - Validation de format (N1)
-    - Extraction depuis RawDocument (N2)
-    - Calcul du type de document
+    Valide son propre format à la construction (8 majuscules + 12 chiffres) : un ELI mal
+    formé n'existe pas, il lève. Les caractères 5 à 8 (``ARTI`` dans ``LEGIARTI…``, ``TEXT``
+    dans ``LEGITEXT…``) portent le type de document, que ``document_type`` en dérive.
     """
 
     model_config = ConfigDict(frozen=True)

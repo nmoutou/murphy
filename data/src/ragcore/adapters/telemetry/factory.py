@@ -34,7 +34,33 @@ from .noop import NoopTelemetry
 from .registry_aware import RegistryAwareTelemetry
 from .worker_backends import WorkerBackends
 
-__all__ = ["WorkerTelemetryFactory"]
+__all__ = ["WorkerTelemetryFactory", "assemble_telemetry"]
+
+
+def assemble_telemetry(
+    registry: TelemetryRegistry,
+    *,
+    jsonl: TelemetryPort,
+    mongo: TelemetryPort,
+    aggregate: RunStatsAggregator,
+) -> RegistryAwareTelemetry:
+    """Le CÂBLAGE d'une pile de télémétrie : registry + les quatre backends.
+
+    La console est toujours la même ; les trois autres varient (fichier propre à un
+    worker, audit Mongo optionnel, agrégat propre). Ce montage était recopié à
+    l'identique dans deux endroits — la fabrique par worker ci-dessous ET le hook, pour
+    sa pile de run-lifecycle. Le grouper ici fait qu'un backend ajouté ou réordonné se
+    voit en UN point, pas deux.
+    """
+    return RegistryAwareTelemetry(
+        registry=registry,
+        backends=WorkerBackends(
+            log=ConsoleLogTelemetry(),
+            jsonl=jsonl,
+            mongo=mongo,
+            aggregate=aggregate,
+        ),
+    )
 
 
 class WorkerTelemetryFactory:
@@ -82,12 +108,6 @@ class WorkerTelemetryFactory:
             audit_repo = self._audit_repo_factory(runtime)  # type: ignore[operator]
             mongo = MongoAuditTelemetryAdapter(audit_repo, runtime)
 
-        return RegistryAwareTelemetry(
-            registry=self._registry,
-            backends=WorkerBackends(
-                log=ConsoleLogTelemetry(),
-                jsonl=jsonl,
-                mongo=mongo,
-                aggregate=aggregator,
-            ),
+        return assemble_telemetry(
+            self._registry, jsonl=jsonl, mongo=mongo, aggregate=aggregator
         )

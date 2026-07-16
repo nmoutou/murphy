@@ -1,9 +1,10 @@
 """Implémentation Qdrant du VectorRepository.
 
-Changements post-refonte :
-- Hash stable : hashlib.sha256 au lieu de hash() Python (corrige Bug 6)
-- Payload : "identifier" au lieu de "document_id"
-- Filtre : match sur "identifier" au lieu de "document_id"
+L'ID d'un point dérive du ``chunk_id`` par SHA-256 — un hash **stable entre processus**,
+là où le ``hash()`` de Python est resemé à chaque interpréteur : deux runs auraient sinon
+écrit le même chunk sous deux ID différents, et l'un n'aurait jamais écrasé l'autre. Le
+document est nommé partout (payload comme filtre) par son ``identifier`` sérialisé, la même
+clé qu'en Mongo et Neo4j.
 """
 
 import hashlib
@@ -75,9 +76,11 @@ class QdrantVectorRepository:
 
     @staticmethod
     def _stable_hash_id(chunk_id: str) -> int:
-        """Génère un ID Qdrant stable depuis un chunk_id via SHA-256.
+        """Un ID Qdrant STABLE dérivé du chunk_id par SHA-256.
 
-        Corrige Bug 6 : remplace abs(hash()) qui n'est pas stable entre processus.
+        « Stable » est le mot qui compte : le même chunk_id donne le même ID à tous les
+        runs et tous les processus. ``hash()`` de Python ne le garantit pas (il est resemé
+        par interpréteur) — le réemployer aurait dispersé un même chunk sur plusieurs ID.
         """
         digest = hashlib.sha256(chunk_id.encode()).hexdigest()
         return int(digest, 16) % (2**63)

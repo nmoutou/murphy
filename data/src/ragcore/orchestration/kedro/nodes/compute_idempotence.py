@@ -1,9 +1,9 @@
-"""Nœud Kedro : parse documents et détermine l'opération (INSERT vs UPDATE).
+"""Nœud Kedro : parse les documents et décide de l'opération (INSERT vs UPDATE).
 
-Changements post-refonte :
-- Rejet des documents invalides → entrée EXCLUDED au manifest
-- Suppression de SKIP (plus d'idempotence basée sur hash)
-- Tout ce qui parse → INSERT ou UPDATE seulement
+Deux issues seulement pour un document qui parse : INSERT ou UPDATE — l'idempotence se lit
+sur la présence de l'identifiant dans le manifest, jamais sur un hash de contenu. Un
+document qui NE parse pas est rejeté (entrée EXCLUDED au manifest) : il est compté, pas
+silencieusement ignoré. Il n'y a pas de troisième voie « SKIP ».
 """
 
 from __future__ import annotations

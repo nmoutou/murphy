@@ -27,13 +27,12 @@ sans broncher — et c'est le parser qui la déclarera inconnue.
 from collections.abc import AsyncIterator
 from datetime import UTC, datetime
 from pathlib import Path
-from xml.etree import ElementTree as ET
 
 from ragcore.core.models.document import RawDocument
 from ragcore.core.models.enums import SourceName
 from ragcore.core.models.identifiers import OwnerId
 from ragcore.core.services.exclusion_reasons import REASON_UNREADABLE
-from ragcore.sources.legi.file_connector import _to_tree
+from ragcore.sources.generic import locate_id, read_root, to_tree
 
 __all__ = ["JuriFileConnector"]
 
@@ -72,7 +71,7 @@ class JuriFileConnector:
         self.skipped = {}
 
         for path in sorted(self._root.rglob("*.xml")):
-            root = self._read(path)
+            root = read_root(path)
             if root is None:
                 # Illisible : il n'y a rien à parser, et le parser n'en saurait rien. On
                 # le COMPTE — écarter sans compter serait un skip silencieux.
@@ -81,37 +80,18 @@ class JuriFileConnector:
 
             yield RawDocument(
                 source=self._source,
-                source_document_id=_locate_id(root) or str(path),
+                source_document_id=locate_id(root) or str(path),
                 payload={
                     # Une LISTE d'une seule facette. Le parser générique attend une liste
                     # (LEGI en fusionne parfois deux) : rendre un dict ici forcerait le
                     # parser à connaître la différence entre ses sources — exactement ce
                     # qu'on lui épargne.
-                    "content": [_to_tree(root)],
+                    "content": [to_tree(root)],
                     "files": [str(path)],
                 },
                 fetched_at=datetime.now(UTC),
                 owner_id=owner_id,
             )
 
-    def _read(self, path: Path) -> ET.Element | None:
-        try:
-            return ET.parse(path).getroot()  # noqa: S314 — corpus local, pas une entrée réseau
-        except ET.ParseError:
-            return None
-
     def _skip(self, reason: str) -> None:
         self.skipped[reason] = self.skipped.get(reason, 0) + 1
-
-
-def _locate_id(element: ET.Element) -> str | None:
-    """Le ``<ID>`` du document — le seul acte de « lecture » du connecteur.
-
-    Ce n'est pas interpréter : il ne valide rien, ne construit aucun ``DecisionId``, ne
-    juge pas du format. Il lui faut une clé pour nommer le ``RawDocument`` ; le parser, lui,
-    en fera un identifiant — et le rejettera s'il est mal formé.
-    """
-    found = element.find(".//ID")
-    if found is None:
-        return None
-    return (found.text or "").strip() or None

@@ -19,10 +19,12 @@ from ragcore.core.models.run_stats import RunStats
 from ragcore.core.models.run_summary import RunStatus, RunSummary
 from ragcore.core.telemetry_events import (
     AUDIT_WRITE_FAILED,
+    COUNT_CARRYING_EVENTS,
     DOCUMENT_FAILED,
     DOCUMENT_INVALIDATED,
     DOCUMENT_PERSISTED,
     DOCUMENT_SKIPPED,
+    PAYLOAD_COUNT_KEY,
     SAGA_COMPENSATION_FAILED,
 )
 
@@ -37,24 +39,28 @@ _BREAKDOWN_KEY: dict[str, str] = {
 }
 
 
-def _weight_of(payload: dict[str, Any]) -> int:
+def _weight_of(event_type: str, payload: dict[str, Any]) -> int:
     """Le POIDS d'un event : combien de choses il rapporte, pas combien de fois il tinte.
 
-    La plupart des events valent 1 — un document persisté, un document parsé. Mais
-    certains sont émis **une fois pour un lot** et portent leur cardinalité en payload :
-    ``document.fetched`` avec ``{"count": 1121}``, ``relation.upserted`` avec le nombre
-    d'arêtes écrites. Les compter pour 1 (ce qu'on faisait) donnait un RunSummary qui
-    annonçait ``document.fetched: 1`` sur un run de 1121 documents — et rendait le critère
-    de fin (« ingérés + exclus + échoués = total vu ») **invérifiable depuis le bilan**.
+    La plupart des events valent 1 — un document persisté, un document parsé. Seuls ceux
+    déclarés PORTEURS DE CARDINALITÉ (``COUNT_CARRYING_EVENTS``) sont émis **une fois pour
+    un lot** et portent leur compte en payload : ``document.fetched`` avec le nombre de
+    documents vus, ``relation.upserted`` avec le nombre d'arêtes écrites. Les compter pour
+    1 donnait un RunSummary qui annonçait ``document.fetched: 1`` sur un run de 1121
+    documents — et rendait le critère de fin (« ingérés + exclus + échoués = total vu »)
+    **invérifiable depuis le bilan**.
 
-    Émettre 1121 events à la place coûterait 1121 écritures d'audit pour une information
-    déjà connue. Le ``count`` du payload est la réponse : les émetteurs le posaient déjà,
-    l'agrégateur ne le lisait pas.
+    **Le contrat est explicite, pas déduit de la clé.** On ne lit ``payload[count]`` que
+    pour un event qui a DÉCLARÉ le porter (cf. ``telemetry_events.py``). Un ``count`` qui
+    traînerait dans le payload d'un event unitaire est ignoré ; et renommer la clé d'un
+    émetteur porteur casserait le golden du catalogue, pas le bilan en silence.
 
     Défensif sur le type : un payload est une donnée de télémétrie, pas un contrat typé.
     Un ``count`` non entier ne doit pas faire tomber le bilan du run.
     """
-    count = payload.get("count")
+    if event_type not in COUNT_CARRYING_EVENTS:
+        return 1
+    count = payload.get(PAYLOAD_COUNT_KEY)
     return count if isinstance(count, int) and count >= 0 else 1
 
 
@@ -85,7 +91,7 @@ class RunStatsAggregator:
 
     def emit(self, event: AuditEvent) -> None:
         payload = event.payload or {}
-        weight = _weight_of(payload)
+        weight = _weight_of(event.event_type, payload)
         stats = self._stats.with_count(event.event_type, weight)
 
         payload_key = _BREAKDOWN_KEY.get(event.event_type)

@@ -14,8 +14,7 @@ from ragcore.core.models.enums import SourceName as _SN
 from ragcore.core.models.identifiers import OwnerId
 from ragcore.core.ports.parser import BaseParser
 from ragcore.core.services.unknown_categories import CATEGORY_TAG
-from ragcore.sources.generic import GenericParser
-from ragcore.sources.legi.file_connector import _to_tree
+from ragcore.sources.generic import GenericParser, to_tree
 from ragcore.sources.legi.table import LEGI_ROLE_TABLE
 
 from .conftest import (
@@ -35,7 +34,7 @@ def _raw(fixtures_dir: Path, *names: str) -> RawDocument:
         source_document_id=names[0],
         payload={
             "content": [
-                _to_tree(ET.parse(fixtures_dir / name).getroot()) for name in names
+                to_tree(ET.parse(fixtures_dir / name).getroot()) for name in names
             ],
             "files": list(names),
         },
@@ -228,7 +227,7 @@ def test_un_xml_illisible_leve_ParseError_pas_ValidationError(
 
 def test_un_document_sans_identifiant_leve_ValidationError() -> None:
     """Lisible, mais irrecevable : c'est un rejet métier."""
-    tree = _to_tree(ET.fromstring("<ARTICLE><META/></ARTICLE>"))
+    tree = to_tree(ET.fromstring("<ARTICLE><META/></ARTICLE>"))
 
     with pytest.raises(ValidationError, match="Identifiant absent"):
         GenericParser(LEGI_ROLE_TABLE, _SN.LEGI).parse(
@@ -247,7 +246,7 @@ def test_un_identifiant_mal_forme_leve_ValidationError() -> None:
     ``except ValidationError`` des appelants et se ferait compter comme une erreur de
     parsing — un refus métier maquillé en panne de lecture.
     """
-    tree = _to_tree(ET.fromstring("<ARTICLE><ID>PAS_UN_ELI</ID></ARTICLE>"))
+    tree = to_tree(ET.fromstring("<ARTICLE><ID>PAS_UN_ELI</ID></ARTICLE>"))
 
     with pytest.raises(ValidationError, match="Identifiant invalide"):
         GenericParser(LEGI_ROLE_TABLE, _SN.LEGI).parse(

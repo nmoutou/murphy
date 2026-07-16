@@ -149,9 +149,22 @@ def _windows(length: int, size: int, overlap: int) -> list[tuple[int, int]]:
 
     Un bloc plus court que ``size`` donne une fenêtre unique — pas de découpe inutile,
     et surtout pas de fenêtre vide en fin de parcours.
+
+    **On S'ARRÊTE dès qu'une fenêtre atteint la fin.** Sans ça, avec un fort
+    chevauchement (``step`` petit devant ``size``), les derniers ``start`` produisaient
+    des fenêtres ENTIÈREMENT CONTENUES dans la précédente : ``length=10, size=8,
+    overlap=6`` donnait ``(0,8), (2,10), (4,10), (6,10), (8,10)`` — trois chunks
+    redondants indexés, du texte compté plusieurs fois à la recherche. Une fois la fin
+    couverte, il n'y a plus rien de neuf à fenêtrer.
     """
     if length <= size:
         return [(0, length)]
 
     step = size - overlap
-    return [(start, min(start + size, length)) for start in range(0, length, step)]
+    windows: list[tuple[int, int]] = []
+    for start in range(0, length, step):
+        end = min(start + size, length)
+        windows.append((start, end))
+        if end == length:
+            break
+    return windows

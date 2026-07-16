@@ -124,6 +124,28 @@ class IngestDocumentUseCase:
     async def _mongo_delete_then_insert(
         self, parsed: ParsedDocument, operation: Operation
     ) -> None:
+        """Sur UPDATE : supprimer l'ancien, PUIS insérer le neuf.
+
+        **Décision assumée en v0 — un UPDATE compensé laisse un TROU, et il faut le dire.**
+        Le forward efface l'ancienne version avant d'écrire la nouvelle ; la compensation
+        (``document_repo.delete``, cf. le step ``mongo_upsert``) efface la NOUVELLE. Si la
+        saga casse après ce step, l'ancienne version est déjà partie et la nouvelle vient
+        d'être retirée : Mongo n'a **plus rien** pour cet identifiant, alors que le manifest
+        — écrit seulement en cas de succès total — ne le croit pas non plus présent. Les
+        deux sont donc cohérents sur l'absence, mais un document qui existait a bel et bien
+        DISPARU le temps d'un run raté.
+
+        Pourquoi c'est tenable ici : l'ingestion est **at-least-once** (§13). Le run suivant
+        re-traite ce document (le manifest ne l'a pas enregistré) et le ré-écrit. L'état
+        intermédiaire ment — il montre une absence là où le corpus attendait une version —
+        mais il est TRANSITOIRE et auto-réparé, et aucune donnée d'AUTORITÉ n'est perdue
+        (la source XML reste la vérité, on la relit).
+
+        Ce qu'on n'a PAS fait, et pourquoi : sauvegarder l'ancienne version pour la
+        restaurer en compensation (un vrai rollback) demanderait un store de versions et
+        une compensation qui réinsère l'ancien document — de la complexité que v0 ne paie
+        pas pour un état qui se répare seul. La décision est ici, ÉCRITE, pas découverte.
+        """
         if operation == Operation.UPDATE:
             await self._document_repo.delete(parsed.identifier, parsed.owner_id)
         await self._document_repo.upsert(parsed)

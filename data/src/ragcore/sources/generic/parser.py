@@ -35,7 +35,11 @@ from typing import Any
 from ragcore.core.exceptions import ParseError, ValidationError
 from ragcore.core.models import ParsedDocument, RawDocument, SourceName
 from ragcore.core.models.identifiers import SourceIdentifier
-from ragcore.core.services.unknown_categories import CATEGORY_ROOT, CATEGORY_TAG
+from ragcore.core.services.unknown_categories import (
+    CATEGORY_ROOT,
+    CATEGORY_TAG,
+    declare_unknown,
+)
 
 from .normalize import normalize_text
 from .role_table import RoleTable
@@ -104,10 +108,10 @@ class GenericParser:
 
         for facet in facets:
             if facet["tag"] not in self._table.roots:
-                _declare(unknowns, CATEGORY_ROOT, facet["tag"])
+                declare_unknown(unknowns, CATEGORY_ROOT, facet["tag"])
             for node in _walk(facet):
                 if not self._table.knows(node["tag"]):
-                    _declare(unknowns, CATEGORY_TAG, node["tag"])
+                    declare_unknown(unknowns, CATEGORY_TAG, node["tag"])
 
         return unknowns
 
@@ -383,10 +387,3 @@ def _text_of(node: dict[str, Any], table: RoleTable) -> str:
 
     visit(node)
     return " ".join(parts)
-
-
-def _declare(unknowns: dict[str, list[str]], category: str, value: str) -> None:
-    """Un ensemble, pas un compteur : « cette balise est inconnue » est vrai une fois."""
-    known = unknowns.setdefault(category, [])
-    if value not in known:
-        known.append(value)

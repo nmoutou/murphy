@@ -22,11 +22,12 @@ class RawDocument(BaseModel):
 
 
 class ParsedDocument(BaseModel):
-    """Document après parsing : structuré, prêt pour chunking.
+    """Document après parsing : structuré, prêt pour le chunking.
 
-    Changements post-refonte :
-    - `identifier: SourceIdentifier` remplace `document_id` et `eli` (union discriminée)
-    - `content_hash` supprimé (idempotence simplifiée)
+    Un seul ``identifier`` (union discriminée ``SourceIdentifier``) nomme le document,
+    quelle que soit sa source : c'est lui, et lui seul, qui sert de clé partout en aval
+    (Mongo, Qdrant, nœud Neo4j). Pas de hash de contenu : l'idempotence se joue sur la
+    présence de l'identifiant, pas sur une comparaison d'octets.
     """
 
     model_config = ConfigDict(frozen=True)

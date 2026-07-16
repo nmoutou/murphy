@@ -14,6 +14,7 @@ from .parser import GenericParser
 from .relations import GenericRelationExtractor
 from .role_table import RoleTable
 from .roles import Role
+from .xml_tree import locate_id, read_root, to_tree
 
 __all__ = [
     "NORMALIZATION_VERSION",
@@ -22,5 +23,8 @@ __all__ = [
     "Role",
     "RoleTable",
     "StructuralChunker",
+    "locate_id",
     "normalize_text",
+    "read_root",
+    "to_tree",
 ]

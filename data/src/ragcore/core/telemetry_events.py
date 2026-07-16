@@ -19,7 +19,7 @@ PIPELINE_RUN_FAILED = "pipeline.run.failed"
 
 DOCUMENT_FETCHED = "document.fetched"
 DOCUMENT_PARSED = "document.parsed"
-DOCUMENT_SKIPPED = "document.skipped"  # conservé pour rétrocompat JSONL
+DOCUMENT_SKIPPED = "document.skipped"  # écarté par le connecteur — HORS équation
 DOCUMENT_INVALIDATED = "document.invalidated"
 DOCUMENT_PERSISTED = "document.persisted"
 DOCUMENT_FAILED = "document.failed"  # vu, jamais ingéré — la FUITE
@@ -47,6 +47,40 @@ SAGA_COMPENSATION_FAILED = "saga.compensation.failed"
 
 MAINTENANCE_CLEANUP_EXECUTED = "maintenance.cleanup.executed"
 MAINTENANCE_NUKE_ALL_EXECUTED = "maintenance.nuke_all.executed"
+
+
+# ---------------------------------------------------------------------------
+# Contrat de comptage : événement UNITAIRE vs PORTEUR DE CARDINALITÉ
+# ---------------------------------------------------------------------------
+# La plupart des événements sont UNITAIRES : ils tintent une fois pour une chose
+# (un document persisté = 1). Quelques-uns sont émis UNE FOIS POUR UN LOT et portent
+# leur cardinalité dans ``payload[PAYLOAD_COUNT_KEY]`` : ``document.fetched`` avec le
+# nombre de documents vus, ``relation.upserted`` avec le nombre d'arêtes écrites.
+# L'agrégateur (``_weight_of``) lit ce ``count`` — mais SEULEMENT pour les événements
+# listés ici. Ailleurs, un ``count`` dans le payload est du bruit, pas un poids.
+#
+# **Pourquoi cet ensemble EXISTE et n'est pas implicite.** Avant, ``_weight_of`` lisait
+# ``payload["count"]`` pour n'importe quel événement, au seul motif que la clé s'appelait
+# ``count``. Le contrat était invisible : renommer le payload d'un émetteur (``count`` →
+# ``n``) aurait fait retomber son poids à 1 SANS un seul test rouge — le bilan aurait menti
+# en silence sur un run de 1121 documents. Nommer l'ensemble et la clé grave le contrat :
+# le test ``golden/test_event_catalog`` le verrouille, et un émetteur qui prétend porter
+# une cardinalité sans figurer ici est un bug visible, pas une dérive muette.
+PAYLOAD_COUNT_KEY = "count"
+"""La clé, sous laquelle un événement porteur de cardinalité pose son compte. UNE seule
+clé pour tous : un émetteur qui écrit ``payload={"count": n}`` et un lecteur qui lit
+``payload[PAYLOAD_COUNT_KEY]`` ne peuvent pas diverger par accident."""
+
+COUNT_CARRYING_EVENTS: frozenset[str] = frozenset(
+    {
+        DOCUMENT_FETCHED,  # émis une fois par lot fetché → nombre de documents vus
+        RELATION_UPSERTED,  # émis une fois par batch → nombre d'arêtes écrites
+        CHUNK_TRUNCATED,  # émis une fois en fin de run → nombre de chunks raccourcis
+    }
+)
+"""Les événements dont ``payload[PAYLOAD_COUNT_KEY]`` EST leur poids d'agrégat. Tout autre
+événement pèse 1, quoi que contienne son payload. Ajouter un émetteur porteur de
+cardinalité, c'est l'ajouter ICI — sinon son lot ne compte que pour un."""
 
 
 # ---------------------------------------------------------------------------
@@ -106,7 +140,10 @@ EVENT_CATALOG: dict[str, EventBehavior] = {
         aggregate=True,
     ),
     DOCUMENT_SKIPPED: EventBehavior(
-        # Plus émis après refonte, conservé pour compatibilité fichiers JSONL existants
+        # Ce que le connecteur ÉCARTE (artefact d'export, fichier illisible), une ligne
+        # par raison. `aggregate=False` est le point clé : un fichier écarté n'est PAS un
+        # document vu — l'entrer dans les compteurs fausserait le dénominateur de
+        # l'équation de complétude. Il va au JSONL (trace par raison), pas au bilan.
         level="warning",
         log=False,
         track_jsonl=True,

@@ -242,6 +242,30 @@ def test_a_malformed_count_does_not_break_the_run_report(bogus: object) -> None:
     assert aggregator.snapshot().counts[DOCUMENT_FETCHED] == 1
 
 
+def test_a_stray_count_on_a_unitary_event_is_IGNORED() -> None:
+    """F15 : le contrat est explicite, pas déduit de la clé.
+
+    Avant, ``_weight_of`` lisait ``payload["count"]`` pour N'IMPORTE quel event, au seul
+    motif que la clé s'appelait ``count``. Un ``document.persisted`` (unitaire) qui aurait
+    porté un ``count`` parasite aurait pesé ce compte — un document aurait valu 40.
+    Désormais seuls les events DÉCLARÉS porteurs (``COUNT_CARRYING_EVENTS``) lisent leur
+    payload ; ailleurs, un ``count`` est du bruit et l'event vaut 1.
+    """
+    aggregator = _aggregator()
+    aggregator.emit(
+        build_event(
+            event_type=DOCUMENT_PERSISTED,
+            run_id=RunId("r1"),
+            owner_id=OwnerId("default"),
+            source=None,
+            document_id="x",
+            payload={"operation": "INSERT", "count": 40},
+        )
+    )
+
+    assert aggregator.snapshot().counts[DOCUMENT_PERSISTED] == 1
+
+
 # --------------------------------------------------------------------------------------
 # LE FIL LUI-MÊME : le node `report` pousse-t-il vraiment dans le hook ?
 #

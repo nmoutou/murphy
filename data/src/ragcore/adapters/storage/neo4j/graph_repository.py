@@ -1,9 +1,9 @@
 """Implémentation Neo4j du GraphRepository.
 
-Changements post-refonte :
-- Identifiant unique : `identifier` (value=kind:raw, ex."eli:LEGIARTI...")
-- Suppression de `source_id_fields` et des fallbacks dangereux (Bugs 2-3)
-- Label dérivé du document.identifier.document_type
+Un nœud est identifié par son seul ``identifier`` sérialisé (``kind:raw``, p. ex.
+``eli:LEGIARTI…``) — jamais par un champ deviné parmi plusieurs candidats : un identifiant
+unique et explicite est ce qui rend le ``MERGE`` déterministe. Le label du nœud dérive du
+``document_type`` de l'identifiant.
 """
 
 from typing import Any
@@ -197,9 +197,11 @@ class Neo4jGraphRepository:
     async def delete_relations_from(
         self, identifier: SourceIdentifier, owner_id: OwnerId, source: SourceName
     ) -> None:
-        """Supprime uniquement les relations sortantes (préserve le nœud).
+        """Supprime les seules relations SORTANTES du nœud, sans toucher au nœud.
 
-        Corrige le Bug 4 : utilise l'identifier correct pour matcher le nœud.
+        Le ``MATCH`` porte sur l'``identifier`` sérialisé — la même clé que ``merge``, donc
+        on retrouve exactement le nœud écrit. Ne supprimer que le sortant préserve les
+        arêtes qu'un AUTRE document a posées vers celui-ci.
         """
         identifier_value = identifier.serialize()
 

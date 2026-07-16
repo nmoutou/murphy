@@ -11,8 +11,8 @@ from ragcore.core.models.document import ParsedDocument, RawDocument
 from ragcore.core.models.enums import SourceName
 from ragcore.core.models.identifiers import ELI, OwnerId
 from ragcore.core.ports.chunker import BaseChunker
-from ragcore.sources.generic import GenericParser, StructuralChunker
-from ragcore.sources.legi.file_connector import _to_tree
+from ragcore.sources.generic import GenericParser, StructuralChunker, to_tree
+from ragcore.sources.generic.chunking import _windows
 from ragcore.sources.legi.table import LEGI_ROLE_TABLE
 
 # Le chunker est GÉNÉRIQUE, mais il faut du VRAI XML pour l'éprouver — un arbre inventé ne
@@ -37,7 +37,7 @@ def _parse(fixtures_dir: Path, name: str) -> ParsedDocument:
             source=SourceName.LEGI,
             source_document_id=name,
             payload={
-                "content": [_to_tree(ET.parse(fixtures_dir / name).getroot())],
+                "content": [to_tree(ET.parse(fixtures_dir / name).getroot())],
                 "files": [name],
             },
             fetched_at=datetime.now(UTC),
@@ -165,6 +165,32 @@ def test_un_chevauchement_plus_grand_que_la_taille_est_refuse() -> None:
     """
     with pytest.raises(ValueError, match="strictement inférieur"):
         StructuralChunker(max_chunk_size=100, overlap=100)
+
+
+def test_aucune_fenetre_n_est_contenue_dans_une_autre() -> None:
+    """F18 : un fort chevauchement produisait des fenêtres de queue redondantes.
+
+    ``length=10, size=8, overlap=6`` (step=2) donnait ``(0,8),(2,10),(4,10),(6,10),
+    (8,10)`` : les trois dernières sont incluses dans ``(2,10)``. Autant de chunks
+    dupliqués dans l'index, du même texte compté plusieurs fois à la recherche. On
+    s'arrête dès qu'une fenêtre atteint la fin.
+    """
+    fenetres = _windows(length=10, size=8, overlap=6)
+
+    assert fenetres == [(0, 8), (2, 10)]
+    # Aucune fenêtre n'est un sous-intervalle d'une autre.
+    for i, (a0, a1) in enumerate(fenetres):
+        for j, (b0, b1) in enumerate(fenetres):
+            if i != j:
+                assert not (b0 <= a0 and a1 <= b1), f"{fenetres[i]} ⊂ {fenetres[j]}"
+
+
+def test_les_fenetres_couvrent_toujours_tout() -> None:
+    """L'arrêt anticipé ne doit rien laisser de côté : la dernière fenêtre atteint la fin."""
+    for length, size, overlap in [(10, 8, 6), (100, 10, 3), (7, 8, 2), (50, 20, 19)]:
+        fenetres = _windows(length=length, size=size, overlap=overlap)
+        assert fenetres[0][0] == 0
+        assert fenetres[-1][1] == length
 
 
 def _document(content: str, sections: list[dict[str, Any]]) -> ParsedDocument:

@@ -5,7 +5,6 @@ from __future__ import annotations
 import json
 import logging
 from collections.abc import Iterable
-from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -49,10 +48,11 @@ from ragcore.adapters.telemetry import (
     MongoAuditTelemetryAdapter,
     RunStatsAggregator,
 )
-from ragcore.adapters.telemetry.console_log import ConsoleLogTelemetry
-from ragcore.adapters.telemetry.factory import WorkerTelemetryFactory
+from ragcore.adapters.telemetry.factory import (
+    WorkerTelemetryFactory,
+    assemble_telemetry,
+)
 from ragcore.adapters.telemetry.registry_aware import RegistryAwareTelemetry
-from ragcore.adapters.telemetry.worker_backends import WorkerBackends
 from ragcore.adapters.tracking import build_experiment_tracker
 from ragcore.application.ingest_document import IngestDocumentUseCase
 from ragcore.application.ingestion_runner import IngestionRunner
@@ -73,6 +73,7 @@ from ragcore.core.models.run_stats import RunStats
 from ragcore.core.models.run_summary import RunStatus, RunSummary
 from ragcore.core.ports.experiment_tracker import ExperimentTracker
 from ragcore.core.ports.telemetry import WorkerTelemetry
+from ragcore.core.services.run_artifacts import run_scoped_filename
 from ragcore.core.services.telemetry_registry import TelemetryRegistry
 from ragcore.core.telemetry_events import (
     CHUNK_TRUNCATED,
@@ -107,14 +108,6 @@ logger = logging.getLogger(__name__)
 # (751 s → 738 s). Le seul levier réel est de calculer MOINS de vecteurs, c.-à-d.
 # `chunk_size` (cf. la note de perf dans ETAT.md).
 _WORKER_COUNT = 4
-
-
-def _stats_filename(run_id: str, started_at: datetime) -> str:
-    iso = (
-        started_at.strftime("%Y-%m-%dT%H.%M.%S.")
-        + f"{started_at.microsecond // 1000:03d}Z"
-    )
-    return f"{iso}_{run_id}.json"
 
 
 class TelemetryHooks:
@@ -332,14 +325,11 @@ class TelemetryHooks:
             source=self._context.source,
             started_at=self._context.started_at,
         )
-        self._telemetry = RegistryAwareTelemetry(
-            registry=registry,
-            backends=WorkerBackends(
-                log=ConsoleLogTelemetry(),
-                jsonl=jsonl_telemetry,
-                mongo=MongoAuditTelemetryAdapter(audit_repo, self._runtime),
-                aggregate=self._aggregator,
-            ),
+        self._telemetry = assemble_telemetry(
+            registry,
+            jsonl=jsonl_telemetry,
+            mongo=MongoAuditTelemetryAdapter(audit_repo, self._runtime),
+            aggregate=self._aggregator,
         )
 
         # **Aucun nom de source ici.** Le parser, le chunker et l'extracteur sont
@@ -604,7 +594,9 @@ class TelemetryHooks:
         ):
             return None
         summary = self._aggregator.finalize(status=status, error_message=error_message)  # type: ignore[arg-type]
-        path = self._stats_dir / _stats_filename(summary.run_id, summary.started_at)
+        path = self._stats_dir / run_scoped_filename(
+            summary.run_id, summary.started_at, ".json"
+        )
         path.write_text(
             json.dumps(summary.model_dump(mode="json"), ensure_ascii=False, indent=2),
             encoding="utf-8",
@@ -687,7 +679,9 @@ class TelemetryHooks:
             )
         # Les chunks que l'embedder a dû raccourcir. Le compteur vit sur l'embedder (il
         # est le seul à voir le refus du service) et il est lu ICI, une fois, en fin de
-        # run : pas de concurrence à gérer, et le port `BaseEmbedder` n'a pas à connaître
+        # run. Les WRITES pendant le run viennent de plusieurs workers : l'embedder les
+        # protège lui-même (verrou + ensemble de chunk_ids). La lecture, elle, est
+        # postérieure à tous les workers — et le port `BaseEmbedder` n'a pas à connaître
         # la télémétrie pour un détail qui ne concerne qu'une de ses implémentations.
         self._declare_truncations()
 
@@ -732,6 +726,12 @@ class TelemetryHooks:
                     error_message=str(error),
                 )
             )
+        # Les chunks raccourcis se déclarent AUSSI sur un run cassé. Le raccourcissement a
+        # bien eu lieu (l'embedder a tourné avant l'échec) et il pointe une config à
+        # corriger : le taire parce que le run a cassé plus loin perdrait l'indice. Émis
+        # AVANT le drain, comme dans le chemin nominal, pour que l'événement soit vidé.
+        self._declare_truncations()
+
         # Drainer AVANT le bilan, ici aussi : le statut restera `failed` de toute façon
         # (il ne se dérive pas des compteurs), mais le compteur `audit.write.failed`
         # doit figurer dans le bilan — sur un run qui a cassé, savoir si la trace elle

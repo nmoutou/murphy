@@ -12,6 +12,7 @@ from dataclasses import dataclass
 
 from ragcore.core.models import PendingRelation, Relation, RunStats
 from ragcore.core.models.audit import build_event
+from ragcore.core.models.pending import PendingKey
 from ragcore.core.ports.graph_repository import GraphRepository
 from ragcore.core.ports.pending_repository import PendingRelationRepository
 from ragcore.core.ports.telemetry import TelemetryPort
@@ -147,16 +148,8 @@ class ResolveRelationsService:
                 count=len(result.pending),
             )
 
-        written_keys = {
-            (
-                r.owner_id,
-                r.source_identifier.serialize(),
-                r.target_identifier.serialize(),
-                r.relation_type,
-            )
-            for r in result.written
-        }
-        promoted = [c for c in candidates if _key_tuple(c) in written_keys]
+        written_keys = {PendingKey.from_relation(r) for r in result.written}
+        promoted = [c for c in candidates if c.key in written_keys]
 
         await self._pending_repo.delete_many([c.key for c in promoted])
         for candidate in promoted:
@@ -192,12 +185,3 @@ class ResolveRelationsService:
                 },
             )
         )
-
-
-def _key_tuple(pending: PendingRelation) -> tuple[str, str, str, object]:
-    return (
-        pending.owner_id,
-        pending.source_id,
-        pending.target_id,
-        pending.relation_type,
-    )

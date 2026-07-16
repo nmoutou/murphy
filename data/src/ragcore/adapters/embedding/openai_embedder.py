@@ -6,6 +6,7 @@ sans raison, et ferait tomber le service bien avant d'être lent.
 
 import asyncio
 import logging
+import threading
 from urllib.parse import urlsplit, urlunsplit
 
 import httpx
@@ -105,11 +106,22 @@ class OpenAIEmbedder:
         self._api_key = api_key
         self._batch_size = batch_size
         self._base_url = base_url.rstrip("/")
-        # Combien de chunks ont dû être raccourcis pour tenir dans la fenêtre du modèle.
-        # Non nul = le `chunk_size` configuré n'est PAS compatible avec le modèle, et une
-        # part du corpus n'est indexée qu'en partie. Le run reste complet (aucun document
+        # Quels CHUNKS ont dû être raccourcis pour tenir dans la fenêtre du modèle. Non
+        # vide = le `chunk_size` configuré n'est PAS compatible avec le modèle, et une part
+        # du corpus n'est indexée qu'en partie. Le run reste complet (aucun document
         # perdu), mais il doit le DIRE — d'où la remontée dans le bilan.
-        self.truncations = 0
+        #
+        # On mémorise les `chunk_id`, pas un entier, pour deux raisons :
+        #  - **compter le CHUNK, pas les moitiés.** La dichotomie raccourcit un même chunk
+        #    plusieurs fois de suite (moitié, puis moitié de la moitié…) : incrémenter à
+        #    chaque tour compterait 3 pour un seul chunk. Un ensemble dédoublonne — un
+        #    chunk raccourci dix fois reste un chunk raccourci.
+        #  - **sans course entre workers.** L'embedder est PARTAGÉ (§11) et appelé depuis
+        #    plusieurs threads (un par worker, chacun sa boucle) ; `n += 1` est une
+        #    lecture-modification-écriture perdable entre threads. L'écriture dans
+        #    l'ensemble est protégée par un verrou : aucun raccourcissement ne s'évapore.
+        self._truncated_chunk_ids: set[str] = set()
+        self._truncations_lock = threading.Lock()
         # UN client par BOUCLE, pas un par appel. `embed()` est invoqué une fois par
         # document (1121 fois) : ouvrir un `AsyncClient` à chaque appel rouvrait une
         # connexion TCP vers TEI à chaque document, sans jamais réutiliser le pool.
@@ -121,19 +133,30 @@ class OpenAIEmbedder:
         # chaque worker obtient le sien, et le réutilise sur tous ses documents.
         self._clients: dict[object, httpx.AsyncClient] = {}
 
+    @property
+    def truncations(self) -> int:
+        """Combien de CHUNKS distincts ont été raccourcis — pas combien de fois.
+
+        Lu une fois en fin de run par le hook (``_declare_truncations``), dans les deux
+        chemins de sortie (succès ET erreur) : un run qui casse après avoir raccourci des
+        chunks doit le dire aussi.
+        """
+        with self._truncations_lock:
+            return len(self._truncated_chunk_ids)
+
     def _client(self) -> httpx.AsyncClient:
+        # Pas de fermeture explicite, et c'est délibéré : chaque client appartient à la
+        # boucle du worker qui l'a créé (cf. `_clients`), et un `aclose()` ne peut
+        # s'exécuter que DANS cette boucle. Le hook, lui, tourne sur la boucle
+        # principale — il n'a aucun moyen de fermer les clients des autres. La boucle d'un
+        # worker est fermée avec le worker en fin de run ; le socket TEI part avec elle.
+        # Un `aclose()` public serait donc du code qu'aucun appelant ne peut invoquer.
         loop = asyncio.get_running_loop()
         client = self._clients.get(loop)
         if client is None:
             client = httpx.AsyncClient(timeout=_TIMEOUT_SECONDS)
             self._clients[loop] = client
         return client
-
-    async def aclose(self) -> None:
-        """Ferme les clients de toutes les boucles. Idempotent."""
-        for client in list(self._clients.values()):
-            await client.aclose()
-        self._clients.clear()
 
     async def embed(self, chunks: list[Chunk]) -> list[EmbeddedChunk]:
         if not chunks:
@@ -259,7 +282,11 @@ class OpenAIEmbedder:
             raise _rejected(chunk)
 
         shrunk = chunk.model_copy(update={"text": chunk.text[: len(chunk.text) // 2]})
-        self.truncations += 1
+        with self._truncations_lock:
+            # Le `chunk_id` NE change pas quand on raccourcit le texte : les tours
+            # successifs de la dichotomie ajoutent le même id, et l'ensemble ne le compte
+            # qu'une fois. C'est ce qui fait qu'un chunk raccourci trois fois compte 1.
+            self._truncated_chunk_ids.add(str(chunk.chunk_id))
         _LOGGER.warning(
             "chunk hors fenêtre du modèle — raccourci de %d à %d caractères (chunk_id=%s). "
             "Le document est sauvé, mais la fin de ce chunk n'est pas indexée : le vrai "

@@ -49,6 +49,7 @@ from ragcore.core.services.exclusion_reasons import (
     REASON_EXPORT_ARTIFACT,
     REASON_UNREADABLE,
 )
+from ragcore.sources.generic import locate_id, read_root, to_tree
 
 __all__ = ["LegiFileConnector"]
 
@@ -87,7 +88,7 @@ class LegiFileConnector:
         by_identifier: dict[str, list[tuple[Path, dict[str, Any]]]] = {}
 
         for path in sorted(self._root.rglob("*.xml")):
-            root = self._read(path)
+            root = read_root(path)
             if root is None:
                 # Illisible : pas d'arbre à transcrire. Le parser n'en saura jamais
                 # rien — donc si le connecteur ne le compte pas ici, ce fichier
@@ -100,8 +101,8 @@ class LegiFileConnector:
                 self._skip(REASON_EXPORT_ARTIFACT)
                 continue
 
-            tree = _to_tree(root)
-            by_identifier.setdefault(_locate_id(root) or str(path), []).append(
+            tree = to_tree(root)
+            by_identifier.setdefault(locate_id(root) or str(path), []).append(
                 (path, tree)
             )
 
@@ -120,12 +121,6 @@ class LegiFileConnector:
                 owner_id=owner_id,
             )
 
-    def _read(self, path: Path) -> ET.Element | None:
-        try:
-            return ET.parse(path).getroot()  # noqa: S314 — corpus local, pas une entrée réseau
-        except ET.ParseError:
-            return None
-
     def _is_export_artifact(self, path: Path, root: ET.Element) -> bool:
         """Le nom ET la racine. Jamais le nom seul.
 
@@ -137,33 +132,3 @@ class LegiFileConnector:
 
     def _skip(self, reason: str) -> None:
         self.skipped[reason] = self.skipped.get(reason, 0) + 1
-
-
-def _to_tree(element: ET.Element) -> dict[str, Any]:
-    """XML -> dict, mécaniquement. Zéro sémantique, zéro perte.
-
-    Les enfants sont une LISTE : c'est ce qui préserve les frères homonymes (les 23
-    ``<LIEN>`` d'un même article) qu'un dict aurait écrasés l'un sur l'autre.
-    """
-    return {
-        "tag": element.tag,
-        "attrib": dict(element.attrib),
-        "text": element.text or "",
-        "tail": element.tail or "",
-        "children": [_to_tree(child) for child in element],
-    }
-
-
-def _locate_id(element: ET.Element) -> str | None:
-    """Le premier ``<ID>`` de l'arbre — le seul acte de « lecture » du connecteur.
-
-    Ce n'est pas interpréter : il ne valide rien, ne construit aucun ELI, ne juge pas
-    du format. Il a besoin d'une CLÉ pour grouper les facettes, et ``<ID>`` est cette
-    clé. Le parser, lui, en fera un identifiant — et le rejettera s'il est mal formé.
-    """
-    if element.tag == "ID":
-        return (element.text or "").strip() or None
-    found = element.find(".//ID")
-    if found is None:
-        return None
-    return (found.text or "").strip() or None
