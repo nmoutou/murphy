@@ -33,6 +33,16 @@ Durée cible : 30–45 minutes. Checklist :
   backlog et rejoint une liste d'idées non engageante.
 - Les tâches du chantier 8 (institutionnel) sont backloguées comme les
   autres, avec leur version cible (beta ou publication).
+- **Corrections en cours d'item** (micro-chantiers) : un défaut
+  découvert en travaillant un item 🔶 est traité selon sa nature —
+  (a) s'il **bloque ou invalide** l'item en cours, il devient un
+  sous-item ou un prédécesseur explicite au backlog, rattaché à la
+  même exigence ; (b) s'il change un **comportement ou un modèle de
+  données**, la décision passe d'abord par mini-ADR ; (c) sinon (pure
+  hygiène), il est traité en < 1 h dans le fil de l'item courant sans
+  trace dédiée, ou envoyé en idées non engageantes. La revue
+  bimensuelle régularise : une correction (c) récurrente remonte en
+  (a) ou (b). Précédent : B-00 / ADR-022.
 
 ## 3. Changement de version
 

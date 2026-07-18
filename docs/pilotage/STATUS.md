@@ -1,7 +1,7 @@
 # STATUS — État du programme par projet
 
-Dernière mise à jour : 18 juillet 2026. Structure alignée sur
-`PROGRAM.md` §2 (chantier 7). Version en cours : **v0** (voir
+Dernière mise à jour : 18 juillet 2026 (clôture B-00). Structure alignée
+sur `PROGRAM.md` §2 (chantier 7). Version en cours : **v0** (voir
 `VERSIONS.md`).
 
 ## P1 — Data
@@ -10,9 +10,10 @@ Dernière mise à jour : 18 juillet 2026. Structure alignée sur
 |---|---|
 | Pipeline LEGI | ✅ Fait, stable |
 | Ingestion des 5 bases jurisprudence (CASS, INCA, CAPP, JADE, CONSTIT — ADR-002) | ✅ Fait (vague 1) |
-| Identité canonique vérifiée sur les 3 BDD (ADR-018 — critère de sortie v0) | 🟡 À vérifier |
-| `doc_id` stable au niveau article pour LEGI (ADR-004) | 🟡 À vérifier |
-| Graphe de citations Neo4j (source qrels citation-minées) | 🟡 Liens capturés, modélisation complète à venir |
+| Régimes d'ingestion dev/prod — trois portes (content/metadata/liens), clés chemin-complet, épuration Mongo (`SCHEMA_VERSION` 2), hydratation Neo4j, interrupteur d'embedding (ADR-022, amendé ADR-023/024) | ✅ Fait (B-00) — prouvé par deux runs réels, bases vérifiées champ par champ |
+| Identité canonique vérifiée sur les 3 BDD (ADR-018 — critère de sortie v0) | 🟡 À vérifier — tirable (B-00 levé) |
+| `doc_id` stable au niveau article pour LEGI (ADR-004) | 🟡 À vérifier — tirable (B-00 levé) |
+| Graphe de citations Neo4j (source qrels citation-minées) | 🟡 Liens typés capturés (dont l'axe temporel `succeeded_by` en chaîne datée) ; modélisation complète = B-03, tirable |
 
 ## P2 — Évaluation
 
