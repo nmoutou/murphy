@@ -46,7 +46,14 @@ class MongoDocumentRepository:
             "identifier": identifier_key,
             "owner_id": document.owner_id,
         }
-        data = document.model_dump(mode="json")
+        # Épuration (ADR-022 §4) : `source_files` est de la provenance d'inspection
+        # (Neo4j dev), pas du contenu — un chemin absolu du poste d'ingestion n'a rien
+        # à faire en base. `structure["references"]` n'est plus persisté non plus :
+        # les arêtes vivent dans Neo4j, et re-parser le XML est le coût assumé si la
+        # table de traduction des verbes change. Le champ reste sur le MODÈLE (il
+        # nourrit l'extracteur en phase 1, dans le même run) — il est retiré du DUMP.
+        data = document.model_dump(mode="json", exclude={"source_files"})
+        data["structure"].pop("references", None)
         # Le champ sérialisé porte l'indexation ; il double la clé du filtre.
         data["identifier"] = identifier_key
         await self._collection.replace_one(filter_, data, upsert=True)

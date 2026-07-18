@@ -44,6 +44,7 @@ __all__ = [
     "CREATES",
     "MODIFIES",
     "REFERENCES",
+    "SUCCEEDED_BY",
     "RelationVerb",
     "TranslationTable",
     "is_valid_verb",
@@ -94,8 +95,21 @@ pas de choix. Le premier dit « je sais, et je range ici » ; le second dit « j
 pas, et je le montre ».
 """
 
+SUCCEEDED_BY = RelationVerb("succeeded_by")
+"""L'axe temporel : ``(v1)-[:succeeded_by]->(v2)``, dans le sens de l'écoulement du temps.
+
+Ni une contenance (le réduire détruirait la ligne de vie), ni une citation : chaque
+``<LIEN_ART>`` d'un bloc ``<VERSIONS>`` désigne une version datée du MÊME article. Le
+graphe ne porte PAS le produit cartésien de ces liens (``has_version``, remplacé le jour
+même de sa naissance — 2 760 arêtes « dans tous les sens ») : il porte la **chaîne** —
+chaque version pointe sa suivante, l'auto-référence servant d'ancre pour localiser le
+document dans sa propre liste. Une version mort-née (``etat`` en ``_MORT_NE`` : jamais
+entrée en vigueur) est HORS chaîne, accrochée en branche latérale à la version en vigueur
+au moment de l'avortement — l'``etat`` sur l'arête permet de l'écarter d'une requête.
+"""
+
 CANONICAL_VERBS: frozenset[RelationVerb] = frozenset(
-    {CITES, MODIFIES, ABROGATES, CREATES, CONTAINS, REFERENCES}
+    {CITES, MODIFIES, ABROGATES, CREATES, CONTAINS, REFERENCES, SUCCEEDED_BY}
 )
 """Les verbes dont le domaine connaît la sémantique — figés par un cliquet.
 

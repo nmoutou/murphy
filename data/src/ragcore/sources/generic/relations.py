@@ -54,5 +54,7 @@ class GenericRelationExtractor:
             source=self._source,
         )
         return ExtractionResult(
-            relations=extracted.relations, unknowns=extracted.unknowns
+            relations=extracted.relations,
+            unknowns=extracted.unknowns,
+            citations=extracted.citations,
         )

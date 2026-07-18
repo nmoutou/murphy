@@ -30,6 +30,7 @@ from ragcore.core.models.document import ParsedDocument, RawDocument
 from ragcore.core.models.enums import SourceName
 from ragcore.core.models.identifiers import OwnerId
 from ragcore.core.ports.connector import BaseConnector
+from ragcore.core.ports.parser import ParseResult
 from ragcore.core.ports.relation_extractor import ExtractionResult
 from ragcore.sources.generic.parser import GenericParser
 from ragcore.sources.generic.relations import GenericRelationExtractor
@@ -115,7 +116,7 @@ class RoutingParser:
             raise ValueError(msg)
         self._parsers = dict(parsers)
 
-    def parse(self, raw: RawDocument) -> ParsedDocument:
+    def parse(self, raw: RawDocument) -> ParseResult:
         parser = self._parsers.get(raw.source)
         if parser is None:
             raise _unroutable(raw.source, self._parsers, "parser")

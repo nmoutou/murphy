@@ -1,5 +1,6 @@
 from .audit import AuditEvent
 from .chunk import Chunk, EmbeddedChunk
+from .citation import Citation
 from .document import SCHEMA_VERSION, ParsedDocument, RawDocument
 from .drain_report import DrainReport
 from .enums import Operation, SourceName, TargetStore
@@ -9,7 +10,6 @@ from .identifiers import (
     OwnerId,
     RunId,
     SourceIdentifier,
-    UnknownRef,
     deserialize_identifier,
 )
 from .manifest import ManifestEntry
@@ -23,6 +23,7 @@ from .verbs import ValidatedVerb
 __all__ = [
     "AuditEvent",
     "Chunk",
+    "Citation",
     "DecisionId",
     "DocumentId",
     "DrainReport",
@@ -45,7 +46,6 @@ __all__ = [
     "SourceIdentifier",
     "SourceName",
     "TargetStore",
-    "UnknownRef",
     "ValidatedVerb",
     "deserialize_identifier",
 ]

@@ -26,7 +26,7 @@ FIXTURES = Path(__file__).parent / "fixtures"
 OWNER = OwnerId("u1")
 
 
-def _parse(name: str, source: SourceName):
+def _parse_result(name: str, source: SourceName):
     async def run():
         connector = JuriFileConnector(FIXTURES, source)
         async for raw in connector.fetch_all(OWNER):
@@ -38,22 +38,25 @@ def _parse(name: str, source: SourceName):
     return asyncio.run(run())
 
 
-def test_une_citation_devient_une_ARETE_vers_un_noeud_decrit() -> None:
-    """**LE test du lot.** Sans lui, le graphe de jurisprudence serait vide en silence.
+def _parse(name: str, source: SourceName):
+    return _parse_result(name, source).document
+
+
+def test_une_citation_decrite_devient_un_CHAMP_jamais_une_arete() -> None:
+    """**LE test du lot.** Sans lui, les citations juri s'évaporeraient en silence.
 
     Les 68 ``<LIEN>`` du corpus juri ont **tous leurs attributs vides** — ni ``id``, ni
     ``cidtexte``, ni ``nortexte``. Ce qu'ils portent est du texte : « Articles 1103 et 1229
     du code civil ». La cour *décrit* l'article qu'elle vise ; elle ne le référence pas.
 
-    ``core/links`` traitait un lien sans identifiant comme une **donnée absente** — vrai
-    pour LEGI (89 scories sur 16 227), radicalement faux ici où c'est le cas normal, à
-    100 %. Les 68 citations se seraient évaporées exactement comme les 16 227 liens de
-    LEGI en leur temps, et rien ne l'aurait signalé.
+    ``core/links`` traitait un lien sans identifiant comme une **donnée absente** : les 68
+    citations se seraient évaporées exactement comme les 16 227 liens de LEGI en leur
+    temps, et rien ne l'aurait signalé.
 
-    ``describes_targets=True`` les fait entrer : la citation devient une arête vers un
-    nœud ``UnknownRef`` qui **porte la phrase**. C'est la doctrine, littéralement : *« ce
-    qui n'est pas encore résolu n'est pas un état spécial — c'est un node unknown qui
-    attend sa passe de résolution »*.
+    Elles entrent désormais — mais **comme champ du document, pas comme arête**. Une
+    phrase n'est pas une entité du graphe : aucun run futur ne fera exister « Articles
+    1103 et 1229 du code civil » comme document. La matérialiser en nœud ``:Unknown``
+    peuplait le graphe d'un placeholder par formulation, jamais résolu.
     """
     document = _parse("cass_avec_liens.xml", SourceName.CASS)
 
@@ -66,16 +69,19 @@ def test_une_citation_devient_une_ARETE_vers_un_noeud_decrit() -> None:
         source=SourceName.CASS,
     )
 
-    assert links.relations, "la citation DOIT produire une arête"
-    citation = links.relations[0]
-
-    assert citation.relation_type == CITES
-    assert citation.target_identifier.kind == "unknown", (
-        "la cible est DÉCRITE, pas identifiée — c'est un node unknown"
+    assert not links.relations, (
+        "une cible DÉCRITE ne produit aucune arête — c'est tout le changement"
     )
-    assert "code civil" in citation.target_identifier.raw, (
-        "et le nœud porte la PHRASE, intacte : c'est elle que la passe de résolution "
-        "lira pour retrouver le vrai article"
+    assert links.citations, "…mais elle n'est pas perdue pour autant"
+
+    citation = links.citations[0]
+    assert citation.verb == CITES, "le verbe traduit survit"
+    assert citation.sens == "source", (
+        "le sens aussi : c'est lui qui orientera l'arête le jour de la résolution"
+    )
+    assert "loi n° 75-1334" in citation.text, (
+        "et la PHRASE est intacte : c'est elle que la passe de résolution lira pour "
+        "retrouver le vrai article"
     )
 
 
@@ -111,9 +117,11 @@ def test_la_juri_n_a_AUCUNE_balise_sans_role() -> None:
         ("jade.xml", SourceName.JADE),
         ("constit.xml", SourceName.CONSTIT),
     ):
-        document = _parse(fixture, source)
-        for categorie, valeurs in document.unknowns.items():
-            orphelines.setdefault(categorie, set()).update(valeurs)
+        result = _parse_result(fixture, source)
+        if result.unconfigured_tags:
+            orphelines.setdefault("tag", set()).update(result.unconfigured_tags)
+        if result.unknown_roots:
+            orphelines.setdefault("racine", set()).update(result.unknown_roots)
 
     assert not orphelines, (
         f"Vocabulaire sans rôle dans les tables juri : "

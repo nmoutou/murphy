@@ -13,7 +13,6 @@ from ragcore.core.models.enums import SourceName
 from ragcore.core.models.enums import SourceName as _SN
 from ragcore.core.models.identifiers import OwnerId
 from ragcore.core.ports.parser import BaseParser
-from ragcore.core.services.unknown_categories import CATEGORY_TAG
 from ragcore.sources.generic import GenericParser, to_tree
 from ragcore.sources.legi.table import LEGI_ROLE_TABLE
 
@@ -59,8 +58,10 @@ def test_le_contenu_reste_du_FRANCAIS(fixtures_dir: Path) -> None:
     Les mots vides (« le », « est », « par », « une ») sont la preuve que le texte est
     intact : ce sont exactement eux que la lemmatisation supprimait.
     """
-    parsed = GenericParser(LEGI_ROLE_TABLE, _SN.LEGI).parse(
-        _raw(fixtures_dir, f"{ARTICLE_SIMPLE}.xml")
+    parsed = (
+        GenericParser(LEGI_ROLE_TABLE, _SN.LEGI)
+        .parse(_raw(fixtures_dir, f"{ARTICLE_SIMPLE}.xml"))
+        .document
     )
 
     assert "Le directeur général est nommé par décret" in parsed.content
@@ -73,8 +74,10 @@ def test_lidentifiant_vient_du_ID_car_il_nexiste_aucune_balise_ELI(
     """Vérifié sur les 2564 fichiers : ``<ELI>`` n'existe nulle part. Le nom du modèle
     est historique ; la donnée est un ``<ID>``.
     """
-    parsed = GenericParser(LEGI_ROLE_TABLE, _SN.LEGI).parse(
-        _raw(fixtures_dir, f"{ARTICLE_SIMPLE}.xml")
+    parsed = (
+        GenericParser(LEGI_ROLE_TABLE, _SN.LEGI)
+        .parse(_raw(fixtures_dir, f"{ARTICLE_SIMPLE}.xml"))
+        .document
     )
 
     assert parsed.identifier.raw == ARTICLE_SIMPLE
@@ -90,12 +93,16 @@ def test_les_deux_facettes_du_texte_donnent_UN_document_avec_son_titre(
     Lues séparément, l'une donnerait un document sans titre et l'autre un document sans
     sections. Lues ensemble, elles donnent le document.
     """
-    parsed = GenericParser(LEGI_ROLE_TABLE, _SN.LEGI).parse(
-        _raw(
-            fixtures_dir,
-            f"{TEXTE_DEUX_FACETTES}-version.xml",
-            f"{TEXTE_DEUX_FACETTES}-struct.xml",
+    parsed = (
+        GenericParser(LEGI_ROLE_TABLE, _SN.LEGI)
+        .parse(
+            _raw(
+                fixtures_dir,
+                f"{TEXTE_DEUX_FACETTES}-version.xml",
+                f"{TEXTE_DEUX_FACETTES}-struct.xml",
+            )
         )
+        .document
     )
 
     assert parsed.identifier.raw == TEXTE_DEUX_FACETTES
@@ -112,12 +119,16 @@ def test_le_texte_dun_decret_nest_PAS_dans_un_BLOC_TEXTUEL(fixtures_dir: Path) -
     Ne chercher que ``BLOC_TEXTUEL`` aurait ingéré les 98 décrets du corpus avec un
     contenu VIDE — sans qu'une seule exception soit levée.
     """
-    parsed = GenericParser(LEGI_ROLE_TABLE, _SN.LEGI).parse(
-        _raw(
-            fixtures_dir,
-            f"{TEXTE_DEUX_FACETTES}-version.xml",
-            f"{TEXTE_DEUX_FACETTES}-struct.xml",
+    parsed = (
+        GenericParser(LEGI_ROLE_TABLE, _SN.LEGI)
+        .parse(
+            _raw(
+                fixtures_dir,
+                f"{TEXTE_DEUX_FACETTES}-version.xml",
+                f"{TEXTE_DEUX_FACETTES}-struct.xml",
+            )
         )
+        .document
     )
 
     assert "Le Premier ministre" in parsed.content
@@ -131,8 +142,10 @@ def test_chaque_section_est_un_morceau_LITTERAL_du_contenu(fixtures_dir: Path) -
     ne pointent nulle part dans ``content`` — des offsets qui mentent, et que rien ne
     signale.
     """
-    parsed = GenericParser(LEGI_ROLE_TABLE, _SN.LEGI).parse(
-        _raw(fixtures_dir, f"{ARTICLE_SIMPLE}.xml")
+    parsed = (
+        GenericParser(LEGI_ROLE_TABLE, _SN.LEGI)
+        .parse(_raw(fixtures_dir, f"{ARTICLE_SIMPLE}.xml"))
+        .document
     )
 
     assert parsed.structure["sections"]
@@ -147,8 +160,10 @@ def test_une_section_na_pas_de_contenu_et_ce_nest_pas_un_echec(
     structure, pas un porteur de texte. Rendre la chaîne vide est la VÉRITÉ — et le
     chunker n'en fera aucun chunk, plutôt qu'un chunk vide.
     """
-    parsed = GenericParser(LEGI_ROLE_TABLE, _SN.LEGI).parse(
-        _raw(fixtures_dir, f"{SECTION_ARTICLES}.xml")
+    parsed = (
+        GenericParser(LEGI_ROLE_TABLE, _SN.LEGI)
+        .parse(_raw(fixtures_dir, f"{SECTION_ARTICLES}.xml"))
+        .document
     )
 
     assert parsed.content == ""
@@ -163,8 +178,10 @@ def test_le_parser_rend_les_liens_BRUTS_sans_les_typer(fixtures_dir: Path) -> No
     modules à la fois — et le jour où l'un des deux dérive, les arêtes changent de sens
     sans qu'on sache lequel a raison.
     """
-    parsed = GenericParser(LEGI_ROLE_TABLE, _SN.LEGI).parse(
-        _raw(fixtures_dir, f"{ARTICLE_SIMPLE}.xml")
+    parsed = (
+        GenericParser(LEGI_ROLE_TABLE, _SN.LEGI)
+        .parse(_raw(fixtures_dir, f"{ARTICLE_SIMPLE}.xml"))
+        .document
     )
 
     (lien,) = [r for r in parsed.structure["references"] if r["kind"] == "LIEN"]
@@ -176,8 +193,10 @@ def test_le_contexte_porte_la_fermeture_des_ancetres(fixtures_dir: Path) -> None
     """``<CONTEXTE>`` déclare TOUS les ancêtres d'un coup — la fermeture transitive, pas
     le seul parent. C'est ce qui rend la réduction nécessaire en aval.
     """
-    parsed = GenericParser(LEGI_ROLE_TABLE, _SN.LEGI).parse(
-        _raw(fixtures_dir, f"{ARTICLE_SIMPLE}.xml")
+    parsed = (
+        GenericParser(LEGI_ROLE_TABLE, _SN.LEGI)
+        .parse(_raw(fixtures_dir, f"{ARTICLE_SIMPLE}.xml"))
+        .document
     )
 
     context = parsed.structure["context"]
@@ -186,21 +205,69 @@ def test_le_contexte_porte_la_fermeture_des_ancetres(fixtures_dir: Path) -> None
     assert any(c["id"].startswith("LEGISCTA") for c in context)  # ses sections
 
 
-def test_une_balise_inconnue_est_DECLAREE_pas_ignoree(fixtures_dir: Path) -> None:
-    """Le tuyau ``unknowns`` a enfin un producteur.
+def test_une_balise_non_configuree_est_ROUTEE_et_SIGNALEE(fixtures_dir: Path) -> None:
+    """La cascade des trois portes (cadrage B-00-d) : plus d'« unknown ».
 
-    Le corpus réel ne déclenche AUCUN inconnu — le vocabulaire est saturé, et c'est le
-    résultat attendu. C'est précisément pourquoi il ne peut pas prouver l'instrument :
-    un test qui n'observe jamais d'inconnu ne démontre pas qu'on saurait en déclarer un.
-    D'où cette fixture synthétique.
+    Le corpus réel ne déclenche AUCUNE balise non-configurée — le vocabulaire est
+    saturé, et c'est le résultat attendu. C'est précisément pourquoi il ne peut pas
+    prouver l'instrument. D'où cette fixture synthétique : ``<ZORG>`` doit être
+    **signalée** (``unconfigured_tags``, la vigie de dérive DILA) ET **ingérée** en
+    métadonnée sous sa clé chemin-complet — routée, pas jetée, pas « inconnue ».
     """
-    parsed = GenericParser(LEGI_ROLE_TABLE, _SN.LEGI).parse(
+    result = GenericParser(LEGI_ROLE_TABLE, _SN.LEGI).parse(
         _raw(fixtures_dir, "unknown_vocabulary.xml")
     )
+    parsed = result.document
 
-    assert parsed.unknowns == {CATEGORY_TAG: ["ZORG"]}
+    assert result.unconfigured_tags == ("ZORG",)  # le signal
+    # La porte metadata : le texte ET l'attribut, sous des clés chemin-complet.
+    assert parsed.metadata["article_zorg"] == "Une balise que le parser ne connaît pas."
+    assert parsed.metadata["article_zorg_attribut_inconnu"] == "peu importe"
+    assert set(result.unconfigured_keys) == {
+        "article_zorg",
+        "article_zorg_attribut_inconnu",
+    }  # la poignée du curseur `skip`
     assert parsed.identifier.raw == ARTICLE_INCONNU
     assert "texte parfaitement ordinaire" in parsed.content  # le reste est parsé
+
+
+def test_une_valeur_au_format_DILA_devient_un_LIEN_pas_une_metadonnee(
+    fixtures_dir: Path,
+) -> None:
+    """Règle 4 de la cascade : une balise non-configurée dont la valeur a la forme d'un
+    identifiant DILA POINTE — elle passe la porte liens, pas la porte metadata.
+
+    Et la règle 3 (auto-id) la borne : la valeur du document lui-même reste une
+    métadonnée — un ``cid`` qui porte sa propre identité ne référence rien.
+    """
+    tree = to_tree(
+        ET.fromstring(
+            "<ARTICLE>"
+            f"<META><META_COMMUN><ID>{ARTICLE_INCONNU}</ID></META_COMMUN></META>"
+            "<ZORG_REF>LEGIARTI000000424242</ZORG_REF>"
+            f"<ZORG_SELF>{ARTICLE_INCONNU}</ZORG_SELF>"
+            "</ARTICLE>"
+        )
+    )
+    result = GenericParser(LEGI_ROLE_TABLE, _SN.LEGI).parse(
+        RawDocument(
+            source=SourceName.LEGI,
+            source_document_id="x",
+            payload={"content": [tree]},
+            fetched_at=datetime.now(UTC),
+            owner_id=OWNER,
+        )
+    )
+    parsed = result.document
+
+    # ZORG_REF pointe ailleurs → porte liens (référence heuristique), pas metadata.
+    heuristic = [r for r in parsed.structure["references"] if r["tag"] == "ZORG_REF"]
+    assert [r["id"] for r in heuristic] == ["LEGIARTI000000424242"]
+    assert "article_zorg_ref" not in parsed.metadata
+    # ZORG_SELF porte l'identité du document → auto-id, reste une métadonnée.
+    assert parsed.metadata["article_zorg_self"] == ARTICLE_INCONNU
+    # Les DEUX sont signalées : le routage ne fait pas taire la vigie.
+    assert set(result.unconfigured_tags) == {"ZORG_REF", "ZORG_SELF"}
 
 
 def test_un_xml_illisible_leve_ParseError_pas_ValidationError(

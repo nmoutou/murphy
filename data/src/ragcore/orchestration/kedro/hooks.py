@@ -40,7 +40,10 @@ from ragcore.adapters.storage.mongo.schemas import (
     ensure_meta_indexes,
 )
 from ragcore.adapters.storage.neo4j.client import create_neo4j_driver
-from ragcore.adapters.storage.neo4j.graph_repository import Neo4jGraphRepository
+from ragcore.adapters.storage.neo4j.graph_repository import (
+    Neo4jGraphRepository,
+    NodeHydration,
+)
 from ragcore.adapters.storage.qdrant.client import create_qdrant_client
 from ragcore.adapters.storage.qdrant.vector_repository import QdrantVectorRepository
 from ragcore.adapters.telemetry import (
@@ -256,13 +259,18 @@ class TelemetryHooks:
         # (cf. use_case_factory plus bas) : un dépôt Mongo est lié à la boucle qui l'a
         # touché en premier, donc partager ceux-ci avec les workers ferait revenir la
         # globale ``_LOOP`` sous un autre nom (§11).
+        # L'hydratation des nœuds Neo4j (ADR-022 §2, toggles redéfinis) : résolue UNE
+        # fois, partagée entre le dépôt du hook et ceux des workers — deux résolutions
+        # seraient deux occasions de diverger.
+        node_hydration = _resolve_node_hydration(params, settings.environment)
+
         doc_repo = MongoDocumentRepository(mongo_client, data_db)
         manifest_repo = MongoManifestRepository(mongo_client, data_db)
         audit_repo = MongoAuditRepository(mongo_client, meta_db)
         summary_repo = MongoRunSummaryRepository(mongo_client, meta_db)
         published_repo = MongoPublishedCollectionRepository(mongo_client, meta_db)
         pending_repo = MongoPendingRelationRepository(mongo_client, meta_db)
-        graph_repo = Neo4jGraphRepository(neo4j_driver)
+        graph_repo = Neo4jGraphRepository(neo4j_driver, node_hydration)
         vector_repo = QdrantVectorRepository(
             qdrant_client, qdrant_collection, workflow.embedding.dimension
         )
@@ -391,9 +399,29 @@ class TelemetryHooks:
         # est sauvé, le run est complet — mais le bilan doit le dire.
         self._embedder = embedder
 
+        # L'interrupteur d'embedding (dev, ADR-023). Lu du YAML, mais ARBITRÉ par
+        # l'environnement : en dehors de `dev`, on embarque TOUJOURS, quoi que dise le
+        # flag. Un flag oublié à `false` dans un `parameters.yml` ne doit pas pouvoir
+        # produire une collection Qdrant vide en prod — même logique de garde que
+        # `nuke_all` (le défaut penche vers le comportement sûr, pas vers l'économie).
+        embedding_enabled = _resolve_embedding_enabled(params, settings.environment)
+        if not embedding_enabled:
+            logger.warning(
+                "EMBEDDING COUPÉ (dev, ADR-023) : aucun vecteur ne sera calculé ni écrit "
+                "dans Qdrant. Mongo et Neo4j sont peuplés normalement — régime d'itération "
+                "sur le modèle de données. La collection %s restera vide pour ce run.",
+                qdrant_collection,
+            )
+
         # --- Le pool de la phase 1 : des FABRIQUES, pas des instances (§11) ---------
         runner = self._build_runner(
-            chunker, embedder, relation_extractor, qdrant_collection, workflow
+            chunker,
+            embedder,
+            relation_extractor,
+            qdrant_collection,
+            workflow,
+            embedding_enabled,
+            node_hydration,
         )
 
         # --- La phase 2 : un service unique, sur la boucle DU HOOK (pas parallélisé) -
@@ -439,6 +467,8 @@ class TelemetryHooks:
         extractor: RoutingRelationExtractor,
         qdrant_collection: str,
         workflow: WorkflowConfig,
+        embedding_enabled: bool,
+        node_hydration: NodeHydration,
     ) -> IngestionRunner:
         """Assemble le pool de la phase 1 : deux fabriques + un use case PAR worker.
 
@@ -489,7 +519,7 @@ class TelemetryHooks:
             )
             return IngestDocumentUseCase(
                 document_repo=MongoDocumentRepository(worker_mongo, data_db),
-                graph_repo=Neo4jGraphRepository(worker_neo4j),
+                graph_repo=Neo4jGraphRepository(worker_neo4j, node_hydration),
                 vector_repo=QdrantVectorRepository(
                     worker_qdrant, qdrant_collection, workflow.embedding.dimension
                 ),
@@ -503,6 +533,7 @@ class TelemetryHooks:
             extractor=extractor,
             use_case_factory=use_case_factory,
             context=context,
+            embedding_enabled=embedding_enabled,
         )
         return IngestionRunner(
             workload=workload,
@@ -786,6 +817,49 @@ def _build_workflow_config(params: dict[str, Any]) -> WorkflowConfig:
             ),
             dimension=embedding.get("dimension", 768),
         ),
+    )
+
+
+def _resolve_embedding_enabled(params: dict[str, Any], environment: str) -> bool:
+    """L'embedding est-il calculé pour ce run ? (ADR-023)
+
+    Deux entrées, et l'environnement PRIME. Le flag YAML ``embedding.enabled`` (défaut
+    ``true`` : le comportement historique) n'a d'effet qu'en ``dev`` ; partout ailleurs
+    on embarque toujours. C'est la même asymétrie que ``nuke_all`` : couper l'embedding
+    est une commodité de développement, et une commodité ne doit jamais pouvoir dégrader
+    la prod par simple oubli d'une variable. Un ``parameters.yml`` traîné de dev en prod
+    avec ``enabled: false`` produirait sinon une collection vide sans que rien ne lève.
+
+    Le flag vit sous ``embedding`` (le même bloc que modèle et dimension) mais n'entre
+    PAS dans le ``WorkflowConfig`` ni dans le hash (§6) : ne pas produire de vecteurs
+    n'invalide aucun vecteur — ``_build_workflow_config`` l'ignore, et c'est voulu.
+    """
+    if environment != "dev":
+        return True
+    embedding = params.get("embedding", {}).get("embedding", {})
+    return bool(embedding.get("enabled", True))
+
+
+def _resolve_node_hydration(params: dict[str, Any], environment: str) -> NodeHydration:
+    """L'hydratation des nœuds Neo4j — arbitrée par l'environnement (ADR-022 §2).
+
+    Hors ``dev``, le nœud est MAIGRE et les toggles YAML sont ignorés — garde-fou dur,
+    même asymétrie que ``nuke_all`` et l'interrupteur d'embedding : un
+    ``include_path: true`` traîné en prod écrirait les chemins de fichiers du poste
+    d'ingestion sur chaque nœud, une info locale sans valeur ailleurs que sur ce poste.
+
+    En dev, tout est ouvert par défaut (Neo4j est l'outil d'inspection de la v0) et le
+    YAML peut refermer chaque vanne : ``include_path`` = chemins des FICHIERS source,
+    ``include_content`` = texte du document (``_text_content``). Ces toggles ne
+    concernent QUE Neo4j — le format de clé des métadonnées, lui, n'est pas un toggle.
+    """
+    if environment != "dev":
+        return NodeHydration()
+    neo4j = params.get("exportation", {}).get("neo4j", {})
+    return NodeHydration(
+        metadata=True,
+        include_path=bool(neo4j.get("include_path", True)),
+        include_content=bool(neo4j.get("include_content", True)),
     )
 
 

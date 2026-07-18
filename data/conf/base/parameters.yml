@@ -32,56 +32,6 @@ importation:
           - "section_ta_titre_ta"
 
 # ============================================================
-# Phase 2: Preparation
-# ============================================================
-
-field_mappings:
-  Article:
-    document_type: document
-    r"^.*_ancien_id$": anciend_id
-    r"^.*_eli$": eli
-    r"^.*_etat$": etat
-    r"^.*_num$": num
-    r"^.*_type$": type
-    r"^.*_nature$": nature
-    r"^.*_origine$": origine
-    r"^.*_date_debut$": date_debut
-    r"^.*_date_fin$": date_fin
-    r"^.*_url$": url
-  
-  Texte:
-    document_type: document
-    r"^.*_ancien_id$": anciend_id
-    r"^.*_eli$": eli
-    r"^.*_titre$": titre
-    r"^.*_etat$": etat
-    r"^.*_num$": num
-    r"^.*_nature$": nature
-    r"^.*_origine$": origine
-    r"^.*_date_debut$": date_debut
-    r"^.*_date_fin$": date_fin
-    r"^.*_url$": url
-    r"^.*_chronicle_cid$": chronicle_cid
-    r"^.*_date_publi$": date_publi
-    r"^.*_date_texte$": date_texte
-    r"^.*_derniere_modification$": derniere_modification
-    r"^.*_nor$": nor
-    r"^.*_num_parution$": num_parution
-    r"^.*_num_sequence$": num_sequence
-    r"^.*_origine_publi$": origine_publi
-    r"^.*_page_deb_publi$": page_deb_publi
-    r"^.*_page_fin_publi$": page_fin_publi
-    r"^.*_titrefull$": titre_full
-    r"^.*_version_a_venir.*$": version_a_venir
-
-  
-  TexteAdmin:
-    document_type: document
-    section_ta_titre_ta: titre
-    r"^.*_eli$": eli
-
-  
-# ============================================================
 # Phase 3: Formatting
 # ============================================================
 
@@ -158,13 +108,36 @@ embedding:
     embedding_service_timeout: 30
     batch_size: 32
 
+    # L'interrupteur d'embedding (ADR-023). `false` = on ne calcule NI n'écrit aucun
+    # vecteur : Qdrant reste vide, Mongo et Neo4j sont peuplés normalement. C'est le
+    # levier d'itération dev sur le modèle de données, où l'embedding (~99,9 % du temps
+    # d'un run) ne sert à rien. N'entre PAS dans le hash (§6) : ne pas produire de
+    # vecteurs n'invalide pas ceux déjà écrits. **N'a d'effet qu'en ENVIRONMENT=dev** —
+    # ailleurs on embarque toujours, quoi que dise ce flag (garde dans le hook, comme
+    # `nuke_all`). Défaut `true` : le comportement historique.
+    enabled: true
+
 exportation:
+  # Balises NON-CONFIGURÉES (cadrage « trois portes », amende ADR-022 §1) : le SIGNAL
+  # `tag.unconfigured` est TOUJOURS émis au bilan de run — ce curseur ne règle que le
+  # SORT de la métadonnée, appliqué juste avant l'ingestion (computeIdempotence).
+  #   ingest (défaut) → la balise entre en metadata, sous sa clé chemin-complet
+  #   skip            → elle est retirée du document (prod) — le signal, lui, survit
+  # On compte d'abord, on filtre ensuite.
+  unconfigured: ingest
+
   neo4j:
-    include_path: false
-    include_content: false
+    # Hydratation des nœuds en DEV (Neo4j = l'outil d'inspection de la v0).
+    # ⚠️ Ces toggles ne concernent QUE Neo4j, et sont FORCÉS à false quand
+    # ENVIRONMENT != dev (garde-fou dans le hook, comme nuke_all).
+    #   include_path    → les chemins des FICHIERS XML source sur le nœud
+    #                     (pas les chemins de balises — le format de clé des
+    #                     métadonnées est TOUJOURS le chemin complet, sans toggle)
+    #   include_content → le texte du document, prop `_text_content`
+    include_path: true
+    include_content: true
 
   mongodb:
-    include_path: true
     database: "LEGIFRANCE"
     collection: "chunks"
 

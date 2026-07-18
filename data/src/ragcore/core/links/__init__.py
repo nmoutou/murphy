@@ -12,7 +12,14 @@ propre notion d'orientation et sa propre table, et que 16 227 liens ont disparu 
 que le domaine s'en aperçoive.
 """
 
-from .extraction import ExtractedLinks, LinkTable, extract_links
+from .extraction import (
+    HEURISTIC_KIND,
+    STILLBORN_SUFFIX,
+    VERSION_KIND,
+    ExtractedLinks,
+    LinkTable,
+    extract_links,
+)
 from .vocabulary import (
     ABROGATES,
     CANONICAL_VERBS,
@@ -21,6 +28,7 @@ from .vocabulary import (
     CREATES,
     MODIFIES,
     REFERENCES,
+    SUCCEEDED_BY,
     RelationVerb,
     TranslationTable,
     is_valid_verb,
@@ -34,8 +42,12 @@ __all__ = [
     "CITES",
     "CONTAINS",
     "CREATES",
+    "HEURISTIC_KIND",
     "MODIFIES",
     "REFERENCES",
+    "STILLBORN_SUFFIX",
+    "SUCCEEDED_BY",
+    "VERSION_KIND",
     "ExtractedLinks",
     "LinkTable",
     "RelationVerb",

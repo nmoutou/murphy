@@ -178,6 +178,11 @@ LEGI_ROLE_TABLE = RoleTable(
     # contenance : les émettre créerait des cycles et de faux parents.
     link_containers=("STRUCTURE_TA", "STRUCT"),
     structural_link_tags=("LIEN_ART", "LIEN_SECTION_TA"),
+    # …mais ce ne sont pas des scories pour autant : les LIEN_ART sous <VERSIONS> sont
+    # l'axe temporel de l'article. Ils sortent sous VERSION_KIND et deviennent la CHAÎNE
+    # `succeeded_by` (tri par debut, auto-référence = ancre, mort-nées en latéral).
+    version_link_containers=("VERSIONS",),
+    version_link_tags=("LIEN_ART",),
     ancestor_containers=("CONTEXTE",),
     ancestor_tags=("TITRE_TXT", "TITRE_TM"),
     ancestor_id_attrs=("id_txt", "id"),

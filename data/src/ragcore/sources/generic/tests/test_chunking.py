@@ -32,6 +32,10 @@ OVERLAP = 25
 
 
 def _parse(fixtures_dir: Path, name: str) -> ParsedDocument:
+    return _parse_result(fixtures_dir, name).document
+
+
+def _parse_result(fixtures_dir: Path, name: str):
     return GenericParser(LEGI_ROLE_TABLE, SourceName.LEGI).parse(
         RawDocument(
             source=SourceName.LEGI,

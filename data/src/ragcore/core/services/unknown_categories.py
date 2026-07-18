@@ -18,8 +18,14 @@ CATEGORY_SENS = "sens"
 """Un ``<LIEN sens="…">`` qui n'est ni ``source`` ni ``cible`` : l'arête ne peut
 pas être orientée, donc pas construite."""
 
-CATEGORY_TAG = "balise"
-"""Une balise XML rencontrée et non interprétée par le parser."""
+CATEGORY_UNCONFIGURED_TAG = "tag.unconfigured"
+"""Une balise XML NON-CONFIGURÉE — la vigie de dérive DILA (ADR-022 §1 amendé).
+
+Ce n'est plus un « unknown » dans la donnée : la balise a été ROUTÉE (porte metadata ou
+porte liens, cadrage « trois portes ») et ce compteur est le signal qui survit au
+routage. Émis au site de parse, TOUJOURS — que le curseur ``exportation.unconfigured``
+soit à ``ingest`` ou ``skip``. On compte d'abord, on filtre ensuite.
+"""
 
 CATEGORY_ROOT = "racine"
 """Une racine XML d'une famille de documents que la source ne connaît pas."""
@@ -30,9 +36,8 @@ identifiant (format inattendu). À distinguer d'un ``@id`` VIDE, qui est une abs
 de donnée, pas un inconnu. Le taire ferait disparaître l'arête en silence — le lien
 existait pourtant, la source l'a écrit."""
 
-def declare_unknown(
-    unknowns: dict[str, list[str]], category: str, value: str
-) -> None:
+
+def declare_unknown(unknowns: dict[str, list[str]], category: str, value: str) -> None:
     """Consigne un inconnu — **un ENSEMBLE, pas un compteur**.
 
     « Ce typelien est inconnu », « cette balise est inconnue » : le fait est vrai UNE
@@ -50,7 +55,7 @@ __all__ = [
     "CATEGORY_IDENTIFIER",
     "CATEGORY_ROOT",
     "CATEGORY_SENS",
-    "CATEGORY_TAG",
     "CATEGORY_TYPELIEN",
+    "CATEGORY_UNCONFIGURED_TAG",
     "declare_unknown",
 ]

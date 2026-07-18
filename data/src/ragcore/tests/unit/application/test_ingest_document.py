@@ -118,7 +118,9 @@ async def test_a_failed_saga_compensates_what_it_had_written(stores, context) ->
     assert len(stores["telemetry"].events_of(SAGA_COMPENSATION_COMPLETED)) == 1
 
 
-async def test_a_failed_compensation_is_counted_and_told_truthfully(stores, context) -> None:  # noqa: ANN001
+async def test_a_failed_compensation_is_counted_and_told_truthfully(
+    stores, context
+) -> None:  # noqa: ANN001
     """Le forward de Qdrant casse ⇒ compensation ; MAIS le rollback de Mongo casse
     aussi. L'écrit partiel qui subsiste doit être COMPTÉ (SAGA_COMPENSATION_FAILED,
     breakdown par `step`) et l'audit ne doit PAS prétendre à un rollback propre.
@@ -150,7 +152,9 @@ async def test_a_failed_compensation_is_counted_and_told_truthfully(stores, cont
     assert completed[0].payload["failed_compensations"] == ["mongo_upsert"]
 
 
-async def test_an_update_replaces_in_place_without_a_preceding_delete(stores, context) -> None:  # noqa: ANN001
+async def test_an_update_replaces_in_place_without_a_preceding_delete(
+    stores, context
+) -> None:  # noqa: ANN001
     """F16 — le trou fermé : un UPDATE ne pré-supprime plus l'ancienne version.
 
     Avant, le forward Mongo faisait ``delete`` PUIS ``insert`` — une fenêtre où

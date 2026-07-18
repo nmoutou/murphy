@@ -27,8 +27,9 @@ from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
+from ..models.citation import Citation
 from ..models.enums import SourceName
-from ..models.identifiers import OwnerId, SourceIdentifier, UnknownRef
+from ..models.identifiers import OwnerId, SourceIdentifier
 from ..models.relation import Relation
 from ..services.unknown_categories import (
     CATEGORY_IDENTIFIER,
@@ -36,9 +37,60 @@ from ..services.unknown_categories import (
     CATEGORY_TYPELIEN,
     declare_unknown,
 )
-from .vocabulary import CONTAINS, RelationVerb, TranslationTable, translate
+from .vocabulary import (
+    CONTAINS,
+    REFERENCES,
+    SUCCEEDED_BY,
+    RelationVerb,
+    TranslationTable,
+    translate,
+)
 
-__all__ = ["ExtractedLinks", "LinkTable", "extract_links"]
+__all__ = [
+    "HEURISTIC_KIND",
+    "STILLBORN_SUFFIX",
+    "VERSION_KIND",
+    "Citation",
+    "ExtractedLinks",
+    "LinkTable",
+    "extract_links",
+]
+
+
+VERSION_KIND = "version:lien"
+"""Le ``kind`` des liens de VERSION — l'axe temporel d'un document.
+
+Chaque ``<LIEN_ART>`` d'un bloc ``<VERSIONS>`` désigne une version datée du MÊME
+article — JAMAIS une contenance (le bloc était exclu de ``link_containers`` à raison :
+le traduire ainsi créerait cycles et faux parents). Ces références ne deviennent pas des
+arêtes une à une : elles sont traitées **en groupe** par ``_version_chain``, qui trie la
+liste par ``debut`` et n'émet que les arêtes de la CHAÎNE touchant le document courant.
+L'auto-référence n'est plus jetée : elle est l'**ancre** qui localise le document dans
+sa propre liste.
+"""
+
+STILLBORN_SUFFIX = "_MORT_NE"
+"""Le marqueur DILA d'une version JAMAIS entrée en vigueur (``MODIFIE_MORT_NE``…).
+
+Un texte A modifie un article avec effet différé ; un texte B révoque la disposition
+avant l'échéance : la version qu'A aurait produite est *mort-née* — son ``fin`` est
+souvent antérieur à son ``debut``. Le suffixe est le critère fiable, PAS les dates :
+mesuré sur le corpus, 12 liens mort-nés sur 57 ont des dates d'apparence normale.
+Poids juridique nul (personne n'a jamais été régi par elle) : elle est HORS de la
+chaîne, accrochée en branche latérale — l'``etat`` voyage sur l'arête pour la filtrer.
+"""
+
+HEURISTIC_KIND = "unconfigured:dila_id"
+"""Le ``kind`` des références produites par la CASCADE du parser (cadrage B-00-d).
+
+Une balise NON-CONFIGURÉE dont la valeur a la forme d'un identifiant DILA (et n'est pas
+le document lui-même) est une donnée qui *pointe* : elle passe la porte « liens », pas
+la porte « metadata ». Le parser l'émet sous ce kind — sans ``typelien`` ni ``sens``,
+puisque la source n'a rien déclaré — et le domaine la traduit ici en arête
+``references``, du document courant VERS la cible. Le verbe générique est assumé : on
+sait QUE ça pointe, pas POURQUOI ; le jour où la table apprend la balise, elle prendra
+un rôle déclaré et un verbe précis.
+"""
 
 
 SENS_SOURCE = "source"
@@ -94,24 +146,6 @@ class LinkTable:
     matcheraient jamais un nœud. Une corruption qui ne lève rien.
     """
 
-    describes_targets: bool = False
-    """La source **décrit-elle** ses cibles au lieu de les identifier ?
-
-    ``False`` (LEGI) : les cibles sont des identifiants. Un ``@id`` vide est une **scorie**
-    — 89 cas sur 16 227 liens — et le libellé du lien n'est qu'un texte d'affichage
-    (« Décret n°2008-171 du 22 février 2008 (Ab) »). En faire une cible peuplerait le
-    graphe de nœuds fantômes.
-
-    ``True`` (jurisprudence) : les cibles sont des **phrases**, et il n'y a rien d'autre.
-    Mesuré : les 68 ``<LIEN>`` du corpus juri ont **tous** leurs attributs vides et
-    portent « Articles 1103 et 1229 du code civil ». Sans ce drapeau, leur graphe est vide.
-
-    **Un drapeau, et non une déduction du genre « si l'id est vide, prends le libellé ».**
-    La règle implicite serait fausse pour LEGI : elle transformerait ses 89 scories en
-    nœuds. C'est à la source de dire comment elle désigne ses cibles — c'est un fait sur
-    elle, pas une heuristique sur les données.
-    """
-
 
 @dataclass(frozen=True)
 class ExtractedLinks:
@@ -124,6 +158,13 @@ class ExtractedLinks:
 
     relations: list[Relation] = field(default_factory=list)
     unknowns: dict[str, list[str]] = field(default_factory=dict)
+
+    citations: list[Citation] = field(default_factory=list)
+    """Les cibles DÉCRITES — celles dont l'``@id`` était vide.
+
+    Elles ne sont pas des arêtes et n'en produiront aucune : elles remontent vers le
+    document, qui les porte en propre. Voir ``core.models.citation``.
+    """
 
 
 @dataclass(frozen=True)
@@ -162,35 +203,198 @@ def extract_links(  # noqa: PLR0913 — six faits distincts, tous nommés : les 
     """
     subject = _Subject(current=current, owner_id=owner_id, source=source)
     relations: list[Relation] = []
+    citations: list[Citation] = []
     unknowns: dict[str, list[str]] = {}
 
+    # Les liens de VERSION se traitent EN GROUPE : la chaîne est une propriété de la
+    # liste (l'ordre), pas de chaque lien pris isolément. Les traduire un à un — c'est
+    # ce que faisait `has_version` — produit le produit cartésien : 2 760 arêtes « dans
+    # tous les sens » là où ~350 suffisent à porter le même fait.
+    versions = [r for r in references if r.get("kind", "") == VERSION_KIND]
+    relations.extend(_version_chain(versions, table, subject, unknowns))
+
     for reference in references:
-        relation = _from_reference(reference, table, subject, unknowns)
-        if relation is not None:
-            relations.append(relation)
+        if reference.get("kind", "") == VERSION_KIND:
+            continue
+        extracted = _from_reference(reference, table, subject, unknowns)
+        # Deux natures, un seul aiguillage — l'identification de la cible. Le `match`
+        # dit lequel des deux plans reçoit la balise : le graphe, ou le document.
+        match extracted:
+            case Relation():
+                relations.append(extracted)
+            case Citation():
+                citations.append(extracted)
+            case None:
+                pass
 
     for ancestor in ancestors:
         relation = _from_ancestor(ancestor, table, subject, unknowns)
         if relation is not None:
             relations.append(relation)
 
-    return ExtractedLinks(relations=relations, unknowns=unknowns)
+    return ExtractedLinks(relations=relations, unknowns=unknowns, citations=citations)
 
 
-def _from_reference(
+def _dating(reference: Mapping[str, Any]) -> dict[str, Any]:
+    """La datation d'une version, extraite de sa référence — elle finit sur l'arête.
+
+    C'est elle qui rend la ligne de vie lisible dans le graphe (``debut``/``fin``/
+    ``etat``/``num``), et c'est l'``etat`` qui permet d'écarter les mort-nées d'une
+    requête sans casser la chaîne.
+    """
+    return {k: v for k, v in reference.items() if k not in ("kind", "id")}
+
+
+def _is_stillborn(reference: Mapping[str, Any]) -> bool:
+    return str(reference.get("etat", "")).endswith(STILLBORN_SUFFIX)
+
+
+def _version_chain(
+    versions: Sequence[Mapping[str, Any]],
+    table: LinkTable,
+    subject: _Subject,
+    unknowns: dict[str, list[str]],
+) -> list[Relation]:
+    """La CHAÎNE temporelle : chaque version pointe sa suivante, dans le sens du temps.
+
+    Le document courant n'émet que les arêtes **qui le touchent** — sortante ET
+    entrante : « ma version précédente → moi » et « moi → ma version suivante ». Chaque
+    arête est ainsi émise par ses deux bouts, et le ``MERGE`` dédoublonne : la chaîne
+    survit à un maillon absent du corpus sans qu'aucun document n'ait à coordonner quoi
+    que ce soit avec un autre.
+
+    L'**auto-référence** — le bloc ``<VERSIONS>`` liste toujours l'article lui-même —
+    n'est plus jetée : elle est l'ancre qui localise le document dans sa propre liste
+    triée. Sans elle, il n'y a rien à émettre (le document ne sait pas où il est).
+
+    Les **mort-nées** sont hors chaîne : jamais entrées en vigueur, elles n'ont aucune
+    date où elles furent le droit applicable — les chaîner affirmerait le contraire.
+    Elles s'accrochent en branche latérale à la version en vigueur au moment de
+    l'avortement (la dernière vivante avant leur ``debut`` théorique), l'``etat`` sur
+    l'arête disant ce qu'elles sont.
+    """
+    entries = [
+        (reference, identified)
+        for reference in versions
+        if (identified := _identifier(reference.get("id", ""), table, unknowns))
+        is not None
+    ]
+    if not entries:
+        return []
+
+    living = sorted(
+        (e for e in entries if not _is_stillborn(e[0])),
+        key=lambda e: (str(e[0].get("debut", "")), str(e[0].get("fin", ""))),
+    )
+    me = subject.current.serialize()
+    relations: list[Relation] = []
+
+    position = next(
+        (i for i, (_, ident) in enumerate(living) if ident.serialize() == me), None
+    )
+    if position is not None:
+        if position > 0:
+            prev_ref, prev_id = living[position - 1]
+            my_ref, _ = living[position]
+            relations.append(
+                _relation(
+                    prev_id, subject.current, SUCCEEDED_BY, subject, _dating(my_ref)
+                )
+            )
+        if position < len(living) - 1:
+            next_ref, next_id = living[position + 1]
+            relations.append(
+                _relation(
+                    subject.current, next_id, SUCCEEDED_BY, subject, _dating(next_ref)
+                )
+            )
+        # Les mort-nées dont JE suis la version en vigueur au moment de l'avortement :
+        # ma branche latérale sortante.
+        for reference, identified in entries:
+            if not _is_stillborn(reference):
+                continue
+            anchor = _anchor(living, str(reference.get("debut", "")))
+            if anchor is not None and anchor[1].serialize() == me:
+                relations.append(
+                    _relation(
+                        subject.current,
+                        identified,
+                        SUCCEEDED_BY,
+                        subject,
+                        _dating(reference),
+                    )
+                )
+        return relations
+
+    # JE suis peut-être une mort-née : mon arête entrante vient de la version vivante
+    # en vigueur au moment de l'avortement. Pas d'arête sortante — une version jamais
+    # née n'a pas de suite.
+    mine = next(
+        (r for r, ident in entries if ident.serialize() == me and _is_stillborn(r)),
+        None,
+    )
+    if mine is not None:
+        anchor = _anchor(living, str(mine.get("debut", "")))
+        if anchor is not None:
+            relations.append(
+                _relation(
+                    anchor[1], subject.current, SUCCEEDED_BY, subject, _dating(mine)
+                )
+            )
+    return relations
+
+
+def _anchor(
+    living: Sequence[tuple[Mapping[str, Any], SourceIdentifier]], debut: str
+) -> tuple[Mapping[str, Any], SourceIdentifier] | None:
+    """La version en vigueur au moment de l'avortement d'une mort-née.
+
+    C'est la dernière vivante dont le ``debut`` est STRICTEMENT antérieur au ``debut``
+    théorique de la mort-née — laquelle partage précisément ce ``debut`` avec la version
+    réelle qui l'a remplacée (mesuré : les 45 doublons de ``debut`` du corpus sont tous
+    ce cas). Un tri qui les confondrait est exactement ce que la branche latérale évite.
+    """
+    candidates = [e for e in living if str(e[0].get("debut", "")) < debut]
+    return candidates[-1] if candidates else None
+
+
+def _from_reference(  # noqa: PLR0911 — chaque `return` est une ISSUE de la cascade (heuristique, structurel, non-orientable…) ; les fusionner cacherait laquelle a décidé
     reference: Mapping[str, Any],
     table: LinkTable,
     subject: _Subject,
     unknowns: dict[str, list[str]],
-) -> Relation | None:
-    linked = _target(reference, table, unknowns)
-    if linked is None:
-        # Ni identifiant, ni libellé : il n'y a **rien** — pas même une description. Ce
-        # n'est pas un renoncement, c'est l'absence de donnée. La déclarer en `unknowns`
-        # polluerait le bilan avec un mot qui n'existe pas.
-        return None
+) -> Relation | Citation | None:
+    """Une balise brute devient une ARÊTE si sa cible est identifiée, une CITATION sinon.
 
+    L'``@id`` est le seul aiguillage. Ce qui est identifié rejoint le graphe ; ce qui est
+    seulement décrit rejoint le document. Rien n'est jeté au passage — c'était le défaut
+    de la version précédente, qui perdait 89 liens LEGI sans le dire.
+    """
     kind = reference.get("kind", "")
+
+    if kind == HEURISTIC_KIND:
+        # La cascade du parser a reconnu une valeur au format DILA sur une balise
+        # non-configurée. Pas de `typelien`, pas de `sens` : la source n'a rien déclaré.
+        # Orientation par construction (le document courant PORTE la référence), verbe
+        # générique `references`. La balise d'origine survit en métadonnée d'arête —
+        # c'est elle qui dira, plus tard, quoi apprendre à la table.
+        linked = _identifier(reference.get("id", ""), table, unknowns)
+        if linked is None:
+            return None
+        return _relation(
+            subject.current,
+            linked,
+            REFERENCES,
+            subject,
+            {"kind": reference.get("tag", ""), "origin": "heuristic"},
+        )
+
+    linked = _identifier(reference.get("id", ""), table, unknowns)
+    if linked is None:
+        # Pas d'identifiant : la cible est DÉCRITE, ou elle n'est rien. `_citation` rend
+        # `None` dans le second cas — ni identifiant, ni texte, il n'y a pas de donnée.
+        # La déclarer en `unknowns` polluerait le bilan avec un mot qui n'existe pas.
+        return _citation(reference, table)
 
     if kind in table.structural_kinds:
         # Orientation par construction : le document courant CONTIENT le lié.
@@ -271,46 +475,37 @@ def _orient(
     return None
 
 
-def _target(
+def _citation(
     reference: Mapping[str, Any],
     table: LinkTable,
-    unknowns: dict[str, list[str]],
-) -> SourceIdentifier | None:
-    """La cible d'un lien : **identifiée** si on peut, **décrite** sinon.
+) -> Citation | None:
+    """La cible DÉCRITE : un champ sur le document, **jamais** un nœud du graphe.
 
-    Deux façons de désigner une cible, et il faut les deux — c'est une mesure, pas une
-    précaution :
+    Appelée quand l'``@id`` est vide — et c'est le seul critère. Ni la source, ni un
+    drapeau déclaratif : l'identification, ou son absence. Le ``describes_targets`` qui
+    régnait ici distinguait « le vide est la norme » (juri) de « le vide est une scorie »
+    (LEGI) ; la mesure du corpus a montré que cette seconde moitié était fausse — les 89
+    ``<LIEN>`` LEGI à ``@id`` vide portent **tous** un texte de désignation et un
+    ``typelien``, exactement comme les 68 de la jurisprudence. Le drapeau ne protégeait
+    d'aucun bruit : il jetait 89 citations réelles en silence.
 
-    1. **Par identifiant** (``@id``, ``@cidtexte``…). LEGI fait ça : ``LEGIARTI000006419264``.
-    2. **Par description**, quand aucun identifiant n'est donné. La jurisprudence fait ça,
-       et **exclusivement** : les 68 ``<LIEN>`` du corpus juri ont tous leurs attributs
-       vides et portent du texte — « Articles 1103 et 1229 du code civil ». La cour décrit
-       l'article en français ; elle ne le référence pas.
+    Rend ``None`` s'il n'y a pas même un texte : une balise sans identifiant ET sans
+    désignation ne dit rien du tout. Ce n'est pas un renoncement, c'est une absence.
 
-    Ne gérer que le premier cas — ce que faisait ce module — rendait le graphe de
-    jurisprudence **vide, en silence**. La citation existe pourtant : elle est écrite noir
-    sur blanc dans l'arrêt.
-
-    La cible décrite devient un ``UnknownRef`` : un nœud qui porte la phrase, et vers
-    lequel l'arête pointe. *« Ce qui n'est pas encore résolu n'est pas un état spécial —
-    c'est un node unknown qui attend sa passe de résolution. »* On ne parse pas la phrase
-    ici : ``core/links`` ne sait pas ce qu'est un code juridique, et le lui apprendre
-    remettrait de la sémantique là où on vient de l'en sortir.
+    Le verbe suit la doctrine de ``Relation.relation_type`` : traduit si la table le
+    sait, brut sinon. Un mot non traduit entre sous son nom plutôt que de disparaître.
     """
-    identified = _identifier(reference.get("id", ""), table, unknowns)
-    if identified is not None:
-        return identified
-
-    if not table.describes_targets:
-        # La source est censée identifier ses cibles. Un `id` vide y est une scorie (89
-        # cas sur 16 227 chez LEGI), pas une description — en faire un `UnknownRef`
-        # peuplerait le graphe de nœuds fantômes portant des libellés d'affichage.
+    text = str(reference.get("label", "")).strip()
+    if not text:
         return None
 
-    label = str(reference.get("label", "")).strip()
-    if not label:
-        return None
-    return UnknownRef(raw=label)
+    raw_typelien = str(reference.get("typelien", ""))
+    verb, _ = translate(table.translation, raw_typelien)
+    return Citation(
+        text=text,
+        verb=str(verb) if verb is not None else raw_typelien,
+        sens=str(reference.get("sens", "")),
+    )
 
 
 def _identifier(

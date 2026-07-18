@@ -9,15 +9,18 @@ métadonnée, ni un lien — il **disparaît**. Aucune exception, aucun log, un 
 silencieusement amputé. C'est précisément la forme du bug qui a fait s'évaporer 16 227
 liens pendant des mois.
 
-Avec lui, la balise ressort dans ``unknowns["balise"]``, ce test échoue, et quelqu'un doit
-**décider** de son rôle. La décision peut être « c'est du bruit, rôle META » — mais elle
-est prise, et écrite.
+Avec lui, la balise ressort dans ``ParseResult.unconfigured_tags``, ce test échoue, et
+quelqu'un doit **décider** de son rôle. La décision peut être « c'est du bruit, rôle
+META » — mais elle est prise, et écrite. Depuis le cadrage « trois portes » (B-00-d),
+la donnée de la balise n'attend plus la décision : elle entre en métadonnée (clé
+chemin-complet) ou en lien (heuristique DILA) — le signal, lui, réclame toujours la
+décision.
 
 **Le cliquet et l'instrument sont complémentaires**, et il faut les distinguer :
 
-- Le cliquet (ici) fige ce qu'on connaît : sur les fixtures, ``unknowns`` doit être VIDE.
-- L'instrument (``RunStats.unknowns`` → ``RunSummary``) découvre ce qu'on ne connaît pas :
-  sur un corpus neuf, la balise inconnue remonte dans le bilan du run.
+- Le cliquet (ici) fige ce qu'on connaît : sur les fixtures, le signal doit être VIDE.
+- L'instrument (``tag.unconfigured`` → ``RunStats.unknowns`` → ``RunSummary``) découvre
+  ce qu'on ne connaît pas : sur un corpus neuf, la balise remonte dans le bilan du run.
 
 Le premier interdit la régression ; le second permet la saturation. Ni l'un ni l'autre
 seul ne suffit.
@@ -61,22 +64,29 @@ def _parse_all() -> list:
 
 
 def test_aucune_balise_du_corpus_ne_reste_sans_role() -> None:
-    """LE cliquet. Sur un corpus sain, ``unknowns`` est **vide** — sans exception.
+    """LE cliquet. Sur un corpus sain, rien de non-configuré — sans exception.
 
     Un échec ici ne dit pas « le code est cassé ». Il dit : *la source parle un mot que la
     table ne connaît pas*. La réponse n'est jamais de contourner le test — c'est de lire
     la balise, de décider de son rôle, et de l'écrire dans ``LEGI_ROLE_TABLE``.
+
+    Depuis le cadrage « trois portes » (B-00-d), une balise non-configurée n'est plus un
+    ``unknown`` dans la donnée : elle est ROUTÉE (metadata ou lien) et SIGNALÉE dans le
+    ``ParseResult``. Le cliquet lit désormais le signal — il garde exactement la même
+    chose : sur les fixtures saturées, il doit être vide.
     """
     orphelines: dict[str, set[str]] = {}
 
-    for document in _parse_all():
-        for categorie, valeurs in document.unknowns.items():
-            orphelines.setdefault(categorie, set()).update(valeurs)
+    for result in _parse_all():
+        if result.unconfigured_tags:
+            orphelines.setdefault("tag", set()).update(result.unconfigured_tags)
+        if result.unknown_roots:
+            orphelines.setdefault("racine", set()).update(result.unknown_roots)
 
     assert not orphelines, (
         f"Vocabulaire sans rôle dans LEGI_ROLE_TABLE : "
         f"{ {k: sorted(v) for k, v in orphelines.items()} }. "
-        "Chaque balise doit porter un rôle — sinon son contenu disparaît en silence."
+        "Chaque balise doit porter un rôle — sinon sa donnée entre sans être comprise."
     )
 
 
@@ -85,24 +95,25 @@ def test_le_cliquet_est_CAPABLE_d_echouer() -> None:
 
     Un test qui n'échoue jamais est un test qui n'observe rien. Celui-ci prouve que
     l'instrument fonctionne : sur la fixture qui porte une balise ``<ZORG>`` délibérément
-    absente de la table, ``unknowns`` la **déclare**.
-
-    Sans cette preuve, ``test_aucune_balise_du_corpus_ne_reste_sans_role`` pourrait passer
-    parce que le parser ne regarde rien — et personne ne s'en apercevrait.
+    absente de la table, le ``ParseResult`` la **signale** — et sa valeur, routée par la
+    cascade, entre en métadonnée sous sa clé chemin-complet au lieu de disparaître.
     """
     parser = GenericParser(LEGI_ROLE_TABLE, SourceName.LEGI)
 
-    async def run() -> dict[str, list[str]]:
+    async def run():
         async for raw in LegiFileConnector(FIXTURES).fetch_all(OWNER):
             if any(Path(f).name == _FIXTURE_PATHOLOGIQUE for f in raw.payload["files"]):
-                return parser.parse(raw).unknowns
+                return parser.parse(raw)
         pytest.fail(f"La fixture {_FIXTURE_PATHOLOGIQUE} est introuvable")
 
-    unknowns = asyncio.run(run())
+    result = asyncio.run(run())
 
-    assert "ZORG" in unknowns.get("balise", []), (
-        "La balise inconnue doit être DÉCLARÉE. Si elle ne l'est pas, le cliquet "
+    assert "ZORG" in result.unconfigured_tags, (
+        "La balise non-configurée doit être SIGNALÉE. Si elle ne l'est pas, le cliquet "
         "ci-dessus ne garde rien du tout."
+    )
+    assert result.document.metadata["article_zorg"], (
+        "Et sa valeur doit être INGÉRÉE (porte metadata) — routée, pas jetée."
     )
 
 

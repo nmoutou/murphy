@@ -88,9 +88,10 @@ class InMemoryGraphRepository:
     """
 
     def __init__(self) -> None:
-        # Une cible DÉCRITE (`:Unknown`) est un nœud comme un autre côté fake : c'est
-        # l'ensemble `nodes` qui rejoue le `MATCH`. `edges` porte (arête, run_id) pour
-        # que la compensation par run (§8) ait de quoi filtrer.
+        # `nodes` rejoue le `MATCH` de Cypher ; `edges` porte (arête, run_id) pour que la
+        # compensation par run (§8) ait de quoi filtrer. Les cibles DÉCRITES n'y figurent
+        # plus : elles ne sont plus des nœuds mais un champ du document (cf.
+        # `core.models.citation`), et n'atteignent donc jamais ce dépôt.
         self.nodes: set[str] = set()
         self.edges: list[tuple[Relation, RunId]] = []
 
@@ -107,14 +108,8 @@ class InMemoryGraphRepository:
         pending: list[Relation] = []
         for relation in relations:
             source_present = relation.source_identifier.serialize() in self.nodes
-            target = relation.target_identifier
-            # La cible DÉCRITE (`unknown:`) est CRÉÉE, jamais différée — comme le vrai
-            # repo : elle n'arrivera jamais par un run futur (cf. graph_repository).
-            is_described = target.kind == "unknown"
-            target_present = target.serialize() in self.nodes or is_described
+            target_present = relation.target_identifier.serialize() in self.nodes
             if source_present and target_present:
-                if is_described:
-                    self.nodes.add(target.serialize())
                 self.edges.append((relation, run_id))
                 written.append(relation)
             else:
@@ -149,7 +144,7 @@ class InMemoryGraphRepository:
     async def compensate_document_node(
         self, identifier: SourceIdentifier, owner_id: OwnerId
     ) -> None:
-        """§8 : orphelin → supprimé ; cité → dé-hydraté (reste une cible `:Unknown`).
+        """§8 : orphelin → supprimé ; cité → dé-hydraté (reste une cible `:Pending`).
 
         Le fake modélise la dé-hydratation par « le nœud reste dans `nodes` » : il
         demeure une cible matchable, ce qui est tout ce dont les appelants ont besoin.

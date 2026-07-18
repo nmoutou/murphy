@@ -17,8 +17,6 @@ Deux propriétés se prouvent ici, et aucune autre ne comptait autant dans les l
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
-
 from ragcore.application.ingest_document import IngestDocumentUseCase
 from ragcore.application.run_context import PipelineContext
 from ragcore.core.links import CITES
@@ -43,7 +41,7 @@ SELF = ELI(raw="LEGIARTI000000000001")
 OTHER = ELI(raw="LEGIARTI000000000002")
 
 
-def _doc(unknowns: dict[str, list[str]] | None = None) -> ParsedDocument:
+def _doc() -> ParsedDocument:
     return ParsedDocument(
         identifier=SELF,
         owner_id=OWNER,
@@ -52,8 +50,6 @@ def _doc(unknowns: dict[str, list[str]] | None = None) -> ParsedDocument:
         content="Le contenu réel de l'article, en français.",
         structure={},
         metadata={},
-        unknowns=unknowns or {},
-        parsed_at=datetime.now(UTC),
     )
 
 
@@ -113,17 +109,20 @@ class _StubExtractor:
         )
 
 
-def _use_case_factory(graph: InMemoryGraphRepository):
-    """Fabrique un use case sur le graphe donné — la télémétrie du worker est celle
-    que le workload passe. On construit les dépôts en mémoire une fois et on les
-    partage : le test ne parallélise pas, la contrainte de boucle ne s'y applique pas.
+def _use_case_factory(
+    graph: InMemoryGraphRepository, vectors: InMemoryVectorRepository
+):
+    """Fabrique un use case sur le graphe et le dépôt de vecteurs donnés — la télémétrie
+    du worker est celle que le workload passe. On construit les dépôts en mémoire une
+    fois et on les partage : le test ne parallélise pas, la contrainte de boucle ne s'y
+    applique pas.
     """
 
     def factory(telemetry) -> IngestDocumentUseCase:  # noqa: ANN001
         return IngestDocumentUseCase(
             document_repo=InMemoryDocumentRepository(),
             graph_repo=graph,
-            vector_repo=InMemoryVectorRepository(),
+            vector_repo=vectors,
             manifest_repo=InMemoryManifestRepository(),
             telemetry=telemetry,
         )
@@ -131,15 +130,21 @@ def _use_case_factory(graph: InMemoryGraphRepository):
     return factory
 
 
-def _run(document: ParsedDocument, extractor: _StubExtractor | None = None):
+def _run(
+    document: ParsedDocument,
+    extractor: _StubExtractor | None = None,
+    embedding_enabled: bool = True,
+):
     graph = InMemoryGraphRepository()
+    vectors = InMemoryVectorRepository()
     context = PipelineContext.create(owner_id=OWNER, source=SourceName.LEGI)
     workload = build_document_workload(
         chunker=_StubChunker(),
         embedder=_StubEmbedder(),
         extractor=extractor or _StubExtractor(),
-        use_case_factory=_use_case_factory(graph),
+        use_case_factory=_use_case_factory(graph, vectors),
         context=context,
+        embedding_enabled=embedding_enabled,
     )
     runtime = FakeRuntime(worker_id=0)
     telemetry = RecordingTelemetry()
@@ -147,22 +152,22 @@ def _run(document: ParsedDocument, extractor: _StubExtractor | None = None):
         result = workload(document, Operation.INSERT, runtime, telemetry)
     finally:
         runtime.close()
-    return result, graph, telemetry
+    return result, graph, vectors, telemetry
 
 
-def test_les_inconnus_du_parse_et_de_lextraction_sont_DECLARES() -> None:
-    """Les deux sources d'inconnus rejoignent l'agrégat du worker.
+def test_les_inconnus_de_lextraction_sont_DECLARES() -> None:
+    """Les inconnus d'EXTRACTION rejoignent l'agrégat du worker.
 
-    ``parsed.unknowns`` vient du parser, ``extraction.unknowns`` de l'extracteur ;
-    aucun des deux ne tient la télémétrie. C'est le workload qui les déclare — et
-    ``snapshot()`` est la preuve que le tuyau, enfin, coule.
+    ``extraction.unknowns`` vient de l'extracteur, qui ne tient pas la télémétrie.
+    C'est le workload qui les déclare — et ``snapshot()`` est la preuve que le tuyau
+    coule. Les inconnus de PARSE n'existent plus (cadrage B-00-d) : les balises
+    non-configurées sont routées par la cascade et signalées au site de parse
+    (``computeIdempotence``, ``tag.unconfigured``), jamais ici.
     """
-    document = _doc(unknowns={"balise": ["ZORG"]})
-
-    _result, _graph, telemetry = _run(document)
+    _result, _graph, _vectors, telemetry = _run(_doc())
 
     unknowns = telemetry.snapshot().unknowns
-    assert unknowns == {"balise": ["ZORG"], "typelien": ["ZORGLUB"]}
+    assert unknowns == {"typelien": ["ZORGLUB"]}
 
 
 def test_la_phase_1_NECRIT_AUCUNE_arete() -> None:
@@ -172,7 +177,7 @@ def test_la_phase_1_NECRIT_AUCUNE_arete() -> None:
     pas encore être un nœud. On le prouve contre un vrai use case sur un vrai graphe
     en mémoire — pas contre un espion complaisant.
     """
-    result, graph, _telemetry = _run(_doc())
+    result, graph, _vectors, _telemetry = _run(_doc())
 
     assert graph.nodes == {SELF.serialize()}  # le nœud est écrit…
     assert graph.edges == []  # …mais aucune arête
@@ -190,12 +195,38 @@ def test_extract_est_appele_une_seule_fois_par_document() -> None:
     assert extractor.calls == 1
 
 
-def test_un_document_sans_inconnu_ne_declare_rien() -> None:
-    """Le cas nominal : vocabulaire saturé, ``unknowns`` vide côté parse.
-
-    L'extracteur stub déclare toujours ``ZORGLUB`` ; ce qu'on vérifie ici, c'est
-    qu'aucun inconnu FANTÔME n'apparaît côté parse quand le document n'en porte pas.
+def test_aucun_inconnu_fantome_cote_parse() -> None:
+    """L'extracteur stub déclare toujours ``ZORGLUB`` ; ce qu'on vérifie ici, c'est
+    qu'aucun inconnu FANTÔME n'apparaît côté parse — le workload n'a plus rien à
+    déclarer pour le parsing, et ne déclare donc rien.
     """
-    _result, _graph, telemetry = _run(_doc(unknowns={}))
+    _result, _graph, _vectors, telemetry = _run(_doc())
 
     assert telemetry.snapshot().unknowns == {"typelien": ["ZORGLUB"]}
+
+
+def test_embedding_actif_ecrit_les_vecteurs() -> None:
+    """Garde-fou de non-régression : le chemin nominal embarque et écrit un vecteur.
+
+    C'est le pendant du test suivant — sans lui, « zéro vecteur quand coupé » pourrait
+    passer alors que le pipeline n'en écrit JAMAIS.
+    """
+    _result, _graph, vectors, _telemetry = _run(_doc(), embedding_enabled=True)
+
+    assert len(vectors.chunks) == 1  # le chunk unique du stub, embarqué et upserté
+
+
+def test_embedding_coupe_nECRIT_AUCUN_vecteur_mais_merge_le_noeud() -> None:
+    """ADR-023 : ``embedding_enabled=False`` saute ``embed()`` — Qdrant reste vide.
+
+    Ce qu'on prouve, et pourquoi ce n'est pas ``NoopEmbedder`` : là, AUCUN
+    ``EmbeddedChunk`` n'atteint le dépôt (pas même un vecteur nul). Et pourtant le nœud
+    Neo4j est mergé et la relation ressort pour la phase 2 : couper l'embedding n'ampute
+    que la vectorisation, le reste du régime d'ingestion tourne à l'identique — c'est
+    l'état d'itération dev sur le modèle de données sans payer le GPU.
+    """
+    result, graph, vectors, _telemetry = _run(_doc(), embedding_enabled=False)
+
+    assert vectors.chunks == []  # rien d'embarqué, rien d'upserté
+    assert graph.nodes == {SELF.serialize()}  # …mais le nœud est bien écrit
+    assert len(result.relations) == 1  # …et la relation part en phase 2, intacte

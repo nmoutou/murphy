@@ -14,16 +14,21 @@ la cour *décrit* l'article qu'elle vise, en français, comme le ferait un juris
 le référence pas.
 
 **Conséquence, et c'est ce qui a failli passer en silence.** ``core/links`` traitait un
-lien sans identifiant comme une *donnée absente* — ce qui est vrai pour LEGI (89 attributs
-vides sur 16 227, des scories) et radicalement faux ici, où c'est **le cas normal, à
-100 %**. Sans ``describes_targets=True``, le graphe de jurisprudence aurait été **vide**,
-et rien ne l'aurait signalé : les 68 citations se seraient évaporées exactement comme les
-16 227 liens de LEGI en leur temps.
+lien sans identifiant comme une *donnée absente*, et les 68 citations s'évaporaient
+exactement comme les 16 227 liens de LEGI en leur temps.
+
+**Ce n'est PAS une particularité de la jurisprudence** — c'est ce que le drapeau
+``describes_targets`` a longtemps fait croire. Remesuré le 18 juil. 2026 sur le corpus
+complet : les 89 ``<LIEN>`` LEGI à ``@id`` vide portent **eux aussi** un texte de
+désignation (« code de l'environnement ») et un ``typelien``. Les qualifier de « scories »
+était faux, et les jetait. Les deux sources décrivent leurs cibles de la même façon ; la
+règle est donc unique et vaut partout : ``@id`` renseigné → arête, ``@id`` vide →
+citation portée par le document.
 
 **Ce que la table livre aujourd'hui, et ce qu'elle ne livre pas.** La citation devient une
-arête vers un nœud ``:Unknown`` qui porte la phrase. Le graphe existe, la citation est
-visible, elle est interrogeable. Ce qui manque est son *identité* : « Articles 1103 du
-code civil » n'est pas encore relié à ``LEGIARTI…``.
+entrée du champ ``citations`` du document, qui conserve la phrase. Elle est lisible et
+requêtable — mais elle n'est pas une arête, et n'en produit aucune. Ce qui manque est son
+*identité* : « Articles 1103 du code civil » n'est pas encore relié à ``LEGIARTI…``.
 
 Cette résolution est un lot à part, et il faut être clair sur sa difficulté : elle demande
 un **extracteur de références juridiques** (une phrase → plusieurs références structurées,
@@ -33,7 +38,7 @@ de… »), des renumérotations (« devenu L. 821-31 »), des cibles hors-LEGI (
 collectives) et des troncatures de la source (« Sur le numéro 1 : té du 10 janvier 1989 »).
 
 **La bonne nouvelle : ce lot-là ne demandera aucune ré-ingestion.** La phrase est déjà dans
-le graphe. Résoudre, ce sera fusionner le nœud ``:Unknown`` vers le vrai article — pas
+le graphe. Résoudre, ce sera transformer la citation en arête vers le vrai article — pas
 relire 352 fichiers.
 """
 
@@ -69,9 +74,9 @@ def identifier_for(raw_id: str) -> SourceIdentifier:
     C'est exactement le piège des 568 arêtes JORF, qui a déjà été payé une fois du côté de
     LEGI. On ne le repaie pas.
 
-    **Cette fonction ne sert PAS aux cibles de liens** — la juri n'en identifie aucune (cf.
-    ``describes_targets``). Elle ne type que l'identifiant du document lui-même, lu dans
-    ``<ID>``.
+    **Cette fonction ne sert PAS aux cibles de liens** — la juri n'en identifie aucune,
+    elles deviennent des ``Citation``. Elle ne type que l'identifiant du document
+    lui-même, lu dans ``<ID>``.
     """
     return DecisionId(raw=raw_id)
 
@@ -83,11 +88,10 @@ JURI_LINK_TABLE = LinkTable(
     structural_kinds=frozenset(),
     ancestor_kinds=frozenset(),
     identifier_for=identifier_for,
-    # LA ligne qui fait exister le graphe juri. Sans elle, 68 citations disparaissent.
-    describes_targets=True,
 )
 """Tout ce que la jurisprudence déclare de ses liens — **et c'est peu**.
 
 Un verbe, un sens, aucune structure, aucune cible identifiée. La richesse est ailleurs :
-dans la phrase, que le nœud ``:Unknown`` conserve intacte en attendant sa résolution.
+dans la phrase, que le champ ``citations`` du document conserve intacte en attendant sa
+résolution.
 """

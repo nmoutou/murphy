@@ -28,24 +28,32 @@ naturel. Le texte original n'était stocké nulle part : la destruction était i
 
 from __future__ import annotations
 
+import re
 from collections.abc import Iterator, Sequence
-from datetime import UTC, datetime
 from typing import Any
 
 from ragcore.core.exceptions import ParseError, ValidationError
+from ragcore.core.links import HEURISTIC_KIND, VERSION_KIND
 from ragcore.core.models import ParsedDocument, RawDocument, SourceName
 from ragcore.core.models.identifiers import SourceIdentifier
-from ragcore.core.services.unknown_categories import (
-    CATEGORY_ROOT,
-    CATEGORY_TAG,
-    declare_unknown,
-)
+from ragcore.core.ports.parser import ParseResult
 
 from .normalize import normalize_text
 from .role_table import RoleTable
 from .roles import Role
 
 __all__ = ["GenericParser"]
+
+_DILA_ID = re.compile(r"[A-Z]{8}[0-9]{12}\Z")
+"""La forme d'un identifiant DILA (``LEGIARTI000006219120``) — le même motif que
+``importation.validation.format_regex`` dans ``parameters.yml``.
+
+C'est le déclencheur de la règle 4 de la cascade (cadrage B-00-d) : du duck-typing sur
+la VALEUR, jamais sur le nom d'attribut. Mesuré sur le corpus : ``origine="LEGI"`` ne
+matche pas (à raison), et les porteurs légitimes hors liens (``VERSION``, ``TITRE_TM``,
+l'auto-``cid`` de ``TEXTE``) sont tous des balises CONNUES de la table — ils n'arrivent
+jamais jusqu'à l'heuristique, qui ne voit que le vocabulaire non-configuré.
+"""
 
 
 class GenericParser:
@@ -64,56 +72,144 @@ class GenericParser:
     def source_name(self) -> SourceName:
         return self._source
 
-    def parse(self, raw: RawDocument) -> ParsedDocument:
+    def parse(self, raw: RawDocument) -> ParseResult:
         """Interprète les facettes d'un document.
 
         Lève ``ValidationError`` si le document est lisible mais irrecevable (pas
         d'identifiant, identifiant mal formé), ``ParseError`` s'il est illisible. Les
         appelants comptent sur cette distinction : l'une est un refus métier, l'autre une
         panne de lecture, et le manifest ne les inscrit pas sous la même raison.
+
+        Rend un ``ParseResult`` : le document, plus ce que la cascade a rangé sans que
+        la table le lui apprenne (balises non-configurées → metadata ou lien) et les
+        signaux associés. Le parser reste PUR : il constate et rend, il ne compte rien.
         """
         try:
             facets = self._facets(raw)
+            identifier = self._identifier(facets)
+            metadata = self._metadata(facets)
+            references = self._references(facets)
 
-            return ParsedDocument(
-                identifier=self._identifier(facets),
+            unconfigured_tags, unconfigured_keys, unknown_roots = (
+                self._route_unconfigured(facets, identifier, metadata, references)
+            )
+
+            document = ParsedDocument(
+                identifier=identifier,
                 source=self._source,
                 owner_id=raw.owner_id,
                 title=self._title(facets),
                 content=self._content(facets),
                 structure={
-                    "references": self._references(facets),
+                    "references": references,
                     "sections": self._sections(facets),
                     "context": self._context(facets),
                 },
-                metadata=self._metadata(facets),
-                unknowns=self._unknowns(facets),
-                parsed_at=datetime.now(UTC),
+                metadata=metadata,
+                source_files=tuple(raw.payload.get("files", ())),
+            )
+            return ParseResult(
+                document=document,
+                unconfigured_tags=unconfigured_tags,
+                unconfigured_keys=unconfigured_keys,
+                unknown_roots=unknown_roots,
             )
         except (ValidationError, ParseError):
             raise
         except Exception as exc:
             raise ParseError(f"Erreur lors du parsing : {exc}") from exc
 
-    # ── L'instrument : ce que la table ne sait pas ranger ───────────────────────
+    # ── La cascade des trois portes : ce que la table ne sait pas ranger ─────────
 
-    def _unknowns(self, facets: list[dict[str, Any]]) -> dict[str, list[str]]:
-        """Les balises et racines que la table ne connaît pas.
+    def _route_unconfigured(
+        self,
+        facets: list[dict[str, Any]],
+        identifier: SourceIdentifier,
+        metadata: dict[str, Any],
+        references: list[dict[str, Any]],
+    ) -> tuple[tuple[str, ...], tuple[str, ...], tuple[str, ...]]:
+        """Route chaque balise NON-CONFIGURÉE vers sa porte (cadrage B-00-d).
 
-        **C'est le cliquet de §3 rendu exécutable.** Une balise sans rôle ne disparaît
-        pas : elle sort ici, remonte dans le ``RunSummary``, et fait échouer le golden.
-        Sur un corpus saturé, ce dict est vide — et c'est le seul état acceptable.
+        Il n'y a plus d'« unknown » : une balise que la table ne connaît pas est une
+        donnée dont on n'a pas encore promu le nom, et elle a une DESTINATION —
+
+        - sa valeur a la forme d'un identifiant DILA et n'est pas le document lui-même
+          (règle auto-id) → **porte liens** : une référence ``HEURISTIC_KIND``, que
+          ``core/links`` traduira en arête ``references`` ;
+        - sinon → **porte metadata**, sous sa clé chemin-complet (injective, ADR-022 §3).
+
+        Les balises CONNUES n'arrivent jamais ici (``knows()`` les écarte) : c'est la
+        cascade du cadrage, où la table tranche AVANT l'heuristique — ``VERSION`` et les
+        titres sont déclarés, ils ne peuvent pas devenir de faux liens.
+
+        Rien ne disparaît, et rien n'est compté ici : le SIGNAL (balises et racines
+        non-configurées) sort dans la valeur de retour, et c'est le site de parse — qui
+        tient la télémétrie — qui le déclare. Pureté du parser préservée.
         """
-        unknowns: dict[str, list[str]] = {}
+        tags: list[str] = []
+        keys: list[str] = []
+        roots: list[str] = []
 
         for facet in facets:
-            if facet["tag"] not in self._table.roots:
-                declare_unknown(unknowns, CATEGORY_ROOT, facet["tag"])
-            for node in _walk(facet):
-                if not self._table.knows(node["tag"]):
-                    declare_unknown(unknowns, CATEGORY_TAG, node["tag"])
+            if facet["tag"] not in self._table.roots and facet["tag"] not in roots:
+                roots.append(facet["tag"])
 
-        return unknowns
+            for node, path in _walk_with_path(facet):
+                if self._table.knows(node["tag"]):
+                    continue
+                if node["tag"] not in tags:
+                    tags.append(node["tag"])
+
+                key_base = _path_key(path)
+                self._route_values(
+                    node, key_base, identifier, metadata, references, keys
+                )
+
+        return tuple(tags), tuple(keys), tuple(roots)
+
+    def _route_values(  # noqa: PLR0913 — les six pièces du routage voyagent ensemble ; les grouper cacherait la cascade
+        self,
+        node: dict[str, Any],
+        key_base: str,
+        identifier: SourceIdentifier,
+        metadata: dict[str, Any],
+        references: list[dict[str, Any]],
+        keys: list[str],
+    ) -> None:
+        """Les VALEURS d'un nœud non-configuré : attributs, puis texte de feuille."""
+        for name, value in node["attrib"].items():
+            text = str(value).strip()
+            if not text:
+                continue
+            if self._is_reference_value(text, identifier):
+                references.append(
+                    {"kind": HEURISTIC_KIND, "id": text, "tag": node["tag"]}
+                )
+                continue
+            key = f"{key_base}_{name.lower()}"
+            if key not in metadata:
+                metadata[key] = text
+                keys.append(key)
+
+        text = node["text"].strip()
+        if not text or node["children"]:
+            return
+        if self._is_reference_value(text, identifier):
+            references.append({"kind": HEURISTIC_KIND, "id": text, "tag": node["tag"]})
+            return
+        if key_base not in metadata:
+            metadata[key_base] = text
+            keys.append(key_base)
+
+    @staticmethod
+    def _is_reference_value(value: str, identifier: SourceIdentifier) -> bool:
+        """Règles 3-4 de la cascade : la forme DILA, sauf soi-même.
+
+        La comparaison à l'identité du document courant est STRUCTURELLE — pas une liste
+        noire : un ``cid`` qui porte l'identifiant du document décrit le document, il ne
+        pointe vers rien.
+        """
+        return bool(_DILA_ID.fullmatch(value)) and value != identifier.raw
 
     # ── Lecture des facettes ───────────────────────────────────────────────────
 
@@ -203,7 +299,7 @@ class GenericParser:
 
             # Les liens STRUCTURELS : cherchés UNIQUEMENT dans leurs conteneurs déclarés.
             # Sous <VERSIONS>, un LIEN_ART désigne les autres versions du MÊME article —
-            # pas une contenance. Les émettre créerait des cycles et de faux parents.
+            # pas une contenance : il a son propre circuit, juste en dessous.
             for container in self._table.link_containers:
                 for parent in _find_all(facet, container):
                     for tag in self._table.structural_link_tags:
@@ -215,6 +311,24 @@ class GenericParser:
                                     "label": normalize_text(
                                         _text_of(lien, self._table)
                                     ),
+                                }
+                            )
+
+            # Les liens de VERSION : l'axe temporel, sous son kind dédié. La datation
+            # (debut/fin/etat/num) voyage avec la référence — elle finira sur l'arête.
+            for container in self._table.version_link_containers:
+                for parent in _find_all(facet, container):
+                    for tag in self._table.version_link_tags:
+                        for lien in _find_all(parent, tag):
+                            references.append(
+                                {
+                                    "kind": VERSION_KIND,
+                                    "id": lien["attrib"].get("id", ""),
+                                    **{
+                                        name: str(value)
+                                        for name, value in lien["attrib"].items()
+                                        if name != "id" and str(value).strip()
+                                    },
                                 }
                             )
 
@@ -282,23 +396,28 @@ class GenericParser:
 
         **Sauf l'identifiant.** Il a son champ dédié (``ParsedDocument.identifier``) : le
         recopier ici en ferait, là encore, une seconde vérité.
+
+        **La clé est le CHEMIN COMPLET, plus le nom de balise nu** (ADR-022 §3). L'ancien
+        ``node["tag"].lower()`` faisait s'écraser deux balises homonymes à deux endroits
+        de l'arbre — premier arrivé gagne, en silence. Le chemin rend la clé injective
+        par construction : la collision n'est plus gérée, elle est impossible. Seule la
+        **promotion** (``meta_renames``) garde un nom court : c'est une décision de la
+        table, premier-arrivé-gagne assumé (l'ordre de préférence des facettes).
         """
         metadata: dict[str, Any] = {}
         collectable = {Role.META, Role.VERSION}
 
         for facet in facets:
             for container in self._table.meta_containers:
-                for meta in _find_all(facet, container):
-                    for node in _walk(meta):
+                for meta, meta_path in _find_all_with_path(facet, container):
+                    for node, path in _walk_with_path(meta, meta_path[:-1]):
                         if node["children"] or not node["text"].strip():
                             continue
                         if node["tag"] == self._table.identifier_tag:
                             continue
                         if self._table.role_of(node["tag"]) not in collectable:
                             continue
-                        key = self._table.meta_renames.get(
-                            node["tag"], node["tag"].lower()
-                        )
+                        key = self._table.meta_renames.get(node["tag"], _path_key(path))
                         if key not in metadata:
                             metadata[key] = node["text"].strip()
 
@@ -346,6 +465,38 @@ def _walk(tree: dict[str, Any]) -> Iterator[dict[str, Any]]:
     yield tree
     for child in tree["children"]:
         yield from _walk(child)
+
+
+def _walk_with_path(
+    tree: dict[str, Any], prefix: tuple[str, ...] = ()
+) -> Iterator[tuple[dict[str, Any], tuple[str, ...]]]:
+    """Comme ``_walk``, mais chaque nœud arrive avec son CHEMIN depuis la racine.
+
+    C'est la pièce qui rend l'aplatissement par chemin complet possible (ADR-022 §3) :
+    ``_walk`` yield des nœuds nus, et une clé construite sur le seul tag produit la
+    collision « premier arrivé gagne » — deux ``<NUM>`` à deux endroits de l'arbre
+    s'écrasent. Le chemin rend la clé injective par construction.
+    """
+    path = (*prefix, tree["tag"])
+    yield tree, path
+    for child in tree["children"]:
+        yield from _walk_with_path(child, path)
+
+
+def _path_key(path: tuple[str, ...]) -> str:
+    """Un chemin de balises → la clé plate canonique (snake_case, jointure ``_``).
+
+    ``("ARTICLE", "META", …, "NUM")`` → ``article_meta_…_num``. La MÊME convention que
+    ``title_mapping.sources`` dans ``parameters.yml`` — elle préexistait dans la conf,
+    le parser la rejoint.
+    """
+    return "_".join(tag.lower() for tag in path)
+
+
+def _find_all_with_path(
+    tree: dict[str, Any], tag: str
+) -> list[tuple[dict[str, Any], tuple[str, ...]]]:
+    return [(node, path) for node, path in _walk_with_path(tree) if node["tag"] == tag]
 
 
 def _find_all(tree: dict[str, Any], tag: str) -> list[dict[str, Any]]:

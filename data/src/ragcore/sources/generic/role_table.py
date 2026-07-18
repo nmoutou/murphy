@@ -138,6 +138,20 @@ class RoleTable:
     structural_link_tags: Sequence[str] = ()
     """Les balises de lien structurel à chercher DANS les conteneurs ci-dessus."""
 
+    version_link_containers: Sequence[str] = ()
+    """Les conteneurs où chercher les liens de VERSION (``<VERSIONS>``).
+
+    L'axe temporel du document : chaque lien y désigne une version datée du MÊME
+    article. Ces liens étaient jetés — exclus de ``link_containers`` à raison (les y
+    mettre les aurait traduits en ``contains``, créant cycles et faux parents), mais
+    jamais récoltés ailleurs. Ils sortent désormais sous ``VERSION_KIND`` et deviennent
+    la CHAÎNE ``succeeded_by`` : tri par ``debut``, l'auto-référence (l'article se liste
+    lui-même) servant d'ancre, les versions mort-nées accrochées en branche latérale.
+    """
+
+    version_link_tags: Sequence[str] = ()
+    """Les balises de lien de version à chercher dans ces conteneurs (``LIEN_ART``)."""
+
     ancestor_containers: Sequence[str] = ()
     """Les balises qui déclarent les ancêtres du document (``<CONTEXTE>``)."""
 

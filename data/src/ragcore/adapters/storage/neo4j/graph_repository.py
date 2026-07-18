@@ -6,6 +6,7 @@ unique et explicite est ce qui rend le ``MERGE`` déterministe. Le label du nœu
 ``document_type`` de l'identifiant.
 """
 
+from dataclasses import dataclass
 from typing import Any
 
 import neo4j
@@ -16,13 +17,76 @@ from ragcore.core.models.identifiers import OwnerId, RunId, SourceIdentifier
 from ragcore.core.models.relation import Relation
 from ragcore.core.ports.graph_repository import RelationWriteResult
 
+
+@dataclass(frozen=True)
+class NodeHydration:
+    """Ce qu'un nœud document porte AU-DELÀ de ses trois props de base (ADR-022 §2).
+
+    Le défaut est le régime PROD : nœud maigre (``title``, ``source``,
+    ``schema_version``), rien d'autre. C'est le constructeur — le hook — qui ouvre les
+    vannes en dev (``_resolve_node_hydration``), jamais ce module : le défaut penche
+    vers le refus, comme ``nuke_all`` et l'interrupteur d'embedding.
+
+    - ``metadata`` : les métadonnées du document en props (clés chemin-complet,
+      valeurs chaînes). Neo4j est l'outil d'inspection privilégié de la v0 — un nœud
+      maigre est un obstacle à l'itération sur le modèle de données.
+    - ``include_path`` : les chemins des FICHIERS source (``document.source_files``).
+      Un chemin absolu du poste d'ingestion n'a de sens qu'en dev.
+    - ``include_content`` : le texte du document, sous la prop ``_text_content``
+      (convention ``_text_`` du cadrage B-00-d). Les sections n'ont pas de prop à
+      elles : chaque section est un morceau LITTÉRAL de ``content`` (invariant du
+      parser) — ``_text_content`` les contient toutes.
+    """
+
+    metadata: bool = False
+    include_path: bool = False
+    include_content: bool = False
+
+
 # Labels Neo4j connus, utilisés pour la création des index.
 #
-# `Unknown` en fait partie : c'est le nœud d'une cible DÉCRITE mais pas identifiée (la
-# citation d'un arrêt : « Articles 1103 et 1229 du code civil »). Il n'est pas un
-# second-rang — la passe de résolution devra l'énumérer et le matcher, et sans index elle
-# scannerait le graphe entier à chaque run.
-_KNOWN_LABELS = ("Document", "Article", "Texte", "Section", "Unknown")
+# Plus de label `Unknown` (18 juil. 2026) : une cible décrite n'est pas une entité du
+# graphe mais une propriété de celui qui l'énonce — cf. `core.models.citation`. Le
+# placeholder créait un nœud par formulation, jamais résolu.
+_KNOWN_LABELS = ("Document", "Article", "Texte", "Section")
+
+
+PENDING_LABEL = "Pending"
+"""L'état d'un nœud CITÉ dont le document a été compensé — ou n'est pas encore arrivé.
+
+Ne pas confondre avec l'ancien ``:Unknown``, qui confondait deux choses très
+différentes : (a) une cible *décrite en français*, qui n'arrivera jamais et n'est pas un
+document — elle est désormais une ``Citation`` sur le document qui l'énonce ; (b) une
+cible *identifiée* dont le document manque à l'appel, et qui peut parfaitement arriver
+au prochain run. Seul (b) mérite un nœud, et c'est celui-ci.
+
+``merge_document_node`` le ré-hydrate sans rien de spécial : son ``MERGE`` porte sur le
+seul ``identifier`` et retombe sur ce nœud quel que soit son label.
+"""
+
+
+CITATIONS_PROP = "citations"
+"""La prop qui porte les cibles décrites, en **JSON sérialisé**.
+
+Neo4j ne stocke pas d'objet imbriqué : une propriété est un scalaire ou un tableau de
+scalaires. Trois listes parallèles (``citation_texts``, ``citation_verbs``,
+``citation_sens``) exprimeraient la même chose sans garantir qu'elles restent alignées —
+une désynchronisation y serait invisible et silencieuse. Un JSON par citation garde
+chaque triplet solidaire.
+"""
+
+
+def _citation_props(document: ParsedDocument) -> dict[str, Any]:
+    """Les citations du document, prêtes pour ``SET d += $props``.
+
+    Rend un dict VIDE quand il n'y en a pas, plutôt qu'une liste vide : ``SET d +=``
+    écrirait sinon une prop vide sur les ~99 % de documents qui ne citent rien de décrit.
+    """
+    if not document.citations:
+        return {}
+    return {
+        CITATIONS_PROP: [c.model_dump_json() for c in document.citations],
+    }
 
 
 class Neo4jGraphRepository:
@@ -31,35 +95,34 @@ class Neo4jGraphRepository:
     Utilise `identifier` (sérialisé) comme champ clé unique pour tous les nœuds.
     """
 
-    def __init__(self, driver: neo4j.AsyncDriver) -> None:
+    def __init__(
+        self, driver: neo4j.AsyncDriver, hydration: NodeHydration | None = None
+    ) -> None:
         self._driver = driver
+        # Défaut = régime prod (nœud maigre). Le hook passe l'hydratation de dev.
+        self._hydration = hydration or NodeHydration()
 
     async def initialize(self) -> None:
         """Crée l'index Neo4j sur le champ `identifier`."""
         async with self._driver.session() as session:
-            for label in _KNOWN_LABELS:
+            # `Pending` est indexé comme les autres : la ré-hydratation le cherche par
+            # `identifier`, et sans index elle scannerait le graphe entier.
+            for label in (*_KNOWN_LABELS, PENDING_LABEL):
                 await session.run(
                     f"CREATE INDEX IF NOT EXISTS FOR (n:{label}) ON (n.identifier)"
                 )
 
     async def merge_document_node(self, document: ParsedDocument) -> None:
-        """Merge un nœud document, et RÉ-HYDRATE une cible ``:Unknown`` s'il en existe une.
-
-        Le label est calculé depuis document.identifier.document_type (pour ELI).
+        """Merge un nœud document. Le label est calculé depuis ``identifier.document_type``.
 
         **Le ``MERGE`` ne porte PAS le label — et c'est le point.** ``MERGE`` matche le
-        motif ENTIER, label compris : ``MERGE (d:Article {identifier: X})`` et le nœud
-        ``(:Unknown {identifier: X})`` qu'une citation juri a déjà créé sont, pour Neo4j,
-        deux motifs différents — le second n'est pas trouvé, et un SECOND nœud de même
-        identifiant est créé. La citation reste alors accrochée à l'``:Unknown`` orphelin,
-        le contenu réel vit sur l'``:Article``, et la « ré-hydratation » que ce dépôt
-        promet n'a jamais lieu.
+        motif ENTIER, label compris : ``MERGE (d:Article {identifier: X})`` ne retrouve
+        pas un nœud du même identifiant portant un autre label, et en crée un SECOND. On
+        ``MERGE`` donc sur le seul ``identifier``, ce qui retombe sur le nœud existant
+        quel que soit son label, PUIS on pose le label réel.
 
-        On ``MERGE`` donc sur le seul ``identifier`` (sans label), ce qui retombe sur le
-        nœud existant quel que soit son label, PUIS on pose le label réel et on retire le
-        placeholder ``:Unknown`` (Neo4j ignore le retrait d'un label absent — sûr quand le
-        nœud vient d'être créé). La cible décrite devient le vrai document, en place, sans
-        rien ré-ingérer.
+        Les **citations** (cibles décrites) sont posées ici, en propriété du nœud, et non
+        en arêtes vers des placeholders : voir ``_citation_props``.
         """
         # Déduire le label depuis l'identifier
         label = "Document"
@@ -73,9 +136,10 @@ class Neo4jGraphRepository:
         query = (
             "MERGE (d {identifier: $identifier, owner_id: $owner_id})"
             " SET d:$($label)"
-            " REMOVE d:Unknown"
+            # Le document est là : il n'est plus attendu. Neo4j ignore le retrait d'un
+            # label absent, donc c'est sûr sur un nœud qui vient d'être créé.
+            f" REMOVE d:{PENDING_LABEL}"
             " SET d += $props"
-            " REMOVE d.text"  # la phrase de citation d'un ex-:Unknown : le contenu réel la remplace
             " RETURN d"
         )
 
@@ -83,7 +147,19 @@ class Neo4jGraphRepository:
             "title": document.title,
             "source": document.source.value,
             "schema_version": document.schema_version,
+            **_citation_props(document),
         }
+
+        # L'hydratation de dev (ADR-022 §2). Les clés chemin-complet des métadonnées ne
+        # peuvent pas percuter les props de base — elles joignent ≥ 2 segments par `_`.
+        # `SET d += $props` n'efface pas les props d'un run précédent : en dev, c'est
+        # `nuke_all` qui repart de zéro (les données sont jetables en v0).
+        if self._hydration.metadata:
+            props.update(document.metadata)
+        if self._hydration.include_content and document.content:
+            props["_text_content"] = document.content
+        if self._hydration.include_path and document.source_files:
+            props["source_files"] = list(document.source_files)
 
         async with self._driver.session() as session:
             await session.run(
@@ -131,37 +207,16 @@ class Neo4jGraphRepository:
             " SET r += $props SET r.run_id = $run_id, r.owner_id = $owner_id RETURN r"
         )
 
-        # La cible DÉCRITE, elle, ne peut PAS être attendue : elle n'arrivera jamais.
-        #
-        # « Articles 1103 et 1229 du code civil » n'est pas un document du corpus — c'est
-        # une phrase. Aucun run futur ne fera apparaître un nœud portant cet identifiant.
-        # La traiter comme une pendante la condamnerait à l'être éternellement, et le
-        # graphe de jurisprudence serait vide en attendant un événement impossible.
-        #
-        # On la CRÉE donc (`MERGE (b:Unknown)`), et c'est exactement la doctrine : « ce qui
-        # n'est pas encore résolu n'est pas un état spécial — c'est un node unknown qui
-        # attend sa passe de résolution ». Le nœud porte la phrase ; la citation existe
-        # dans le graphe ; une passe ultérieure (extracteur de références + registre
-        # d'alias) la résoudra en fusionnant ce nœud vers le vrai article — **sans
-        # re-ingérer quoi que ce soit**, puisque le texte est déjà là.
-        described = (
-            "MATCH (a {identifier: $source_identifier, owner_id: $owner_id})"
-            " MERGE (b:Unknown {identifier: $target_identifier, owner_id: $owner_id})"
-            " SET b.text = $target_text"
-            " MERGE (a)-[r:$($relation_type)]->(b)"
-            " SET r += $props SET r.run_id = $run_id, r.owner_id = $owner_id RETURN r"
-        )
-
+        # Il n'y a plus qu'un cas. Une cible DÉCRITE ne devient plus une arête vers un
+        # placeholder : elle est un champ du document qui l'énonce (`citations`), posé au
+        # `merge_document_node`. Toute relation qui arrive ici a donc une cible
+        # identifiée, et le seul motif légitime est le `MATCH`.
         async with self._driver.session() as session:
             for relation in relations:
-                target = relation.target_identifier
-                is_described = target.kind == "unknown"
-
                 result = await session.run(
-                    described if is_described else matched,
+                    matched,
                     source_identifier=relation.source_identifier.serialize(),
-                    target_identifier=target.serialize(),
-                    target_text=target.raw,
+                    target_identifier=relation.target_identifier.serialize(),
                     owner_id=relation.owner_id,
                     relation_type=relation.relation_type,
                     props=dict(relation.metadata),
@@ -246,9 +301,8 @@ class Neo4jGraphRepository:
         - aucune entrante → ``DETACH DELETE`` : le nœud n'existait que pour ce document ;
         - au moins une entrante → **dé-hydratation** : le nœud est cité, on ne le
           supprime pas. On lui retire ses labels métier et ses propriétés de document
-          pour le ramener au statut de cible décrite (``:Unknown``), celui-là même qu'une
-          citation non résolue produit. La citation entrante survit ; le contenu du
-          document raté, non.
+          pour le ramener au statut de cible ATTENDUE (``:Pending``). La référence
+          entrante survit ; le contenu du document raté, non.
 
         **Lire le nombre d'entrantes, puis brancher** — deux requêtes, pas une acrobatie
         Cypher mêlant ``DETACH DELETE`` et ``REMOVE`` sous condition dans la même passe
@@ -257,7 +311,7 @@ class Neo4jGraphRepository:
         l'invariant 2 du §11 (dispatch par clé) garantit qu'un seul worker touche ce nœud
         à la fois — personne n'ajoute d'entrante en parallèle sur cet identifiant.
 
-        La ré-hydratation d'un ``:Unknown`` vers un vrai document, quand le document
+        La ré-hydratation d'un ``:Pending`` vers un vrai document, quand le document
         revient, est déjà le comportement de ``merge_document_node`` (le ``MERGE`` sur
         ``identifier`` retombe sur le même nœud et réécrit ses props) : dé-hydrater n'est
         donc pas une impasse, c'est un retour à l'état « cible en attente ».
@@ -292,13 +346,12 @@ class Neo4jGraphRepository:
             # retire les labels connus par `REMOVE`. Neo4j ignore silencieusement le
             # retrait d'un label absent — la liste couvre donc tous les labels métier
             # sans avoir à savoir lequel ce nœud portait.
-            removable = ":".join(label for label in _KNOWN_LABELS if label != "Unknown")
+            removable = ":".join(_KNOWN_LABELS)
             await session.run(
                 "MATCH (n {identifier: $identifier, owner_id: $owner_id})"
                 f" REMOVE n:{removable}"
-                " SET n:Unknown"
-                " SET n.text = coalesce(n.title, n.identifier)"
-                " REMOVE n.title, n.source, n.schema_version",
+                f" SET n:{PENDING_LABEL}"
+                " REMOVE n.title, n.source, n.schema_version, n.citations",
                 identifier=identifier_value,
                 owner_id=owner_id,
             )

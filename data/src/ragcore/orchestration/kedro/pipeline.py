@@ -84,6 +84,9 @@ def create_ingestion_pipeline() -> Pipeline:
                     "pipeline_context",
                     "telemetry",
                     "pipeline_runtime",
+                    # Le curseur `exportation.unconfigured` (ingest|skip) : appliqué au
+                    # site de parse, juste avant que le document parte à l'ingestion.
+                    "params:exportation",
                 ],
                 outputs=["to_process", "to_skip"],
                 name="computeIdempotence",

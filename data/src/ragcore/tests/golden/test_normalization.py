@@ -23,8 +23,8 @@ from ragcore.core.services.exclusion_reasons import (
 from ragcore.core.services.unknown_categories import (
     CATEGORY_ROOT,
     CATEGORY_SENS,
-    CATEGORY_TAG,
     CATEGORY_TYPELIEN,
+    CATEGORY_UNCONFIGURED_TAG,
 )
 
 SOURCE_NAMES = {
@@ -51,7 +51,11 @@ EXCLUSION_REASONS = {
     # supposé du parser.
     "unreadable",
 }
-UNKNOWN_CATEGORIES = {"typelien", "sens", "balise", "racine"}
+# « balise » est devenu « tag.unconfigured » (ADR-022 §1, cadrage trois portes) : ce
+# n'est plus un inconnu dans la donnée, c'est le SIGNAL de la vigie de dérive DILA —
+# émis au site de parse, que la balise soit ingérée (metadata) ou retirée (skip).
+# Renommage SCIEMMENT acté ici : c'est tout l'objet du cliquet.
+UNKNOWN_CATEGORIES = {"typelien", "sens", "tag.unconfigured", "racine"}
 
 
 def test_identifiers_serialize_with_their_kind() -> None:
@@ -90,7 +94,12 @@ def test_unknown_categories_are_frozen() -> None:
     cliquet, chaque site d'émission inventerait sa chaîne et ``RunStats.unknowns``
     deviendrait illisible — des catégories jumelles qu'on ne saurait plus fusionner.
     """
-    declared = {CATEGORY_TYPELIEN, CATEGORY_SENS, CATEGORY_TAG, CATEGORY_ROOT}
+    declared = {
+        CATEGORY_TYPELIEN,
+        CATEGORY_SENS,
+        CATEGORY_UNCONFIGURED_TAG,
+        CATEGORY_ROOT,
+    }
     assert declared == UNKNOWN_CATEGORIES
 
 
@@ -116,6 +125,13 @@ def test_canonical_verbs_are_frozen() -> None:
         "creates",
         "contains",
         "references",
+        # L'axe temporel (18 juil. 2026) : les LIEN_ART sous <VERSIONS>, jadis jetés,
+        # deviennent des arêtes datées. Né `has_version` (produit cartésien : 2 760
+        # arêtes « dans tous les sens »), remplacé LE JOUR MÊME par la CHAÎNE
+        # `succeeded_by` — chaque version pointe sa suivante, dans le sens du temps.
+        # Renommage possible sans douleur car le verbe n'avait jamais atteint une base
+        # qu'on garde (nuke_all). Changement SCIEMMENT acté — c'est l'objet du cliquet.
+        "succeeded_by",
     }
 
 

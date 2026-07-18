@@ -66,15 +66,23 @@ def _run() -> dict:
             documents += 1
             files += len(raw.payload["files"])
 
-            parsed = parser.parse(raw)
+            result = parser.parse(raw)
+            parsed = result.document
             extracted = extractor.extract(parsed)
 
             relations.extend(extracted.relations)
             chunks += len(chunker.chunk(parsed))
 
-            for source in (parsed.unknowns, extracted.unknowns):
-                for category, values in source.items():
-                    unknowns[category].update(values)
+            # Côté parse, l'inconnu n'existe plus (cadrage B-00-d) : la balise
+            # non-configurée est ROUTÉE (metadata/lien) et SIGNALÉE. Le cliquet agrège
+            # le signal sous sa catégorie de bilan, `tag.unconfigured` — la même que
+            # celle que computeIdempotence déclare en télémétrie.
+            if result.unconfigured_tags:
+                unknowns["tag.unconfigured"].update(result.unconfigured_tags)
+            if result.unknown_roots:
+                unknowns["racine"].update(result.unknown_roots)
+            for category, values in extracted.unknowns.items():
+                unknowns[category].update(values)
 
         reduced = reduce_transitively(relations)
 
@@ -117,11 +125,19 @@ def test_la_chaine_complete_est_figee() -> None:
     # écart nommé — la fixture le contenait exprès, personne ne l'affirmait.
     assert result["skipped"] == {REASON_EXPORT_ARTIFACT: 1, REASON_UNREADABLE: 1}
 
-    assert result["before_reduction"] == 123
-    assert result["after_reduction"] == 116
+    # **Le cliquet a bougé, sciemment : 148 → 126 arêtes.** L'axe temporel est passé du
+    # produit cartésien (`has_version` : 25 arêtes, chaque document pointant TOUTES ses
+    # versions) à la CHAÎNE `succeeded_by` : chaque document n'émet que les maillons qui
+    # le touchent. L'article riche (25 versions, lui-même en 4e position) passe de 24
+    # arêtes à 2 (sa précédente → lui, lui → sa suivante) ; le doc à 2 versions en garde
+    # 1 ; le doc seul, 0. 2 + 1 + 0 = 3, l'équation est exacte. Même fait porté,
+    # 22 arêtes de bruit en moins.
+    assert result["before_reduction"] == 126
+    assert result["after_reduction"] == 119  # 116 + 3 : la réduction n'y touche pas
     assert dict(result["by_type"]) == {
         "contains": 66,
         "cites": 41,
+        "succeeded_by": 3,  # l'axe temporel : une CHAÎNE, plus un produit cartésien
         "references": 4,
         "modifies": 2,
         "abrogates": 1,
@@ -247,8 +263,10 @@ def test_les_inconnus_sont_DECLARES_et_pas_jetes() -> None:
     """
     result = _run()
 
+    # « balise » est devenu « tag.unconfigured » (cadrage B-00-d) : ZORG n'est plus un
+    # inconnu dans la donnée — sa valeur est en métadonnée, et LE SIGNAL le déclare.
     assert result["unknowns"] == {
         "typelien": ["ZORGLUB"],
         "sens": ["lateral"],
-        "balise": ["ZORG"],
+        "tag.unconfigured": ["ZORG"],
     }

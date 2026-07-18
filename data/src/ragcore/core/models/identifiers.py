@@ -152,56 +152,20 @@ class UploadId(BaseModel):
         return DocumentId(f"{self.kind}:{self.raw}")
 
 
-class UnknownRef(BaseModel):
-    """Une cible **décrite** mais pas identifiée. Le « node unknown » du cadrage.
-
-    **Ce qui l'a rendu nécessaire — une mesure, pas une prévision.** Les 68 ``<LIEN>`` du
-    corpus de jurisprudence ont **tous leurs attributs vides** : ni ``id``, ni ``cidtexte``,
-    ni ``nortexte``. Ce qu'ils portent, c'est du texte : « Articles 1103 et 1229 du code
-    civil ». La cour ne pointe pas vers un identifiant — elle *décrit* un article, en
-    français, comme le ferait un juriste.
-
-    Sans ce type, ``core/links`` traitait ces liens comme une **donnée absente** et n'en
-    faisait aucune arête : le graphe de jurisprudence aurait été vide, en silence. C'était
-    vrai pour LEGI (89 attributs vides sur 16 227 : des scories) et radicalement faux
-    pour la juri, où c'est le cas normal.
-
-    **Ce n'est pas un état spécial**, et c'est tout l'intérêt. Le principe directeur du
-    cadrage : *« Ce qui n'est pas encore résolu n'est pas un état spécial — c'est un node
-    unknown qui attend sa passe de résolution. »* La citation existe, elle est dans le
-    graphe, elle est visible, elle est interrogeable. Ce qui manque, c'est son *identité*
-    — et une passe de résolution ultérieure (extracteur de références + registre d'alias,
-    §1/§7) la lui donnera **sans re-ingérer quoi que ce soit** : le texte est déjà là.
-
-    ``raw`` est le libellé brut, littéral. On ne le parse pas ici — le parser d'une source
-    ne sait pas ce qu'est un code juridique, et prétendre le contraire remettrait de la
-    sémantique dans le connecteur.
-    """
-
-    model_config = ConfigDict(frozen=True)
-
-    kind: Literal["unknown"] = "unknown"
-    raw: str
-
-    def serialize(self) -> DocumentId:
-        return DocumentId(f"{self.kind}:{self.raw}")
-
-
 # Union discriminée — Pydantic route automatiquement via le champ 'kind'
 SourceIdentifier = Annotated[
-    ELI | JorfId | DecisionId | UploadId | UnknownRef,
+    ELI | JorfId | DecisionId | UploadId,
     Field(discriminator="kind"),
 ]
 
 _IDENTIFIER_KINDS: dict[
     str,
-    type[ELI] | type[JorfId] | type[DecisionId] | type[UploadId] | type[UnknownRef],
+    type[ELI] | type[JorfId] | type[DecisionId] | type[UploadId],
 ] = {
     "eli": ELI,
     "jorf": JorfId,
     "decision": DecisionId,
     "upload": UploadId,
-    "unknown": UnknownRef,
 }
 
 

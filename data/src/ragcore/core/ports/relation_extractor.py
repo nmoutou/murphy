@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
 from typing import Protocol, runtime_checkable
 
+from ..models.citation import Citation
 from ..models.document import ParsedDocument
 from ..models.relation import Relation
 
@@ -27,6 +28,13 @@ class ExtractionResult:
     """
 
     relations: list[Relation] = field(default_factory=list)
+
+    citations: list[Citation] = field(default_factory=list)
+    """Les cibles DÉCRITES (``@id`` vide) — un champ du document, jamais une arête.
+
+    Elles ne remontent pas vers la phase 2 comme les relations : elles redescendent sur
+    le ``ParsedDocument`` avant son écriture. Voir ``core.models.citation``.
+    """
 
     unknowns: dict[str, list[str]] = field(default_factory=dict)
     """Catégorie (cf. ``core.services.unknown_categories``) -> vocabulaire non traduit.

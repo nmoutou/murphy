@@ -20,15 +20,37 @@ from ragcore.core.models.manifest import ManifestEntry
 from ragcore.core.ports.manifest_repository import ManifestRepository
 from ragcore.core.ports.parser import BaseParser
 from ragcore.core.ports.runtime import AsyncRuntime
-from ragcore.core.ports.telemetry import TelemetryPort
+from ragcore.core.ports.telemetry import WorkerTelemetry
 from ragcore.core.services.exclusion_reasons import (
     REASON_PARSE_ERROR,
     REASON_VALIDATION_ERROR,
 )
 from ragcore.core.services.idempotence import determine_operation
+from ragcore.core.services.unknown_categories import (
+    CATEGORY_ROOT,
+    CATEGORY_UNCONFIGURED_TAG,
+)
 from ragcore.core.telemetry_events import DOCUMENT_INVALIDATED, DOCUMENT_PARSED
 
 logger = logging.getLogger(__name__)
+
+_UNCONFIGURED_BEHAVIORS = frozenset({"ingest", "skip"})
+
+
+def _resolve_unconfigured_behavior(exportation_params: dict[str, object]) -> str:
+    """Le curseur ``exportation.unconfigured`` — validé au démarrage, jamais deviné.
+
+    Une valeur inconnue (coquille ``skipp``) doit échouer EN NOMMANT les valeurs
+    valides, pas retomber en silence sur le défaut : un run qui n'applique pas le
+    comportement qu'on croit avoir demandé est un échec silencieux (même règle que
+    ``_resolve_sources`` dans les hooks).
+    """
+    value = str(exportation_params.get("unconfigured", "ingest")).strip().lower()
+    if value not in _UNCONFIGURED_BEHAVIORS:
+        valides = ", ".join(sorted(_UNCONFIGURED_BEHAVIORS))
+        msg = f"exportation.unconfigured invalide : {value!r}. Valeurs : {valides}."
+        raise ValueError(msg)
+    return value
 
 
 def compute_idempotence_node(  # noqa: PLR0913 — l'identité d'un nœud Kedro EST sa liste d'inputs ; les grouper les cacherait au DAG
@@ -36,14 +58,25 @@ def compute_idempotence_node(  # noqa: PLR0913 — l'identité d'un nœud Kedro 
     parser: BaseParser,
     manifest_repo: ManifestRepository,
     pipeline_context: PipelineContext,
-    telemetry: TelemetryPort,
+    # WorkerTelemetry, pas TelemetryPort : ce nœud DÉCLARE (`record_unknown`), il
+    # n'émet pas seulement. Le stack du hook (RegistryAwareTelemetry) le fournit.
+    telemetry: WorkerTelemetry,
     pipeline_runtime: AsyncRuntime,
+    exportation_params: dict[str, object],
 ) -> tuple[list[tuple[ParsedDocument, Operation]], list[str]]:
     """Parse documents and determine which need processing (INSERT vs UPDATE).
 
     Les documents rejetés (ValidationError) sont tracés dans le manifest avec
     l'opération EXCLUDED et un message de raison.
+
+    C'est aussi le SITE DE PARSE — donc le site du signal et du curseur (cadrage
+    B-00-d) : le parser est pur et rend ses constats dans ``ParseResult`` ; ce nœud,
+    qui tient la télémétrie, déclare les balises non-configurées (``tag.unconfigured``,
+    TOUJOURS), puis applique le curseur ``exportation.unconfigured`` — ``skip`` retire
+    les métadonnées non-configurées du document juste avant qu'il parte vers
+    l'ingestion. Compter d'abord, filtrer ensuite : le signal précède le filtre.
     """
+    skip_unconfigured = _resolve_unconfigured_behavior(exportation_params) == "skip"
     to_process: list[tuple[ParsedDocument, Operation]] = []
     to_skip: list[str] = []
 
@@ -56,7 +89,7 @@ def compute_idempotence_node(  # noqa: PLR0913 — l'identité d'un nœud Kedro 
 
     for raw in raw_documents:
         try:
-            parsed = parser.parse(raw)
+            result = parser.parse(raw)
         except ValidationError as exc:
             # Rejet de validation — tracer au manifest avec EXCLUDED
             logger.warning("Document invalidé %s — rejeté", raw.source_document_id)
@@ -126,6 +159,30 @@ def compute_idempotence_node(  # noqa: PLR0913 — l'identité d'un nœud Kedro 
             )
             to_skip.append(raw.source_document_id)
             continue
+
+        parsed = result.document
+
+        # Le SIGNAL — toujours, et AVANT le curseur : la vigie de dérive DILA compte
+        # chaque balise/racine non-configurée au bilan de run, que la donnée soit
+        # ensuite ingérée ou retirée. `skip` n'efface jamais le signal.
+        for tag in result.unconfigured_tags:
+            telemetry.record_unknown(CATEGORY_UNCONFIGURED_TAG, tag)
+        for root in result.unknown_roots:
+            telemetry.record_unknown(CATEGORY_ROOT, root)
+
+        # Le CURSEUR — `skip` retire les métadonnées non-configurées du document,
+        # juste avant l'ingestion. `ParsedDocument` est frozen : on reconstruit.
+        if skip_unconfigured and result.unconfigured_keys:
+            stripped = set(result.unconfigured_keys)
+            parsed = parsed.model_copy(
+                update={
+                    "metadata": {
+                        key: value
+                        for key, value in parsed.metadata.items()
+                        if key not in stripped
+                    }
+                }
+            )
 
         # Document valide — détermine l'opération (INSERT ou UPDATE)
         manifest_entry = pipeline_runtime.run(
