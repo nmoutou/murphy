@@ -19,7 +19,7 @@ commit and push **inside** the submodule, then commit the updated pointer here.
 - `frontend/` — **submodule** ([murphy-frontend](https://github.com/left-eyebr0w/murphy-frontend)). Next.js 16 (App Router) + React 19 + Tailwind v4 chat UI.
 - `data/` — **submodule** ([murphy-data](https://github.com/left-eyebr0w/murphy-data)). Python/Kedro **ingestion** project that populates the databases (XML → parse → chunk → embed → Mongo/Qdrant/Neo4j). Runs offline, separately from the serving stack.
 - `docker-compose.base.yml` + `.dev.yml` / `.prod.yml` — the serving stack at the repo root: backend, frontend, MongoDB, Qdrant, Neo4j, and a HuggingFace TEI embedding service (GPU). Build contexts are `./backend` and `./frontend`. The ingestion pipeline is **not** in compose.
-- `docs/` — design docs. **Treat as background, not ground truth** — several are stale (e.g. `docs/API.md` documents old SSE event names / routes that no longer exist). Verify against code.
+- `docs/` — **cross-cutting docs only**: `pilotage/` (PM² steering), `product/` (vision, versions, ADRs), and `technical/ARCHITECTURE.md` (the system-level view). **Detailed technical documentation lives in each submodule's `docs/` folder** (`backend/docs/`, `frontend/docs/`, `data/docs/` — each with `README.md` index+operations, `ARCHITECTURE.md`, and `reference/`).
 
 Ingestion and serving share databases but no code. The backend assumes the databases are already populated by the `data/` pipeline.
 
@@ -98,25 +98,24 @@ When changing the pipeline, change `createChatStream` once — all three paths i
 
 ## Ingestion pipeline (`data/`, Python/Kedro)
 
-A Kedro project that ingests LEGIFRANCE XML and writes chunks/embeddings into the same MongoDB / Qdrant / Neo4j the backend reads from. It runs **offline and out-of-band** — it is not part of the Docker serving stack and the backend never calls into it.
+A Kedro project that ingests the DILA XML corpora (LEGI + the 5 case-law bases: CAPP, CASS, INCA, JADE, CONSTIT) and writes documents/vectors/graph into the same MongoDB / Qdrant / Neo4j the backend reads from. It runs **offline and out-of-band** — not part of the Docker serving stack, and the backend never calls into it.
 
-**Key structural fact:** the actual pipeline logic, Kedro hooks, and pipeline registry live in an **external `ragcore` package, not in this repo.** `data/src/data/` is a thin Kedro project shell that delegates:
-- `pipeline_registry.py` → `ragcore.orchestration.kedro.pipeline_registry.register_pipelines`
-- `settings.py` registers `ragcore.orchestration.kedro.hooks.TelemetryHooks`
-- The `data/src/data/pipelines/embedding/` node is **archived/dead** — don't treat it as the live pipeline.
+**Full documentation: `data/docs/`** (architecture, node-by-node pipeline reference, data model, configuration, telemetry). Key structural facts:
 
-`ragcore` must be installed in the Python env for the project to run; you won't find its source here. The catalog (`conf/base/catalog.yml`) declares the runtime objects (connector, parser, chunker, embedder, repos, etc.) as `MemoryDataset`s that `TelemetryHooks.before_pipeline_run` injects.
+- All pipeline logic lives in the **`ragcore` package, vendored at `data/src/ragcore/`** (hexagonal: `core/` domain + ports, `adapters/`, `application/`, `sources/`, `orchestration/kedro/`). `data/src/data/` is a thin Kedro shell that delegates to it (`src/data/datasets|models|utils` are unused vestiges).
+- One pipeline (`__default__` = `ingestion`): cleanup → nukeAll → connect → computeIdempotence → ingest (4-worker pool, saga Mongo→Qdrant→Neo4j-node) → resolveRelations (graph edges, pending-relations cache) → report. Runtime objects are `MemoryDataset`s injected by `TelemetryHooks.before_pipeline_run`.
+- **Qdrant collection names are derived** (blake2b fingerprint of the workflow config: normalization + chunking + embedding), never hand-written. A run that ends `ok` publishes the pointer `MURPHY_META.meta_published_collection`, which the backend reads at boot (`backend/src/infra/collectionPointer.ts`).
+- `data/conf/base/parameters.yml` is the tuning surface (`chunk_size: 384` chars / `chunk_overlap: 25`, normalization `v1`, `all-mpnet-base-v2` 768-dim). Env config is the **root `.env.dev` only** (read by absolute path — there is no `.env` in `data/`). `ENVIRONMENT=dev` gates `nuke_all`, the embedding switch (ADR-023) and Neo4j node hydration (ADR-022); the default is `prod` = locked.
+- Run status (`ok`/`degraded`/`failed`) is derived from telemetry counters (completeness equation), not from exceptions. Only `ok` runs publish.
 
-`data/conf/base/parameters.yml` is the authoritative tuning surface, organized by phase: importation (ELI validation regex, title mappings), preparation (field mappings), formatting (spaCy `fr_core_news_sm` tokenizing, `chunk_size: 128` / `chunk_overlap: 25`, relation extraction), embedding (`all-mpnet-base-v2`, 768-dim), and exportation (Mongo `LEGIFRANCE.chunks`, Qdrant `chunks` Cosine/768, Neo4j; all with `force_drop: true`).
-
-Custom Kedro datasets in `data/src/data/datasets/` (`xml_source_dataset`, `mongodb_dataset`, `neo4j_dataset`, `qdrant_dataset`) handle source XML discovery and DB I/O. Tooling: `kedro run`, `kedro viz`; lint/format with `ruff`, test with `pytest` (config in `pyproject.toml`). Logging is `structlog`.
+Tooling: `kedro run` (`--params source=cass,jade` to restrict), `kedro viz`, `ruff`, `pytest` (unit+golden need no DBs; `-m integration` uses testcontainers), `mypy` strict on `src/ragcore`.
 
 ## Configuration
 
 Backend runtime config is environment-driven (see the `environment:` block in `docker-compose.base.yml` for the full list). Key vars: `MONGODB_URI/DATABASE/COLLECTION`, `QDRANT_URL/COLLECTION`, `EMBEDDING_SERVICE_URL/EMBEDDING_MODEL`, `LLM_API_ENDPOINT/API_KEY/MODEL/TEMPERATURE/MAX_TOKENS`, `RETRIEVAL_TOP_K`, `RETRIEVAL_MIN_SCORE`, `SYSTEM_PROMPT`, plus rate-limit and CORS settings. `backend/src/utils/configWarnings.ts:checkEnvironment()` runs at startup and warns about missing/suspect config — check it for the authoritative expected-var list.
 
-Backend Docker env comes from `.env.dev` at the repo root (gitignored). The ingestion project loads its own `.env` from `data/` (`settings.py` via `python-dotenv`).
+There is **one** env file for the whole system: `.env.dev` at the repo root (gitignored). Docker Compose feeds it to the serving stack, and the ingestion project reads the same file by absolute path (`ragcore/adapters/config/settings.py`) — a `.env` inside `data/` has no effect. One file so the TEI container and the pipeline can never disagree on the embedding model.
 
-The embedding model and dimensions must match between ingestion and serving: the pipeline embeds with `all-mpnet-base-v2` (768-dim, Cosine), so the TEI service and `RETRIEVAL_*` settings on the backend must align with vectors of the same model/dimensionality.
+The embedding model and dimensions must match between ingestion and serving: the pipeline embeds with `all-mpnet-base-v2` (768-dim, Cosine), so the TEI service and `RETRIEVAL_*` settings on the backend must align with vectors of the same model/dimensionality. `QDRANT_COLLECTION` is only a **fallback**: the backend resolves the collection from the pointer published by the last `ok` ingestion run (`MURPHY_META.meta_published_collection`) and refuses to boot if the resolved collection doesn't exist.
 
 Neo4j is provisioned in compose and written by the ingestion pipeline, but is not yet wired into the backend request path — it's reserved for future graph-based context enrichment.
