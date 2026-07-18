@@ -1,17 +1,30 @@
 {
-  "name": "murphy-infra",
+  "name": "murphy",
   "private": true,
-  "description": "Docker Compose serving stack for the Murphy RAG system (backend + frontend + datastores + embedding service).",
+  "description": "Parent repo for the Murphy RAG system: Docker Compose serving stack + backend/frontend/data submodules.",
+  "//": "Two profiles. `ingest` = the 3 databases + TEI, which is what data/ needs to run `kedro run`. `serve` = those plus backend + frontend. The databases carry no profile, so they start under either — declared once, shared by both. WARNING: `docker compose down` without a --profile flag does NOT stop profiled services; it reports success and leaves them running. That is why down/restart/logs/status name both profiles explicitly.",
   "scripts": {
-    "up": "docker compose -f docker-compose.base.yml -f docker-compose.dev.yml --env-file .env.dev up -d",
-    "start": "npm run up",
-    "build": "docker compose -f docker-compose.base.yml -f docker-compose.dev.yml --env-file .env.dev build",
-    "stop": "docker compose -f docker-compose.base.yml -f docker-compose.dev.yml -f docker-compose.prod.yml --env-file .env.dev down",
-    "down": "npm run stop",
-    "ps": "docker compose -f docker-compose.base.yml --env-file .env.dev ps",
-    "logs": "docker compose -f docker-compose.base.yml --env-file .env.dev logs",
-    "status": "docker compose -f docker-compose.base.yml -f docker-compose.dev.yml --env-file .env.dev ps --format \"table {{.Name}}\t\t{{.Status}}\"",
-    "restart": "docker compose -f docker-compose.base.yml -f docker-compose.dev.yml -f docker-compose.prod.yml --env-file .env.dev restart",
-    "watch": "docker compose -f docker-compose.base.yml -f docker-compose.dev.yml --env-file .env.dev up"
+    "compose": "docker compose -f docker-compose.base.yml -f docker-compose.dev.yml --env-file .env.dev",
+
+    "ingest:up": "npm run compose -- --profile ingest up -d",
+    "ingest:watch": "npm run compose -- --profile ingest up",
+    "ingest:down": "npm run compose -- --profile ingest down",
+    "ingest:logs": "npm run compose -- --profile ingest logs -f",
+    "ingest:status": "npm run compose -- --profile ingest ps --format \"table {{.Name}}\\t{{.Status}}\"",
+
+    "serve:up": "npm run compose -- --profile serve up -d",
+    "serve:watch": "npm run compose -- --profile serve up",
+    "serve:build": "npm run compose -- --profile serve build",
+    "serve:down": "npm run compose -- --profile serve down",
+    "serve:logs": "npm run compose -- --profile serve logs -f",
+
+    "up": "npm run serve:up",
+    "watch": "npm run serve:watch",
+    "build": "npm run serve:build",
+    "down": "npm run compose -- --profile ingest --profile serve down",
+    "restart": "npm run compose -- --profile ingest --profile serve restart",
+    "logs": "npm run compose -- --profile ingest --profile serve logs -f",
+    "status": "npm run compose -- --profile ingest --profile serve ps --format \"table {{.Name}}\\t{{.Status}}\"",
+    "config": "npm run compose -- --profile ingest config"
   }
 }

@@ -59,5 +59,5 @@ fail-fast, sans Temporal (orchestration retirée au profit d'un service RAG simp
 
 ## Suite
 
-Voir [ROADMAP.md](ROADMAP.md) pour les jalons et [BETA.md](BETA.md) pour le backlog beta
+Voir [ROADMAP.md](../product/ROADMAP.md) pour les jalons et [BETA.md](../product/BETA.md) pour le backlog beta
 détaillé (A/B testing prompt/retrieval, OAuth 2.0, métriques sans contenu, E2EE, tests).
