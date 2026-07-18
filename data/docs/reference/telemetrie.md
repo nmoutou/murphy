@@ -1,0 +1,123 @@
+# Télémétrie, bilan de run, tracking
+
+La doctrine tient en une phrase : **rien en silence**. Tout ce qui est vu est compté, tout
+ce qui échoue est compté, et le compteur qui compte est lui-même surveillé. Le statut d'un
+run se dérive des compteurs — jamais de l'absence d'exception.
+
+Code : `src/ragcore/core/telemetry_events.py` (le catalogue),
+`src/ragcore/adapters/telemetry/` (les backends), `src/ragcore/core/models/run_stats.py`
+et `run_summary.py` (l'agrégat et le bilan).
+
+## Le catalogue d'événements — source de vérité unique
+
+Chaque `event_type` déclare son comportement dans `EVENT_CATALOG` (`EventBehavior`) :
+niveau de log, et routage vers chacun des quatre backends. Le golden test
+`tests/golden/test_event_catalog.py` verrouille le catalogue : rien n'y entre ni n'en
+sort en silence.
+
+| Événement | Sens | JSONL | Mongo | Agrégat |
+|---|---|---|---|---|
+| `pipeline.run.started` / `.completed` / `.failed` | Cycle de vie du run | ✓ | ✓ | ✓ |
+| `document.fetched` | Documents vus par le connecteur (1 événement, `count` = lot). **Le dénominateur** de l'équation. | ✓ | — | ✓ |
+| `document.skipped` | Écartés par le connecteur (artefacts d'export, illisibles), par raison. **Hors équation** : un fichier écarté n'est pas un document vu. | ✓ | — | — |
+| `document.parsed` | Parse réussi (opération en payload) | ✓ | — | ✓ |
+| `document.invalidated` | Rejet au parse (validation ou lecture) → manifest EXCLUDED | ✓ | ✓ | ✓ |
+| `document.persisted` | Saga complète + manifest écrit | ✓ | ✓ | ✓ |
+| `document.failed` | **La fuite** : vu, jamais ingéré (saga échouée/compensée). `reason` = type d'exception. | ✓ | ✓ | ✓ |
+| `chunk.truncated` | Chunks raccourcis par l'embedder pour tenir dans la fenêtre du modèle (1 événement en fin de run, `count`). Pas une fuite — mais la fin de ces chunks n'est pas indexée : `chunk_size` à corriger. | ✓ | ✓ | ✓ |
+| `relation.upserted` | Arêtes **réussies** d'un batch (`count`) | ✓ | — | ✓ |
+| `relation.pending` | Cible absente → cache des pendantes | ✓ | ✓ | ✓ |
+| `relation.promoted` | Pendante d'un run passé enfin résolue | ✓ | — | ✓ |
+| `saga.compensation.triggered` / `.completed` / `.failed` | Rollback d'une saga (`.failed` = un écrit partiel subsiste ; `success` du `.completed` dit la vérité : une seule compensation ratée et le rollback n'est pas propre) | ✓ | ✓ | ✓ |
+| `audit.write.failed` | **La télémétrie qui se surveille** : une écriture d'audit perdue. Jamais vers Mongo (écrire en Mongo qu'on n'a pas su écrire en Mongo récurse) — le compteur vit dans l'agrégat mémoire. | ✓ | — | ✓ |
+| `maintenance.cleanup.executed` / `.nuke_all.executed` | Maintenance | ✓ | `nuke_all` seul | — |
+
+**Contrat de cardinalité** : la plupart des événements pèsent 1. Trois — et eux
+exactement (`COUNT_CARRYING_EVENTS`) — portent leur poids dans `payload["count"]` :
+`document.fetched`, `relation.upserted`, `chunk.truncated`. L'ensemble est nommé et
+verrouillé par golden : un émetteur qui prétend porter une cardinalité sans y figurer est
+un bug visible, pas une dérive muette.
+
+## Les backends
+
+Assemblés par le hook (`adapters/telemetry/factory.py:assemble_telemetry`), routés par le
+registre :
+
+1. **Console** (`console_log.py`) — lisibilité immédiate, selon `log`/`level`.
+2. **JSONL** (`jsonl_file.py`) — la trace complète :
+   `data/08_reporting/events/{iso}_{run_id}.jsonl`.
+3. **Audit Mongo** (`mongo_audit.py`) — `MURPHY_META.meta_audit_events`, rétention
+   infinie, écritures asynchrones **drainées** en fin de run (celles qui ont échoué
+   deviennent `audit.write.failed`).
+4. **Agrégateur** (`aggregator.py:RunStatsAggregator`) — les compteurs dont le bilan
+   sortira.
+
+**Un stack par worker.** Les workers de la phase 1 ne partagent pas la pile du hook :
+`WorkerTelemetryFactory` construit pour chacun ses backends sur sa boucle (un client
+Motor est lié à la boucle qui l'a touché en premier). Chaque worker tient son
+`RunStats` local.
+
+## `RunStats` — l'agrégat mergeable
+
+Un **monoïde de fusion** : élément neutre `empty()`, opérateur `merge` associatif **et
+commutatif** (les workers finissent dans un ordre non déterministe — une fusion non
+commutative ferait dépendre le bilan de l'ordonnancement). Trois champs :
+
+- `counts` : event_type → occurrences (fusion : somme) ;
+- `breakdowns` : event_type → {clé de payload → compte} (ventilation par `reason`,
+  `operation`, `step`… — ⚠️ dette ouverte : pas encore par **source**, un run
+  multi-sources rend un bilan agrégé où l'échec est anonyme quant à sa provenance) ;
+- `unknowns` : catégorie → vocabulaire que le run n'a pas su nommer (ensemble dédupliqué,
+  pas un compteur : « la balise foo est inconnue » est vraie une fois pour toutes).
+  Catégories : `balise` / `racine` (parse), `typelien` / `sens` / `identifiant`
+  (extraction). Vide = la table de rôles a tout couvert.
+
+**La remontée passe par le DAG, pas par le hook** : le node terminal `report` pousse
+`ingestion_outcome.stats` dans le hook (`absorb`) — Kedro libère un `MemoryDataset` dès
+son dernier lecteur, un `catalog.load()` d'après-run tomberait sur du vide. La phase 2
+n'est pas poussée (elle a tourné sur la télémétrie du hook, ses compteurs y sont déjà —
+les pousser les compterait deux fois).
+
+## Le statut d'un run
+
+`RunSummary` = l'identité du run (run_id, owner, source, dates) + l'agrégat + le
+`status`. Le statut annoncé « ok » par le hook est **re-dérivé des compteurs**
+(`_status_from`) — trois propriétés, vérifiées dans cet ordre :
+
+1. **Croyable ?** `audit.write.failed == 0`. Vérifiée en premier : si l'audit a perdu des
+   écritures, les autres compteurs ne prouvent plus rien (un audit troué ne dit pas qu'il
+   manque des documents — il dit qu'on ne peut plus savoir).
+2. **Complet ?** `fetched == persisted + invalidated + failed` — **l'équation de
+   complétude**. Si elle ne tombe pas juste (dans les deux sens : un excédent est un
+   double comptage), des documents ont disparu sans que rien ne les compte.
+3. **Sans perte ?** `failed == 0`. Un document échoué est déclaré et rejouable — mais pas
+   ingéré.
+
+| Statut | Sens |
+|---|---|
+| `ok` | Tout ce qui a été vu a été ingéré ou écarté sciemment. **Seul ce statut publie le pointeur de collection.** |
+| `degraded` | Le run est allé au bout mais ne peut pas se déclarer complet (une des trois propriétés a cassé). |
+| `failed` | Le pipeline a levé ; rien ne garantit l'état des stores. Si la casse précède le node `report`, le bilan est pauvre (les stats des workers ne remontent que par lui) — le statut reste vrai. |
+
+Le référentiel est `document.fetched`, jamais `document.parsed` (un invalidé n'est pas
+parsé — le prendre pour total exclurait du dénominateur ceux qu'il faut compter). Et le
+critère ne nomme aucune cause : l'ancienne version ne regardait que les compensations de
+saga et a laissé passer « ok » un run qui avait perdu 98 documents à l'embedding, avant
+toute saga. L'équation attrape toutes les causes, y compris celles qu'on n'a pas encore
+rencontrées.
+
+Persistance du bilan : JSON local (`data/08_reporting/stats/{iso}_{run_id}.json`) +
+upsert Mongo (`meta_run_summaries`, unique par run_id).
+
+## Le tracking d'expériences (MLflow)
+
+`TRACKING_PROVIDER` : `noop` (défaut — aucune dépendance) ou `mlflow` (extra `tracking`).
+Le run MLflow est ouvert en tête de run avec pour **run-id le nom de la collection
+Qdrant** — donc le fingerprint : les deux sortent du même calcul et ne peuvent pas
+diverger. Il porte la `WorkflowConfig` **en clair** (ce qui lève l'opacité du hash) et
+reçoit le bilan en fin de run. Fermé dans `after_pipeline_run` **et** `on_pipeline_error`
+(`end_run` en `finally`) : un run cassé ne laisse pas un run MLflow ouvert que le suivant
+polluerait.
+
+C'est l'outil de lecture de l'A/B : deux stratégies de chunking = deux collections = deux
+runs MLflow comparables, paramètres et compteurs en clair.
