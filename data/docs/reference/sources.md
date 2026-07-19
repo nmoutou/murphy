@@ -139,9 +139,9 @@ Ce qu'elle ne fait pas, délibérément : lemmatisation, mots vides, minuscules 
 normalise la *typographie*, jamais la *langue*.
 
 ⚠️ Elle **entre dans le hash** de la collection Qdrant :
-`formatting.normalization.version` (parameters.yml) doit rester synchronisé avec
-`NORMALIZATION_VERSION` dans le code. Changer le traitement sans changer la version
-mélangerait deux jeux de vecteurs incomparables dans la même collection.
+`workflow.normalization.version` (`conf/base/workflow/parameters.yml`) doit rester
+synchronisé avec `NORMALIZATION_VERSION` dans le code. Changer le traitement sans changer
+la version mélangerait deux jeux de vecteurs incomparables dans la même collection.
 
 ## Le chunking (`sources/generic/chunking.py` — `StructuralChunker`)
 
@@ -157,9 +157,9 @@ concurrentes : on ne coupe jamais à travers un bloc structurel, et on ne dépas
   jamais : deux blocs au texte identique reçoivent des offsets différents. Si l'invariant
   du parser est rompu (section non littérale), le bloc est ignoré plutôt que doté d'un
   offset faux.
-- Le calibrage vit dans `parameters.yml` — voir
-  [configuration.md](configuration.md#formatting--ce-qui-entre-dans-le-hash) pour le
-  raisonnement mesuré derrière `chunk_size: 384`.
+- Le calibrage vit dans `conf/base/workflow/parameters.yml` — voir
+  [configuration.md](configuration.md#workflow-confbaseworkflowparametersyml--ce-qui-entre-dans-le-hash)
+  pour le raisonnement mesuré derrière `chunk_size: 384`.
 
 ## Relations et citations (`core/links/`, `sources/generic/relations.py`)
 

@@ -18,7 +18,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-import yaml
+from kedro.config import OmegaConfigLoader
 
 from ragcore.adapters.config.settings import InfraSettings
 from ragcore.core.config import (
@@ -33,8 +33,19 @@ from ragcore.core.config import (
 from ragcore.orchestration.kedro.hooks import _build_workflow_config
 from ragcore.sources.generic import NORMALIZATION_VERSION
 
-_PARAMETERS_YML = Path(__file__).parents[3].parent / "conf" / "base" / "parameters.yml"
-"""Le VRAI fichier de production. Le lire est tout l'objet des deux derniers cliquets."""
+_CONF_SOURCE = Path(__file__).parents[3].parent / "conf"
+"""Le VRAI répertoire de config de production (partition ADR-026 : `base/workflow/`,
+`base/ingestion/`, `base/evaluation/`). Le charger via le VRAI loader Kedro — et non un
+``yaml.safe_load`` — est tout l'objet des deux derniers cliquets : c'est la fusion
+multi-fichiers réelle qui doit reproduire l'empreinte figée, pas une lecture ad hoc."""
+
+
+def _params_reels() -> dict:
+    """Charge `parameters` depuis `conf/` exactement comme Kedro le fait au runtime."""
+    loader = OmegaConfigLoader(
+        conf_source=str(_CONF_SOURCE), base_env="base", default_run_env="base"
+    )
+    return loader["parameters"]
 
 # La config du corpus LEGI telle que `parameters.yml` la peuple aujourd'hui. Elle sert
 # de référence : c'est SON empreinte qui nomme la collection en production.
@@ -280,10 +291,13 @@ def test_le_yaml_REEL_produit_bien_l_empreinte_figee() -> None:
     rien ne l'attrape, et le cliquet garderait fidèlement l'empreinte d'une config que
     **personne ne fait tourner**.
 
-    Ce test lit le vrai YAML, le passe par la vraie fonction du hook, et exige la même
-    empreinte. Il est la couture entre ce qui est figé et ce qui est exécuté.
+    Ce test charge la VRAIE config via le VRAI loader Kedro (fusion multi-fichiers de la
+    partition `workflow/ingestion/evaluation` — ADR-026), la passe par la vraie fonction
+    du hook, et exige la même empreinte. Il est la couture entre ce qui est figé et ce qui
+    est exécuté — et, depuis B-14, la preuve que la restructuration de `conf/` n'a pas
+    déplacé la collection.
     """
-    params = yaml.safe_load(_PARAMETERS_YML.read_text())
+    params = _params_reels()
     depuis_le_yaml = _build_workflow_config(params)
 
     assert depuis_le_yaml == _LEGI, (
@@ -305,8 +319,8 @@ def test_la_version_de_normalisation_du_CODE_est_celle_du_YAML() -> None:
     jeux incomparables dans un même index, et pas une ligne de log. C'est exactement le
     trou que §6 prétend fermer ; sans ce test, il reste ouvert par le bas.
     """
-    params = yaml.safe_load(_PARAMETERS_YML.read_text())
-    du_yaml = params["formatting"]["normalization"]["version"]
+    params = _params_reels()
+    du_yaml = params["workflow"]["normalization"]["version"]
 
     assert du_yaml == NORMALIZATION_VERSION, (
         f"Le code normalise en '{NORMALIZATION_VERSION}' mais le YAML déclare "

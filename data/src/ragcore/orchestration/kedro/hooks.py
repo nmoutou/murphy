@@ -794,10 +794,10 @@ def _build_workflow_config(params: dict[str, Any]) -> WorkflowConfig:
     hashée. Un défaut qui change en silence change le nom de la collection, donc écrit
     les vecteurs ailleurs — d'où le cliquet ``golden/test_fingerprint.py``.
     """
-    formatting = params.get("formatting", {})
-    chunking = formatting.get("chunking", {})
-    normalization = formatting.get("normalization", {})
-    embedding = params.get("embedding", {}).get("embedding", {})
+    workflow = params.get("workflow", {})
+    chunking = workflow.get("chunking", {})
+    normalization = workflow.get("normalization", {})
+    embedding = workflow.get("embedding", {})
 
     return WorkflowConfig(
         normalization=NormalizationConfig(
@@ -830,14 +830,15 @@ def _resolve_embedding_enabled(params: dict[str, Any], environment: str) -> bool
     la prod par simple oubli d'une variable. Un ``parameters.yml`` traîné de dev en prod
     avec ``enabled: false`` produirait sinon une collection vide sans que rien ne lève.
 
-    Le flag vit sous ``embedding`` (le même bloc que modèle et dimension) mais n'entre
-    PAS dans le ``WorkflowConfig`` ni dans le hash (§6) : ne pas produire de vecteurs
-    n'invalide aucun vecteur — ``_build_workflow_config`` l'ignore, et c'est voulu.
+    Le flag vit sous ``embedding_runtime`` (ADR-026 : séparé du bloc ``workflow.embedding``
+    qui porte modèle et dimension) et n'entre PAS dans le ``WorkflowConfig`` ni dans le
+    hash (§6) : ne pas produire de vecteurs n'invalide aucun vecteur —
+    ``_build_workflow_config`` l'ignore, et c'est voulu.
     """
     if environment != "dev":
         return True
-    embedding = params.get("embedding", {}).get("embedding", {})
-    return bool(embedding.get("enabled", True))
+    embedding_runtime = params.get("embedding_runtime", {})
+    return bool(embedding_runtime.get("enabled", True))
 
 
 def _resolve_node_hydration(params: dict[str, Any], environment: str) -> NodeHydration:

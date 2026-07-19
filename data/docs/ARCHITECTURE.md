@@ -12,7 +12,7 @@ les bases.
 
 ```
 data/
-├── conf/base/            # parameters.yml (tuning), catalog.yml (objets runtime)
+├── conf/base/            # workflow/ingestion/evaluation (partition ADR-026), catalog.yml (objets runtime)
 ├── src/data/             # le SHELL Kedro : délègue tout à ragcore
 │   ├── pipeline_registry.py   →  ragcore.orchestration.kedro.pipeline_registry
 │   └── settings.py            →  enregistre ragcore…hooks.TelemetryHooks + structlog

@@ -5,8 +5,19 @@ pipeline :
 
 | Surface | Fichier | Question qui décide |
 |---|---|---|
-| **Workflow** (`WorkflowConfig`) | `conf/base/parameters.yml` | « En changer la valeur invalide-t-il les vecteurs déjà produits ? » → oui |
+| **Workflow** (`WorkflowConfig`) | `conf/base/workflow/parameters.yml` | « En changer la valeur invalide-t-il les vecteurs déjà produits ? » → oui |
+| **Infra d'ingestion** | `conf/base/ingestion/parameters.yml` | → non (tokenizing, relations, timeout/batch/enabled, exportation, maintenance) |
+| **Runtime de récupération** (bloc R) | `conf/base/evaluation/parameters.yml` | → sans objet côté ingestion — consommé par P2 (placeholder, B-13) |
 | **Infra** (`InfraSettings`, `EmbeddingRuntimeSettings`) | `.env.dev` à la **racine du repo parent** | → non (le *où* et le *comment*, jamais le *quoi*) |
+
+Depuis **ADR-026** (B-14), cette frontière n'est plus qu'une convention de
+commentaires : c'est une partition **physique**, en trois fichiers sous
+`conf/base/`, fusionnés par le glob par défaut de Kedro (`parameters*`, qui
+descend récursivement) en un seul dict de `parameters` — sans aucune
+modification du loader (`CONFIG_LOADER_ARGS` dans `settings.py` est
+inchangé). Les dossiers vivent sous `base/` plutôt qu'en frères de `base/`
+(schéma initial de l'ADR) : Kedro ne charge que l'environnement `base_env`
+par défaut, un dossier frère ne serait simplement jamais lu.
 
 ## Le fingerprint — pourquoi la scission est structurelle
 
@@ -29,13 +40,28 @@ normalisés, ASCII), 32 caractères hexadécimaux. Conséquences :
   `WorkflowConfig` en clair, et son run-id EST le nom de collection), pas par un nom
   « parlant » qui redeviendrait fragile.
 
-`parameters.yml` ne fait que **peupler** la `WorkflowConfig`
-(`hooks.py:_build_workflow_config`, seule traduction du dépôt) ; l'objet est la vérité, le
-YAML une façon de le remplir. Illisible = run arrêté, jamais de défauts silencieux.
+Le YAML ne fait que **peupler** la `WorkflowConfig`
+(`hooks.py:_build_workflow_config`, seule traduction du dépôt, qui lit désormais la clé
+top-level `workflow:`) ; l'objet est la vérité, le YAML une façon de le remplir. Illisible
+= run arrêté, jamais de défauts silencieux.
 
 ## `parameters.yml`, champ par champ
 
-### `importation`
+### `workflow` (`conf/base/workflow/parameters.yml`) — ce qui entre dans le hash
+
+| Clé | Valeur | Effet |
+|---|---|---|
+| `normalization.version` | `v1` | **Hashée.** Doit rester synchronisée avec `NORMALIZATION_VERSION` (`sources/generic/normalize.py`) : changer le traitement sans changer la version mélangerait deux jeux de vecteurs incomparables dans la même collection. |
+| `chunking.strategy` | `legi-structural-v1` | **Hashée.** Nomme la méthode de découpe. |
+| `chunking.chunk_size` | `384` | **Hashée.** En **caractères** (la fenêtre du modèle est en tokens ; ratio mesuré : 3,08 car/token en moyenne, 0,33 au pire). 384 est le plus grand qui tienne : ≤ 300 tokens mesurés au tokenizer du modèle sur les six sources, **zéro document perdu** (512 en perdait 1, 1024 en perdait 98). C'est aussi le levier de coût : l'embedding est ~99,9 % du temps d'un run, et 128 → 384 l'a divisé par ~5 (838 s → 173 s). |
+| `chunking.chunk_overlap` | `25` | **Hashée.** Recouvrement de la fenêtre glissante (doit rester < chunk_size). |
+| `embedding.embedding_model` | `sentence-transformers/all-mpnet-base-v2` | **Hashée.** Doit être le modèle que sert le conteneur TEI — vérifié au démarrage (`GET /info`). |
+| `embedding.dimension` | `768` | **Hashée.** Taille des vecteurs (et de la collection Qdrant). |
+
+Ce fichier ne contient **que** du hashé (règle invariante ADR-026) : aucune
+URI, secret, chemin ou paramètre d'infra n'y a sa place.
+
+### `importation` (`conf/base/ingestion/parameters.yml`)
 
 | Clé | Valeur | Effet |
 |---|---|---|
@@ -44,25 +70,19 @@ YAML une façon de le remplir. Illisible = run arrêté, jamais de défauts sile
 | `validation.validation_rules.format_regex` | `^[A-Z]{8}[0-9]{12}$` | Le motif d'un identifiant DILA — le même que `ELI_PATTERN` dans le code et que le déclencheur lien de la cascade. |
 | `normalization.title_mapping` | mappings par racine | D'où vient le `title` de chaque type de document. |
 
-### `formatting` — ce qui entre dans le hash
+### `formatting` — infra uniquement (le hashé a migré vers `workflow`)
 
 | Clé | Valeur | Effet |
 |---|---|---|
 | `tokenizing.*` | spaCy `fr_core_news_sm` | Vestige : spaCy a quitté le chemin critique (plus de lemmatisation). |
-| `normalization.version` | `v1` | **Hashée.** Doit rester synchronisée avec `NORMALIZATION_VERSION` (`sources/generic/normalize.py`) : changer le traitement sans changer la version mélangerait deux jeux de vecteurs incomparables dans la même collection. |
-| `chunking.strategy` | `legi-structural-v1` | **Hashée.** Nomme la méthode de découpe. |
-| `chunking.chunk_size` | `384` | **Hashée.** En **caractères** (la fenêtre du modèle est en tokens ; ratio mesuré : 3,08 car/token en moyenne, 0,33 au pire). 384 est le plus grand qui tienne : ≤ 300 tokens mesurés au tokenizer du modèle sur les six sources, **zéro document perdu** (512 en perdait 1, 1024 en perdait 98). C'est aussi le levier de coût : l'embedding est ~99,9 % du temps d'un run, et 128 → 384 l'a divisé par ~5 (838 s → 173 s). |
-| `chunking.chunk_overlap` | `25` | **Hashée.** Recouvrement de la fenêtre glissante (doit rester < chunk_size). |
 | `relations.filtering` / `invert` / `mappings` / `reduction` | — | La table de traitement des liens : types inversés (`txt_source`, `lien_art`, `lien_section_ta`), mapping des `typelien` vers les verbes (`titre`, `source`…), réduction transitive activée sur `titre` (la contenance). |
 
-### `embedding`
+### `embedding_runtime` — l'infra extraite du bloc embedding
 
 | Clé | Valeur | Effet |
 |---|---|---|
-| `embedding.embedding_model` | `sentence-transformers/all-mpnet-base-v2` | **Hashée.** Doit être le modèle que sert le conteneur TEI — vérifié au démarrage (`GET /info`). |
-| `embedding.dimension` | `768` | **Hashée.** Taille des vecteurs (et de la collection Qdrant). |
-| `embedding.embedding_service_timeout` / `batch_size` | `30` / `32` | Transport — non hashés (le batch effectif du provider `openai` vient de `EMBEDDING_BATCH_SIZE` côté env). |
-| `embedding.enabled` | `true` | **L'interrupteur d'embedding (ADR-023).** `false` = aucun vecteur calculé ni écrit (Qdrant vide, Mongo/Neo4j normaux) — le régime d'itération dev sur le modèle de données. **Sans effet hors `ENVIRONMENT=dev`** (garde dans le hook). Pas hashé : ne pas produire de vecteurs n'invalide aucun vecteur. Distinct de `EMBEDDING_PROVIDER=noop`, qui calcule et ÉCRIT des vecteurs nuls. |
+| `embedding_service_timeout` / `batch_size` | `30` / `32` | Transport — non hashés (le batch effectif du provider `openai` vient de `EMBEDDING_BATCH_SIZE` côté env). |
+| `enabled` | `true` | **L'interrupteur d'embedding (ADR-023).** `false` = aucun vecteur calculé ni écrit (Qdrant vide, Mongo/Neo4j normaux) — le régime d'itération dev sur le modèle de données. **Sans effet hors `ENVIRONMENT=dev`** (garde dans le hook). Pas hashé : ne pas produire de vecteurs n'invalide aucun vecteur. Distinct de `EMBEDDING_PROVIDER=noop`, qui calcule et ÉCRIT des vecteurs nuls. |
 
 ### `exportation`
 
