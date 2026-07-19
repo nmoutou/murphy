@@ -61,6 +61,18 @@ def test_chunk_id_a_blanc_de_bord_signale() -> None:
     assert [v.invariant for v in check_run(run)] == ["well_formed_id"]
 
 
+def test_chunk_id_avec_deux_doc_id_signale() -> None:
+    """Même chunk rattaché à deux documents : agrégation chunk→document faussée."""
+    run = Run(entries=(_entry("q1", "c1", "eli:D1", 1), _entry("q1", "c1", "eli:D2", 2)))
+    assert "consistent_chunk_doc" in {v.invariant for v in check_run(run)}
+
+
+def test_chunk_id_meme_doc_id_a_travers_requetes_ne_signale_rien() -> None:
+    """Le contrôle est intra-requête : le même (chunk, doc) sur q1 et q2 est sain."""
+    run = Run(entries=(_entry("q1", "c1", "eli:D1", 1), _entry("q2", "c1", "eli:D1", 1)))
+    assert check_run(run) == []
+
+
 def test_les_violations_sont_collectees_pas_arretees_a_la_premiere() -> None:
     """Deux requêtes fautives -> deux violations, une suite dit tout d'un coup."""
     run = Run(
@@ -99,6 +111,13 @@ def test_qrels_chunk_juge_deux_fois_signale() -> None:
 def test_qrels_doc_id_vide_signale() -> None:
     qrels = Qrels(
         judgments=(Judgment(query_id="q1", doc_id="", chunk_id="c1", grade=3),)
+    )
+    assert [v.invariant for v in check_qrels(qrels)] == ["well_formed_id"]
+
+
+def test_qrels_chunk_id_a_blanc_de_bord_signale() -> None:
+    qrels = Qrels(
+        judgments=(Judgment(query_id="q1", doc_id="eli:D1", chunk_id=" c1 ", grade=3),)
     )
     assert [v.invariant for v in check_qrels(qrels)] == ["well_formed_id"]
 

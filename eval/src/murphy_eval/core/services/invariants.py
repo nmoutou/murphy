@@ -69,6 +69,11 @@ def check_run(run: Run) -> list[Violation]:
     - ``ranks_contiguous`` : les rangs d'une requête forment ``1..n`` sans trou.
     - ``ranks_unique`` : aucun rang dupliqué dans une requête.
     - ``no_duplicate_chunk`` : pas de doublon ``(query_id, chunk_id)``.
+    - ``consistent_chunk_doc`` : un ``chunk_id`` porte le *même* ``doc_id`` sur
+      toute la requête. Un chunk rattaché à deux documents fausse en silence
+      l'agrégation chunk→document (ADR-006). Contrôle propre au run : côté qrels,
+      ``no_duplicate_chunk`` interdit déjà tout ``(query_id, chunk_id)`` répété,
+      donc l'ambiguïté ne peut y naître.
     - ``well_formed_id`` : ``chunk_id`` et ``doc_id`` non vides, sans blanc de
       bord (forme canonique stricte non exigée — cf. docstring du module).
     """
@@ -102,6 +107,19 @@ def check_run(run: Run) -> list[Violation]:
                     invariant="no_duplicate_chunk",
                     query_id=query_id,
                     detail=f"chunk_id dupliqué(s) dans la requête : {dup_chunks}",
+                )
+            )
+
+        chunk_to_docs: dict[str, set[str]] = {}
+        for entry in entries:
+            chunk_to_docs.setdefault(entry.chunk_id, set()).add(entry.doc_id)
+        ambiguous = sorted(c for c, docs in chunk_to_docs.items() if len(docs) > 1)
+        if ambiguous:
+            violations.append(
+                Violation(
+                    invariant="consistent_chunk_doc",
+                    query_id=query_id,
+                    detail=f"chunk_id rattaché à plusieurs doc_id : {ambiguous}",
                 )
             )
 
