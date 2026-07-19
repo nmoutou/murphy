@@ -14,13 +14,11 @@ Durée cible : 30–45 minutes. Checklist :
    supprimer ce qui n'est plus vrai.
 2. **Décisions → ADR** — toute décision prise depuis la dernière revue
    (y compris en session de travail avec un assistant) est consignée
-   dans `decisions/` ; l'INDEX est mis à jour.
-3. **Points ouverts** — relire la liste des points ouverts de
-   `decisions/INDEX.md` : lesquels sont devenus tranchables ?
-4. **Backlog repriorisé** — réordonner le backlog courant au regard des
+   dans `ADR/` 
+3. **Backlog repriorisé** — réordonner le backlog courant au regard des
    critères de sortie de la version en cours (`VERSIONS.md`), rien
    d'autre.
-5. **Log de revue** — 10 lignes max, en tête de `PILOTAGE_log.md` :
+4. **Log de revue** — 10 lignes max, en tête de `PILOTAGE_log.md` :
    date, fait / décidé / bloqué / prochain pas.
 
 ## 2. Règles de gestion du backlog

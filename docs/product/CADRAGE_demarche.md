@@ -3,7 +3,7 @@
 > Document de méthode. Décrit **le travail de cadrage à mener**, son ordre de
 > dépendance, et ce qui relève de l'arbitrage vs de la rédaction.
 > Il ne contient pas les décisions elles-mêmes : celles-ci vivent dans
-> `VISION.md`, `PROGRAM.md`, `VERSIONS.md` et le registre `decisions/`.
+> `VISION.md`, `PROGRAM.md`, `VERSIONS.md` et le registre `ADR/`.
 >
 > **État au 18 juillet 2026 : chantiers 1–7 clos. Seul le chantier 8
 > reste ouvert** (arbitrages ADR-INST-01/02/03 + livrables 2–4).
@@ -46,7 +46,7 @@ jurisprudentiel v0, séquençage DILA, unité document, échelle de pertinence,
 agrégation, métriques nDCG@R, formats qrels/runs, types d'action, deux modes
 de P3). *Arbitrage.*
 
-### 5. Consolider le registre de décisions → `decisions/` — ✅ clos
+### 5. Consolider le registre de décisions → `ADR/` — ✅ clos
 ADR-001 à 010 rédigés + ADR-011 à 020 **rétro-documentés** (cadrage en
 programme, versions par capacités, alpha en deux phases, exhaustivité =
 publication, association, découplage, strates, ECLI, rejet d'Akoma Ntoso,

@@ -23,8 +23,10 @@
 | B-08 | Produire le golden-set v1 synthétique + guide d'annotation + stratification 4 types d'action | E-P2-06, E-P2-07 | P2 | ⬜ |
 | B-09 | Construire ≥ 1 set diagnostique graph-hop | E-P2-08 | P2 | ⬜ |
 | B-10 | Implémenter le test statistique apparié | E-P2-09 | P2 | ⬜ |
-| B-11 | Produire la baseline chiffrée reproductible (double run, artefacts versionnés) | E-P2-10, E-T-02 | P2 | ⬜ |
+| B-11 | Produire la baseline chiffrée reproductible (double run **(W, R)**, artefacts versionnés) | E-P2-10, E-T-02 | P2 | ⬜ |
 | B-12 | Mini-ADR de clôture v0 (constat sur preuves) | §5 `EXIGENCES_v0.md` | — | ⬜ |
+| B-13 | Orchestrateur d'ingestion + sweep `W×R` (sous-processus `kedro run --params W`, séquentiel, `nuke` entre `W`, reprise sur incident) — plateforme end-to-end (ADR-027) | E-P2-10 (étendue) | P2 | ⬜ |
+| B-14 | Restructurer `conf/` en partition `workflow / ingestion / evaluation` (ADR-026), fingerprint inchangé (test de non-régression) | E-P2-10 (prérequis couplage) | P1 | ⬜ |
 
 ## 2. Notes d'ordonnancement
 
@@ -45,6 +47,15 @@
   dépendance aux bases, testable contre des valeurs de référence.
 - B-08 (golden-set) suppose B-01 : pas de gel d'un golden-set sur des
   identités non vérifiées.
+- **B-14 (P1) est prérequis de B-13 (P2)** : le couplage
+  config↔fingerprint (ADR-027) suppose la partition `workflow/`
+  explicite (ADR-026). B-14 touche l'ingestion, se fait dans `data/`,
+  avec test de non-régression du fingerprint (une même config doit
+  produire la même empreinte avant/après).
+- **B-13 dépend de B-05** (l'adapter doit savoir consommer une
+  collection avant qu'on orchestre la production de collections). Il
+  étend E-P2-10 : la reproductibilité inclut désormais le chemin
+  d'ingestion `W`, pas seulement le runtime `R`.
 
 ## 3. Plan par dépendances
 
@@ -64,16 +75,19 @@ flowchart TD
     B04[B-04 scorer + agrégation] --> B10[B-10 test apparié]
     B04 --> B11[B-11 baseline reproductible]
     B05 --> B06[B-06 invariants strate 1]
-    B05 --> B11
+    B05 --> B13[B-13 orchestrateur + sweep W×R]
+    B14[B-14 restructu. conf/ ADR-026] --> B13
     B07 --> B11
     B08 --> B11
     B09 --> B11
     B10 --> B11
+    B13 --> B11
     B11 --> B12[B-12 clôture v0]
 ```
 
-Chemin critique probable : **B-00 → B-01 → B-08 → B-11 → B-12** (le
-golden-set et la baseline concentrent les dépendances).
+Chemin critique probable : **B-00 → B-01 → B-08 → B-13 → B-11 → B-12**
+(le golden-set et la baseline concentrent les dépendances ; B-13 y
+insère l'orchestrateur end-to-end, lui-même précédé de B-14 côté P1).
 
 ## 4. Idées non engageantes (hors backlog)
 

@@ -40,7 +40,7 @@ non jurisprudentielles, LLM générateur branché à l'évaluation.
 | E-P2-07 | Le golden-set doit être stratifié selon les 4 types d'action | Champ type d'action présent sur 100 % des requêtes ; les 4 strates non vides | ADR-009 | ⬜ |
 | E-P2-08 | Au moins un set diagnostique **graph-hop** doit exister | Set versionné ; requêtes nécessitant ≥ 1 traversée de citation documentées comme telles | ADR-017 | ⬜ |
 | E-P2-09 | La comparaison de deux configurations doit passer par un test statistique apparié | Test implémenté ; sortie : différence, p-value, intervalle ; démonstration sur deux runs | ADR-007 | ⬜ |
-| E-P2-10 | La baseline doit être **chiffrée et reproductible** : deux exécutions à configuration identique produisent les mêmes métriques | Double run archivé, diff des métriques nul ; versions de modèles et paramètres figés dans le run | `CADRAGE_evaluation` DoD | ⬜ |
+| E-P2-10 | La baseline doit être **chiffrée et reproductible** : deux exécutions au couple de configurations **`(W, R)` identique** — `W` = workflow d'ingestion (normalisation/chunking/embedding), `R` = runtime de récupération — produisent les mêmes métriques. Le **fingerprint de `W`** est tracé dans l'artefact de run et vérifié contre le pointeur de collection publié | Double run archivé, diff des métriques nul ; fingerprint de `W` consigné et concordant | `CADRAGE_evaluation` DoD, ADR-026, ADR-027 | ⬜ |
 
 ## 4. Exigences transverses
 

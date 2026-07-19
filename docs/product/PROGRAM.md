@@ -3,7 +3,7 @@
 > Document de référence du programme. Remplace `ROADMAP.md` (archivé).
 > Matérialise les arbitrages structurants : découpage en projets et
 > interfaces. Les versions vivent dans `VERSIONS.md`, les décisions dans
-> `decisions/`, le rituel de suivi dans `PILOTAGE.md`.
+> `ADR/`, le rituel de suivi dans `PILOTAGE.md`.
 >
 > **Convention de lecture** : ✅ = tranché (ADR référencé) ·
 > 🔶 = proposition à valider · ⬜ = ouvert. Aucune date : les versions
@@ -32,7 +32,7 @@ flowchart TB
     P1 -- "IDs canoniques,<br/>payloads, graphe citations" --> P2
     P1 -- "bases pré-peuplées,<br/>contrat de sources" --> P3
     P2 -- "contrat d'adapter,<br/>format qrels/runs" --> P3
-    P3 -- "requêtes réelles,<br/>annotations" --> P2
+    P3 -- "requêtes réelles, annotations,<br/>signaux comportementaux (panel)" --> P2
 ```
 
 ### 2.1 Les projets
@@ -41,7 +41,7 @@ flowchart TB
 |--------|------|---------------|
 | **P1 — Data** | Ingestion de chaque base DILA, modèle de données tri-base (MongoDB / Neo4j / Qdrant — ADR-020), identité canonique stable inter-BDD (ADR-018) | Actif — LEGI fait, 5 bases jurisprudence ingérées (ADR-002) |
 | **P2 — Évaluation** | Harnais IR agnostique (récupération seule — ADR-016), golden-sets stratifiés (ADR-017), outil d'annotation | Cadré (`CADRAGE_evaluation` + ADR-004 à 009), non implémenté |
-| **P3 — Applicatif** | Service web : moteur de recherche sourcé + modes annotation (ADR-010) | MVP RAG existant, en pause, à réveiller pour l'alpha |
+| **P3 — Applicatif** | Service web : moteur de recherche sourcé + modes annotation (ADR-010) ; déployé en beta dans deux environnements public/panel d'un même artefact (ADR-025) | MVP RAG existant, en pause, à réveiller pour l'alpha |
 
 
 > **Double nature de P2** : c'est à la fois un **outil interne** (mesurer
@@ -56,7 +56,7 @@ flowchart TB
 | P1 → P2 | `chunk_id` / `doc_id` canoniques et déterministes ; payloads Qdrant ; contenu MongoDB ; **graphe de citations Neo4j** (source des qrels citation-minées) |
 | P1 → P3 | Bases pré-peuplées ; contrat de source (`chunkId`, `title`, `type`, `score`, + `excerpt`, `eli` requis alpha) |
 | P2 → P3 | Contrat d'adapter unique : `requête → liste ordonnée d'IDs (+ scores)` (ADR-016) ; formats `qrels` / `runs` (ADR-008) |
-| P3 → P2 | Requêtes réelles + annotations produites par les experts (boucle alpha, ADR-010) |
+| P3 → P2 | Requêtes réelles + annotations produites par les experts (boucle alpha, ADR-010) ; à partir de la beta, signaux comportementaux de l'environnement panel — opt-in, comparaisons relatives uniquement (ADR-025) |
 
 
 > **Invariant bloquant** (ADR-018) : un même chunk/document porte le
@@ -117,6 +117,7 @@ d'annotations jetables. Détail dans `CADRAGE_evaluation`.
 | **2. Qrels citation-minées** | Vérité terrain objective : les citations réelles (magistrats) définissent des pertinences vérifiables | Aucune (garde-fou circularité §3.3) | Permanente |
 | **3. Métriques appariées relatives** | Divergence entre configs (RBO / Jaccard@k, stabilité sous paraphrase) — détecte régressions, cible le pooling | Aucune | Par construction |
 | **4. Qrels humaines** | Synthétiques solo (v0) → expertes poolées (alpha) | Forte | Partielle : le synthétique est **relégué** (`origin: synthetic`), pas jeté |
+| **5. Signaux online panel** (beta — ADR-025) | Comportemental : CTR, dwell time, abandon, reformulation, interleaving — environnement panel opt-in uniquement | Aucune (télémétrie consentie) | Liée au panel ; **comparaisons relatives uniquement** |
 
 **Conséquence** : la baseline v0 s'appuie sur les strates 1–3 +
 citations minées + un petit set synthétique. Seule la dernière tranche
@@ -129,8 +130,10 @@ survivent.
 
 Les décisions ouvertes bloquantes du cadrage ont toutes été tranchées le
 17 juillet 2026 (chantier 4) et sont consignées dans le registre
-**`decisions/`** : ADR-001 à 010 (arbitrages) et ADR-011 à 020
-(rétro-documentation des décisions implicites). Voir
-`decisions/INDEX.md`, y compris la liste des **points ouverts
-rattachés** (clôture vague 2, `doc_id` article LEGI, ADR institutionnels
-du chantier 8).
+**`ADR/`** : ADR-001 à 010 (arbitrages), ADR-011 à 020
+(rétro-documentation des décisions implicites), puis ADR-021 à 025 au
+fil de l'exécution. La décision ouverte « architecture deux modes de
+P3 » est close par **ADR-025** (environnements public/panel d'un même
+artefact). Voir `ADR/INDEX.md`, y compris la liste des **points
+ouverts rattachés** (clôture vague 2, `doc_id` article LEGI, ADR
+institutionnels du chantier 8).

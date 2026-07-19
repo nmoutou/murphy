@@ -85,10 +85,28 @@ Inventaire des actifs et régime par actif :
 ### 3.1 RGPD
 - Contraintes déjà actées (héritées de `archive/BETA.md`) : E2EE des
   conversations, aucune analyse de contenu, métriques sans texte utilisateur. ✅
+- Invariant reformulé (ADR-025) : par défaut, **aucune donnée comportementale
+  n'est collectée** ; toute collecte comportementale vit dans l'environnement
+  **panel**, sous opt-in explicite, à finalité d'évaluation documentée et
+  publiée. L'environnement public reste vierge de toute collecte. ✅
 - ⬜ Registre des traitements.
-- ⬜ AIPD (données sensibles saisies par les usagers → probablement requise).
+- ⬜ AIPD (données sensibles saisies par les usagers ; **quasi certaine** pour
+  l'environnement panel — ADR-025). Critère d'entrée beta.
 - ⬜ Statut des données de jurisprudence (pseudonymisation amont DILA : vérifier
   le périmètre résiduel de responsabilité).
+
+#### 3.1.1 Environnement panel consenti (ADR-025)
+- Base légale : **consentement** (RGPD art. 6), finalité limitée à
+  l'évaluation des configurations de récupération.
+- ⬜ Gestion du consentement : recueil (opt-in explicite des beta-testeurs),
+  retrait, durée de rétention des données collectées.
+- ⬜ Transparence : **publication de la liste des données collectées** et de
+  la finalité (télémétrie d'évaluation documentée).
+- Garde-fou d'exposition : **aucun chiffre absolu issu du panel** n'est
+  communiqué, en interne comme aux financeurs — verdicts relatifs uniquement.
+- Argument institutionnel : un panel d'évaluation consenti et documenté
+  (analogue panel Médiamétrie) est un gage de sérieux pour un commun
+  numérique devant DINUM/ANCT.
 
 ### 3.2 RGAA (accessibilité)
 - Exigée pour un service à vocation nationale et par la plupart des financeurs
@@ -126,9 +144,9 @@ aux financeurs.)*
 | De → Vers | Contrat |
 |-----------|---------|
 | INSTITUTIONNEL → `VERSIONS.md` | Exigences RGPD/RGAA/RGESN et KPIs = critères d'entrée beta / publication |
-| INSTITUTIONNEL → `decisions/` | ADR-INST-01/02/03 versés au registre |
+| INSTITUTIONNEL → `ADR/` | ADR-INST-01/02/03 versés au registre |
 | P2 → INSTITUTIONNEL | Métriques IR alimentant les KPIs niveau produit (agrégées, jamais exposées brutes) |
-| P3 → INSTITUTIONNEL | Métriques d'usage sans contenu → KPIs service et impact |
+| P3 → INSTITUTIONNEL | Métriques d'usage sans contenu → KPIs service et impact (jamais de chiffre absolu issu du panel — ADR-025) |
 | `PROGRAM.md` §3 → ici | Référence au jalon « association » |
 
 ---
@@ -149,5 +167,5 @@ aux financeurs.)*
 - [ ] Cadre de KPIs à quatre niveaux rédigé (§4.3).
 - [ ] Mapping conformité → critères d'entrée rédigé (§3.4).
 - [ ] C4 niveau 1 produit (§4.2).
-- [ ] ADR-INST-01/02/03 tranchés et versés dans `decisions/`.
+- [ ] ADR-INST-01/02/03 tranchés et versés dans `ADR/`.
 - [x] `PROGRAM.md` référence ce document (fait lors du chantier 7).

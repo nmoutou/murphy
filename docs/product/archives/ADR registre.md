@@ -1,4 +1,4 @@
-# Registre de décisions — `decisions/`
+# Registre de décisions — `ADR/`
  
 ## Index
  

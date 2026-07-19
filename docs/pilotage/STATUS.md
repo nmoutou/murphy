@@ -1,6 +1,6 @@
 # STATUS — État du programme par projet
 
-Dernière mise à jour : 18 juillet 2026 (clôture B-00). Structure alignée
+Dernière mise à jour : 19 juillet 2026 (ADR-025). Structure alignée
 sur `PROGRAM.md` §2 (chantier 7). Version en cours : **v0** (voir
 `VERSIONS.md`).
 
@@ -34,7 +34,7 @@ sur `PROGRAM.md` §2 (chantier 7). Version en cours : **v0** (voir
 | Neo4j (enrichissement graphe) | 🟡 Provisionné, non câblé |
 | Composant de jugement + mode annotation inline (ADR-010) | ❌ Alpha ph.1 |
 | Mode campagne poolée (ADR-010) | ❌ Alpha ph.2 |
-| A/B, OAuth 2.0, métriques sans contenu | ❌ Beta |
+| Environnements public/panel (télémétrie opt-in, interleaving — ADR-025), OAuth 2.0, métriques sans contenu | ❌ Beta |
 
 Limites assumées du MVP : stateless (pas d'historique serveur),
 fail-fast (pas de retry/fallback LLM), pas d'authentification, GPU

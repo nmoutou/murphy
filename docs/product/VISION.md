@@ -3,7 +3,7 @@
 > Socle du programme. Fixe la **mission** et les **invariants non négociables** :
 > ce qui ne se rediscute pas d'une version à l'autre et contraint tous les
 > arbitrages en aval. Court par nature. Les décisions datées et révisables
-> vivent dans `PROGRAM.md` et `decisions/`.
+> vivent dans `PROGRAM.md` et `ADR/`.
 
 ## 1. Mission
 

@@ -3,7 +3,7 @@
 > Document de méthode. Décrit **le travail de cadrage à mener**, son ordre de
 > dépendance, et ce qui relève de l'arbitrage vs de la rédaction.
 > Il ne contient pas les décisions elles-mêmes : celles-ci vivent dans
-> `VISION.md`, `PROGRAM.md` et le registre `decisions/`.
+> `VISION.md`, `PROGRAM.md` et le registre `ADR/`.
  
 ## Positionnement
  
@@ -45,7 +45,7 @@ pertinence, règle d'agrégation chunk→document, valeurs de k, formats
 qrels/runs) + les décisions programme (séquence DILA, périmètre P4). Chacune
 devient un ADR. *Cœur — arbitrage.*
  
-### 5. Consolider le registre de décisions → `decisions/`
+### 5. Consolider le registre de décisions → `ADR/`
 Rétro-documenter les ADR **implicites** déjà pris : ECLI comme identifiant
 primaire, rejet d'Akoma Ntoso, stateless, fail-fast, pertinence graduée,
 option C (alpha en deux phases), stratification de l'évaluation… Format

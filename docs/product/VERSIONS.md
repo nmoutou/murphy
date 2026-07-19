@@ -51,11 +51,18 @@ d'annotation poolées sur les requêtes réelles de la ph.1.
 
 **Objectif** : valider la valeur et l'UX auprès de vrais utilisateurs.
 Reprend l'esprit de `archive/BETA.md` (**gelé** — à réécrire à la
-lumière des retours alpha) : A/B aveugle prompt/retrieval, feedback
-utile/pas utile, métriques sans contenu, OAuth 2.0, streaming.
-Périmètre données : extension à la **vague 2** DILA (ADR-003).
-Critères d'entrée à compléter par les exigences de conformité du
-chantier 8 (`INSTITUTIONNEL.md` §3).
+lumière des retours alpha) : feedback utile/pas utile, métriques sans
+contenu, OAuth 2.0, streaming. L'ADR-025 fixe le cadre de collecte :
+deux environnements d'un même artefact (**public** sans aucune
+collecte, **panel** opt-in avec télémétrie d'évaluation) et
+**interleaving privilégié sur l'A/B** classique (différé à un volume
+suffisant). Périmètre données : extension à la **vague 2** DILA
+(ADR-003).
+
+**Critères d'entrée** (à compléter par les exigences de conformité du
+chantier 8, `INSTITUTIONNEL.md` §3) : environnements public/panel
+opérationnels — même artefact, télémétrie par flag, contrat vérifiable
+par test/CI — et **AIPD réalisée** (ADR-025).
 
 ## Création de l'association ✅ (jalon organisationnel — ADR-015)
 

@@ -178,7 +178,7 @@ l'infrastructure et l'essentiel des signaux survivent.
 ## 6. Décisions ouvertes bloquantes
  
 À trancher avant/pendant l'implémentation ; chacune deviendra un ADR
-(`decisions/`).
+(`ADR/`).
  
 - ⬜ **Statut de P4** (ontologie) : hors programme avec interfaces déclarées, ou
   intégré.
@@ -193,7 +193,7 @@ l'infrastructure et l'essentiel des signaux survivent.
  
 ## 7. Décisions déjà actées (extrait)
  
-À consolider dans `decisions/` (chantier 5) :
+À consolider dans `ADR/` (chantier 5) :
  
 - ✅ Périmètre : cadrage de **l'écosystème complet** (programme à 3 projets + P4).
 - ✅ Versions définies par **capacités mesurables**, sans dates.

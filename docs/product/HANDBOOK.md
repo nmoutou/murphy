@@ -34,7 +34,7 @@ les **méthodes agiles comme mode d'exécution** :
 | Project Handbook | présent document | ✅ |
 | Project Work Plan | `BACKLOG.md` (items + dépendances) | ✅ |
 | Requirements / spécifications | `EXIGENCES_v0.md` (une par version) | ✅ |
-| Decision Log | registre `decisions/` (ADRs Nygard) | ✅ |
+| Decision Log | registre `ADR/` (ADRs Nygard) | ✅ |
 | Risk Log | `RISQUES.md` | ✅ |
 | Issue Log | fusionné dans `BACKLOG.md` (un problème = un item) | écarté comme doc séparé |
 | Change Log | non tenu — tout changement notable passe par ADR | écarté |
@@ -89,6 +89,16 @@ sont un cadre à audience externe, sans recouvrement avec ces deux
 mesures internes. Les métriques IR (nDCG@R, etc.) mesurent le
 *système*, pas le *programme* — elles restent dans P2.
 
+**Invariant transverse sur les métriques** (reformulé par ADR-025) :
+
+> Par défaut, aucune donnée comportementale n'est collectée. Toute
+> collecte comportementale vit dans l'environnement panel, sous opt-in
+> explicite, à finalité d'évaluation documentée et publiée.
+
+Les signaux comportementaux (CTR, dwell time, interleaving…)
+n'existent donc que côté panel (beta — ADR-025), en comparaisons
+relatives uniquement ; aucun chiffre absolu du panel n'est exposé.
+
 ## 6. Cycle de travail
 
 ```mermaid
@@ -96,7 +106,7 @@ flowchart LR
     B[BACKLOG.md<br/>ordonné par exigences] -->|tirage, WIP ≤ 2| S[Session de travail]
     S -->|preuve versionnée| D[DoD §4]
     D -->|item ✅| ST[STATUS.md]
-    S -->|décision| A[ADR → decisions/]
+    S -->|décision| A[ADR → ADR/]
     R[Revue bimensuelle<br/>PILOTAGE.md §1] -->|repriorise| B
     R -->|relit| RQ[RISQUES.md]
     ST --> R

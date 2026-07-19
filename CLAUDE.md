@@ -18,7 +18,7 @@ commit and push **inside** the submodule, then commit the updated pointer here.
 - `backend/` — **submodule** ([murphy-backend](https://github.com/left-eyebr0w/murphy-backend)). Express + TypeScript API (the RAG **serving** orchestrator). The bulk of the runtime request logic.
 - `frontend/` — **submodule** ([murphy-frontend](https://github.com/left-eyebr0w/murphy-frontend)). Next.js 16 (App Router) + React 19 + Tailwind v4 chat UI.
 - `data/` — **submodule** ([murphy-data](https://github.com/left-eyebr0w/murphy-data)). Python/Kedro **ingestion** project that populates the databases (XML → parse → chunk → embed → Mongo/Qdrant/Neo4j). Runs offline, separately from the serving stack.
-- `docker-compose.base.yml` + `.dev.yml` / `.prod.yml` — the serving stack at the repo root: backend, frontend, MongoDB, Qdrant, Neo4j, and a HuggingFace TEI embedding service (GPU). Build contexts are `./backend` and `./frontend`. The ingestion pipeline is **not** in compose.
+- `docker-compose.base.yml` + `.dev.yml` / `.prod.yml` — the stack at the repo root: backend, frontend, MongoDB, Qdrant, Neo4j, and a HuggingFace TEI embedding service (GPU). Build contexts are `./backend` and `./frontend`. Two Compose **profiles** share the same DB/embedding services: `ingest` (just the databases + TEI, for running `data/`'s `kedro run` against them) and `serve` (adds backend + frontend). The `data/` pipeline code itself still runs outside Docker, invoked manually.
 - `docs/` — **cross-cutting docs only**: `pilotage/` (PM² steering), `product/` (vision, versions, ADRs), and `technical/ARCHITECTURE.md` (the system-level view). **Detailed technical documentation lives in each submodule's `docs/` folder** (`backend/docs/`, `frontend/docs/`, `data/docs/` — each with `README.md` index+operations, `ARCHITECTURE.md`, and `reference/`).
 
 Ingestion and serving share databases but no code. The backend assumes the databases are already populated by the `data/` pipeline.
@@ -28,13 +28,26 @@ Ingestion and serving share databases but no code. The backend assumes the datab
 The root `package.json` scripts wrap Docker Compose (all require an `.env.dev` file at the repo root, which is gitignored — create it before running):
 
 ```bash
-npm run up        # build+start dev stack detached (base + dev overrides)
-npm run watch     # same, but foreground (streams logs)
-npm run logs      # tail logs
-npm run status    # container status table
-npm run down      # stop everything (incl. prod override)
-npm run build     # docker compose build
+npm run serve:up     # build+start backend+frontend+DBs+TEI, detached
+npm run serve:watch  # same, foreground (streams logs)
+npm run serve:build  # docker compose build
+npm run serve:down   # stop the serve profile only
+npm run up            # alias for serve:up
+npm run watch          # alias for serve:watch
+npm run build          # alias for serve:build
+
+npm run ingest:up     # start just DBs+TEI (detached), for running data/'s kedro pipeline against them
+npm run ingest:watch  # same, foreground
+npm run ingest:down   # stop the ingest profile only
+npm run ingest:logs / ingest:status
+
+npm run down     # stops BOTH profiles — needed because `docker compose down` without --profile silently leaves profiled services running (reports success either way)
+npm run restart  # restarts both profiles
+npm run logs     # tails both profiles
+npm run status   # container status table, both profiles
 ```
+
+`qdrant`/`mongo` have no profile (always up under either); `backend`/`frontend` are `serve`-only; `embedding-service` is in both profiles (needed by the ingestion pipeline for embedding *and* by the backend at request time). Because of the silent-leak behavior of unprofiled `down`, always use the npm scripts above rather than raw `docker compose down`.
 
 Dev ports: frontend `3000`, backend `5000`, Qdrant `6333`, Mongo `27017`, Neo4j `7474`/`7687`, embedding service `5001→80`. Dev mode mounts source into the containers with hot-reload (`ts-node` watch for backend, `next dev` for frontend).
 
