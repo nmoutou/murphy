@@ -20,22 +20,50 @@ from pathlib import Path
 
 from murphy_eval.core.models.judgment import Judgment, Qrels
 from murphy_eval.core.models.run import Run, RunEntry
+from murphy_eval.core.services.invariants import (
+    InvariantError,
+    check_qrels,
+    check_run,
+)
 
 
-def load_jsonl_qrels(path: Path) -> Qrels:
-    """Charge le fichier qrels canonique (ADR-008), un ``Judgment`` par ligne."""
+def load_jsonl_qrels(path: Path, *, validate: bool = False) -> Qrels:
+    """Charge le fichier qrels canonique (ADR-008), un ``Judgment`` par ligne.
+
+    ``validate=True`` applique les invariants structurels de strate 1
+    (``core/services/invariants.check_qrels``) après le parse pydantic
+    ligne-à-ligne, et lève ``InvariantError`` si l'un est enfreint. Défaut
+    ``False`` : rétro-compatibilité des appels B-04/B-05 qui chargent des
+    artefacts déjà réputés sains.
+    """
     judgments = tuple(
         Judgment.model_validate(json.loads(line)) for line in _non_empty_lines(path)
     )
-    return Qrels(judgments=judgments)
+    qrels = Qrels(judgments=judgments)
+    if validate:
+        violations = check_qrels(qrels)
+        if violations:
+            raise InvariantError(violations)
+    return qrels
 
 
-def load_jsonl_run(path: Path) -> Run:
-    """Charge un run canonique JSONL, portant directement ``doc_id`` par chunk."""
+def load_jsonl_run(path: Path, *, validate: bool = False) -> Run:
+    """Charge un run canonique JSONL, portant directement ``doc_id`` par chunk.
+
+    ``validate=True`` applique les invariants structurels de strate 1
+    (``core/services/invariants.check_run``) après le parse pydantic, et lève
+    ``InvariantError`` si l'un est enfreint. Défaut ``False`` : les appels
+    existants (round-trip B-05, tests) chargent sans coût supplémentaire.
+    """
     entries = tuple(
         RunEntry.model_validate(json.loads(line)) for line in _non_empty_lines(path)
     )
-    return Run(entries=entries)
+    run = Run(entries=entries)
+    if validate:
+        violations = check_run(run)
+        if violations:
+            raise InvariantError(violations)
+    return run
 
 
 def dump_jsonl_run(run: Run, path: Path) -> None:

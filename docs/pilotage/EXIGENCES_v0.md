@@ -41,13 +41,22 @@ non jurisprudentielles, LLM générateur branché à l'évaluation.
 | E-P2-01 | Un adapter baseline doit interroger la configuration de récupération courante et produire des runs au format arrêté | Run produit de bout en bout sur le golden-set v1, conforme au schéma ADR-008 | ADR-008, ADR-016 | auto | ⬜ |
 | E-P2-02 | Le scorer doit calculer **nDCG@R** (métrique primaire) et les diagnostics MAP, R-Precision, Recall@2R, Doc-MRR, Doc-Recall@R | Tests unitaires du scorer contre valeurs de référence calculées indépendamment (cas jouets vérifiables à la main) | ADR-007 | auto | ✅ |
 | E-P2-03 | L'agrégation chunk→document doit suivre la règle arrêtée, appliquée identiquement au scoring et aux runs | Test unitaire d'agrégation ; aucune métrique calculée au niveau chunk | ADR-006 | auto | ✅ |
-| E-P2-04 | Les invariants structurels (strate 1) doivent être vérifiables sans annotation | Suite de tests strate 1 exécutable en CI, verte sur la baseline | ADR-017 | auto | ⬜ |
+| E-P2-04 | Les invariants structurels (strate 1) doivent être vérifiables sans annotation | Suite de tests strate 1 exécutable en CI, verte sur la baseline | ADR-017 | auto | ✅ |
 | E-P2-05 | Des qrels citation-minées (strate 2) doivent être générées depuis le graphe de citations | Fichier qrels versionné, format ADR-008, volumétrie et méthode documentées ; hypothèse *citation ≈ pertinence* assumée, non testée mécaniquement (ADR-028) | ADR-017 | assisté | ⬜ |
 | E-P2-06 | Un golden-set v1 synthétique solo doit être figé et versionné, avec guide d'annotation et échelle de grades 0–3 | Fichier golden-set + guide versionnés, hash de gel consigné ; **pertinence et grades validés par le porteur** (ADR-028) | ADR-005, ADR-017 | humain | ⬜ |
 | E-P2-07 | Le golden-set doit être stratifié selon les 4 types d'action | Champ type d'action présent sur 100 % des requêtes ; les 4 strates non vides ; **typage jugé par le porteur** (ADR-028) | ADR-009 | humain | ⬜ |
 | E-P2-08 | Au moins un set diagnostique **graph-hop** doit exister | Set versionné ; requêtes nécessitant ≥ 1 traversée de citation documentées comme telles ; **nécessité du hop jugée par le porteur** (ADR-028) | ADR-017 | humain | ⬜ |
 | E-P2-09 | La comparaison de deux configurations doit passer par un test statistique apparié | Test implémenté ; sortie : différence, p-value, intervalle ; démonstration sur deux runs | ADR-007 | auto | ⬜ |
 | E-P2-10 | La baseline doit être **chiffrée et reproductible** : deux exécutions au couple de configurations **`(W, R)` identique** — `W` = workflow d'ingestion (normalisation/chunking/embedding), `R` = runtime de récupération — produisent les mêmes métriques. Le **fingerprint de `W`** est tracé dans l'artefact de run et vérifié contre le pointeur de collection publié | Double run archivé, diff des métriques nul ; fingerprint de `W` consigné et concordant. Reproductibilité seule — **la justesse du chiffre est hors périmètre v0** (ADR-028) | `CADRAGE_evaluation` DoD, ADR-026, ADR-027 | auto | ⬜ |
+
+> **Note E-P2-04 (portée strate 1, B-06)** : la suite implémentée couvre les
+> invariants *purs* (structure des runs/qrels : rangs contigus/uniques, pas de
+> doublon, ids non vides, espaces de nommage run↔qrels compatibles), verte en
+> CI sans base de données. Les invariants *live* d'ADR-017 (complétude et
+> intégrité des liens Neo4j, qui exigent les BDD peuplées) sont **déjà
+> acquis** côté data : complétude par l'équation de complétude des runs
+> d'ingestion (B-00), identité/liens par B-01/B-03. E-P2-04 est donc ✅ sans
+> les re-tester dans le harnais — décision de cadrage, non un trou.
 
 ## 4. Exigences transverses
 

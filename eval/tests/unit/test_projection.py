@@ -6,6 +6,7 @@ import pytest
 from pydantic import ValidationError
 
 from murphy_eval.adapters.trec.projection import (
+    dump_jsonl_run,
     load_jsonl_qrels,
     load_jsonl_run,
     load_trec_qrels,
@@ -13,6 +14,9 @@ from murphy_eval.adapters.trec.projection import (
 )
 from murphy_eval.core.models.judgment import Judgment, Qrels
 from murphy_eval.core.models.run import Run, RunEntry
+from murphy_eval.core.services.invariants import InvariantError
+
+DATA = Path(__file__).parent.parent / "data"
 
 
 def test_load_jsonl_qrels(tmp_path: Path) -> None:
@@ -50,6 +54,60 @@ def test_load_jsonl_run(tmp_path: Path) -> None:
             RunEntry(query_id="q1", chunk_id="c1", doc_id="D1", rank=1, score=0.9),
         )
     )
+
+
+def test_load_jsonl_run_validate_passe_sur_un_run_sain() -> None:
+    run = load_jsonl_run(DATA / "sane.run.jsonl", validate=True)
+    assert len(run.entries) == 3
+
+
+def test_load_jsonl_qrels_validate_passe_sur_des_qrels_sains() -> None:
+    qrels = load_jsonl_qrels(DATA / "sane.qrels.jsonl", validate=True)
+    assert len(qrels.judgments) == 2
+
+
+def test_load_jsonl_run_validate_leve_sur_rangs_troues() -> None:
+    with pytest.raises(InvariantError):
+        load_jsonl_run(DATA / "gap_ranks.run.jsonl", validate=True)
+
+
+def test_load_jsonl_run_validate_leve_sur_rangs_dupliques() -> None:
+    with pytest.raises(InvariantError):
+        load_jsonl_run(DATA / "dup_ranks.run.jsonl", validate=True)
+
+
+def test_load_jsonl_run_validate_leve_sur_chunk_duplique() -> None:
+    with pytest.raises(InvariantError):
+        load_jsonl_run(DATA / "dup_chunk.run.jsonl", validate=True)
+
+
+def test_load_jsonl_run_validate_leve_sur_doc_id_vide() -> None:
+    with pytest.raises(InvariantError):
+        load_jsonl_run(DATA / "blank_docid.run.jsonl", validate=True)
+
+
+def test_load_jsonl_run_sans_validate_charge_meme_un_run_fautif() -> None:
+    """Défaut inchangé : rétro-compat des appels B-04/B-05."""
+    run = load_jsonl_run(DATA / "gap_ranks.run.jsonl")
+    assert [e.rank for e in run.entries] == [1, 3]
+
+
+def test_load_jsonl_qrels_validate_leve_sur_chunk_double() -> None:
+    with pytest.raises(InvariantError):
+        load_jsonl_qrels(DATA / "dup_chunk.qrels.jsonl", validate=True)
+
+
+def test_round_trip_b05_reste_valide(tmp_path: Path) -> None:
+    """dump_jsonl_run -> load_jsonl_run(validate=True) sans violation (couture B-05)."""
+    run = Run(
+        entries=(
+            RunEntry(query_id="q1", chunk_id="c1", doc_id="eli:D1", rank=1, score=0.9),
+            RunEntry(query_id="q1", chunk_id="c2", doc_id="eli:D2", rank=2, score=0.8),
+        )
+    )
+    path = tmp_path / "run.jsonl"
+    dump_jsonl_run(run, path)
+    assert load_jsonl_run(path, validate=True).entries == run.entries
 
 
 def test_load_trec_qrels(tmp_path: Path) -> None:

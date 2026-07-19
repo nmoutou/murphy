@@ -14,6 +14,15 @@ Périmètre actuel :
   payload Qdrant (clé `identifier`), sans résolution externe. Le nom de
   collection provient du pointeur `MURPHY_META` publié par la dernière
   ingestion `ok`.
+- **B-06** — les invariants structurels de strate 1 (ADR-017), part **pure**
+  (aucune base de données). `core/services/invariants.py` collecte les
+  `Violation` d'un run/qrels : rangs contigus et uniques par requête, pas de
+  doublon `(query_id, chunk_id)`, `doc_id`/`chunk_id` non vides, et espaces de
+  nommage `doc_id` compatibles entre run et qrels (garde-fou contre des
+  métriques à 0 muettes). Branchés en option sur les loaders JSONL
+  (`load_jsonl_run(..., validate=True)` → lève `InvariantError`). La complétude
+  et l'intégrité des liens (strate 1 *live*, sur BDD peuplées) restent hors v0
+  par décision de cadrage — déjà couvertes côté `data/`.
 
 Voir `docs/product/ADR/ADR-027-plateforme-evaluation-end-to-end.md` (repo
 parent) pour la place de ce projet dans la plateforme P2 complète.

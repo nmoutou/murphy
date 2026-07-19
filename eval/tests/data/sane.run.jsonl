@@ -1,0 +1,3 @@
+{"query_id":"q1","chunk_id":"c1","doc_id":"eli:D1","rank":1,"score":0.9}
+{"query_id":"q1","chunk_id":"c2","doc_id":"eli:D2","rank":2,"score":0.8}
+{"query_id":"q2","chunk_id":"c3","doc_id":"decision:D3","rank":1,"score":0.7}

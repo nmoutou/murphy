@@ -1,6 +1,6 @@
 # STATUS — État du programme par projet
 
-Dernière mise à jour : 19 juillet 2026 (B-04). Structure alignée
+Dernière mise à jour : 19 juillet 2026 (B-06). Structure alignée
 sur `PROGRAM.md` §2 (chantier 7). Version en cours : **v0** (voir
 `VERSIONS.md`).
 
@@ -23,6 +23,7 @@ sur `PROGRAM.md` §2 (chantier 7). Version en cours : **v0** (voir
 | Cadrage (`CADRAGE_evaluation` + ADR-004 à 009) | ✅ Fait |
 | Scorer nDCG@R + diagnostics + agrégation chunk→document (ADR-006/007) | ✅ Fait (B-04) — nouveau projet `eval/`, oracle *auto pur* (cas jouets à la main, ADR-028), cross-check `pytrec_eval` secondaire |
 | Adapter baseline (runs au format ADR-008) | ✅ Fait (B-05) — `BaselineRetriever` Qdrant dense dans `eval/`, `doc_id` lu du payload `identifier` (ADR-018), runs JSONL immuables ; unit + integration testcontainers Qdrant |
+| Invariants structurels strate 1 (ADR-017) | ✅ Fait (B-06) — part *pure* dans `eval/` (`core/services/invariants.py`), aucune BDD : rangs contigus/uniques, pas de doublon, ids non vides, namespaces run↔qrels ; loaders JSONL validants (`InvariantError`). Strate 1 *live* (complétude/liens) hors v0, déjà acquise côté data |
 | Test statistique apparié (ADR-007) | ❌ À implémenter (B-10) |
 | Qrels citation-minées (strate 2) | ❌ À implémenter |
 | Golden-set v1 synthétique + guide d'annotation (ADR-005) | ❌ À produire |

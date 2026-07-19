@@ -18,7 +18,7 @@
 | B-03 | Modéliser complètement le graphe de citations Neo4j (relations typées) | E-P1-04 | P1 | ✅ |
 | B-04 | Implémenter le scorer nDCG@R + diagnostics + règle d'agrégation chunk→document | E-P2-02, E-P2-03 | P2 | ✅ |
 | B-05 | Implémenter l'adapter baseline (runs au format ADR-008) | E-P2-01, E-T-01 | P2 | ✅ |
-| B-06 | Implémenter la suite d'invariants structurels (strate 1) | E-P2-04 | P2 | ⬜ |
+| B-06 | Implémenter la suite d'invariants structurels (strate 1) | E-P2-04 | P2 | ✅ |
 | B-07 | Générer les qrels citation-minées (strate 2) depuis le graphe | E-P2-05 | P2 | ⬜ |
 | B-08 | Produire le golden-set v1 synthétique + guide d'annotation + stratification 4 types d'action | E-P2-06, E-P2-07 | P2 | ⬜ |
 | B-09 | Construire ≥ 1 set diagnostique graph-hop | E-P2-08 | P2 | ⬜ |
@@ -68,6 +68,17 @@
   B-13). Suite : 75 tests unit/golden verts + 1 test `integration`
   (testcontainers Qdrant, hors CI), mypy strict et ruff propres. **B-06 et B-13
   deviennent tirables** côté prérequis B-05.
+- **B-06 est ✅** : suite d'invariants structurels de strate 1 (ADR-017),
+  part **pure** — `eval/src/murphy_eval/core/services/invariants.py`, aucune
+  base de données. Collecte les `Violation` d'un run/qrels (rangs contigus +
+  uniques, pas de doublon `(query_id, chunk_id)`, ids non vides, espaces de
+  nommage `doc_id` run↔qrels compatibles) et les branche en option sur les
+  loaders JSONL (`validate=True` → `InvariantError`). Suite `unit` verte en
+  CI (94 tests), mypy strict et ruff propres — satisfait E-P2-04. **Décision
+  de périmètre** : complétude et intégrité des liens Neo4j (strate 1 *live*,
+  sur BDD peuplées) restent hors v0, déjà couvertes côté `data/` (B-00/B-01/
+  B-03) ; les re-faire ici serait un doublon. Ce que B-06 régularise : la
+  preuve mécanique versionnée que les artefacts sont structurellement sains.
 - B-08 (golden-set) est désormais tirable : B-01 et B-02 sont acquis.
 - **B-14 est ✅** : `conf/` restructuré en `base/{workflow,ingestion,evaluation}/`
   (sous-dossiers de `base/`, seul env lu par défaut par Kedro — écart
@@ -97,7 +108,7 @@ flowchart TD
     B03 --> B09[B-09 set graph-hop]
     B04[B-04 scorer + agrégation ✅] --> B10[B-10 test apparié]
     B04 --> B11[B-11 baseline reproductible]
-    B05 --> B06[B-06 invariants strate 1]
+    B05 --> B06[B-06 invariants strate 1 ✅]
     B05 --> B13[B-13 orchestrateur + sweep W×R]
     B14[B-14 restructu. conf/ ADR-026 ✅] --> B13
     B07 --> B11
