@@ -1,6 +1,6 @@
 # STATUS — État du programme par projet
 
-Dernière mise à jour : 19 juillet 2026 (ADR-025). Structure alignée
+Dernière mise à jour : 19 juillet 2026 (ADR-026, B-14). Structure alignée
 sur `PROGRAM.md` §2 (chantier 7). Version en cours : **v0** (voir
 `VERSIONS.md`).
 
@@ -11,9 +11,10 @@ sur `PROGRAM.md` §2 (chantier 7). Version en cours : **v0** (voir
 | Pipeline LEGI | ✅ Fait, stable |
 | Ingestion des 5 bases jurisprudence (CASS, INCA, CAPP, JADE, CONSTIT — ADR-002) | ✅ Fait (vague 1) |
 | Régimes d'ingestion dev/prod — trois portes (content/metadata/liens), clés chemin-complet, épuration Mongo (`SCHEMA_VERSION` 2), hydratation Neo4j, interrupteur d'embedding (ADR-022, amendé ADR-023/024) | ✅ Fait (B-00) — prouvé par deux runs réels, bases vérifiées champ par champ |
-| Identité canonique vérifiée sur les 3 BDD (ADR-018 — critère de sortie v0) | 🟡 À vérifier — tirable (B-00 levé) |
-| `doc_id` stable au niveau article pour LEGI (ADR-004) | 🟡 À vérifier — tirable (B-00 levé) |
-| Graphe de citations Neo4j (source qrels citation-minées) | 🟡 Liens typés capturés (dont l'axe temporel `succeeded_by` en chaîne datée) ; modélisation complète = B-03, tirable |
+| Identité canonique vérifiée sur les 3 BDD (ADR-018 — critère de sortie v0) | ✅ Fait (B-01) |
+| `doc_id` stable au niveau article pour LEGI (ADR-004) | ✅ Fait (B-02) |
+| Graphe de citations Neo4j (source qrels citation-minées) | ✅ Fait (B-03) — modélisation complète : verbes de citation typés, cibles absentes résolues |
+| Restructuration `conf/` en partition `workflow / ingestion / evaluation` (ADR-026) | ✅ Fait (B-14) — fingerprint identique avant/après, prouvé via le vrai loader Kedro |
 
 ## P2 — Évaluation
 

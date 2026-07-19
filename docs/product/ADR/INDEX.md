@@ -3,7 +3,7 @@
 > Un fichier par ADR (format Nygard). ADR-001 à 010 : arbitrages du
 > chantier 4 · ADR-011 à 020 : rétro-documentation des décisions
 > implicites (chantier 5) · ADR-021 et suivants : au fil de l'exécution.
-> **Prochain numéro : ADR-028.**
+> **Prochain numéro : ADR-029.**
 
 ## Registre
 
@@ -34,8 +34,9 @@
 | [ADR-023](ADR-023-interrupteur-embedding-dev.md) | Un interrupteur d'embedding, pas trois interrupteurs de store | Acté — amende ADR-022 §5 |
 | [ADR-024](ADR-024-retrait-echantillonnage-corpus.md) | Retrait de l'échantillonnage de corpus | Acté — amende ADR-022 §7 |
 | [ADR-025](ADR-025-environnement-panel-consenti.md) | Environnement panel consenti pour métriques comportementales | 🔶 Proposé (19 juillet 2026) — amende ADR-017 |
-| [ADR-026](ADR-026-restructuration-configuration.md) | Restructuration de la configuration en partition workflow/ingestion/evaluation | 🔶 Proposé (19 juillet 2026) — prérequis P1 d'ADR-027 |
+| [ADR-026](ADR-026-restructuration-configuration.md) | Restructuration de la configuration en partition workflow/ingestion/evaluation | ✅ Accepté (19 juillet 2026, implémenté par B-14) — prérequis P1 d'ADR-027 |
 | [ADR-027](ADR-027-plateforme-evaluation-end-to-end.md) | Plateforme d'évaluation end-to-end : le harnais pilote l'ingestion | 🔶 Proposé (19 juillet 2026) — dépend d'ADR-026 |
+| [ADR-028](ADR-028-frontiere-verification-automatique-humaine.md) | Frontière vérification automatique / validation humaine | Acté (19 juillet 2026) — s'appuie sur ADR-017 |
 
 ## Points ouverts rattachés
 

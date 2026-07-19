@@ -26,32 +26,32 @@
 | B-11 | Produire la baseline chiffrée reproductible (double run **(W, R)**, artefacts versionnés) | E-P2-10, E-T-02 | P2 | ⬜ |
 | B-12 | Mini-ADR de clôture v0 (constat sur preuves) | §5 `EXIGENCES_v0.md` | — | ⬜ |
 | B-13 | Orchestrateur d'ingestion + sweep `W×R` (sous-processus `kedro run --params W`, séquentiel, `nuke` entre `W`, reprise sur incident) — plateforme end-to-end (ADR-027) | E-P2-10 (étendue) | P2 | ⬜ |
-| B-14 | Restructurer `conf/` en partition `workflow / ingestion / evaluation` (ADR-026), fingerprint inchangé (test de non-régression) | E-P2-10 (prérequis couplage) | P1 | ⬜ |
+| B-14 | Restructurer `conf/` en partition `workflow / ingestion / evaluation` (ADR-026), fingerprint inchangé (test de non-régression) | E-P2-10 (prérequis couplage) | P1 | ✅ |
 
 ## 2. Notes d'ordonnancement
 
 - **B-00 est ✅** : prouvé par deux runs `kedro run` réels (7/7 nœuds,
   statut `ok`, équation de complétude exacte 1121 = 1121 = 1121), bases
   vérifiées champ par champ (Mongo épuré `SCHEMA_VERSION` 2, Neo4j
-  hydraté, Qdrant vecteurs non nuls). B-01, B-02 et B-03 sont désormais
-  **tirables** (le verrou « état des BDD non vérifiable avant ADR-022 »
-  est levé). WIP libre : aucun 🔶 courant.
-- Un correctif de revue de B-00 a **modélisé l'axe temporel** :
-  l'ancien produit cartésien `has_version` (2 760 arêtes « dans tous
-  les sens ») est devenu la chaîne datée `succeeded_by` (288 arêtes,
-  linéarité stricte, mort-nées en branche latérale). C'est une brique
-  de B-03, faite en avance parce que le régime dev/prod exigeait un
-  graphe correct ; **B-03 reste ouvert** (les autres verbes de
-  citation, leur typage complet, la résolution des cibles absentes).
+  hydraté, Qdrant vecteurs non nuls).
+- **B-01, B-02 et B-03 sont ✅** (revue du 19 juillet 2026) : identité
+  canonique croisée vérifiée sur les 3 BDD, `doc_id` LEGI stable
+  confirmé par test de ré-ingestion, graphe de citations Neo4j modélisé
+  complètement (chaîne datée `succeeded_by` posée dès B-00, puis autres
+  verbes de citation typés et cibles absentes résolues). Constat porté
+  par le porteur du programme ; **aucun rapport/artefact versionné
+  encore référencé** pour E-P1-02/03/04 malgré la vérification exigée
+  par `EXIGENCES_v0.md` — à régulariser avant la clôture v0 (B-12) si
+  jugé nécessaire.
 - B-04 (scorer) est tirable en parallèle des travaux data : aucune
   dépendance aux bases, testable contre des valeurs de référence.
-- B-08 (golden-set) suppose B-01 : pas de gel d'un golden-set sur des
-  identités non vérifiées.
-- **B-14 (P1) est prérequis de B-13 (P2)** : le couplage
-  config↔fingerprint (ADR-027) suppose la partition `workflow/`
-  explicite (ADR-026). B-14 touche l'ingestion, se fait dans `data/`,
-  avec test de non-régression du fingerprint (une même config doit
-  produire la même empreinte avant/après).
+- B-08 (golden-set) est désormais tirable : B-01 et B-02 sont acquis.
+- **B-14 est ✅** : `conf/` restructuré en `base/{workflow,ingestion,evaluation}/`
+  (sous-dossiers de `base/`, seul env lu par défaut par Kedro — écart
+  assumé à la lettre d'ADR-026, documenté dans l'ADR). Fingerprint
+  vérifié **identique** avant/après (`9424808d1c636d533648bbf4e77f2496`)
+  par `golden/test_fingerprint.py`, désormais chargé via le vrai
+  `OmegaConfigLoader`. B-13 (P2) devient tirable côté prérequis P1.
 - **B-13 dépend de B-05** (l'adapter doit savoir consommer une
   collection avant qu'on orchestre la production de collections). Il
   étend E-P2-10 : la reproductibilité inclut désormais le chemin
@@ -64,19 +64,19 @@ Un item est tirable quand tous ses prédécesseurs sont ✅.
 
 ```mermaid
 flowchart TD
-    B00[B-00 régimes dev/prod ADR-022 ✅] --> B01[B-01 identité canonique]
-    B00 --> B02[B-02 doc_id LEGI]
+    B00[B-00 régimes dev/prod ADR-022 ✅] --> B01[B-01 identité canonique ✅]
+    B00 --> B02[B-02 doc_id LEGI ✅]
     B00 --> B03
     B01 --> B05[B-05 adapter baseline]
     B01 --> B08[B-08 golden-set v1]
     B02 --> B08
-    B03[B-03 graphe citations] --> B07[B-07 qrels citation-minées]
+    B03[B-03 graphe citations ✅] --> B07[B-07 qrels citation-minées]
     B03 --> B09[B-09 set graph-hop]
     B04[B-04 scorer + agrégation] --> B10[B-10 test apparié]
     B04 --> B11[B-11 baseline reproductible]
     B05 --> B06[B-06 invariants strate 1]
     B05 --> B13[B-13 orchestrateur + sweep W×R]
-    B14[B-14 restructu. conf/ ADR-026] --> B13
+    B14[B-14 restructu. conf/ ADR-026 ✅] --> B13
     B07 --> B11
     B08 --> B11
     B09 --> B11
