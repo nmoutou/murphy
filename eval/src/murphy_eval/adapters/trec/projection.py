@@ -38,6 +38,27 @@ def load_jsonl_run(path: Path) -> Run:
     return Run(entries=entries)
 
 
+def dump_jsonl_run(run: Run, path: Path) -> None:
+    """Écrit un run canonique JSONL (ADR-008), une ligne ``RunEntry`` par chunk.
+
+    Writer symétrique de ``load_jsonl_run`` au niveau des **entrées** : seules
+    les ``RunEntry`` sont persistées (une par ligne), donc ``dump`` puis ``load``
+    redonne les mêmes ``entries``. ``Run.run_tag`` n'est **pas** écrit (le JSONL
+    n'a pas de ligne d'en-tête) ; il reste reconstructible depuis les entrées, où
+    ``RunEntry.run_tag`` le porte déjà de façon redondante. C'est la sortie de
+    production de B-05 — un run **immuable** (ADR-008), archivé, relu tel quel.
+
+    Déterministe : les entrées sont sérialisées dans leur ordre d'apparition
+    (l'ordre porte déjà le rang) ; ``model_dump`` fige l'ordre des clés. Deux
+    ``dump`` du même ``Run`` produisent des octets identiques.
+    """
+    lines = (
+        json.dumps(entry.model_dump(), ensure_ascii=False, separators=(",", ":"))
+        for entry in run.entries
+    )
+    path.write_text("".join(f"{line}\n" for line in lines))
+
+
 def load_trec_qrels(path: Path) -> Qrels:
     """Charge des qrels TREC plats : ``query_id 0 chunk_id grade``.
 

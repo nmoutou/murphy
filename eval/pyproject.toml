@@ -15,6 +15,13 @@ dependencies = [
     "ranx~=0.3",
     # Poids positionnel du DCG (log2) et agrégats numériques.
     "numpy~=2.0",
+    # Adapter baseline (B-05) : chemin de lecture Qdrant/TEI/Mongo dédié, sans
+    # importer ragcore (ADR-027). httpx pour TEI, pymongo pour le pointeur de
+    # collection, pydantic-settings pour lire le .env.dev racine.
+    "qdrant-client~=1.12",
+    "httpx~=0.28",
+    "pymongo~=4.9",
+    "pydantic-settings~=2.7",
 ]
 
 [project.optional-dependencies]
@@ -23,6 +30,8 @@ dev = [
     "pytest-cov>=3,<7",
     "ruff~=0.12.0",
     "mypy~=1.14",
+    # Test d'intégration B-05 : Qdrant éphémère (marker `integration`, hors CI).
+    "testcontainers~=4.9",
     # Oracle SECONDAIRE (cross-check du nDCG@R maison) — jamais importé par le
     # code de production, seulement par tests/oracle/. ADR-028 : le scorer est
     # vérifié par des cas jouets calculés à la main, pas par un oracle externe ;
@@ -41,11 +50,12 @@ namespaces = false
 pythonpath = ["src"]
 markers = [
     "oracle: cross-check contre trec_eval/pytrec_eval — hors CI par défaut",
+    "integration: nécessite des conteneurs (Qdrant) — hors CI par défaut",
 ]
 addopts = """
 --cov-report term-missing \
 --cov src/murphy_eval -ra \
--m 'not oracle'"""
+-m 'not oracle and not integration'"""
 
 [tool.coverage.report]
 fail_under = 0
@@ -82,7 +92,7 @@ files = ["src/murphy_eval"]
 exclude = ["/tests/"]
 
 [[tool.mypy.overrides]]
-module = ["ranx.*", "numpy.*", "pytrec_eval.*"]
+module = ["ranx.*", "numpy.*", "pytrec_eval.*", "qdrant_client.*", "testcontainers.*"]
 ignore_missing_imports = true
 
 [tool.pydantic-mypy]

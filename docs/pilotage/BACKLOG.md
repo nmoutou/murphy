@@ -17,7 +17,7 @@
 | B-02 | Vérifier la stabilité du `doc_id` article LEGI (test de ré-ingestion) | E-P1-03 | P1 | ✅ |
 | B-03 | Modéliser complètement le graphe de citations Neo4j (relations typées) | E-P1-04 | P1 | ✅ |
 | B-04 | Implémenter le scorer nDCG@R + diagnostics + règle d'agrégation chunk→document | E-P2-02, E-P2-03 | P2 | ✅ |
-| B-05 | Implémenter l'adapter baseline (runs au format ADR-008) | E-P2-01, E-T-01 | P2 | ⬜ |
+| B-05 | Implémenter l'adapter baseline (runs au format ADR-008) | E-P2-01, E-T-01 | P2 | ✅ |
 | B-06 | Implémenter la suite d'invariants structurels (strate 1) | E-P2-04 | P2 | ⬜ |
 | B-07 | Générer les qrels citation-minées (strate 2) depuis le graphe | E-P2-05 | P2 | ⬜ |
 | B-08 | Produire le golden-set v1 synthétique + guide d'annotation + stratification 4 types d'action | E-P2-06, E-P2-07 | P2 | ⬜ |
@@ -56,6 +56,18 @@
   CI par défaut (`tests/oracle/`). Suite verte (54 tests), mypy strict et
   ruff propres. Constat empirique notable : `pytrec_eval`'s `ndcg_cut` est en
   gain linéaire, pas exponentiel — documenté dans le code du cross-check.
+- **B-05 est ✅** : adapter baseline (config dense de référence) dans `eval/`,
+  contrat ADR-016 `requête → IDs ordonnés`. Chemin de lecture Qdrant/TEI/Mongo
+  **dédié, sans import de `ragcore`** (ADR-027). Constat clé de l'exploration :
+  le `doc_id` canonique est **gratuit** — l'ingestion l'écrit dans le payload
+  Qdrant (clé `identifier`, ADR-018), donc une recherche `with_payload` le
+  remonte sans aucun aller-retour Mongo ; il est copié tel quel dans
+  `RunEntry.doc_id`. Nom de collection lu du pointeur `MURPHY_META`
+  (comme le backend). Writer JSONL immuable `dump_jsonl_run` (round-trip vérifié
+  avec le loader existant). Ports `Retriever`/`Embedder`/`Searcher` (couture
+  B-13). Suite : 75 tests unit/golden verts + 1 test `integration`
+  (testcontainers Qdrant, hors CI), mypy strict et ruff propres. **B-06 et B-13
+  deviennent tirables** côté prérequis B-05.
 - B-08 (golden-set) est désormais tirable : B-01 et B-02 sont acquis.
 - **B-14 est ✅** : `conf/` restructuré en `base/{workflow,ingestion,evaluation}/`
   (sous-dossiers de `base/`, seul env lu par défaut par Kedro — écart
@@ -78,7 +90,7 @@ flowchart TD
     B00[B-00 régimes dev/prod ADR-022 ✅] --> B01[B-01 identité canonique ✅]
     B00 --> B02[B-02 doc_id LEGI ✅]
     B00 --> B03
-    B01 --> B05[B-05 adapter baseline]
+    B01 --> B05[B-05 adapter baseline ✅]
     B01 --> B08[B-08 golden-set v1]
     B02 --> B08
     B03[B-03 graphe citations ✅] --> B07[B-07 qrels citation-minées]
