@@ -73,3 +73,22 @@ def aggregate_run(run: Run) -> dict[str, DocRun]:
 
 def _rank_then_chunk_id(entry: RunEntry) -> tuple[int, str]:
     return (entry.rank, entry.chunk_id)
+
+
+def count_relevant(doc_grades: dict[str, int]) -> int:
+    """R = nombre de documents pertinents (grade > 0) d'une requête."""
+    return sum(1 for g in doc_grades.values() if g > 0)
+
+
+def dedup_first(doc_ids: list[str]) -> list[str]:
+    """La liste sans doublon, première occurrence gardée, ordre préservé.
+
+    Défense en profondeur pour les métriques à coupe (nDCG@R, R-Precision,
+    Recall@2R, Doc-Recall@R) : elles supposent un classement de ``doc_id``
+    *distincts*. Un doublon les ferait dépasser 1.0 (un même document compté
+    deux fois dans un top-R). ``aggregate_run`` produit déjà des vues sans
+    doublon ; ce garde-fou protège les fonctions pures quand un appelant les
+    sollicite hors de ce chemin (tests, futur B-05) — un doublon reste alors
+    le même document reclassé plus loin, jamais un second gain.
+    """
+    return list(dict.fromkeys(doc_ids))

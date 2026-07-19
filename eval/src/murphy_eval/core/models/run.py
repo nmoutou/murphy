@@ -15,14 +15,12 @@ n'a besoin d'un résolveur que pour des runs externes déjà en forme plate.
 
 from __future__ import annotations
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import Field
+
+from murphy_eval.core.models._base import Frozen
 
 
-class _Frozen(BaseModel):
-    model_config = ConfigDict(frozen=True, extra="forbid")
-
-
-class RunEntry(_Frozen):
+class RunEntry(Frozen):
     """Une ligne de run : un chunk, son rang et son score pour une requête."""
 
     query_id: str
@@ -33,7 +31,7 @@ class RunEntry(_Frozen):
     run_tag: str = ""
 
 
-class Run(_Frozen):
+class Run(Frozen):
     """L'ensemble des lignes produites par une config, sur toutes les requêtes."""
 
     entries: tuple[RunEntry, ...]

@@ -23,36 +23,38 @@ from ranx import Run as RanxRun
 from ranx import evaluate
 
 from murphy_eval.core.models.aggregated import DocQrels, DocRun
+from murphy_eval.core.services.aggregation import count_relevant, dedup_first
+
+
+def _hits_within(
+    doc_grades: dict[str, int], ranked_doc_ids: list[str], cutoff: int
+) -> int:
+    """Nb de documents pertinents parmi les ``cutoff`` premiers (dédupliqués)."""
+    top = dedup_first(ranked_doc_ids)[:cutoff]
+    return sum(1 for doc_id in top if doc_grades.get(doc_id, 0) > 0)
 
 
 def r_precision(doc_grades: dict[str, int], ranked_doc_ids: list[str]) -> float:
     """Précision dans les R premiers documents (R = nb de pertinents)."""
-    r = sum(1 for g in doc_grades.values() if g > 0)
+    r = count_relevant(doc_grades)
     if r == 0:
         return 0.0
-    top_r = ranked_doc_ids[:r]
-    hits = sum(1 for doc_id in top_r if doc_grades.get(doc_id, 0) > 0)
-    return hits / r
+    return _hits_within(doc_grades, ranked_doc_ids, r) / r
 
 
 def recall_at_2r(doc_grades: dict[str, int], ranked_doc_ids: list[str]) -> float:
     """Rappel dans les 2R premiers documents (ADR-007 : profondeur en multiple de R)."""
-    r = sum(1 for g in doc_grades.values() if g > 0)
+    r = count_relevant(doc_grades)
     if r == 0:
         return 0.0
-    top_2r = ranked_doc_ids[: 2 * r]
-    hits = sum(1 for doc_id in top_2r if doc_grades.get(doc_id, 0) > 0)
-    return hits / r
+    return _hits_within(doc_grades, ranked_doc_ids, 2 * r) / r
 
 
-def doc_recall_at_r(doc_grades: dict[str, int], ranked_doc_ids: list[str]) -> float:
-    """Rappel dans les R premiers documents."""
-    r = sum(1 for g in doc_grades.values() if g > 0)
-    if r == 0:
-        return 0.0
-    top_r = ranked_doc_ids[:r]
-    hits = sum(1 for doc_id in top_r if doc_grades.get(doc_id, 0) > 0)
-    return hits / r
+# P@R = Recall@R par construction : la coupe vaut R des deux côtés (numérateur
+# = pertinents dans le top-R, dénominateur = R). Gardé sous deux noms parce que
+# la sémantique IR diffère (précision vs rappel) ; identiques tant que la coupe
+# de Recall reste R. Un futur Recall à coupe ≠ R le rendrait de nouveau distinct.
+doc_recall_at_r = r_precision
 
 
 def map_and_doc_mrr(

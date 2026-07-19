@@ -16,6 +16,7 @@ from __future__ import annotations
 from math import log2
 
 from murphy_eval.core.models.gains import GainFn, exponential_gain
+from murphy_eval.core.services.aggregation import dedup_first
 
 
 def dcg(gains: list[float]) -> float:
@@ -48,7 +49,7 @@ def ndcg_at_r(
     if r == 0:
         return None
 
-    top_r = ranked_doc_ids[:r]
+    top_r = dedup_first(ranked_doc_ids)[:r]
     run_gains = [gain(doc_grades.get(doc_id, 0)) for doc_id in top_r]
     ideal_gains = sorted((gain(g) for g in relevant_grades), reverse=True)[:r]
 

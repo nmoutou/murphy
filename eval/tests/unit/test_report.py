@@ -3,7 +3,25 @@ from __future__ import annotations
 from murphy_eval.core.models.gains import linear_gain
 from murphy_eval.core.models.judgment import Judgment, Qrels
 from murphy_eval.core.models.run import Run, RunEntry
+from murphy_eval.core.ports.scorer import Scorer
 from murphy_eval.core.services.report import score
+
+
+class _ScoreAsScorer:
+    """Adapte la fonction ``score`` au port ``Scorer`` (méthode d'instance).
+
+    B-13 dépendra du ``Protocol``, jamais de la fonction concrète : ce test
+    fige que la signature de ``score`` satisfait le port, pour que la couture
+    de l'orchestrateur ne casse pas en silence.
+    """
+
+    score = staticmethod(score)
+
+
+def test_score_satisfait_le_port_scorer() -> None:
+    scorer: Scorer = _ScoreAsScorer()
+    report = scorer.score(_qrels(), _run())
+    assert {q.query_id for q in report.per_query} == {"q1", "q2"}
 
 
 def _qrels() -> Qrels:

@@ -21,7 +21,11 @@ from murphy_eval.core.models.gains import GainFn, exponential_gain
 from murphy_eval.core.models.judgment import Qrels
 from murphy_eval.core.models.metrics import MetricAggregate, MetricsReport, QueryMetrics
 from murphy_eval.core.models.run import Run
-from murphy_eval.core.services.aggregation import aggregate_qrels, aggregate_run
+from murphy_eval.core.services.aggregation import (
+    aggregate_qrels,
+    aggregate_run,
+    count_relevant,
+)
 from murphy_eval.core.services.diagnostics import (
     doc_recall_at_r,
     map_and_doc_mrr,
@@ -50,7 +54,7 @@ def score(
     for query_id in query_ids:
         grades = doc_qrels[query_id].as_dict() if query_id in doc_qrels else {}
         ranked = doc_runs[query_id].ranked_doc_ids() if query_id in doc_runs else []
-        r = sum(1 for g in grades.values() if g > 0)
+        r = count_relevant(grades)
         map_value, doc_mrr_value = map_mrr_by_query.get(query_id, (0.0, 0.0))
 
         per_query.append(

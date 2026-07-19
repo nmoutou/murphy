@@ -15,14 +15,12 @@ qualité de récupération.
 
 from __future__ import annotations
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import Field
+
+from murphy_eval.core.models._base import Frozen
 
 
-class _Frozen(BaseModel):
-    model_config = ConfigDict(frozen=True, extra="forbid")
-
-
-class QueryMetrics(_Frozen):
+class QueryMetrics(Frozen):
     """Les métriques d'une seule requête — niveau document (ADR-006)."""
 
     query_id: str
@@ -38,7 +36,7 @@ class QueryMetrics(_Frozen):
     doc_recall_at_r: float
 
 
-class MetricAggregate(_Frozen):
+class MetricAggregate(Frozen):
     """Moyenne + effectif d'une métrique, sur les requêtes où elle est définie."""
 
     ndcg_at_r_mean: float | None
@@ -51,7 +49,7 @@ class MetricAggregate(_Frozen):
     query_count: int = Field(ge=0)
 
 
-class MetricsReport(_Frozen):
+class MetricsReport(Frozen):
     """Le rapport complet d'un scoring ``(qrels, run)``."""
 
     per_query: tuple[QueryMetrics, ...]

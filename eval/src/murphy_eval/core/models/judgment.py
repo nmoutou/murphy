@@ -13,14 +13,12 @@ duplication de schéma.
 
 from __future__ import annotations
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import Field
+
+from murphy_eval.core.models._base import Frozen
 
 
-class _Frozen(BaseModel):
-    model_config = ConfigDict(frozen=True, extra="forbid")
-
-
-class Judgment(_Frozen):
+class Judgment(Frozen):
     """Un jugement de pertinence gradué, au niveau chunk (ADR-005/008)."""
 
     query_id: str
@@ -36,7 +34,7 @@ class Judgment(_Frozen):
     guide_version: str = ""
 
 
-class Qrels(_Frozen):
+class Qrels(Frozen):
     """L'ensemble des jugements d'une collection de test, niveau chunk."""
 
     judgments: tuple[Judgment, ...]

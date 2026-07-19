@@ -53,6 +53,20 @@ def test_ndcg_at_r_injection_de_gain_change_le_resultat() -> None:
     assert exp_result != lin_result
 
 
+def test_ndcg_at_r_borne_a_1_malgre_un_doublon_dans_le_run() -> None:
+    """Un ``doc_id`` en double dans ``ranked_doc_ids`` ne doit jamais faire
+    dépasser 1.0 : le doublon est le même document reclassé, pas un second
+    gain. ``aggregate_run`` déduplique déjà en amont ; cette fonction pure se
+    défend seule pour l'appelant qui la sollicite hors de ce chemin (B-05).
+    """
+    grades = {"a": 3, "b": 1}
+    # Le doublon est ignoré : ["a", "a"] est traité comme ["a"] (un seul
+    # document récupéré, le second pertinent jamais atteint), et non comme
+    # deux gains cumulés — ce qui, sans garde-fou, donnait 1.496.
+    assert ndcg_at_r(grades, ["a", "a"]) == ndcg_at_r(grades, ["a"])
+    assert ndcg_at_r(grades, ["a", "a"]) <= 1.0
+
+
 def test_ndcg_at_r_document_non_juge_vaut_gain_zero() -> None:
     """Un document présent dans le run mais absent des qrels (jamais jugé)
     contribue un gain de 0, comme un document jugé non pertinent.

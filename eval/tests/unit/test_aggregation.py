@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+import pytest
+from pydantic import ValidationError
+
+from murphy_eval.core.models.aggregated import DocRun
 from murphy_eval.core.models.judgment import Judgment, Qrels
 from murphy_eval.core.models.run import Run, RunEntry
 from murphy_eval.core.services.aggregation import aggregate_qrels, aggregate_run
@@ -75,6 +79,43 @@ def test_aggregate_run_independant_de_l_ordre_d_arrivee_des_lignes() -> None:
         )
     )
     assert aggregate_run(en_ordre) == aggregate_run(inverse)
+
+
+def test_docrun_rejette_les_rangs_a_trou() -> None:
+    """L'invariant densifié 1..n est défendu à la construction, pas seulement
+    documenté : un rang manquant (ici 2) est refusé.
+    """
+    with pytest.raises(ValidationError):
+        DocRun(query_id="q1", doc_ranks=(("D1", 1), ("D2", 3)))
+
+
+def test_docrun_rejette_les_ex_aequo() -> None:
+    with pytest.raises(ValidationError):
+        DocRun(query_id="q1", doc_ranks=(("D1", 1), ("D2", 1)))
+
+
+def test_docrun_rejette_les_doublons_de_doc_id() -> None:
+    with pytest.raises(ValidationError):
+        DocRun(query_id="q1", doc_ranks=(("D1", 1), ("D1", 2)))
+
+
+def test_docrun_vide_est_valide() -> None:
+    """Une requête dont rien n'est retrouvé : classement vide, pas d'erreur."""
+    assert DocRun(query_id="q1", doc_ranks=()).doc_ranks == ()
+
+
+def test_aggregate_run_produit_toujours_un_docrun_valide() -> None:
+    """Preuve que le producteur maison respecte l'invariant qu'il promet : des
+    rangs d'entrée non contigus ressortent densifiés, donc acceptés par le
+    validateur (aucune ``ValidationError`` levée).
+    """
+    run = Run(
+        entries=(
+            RunEntry(query_id="q1", chunk_id="c1", doc_id="D1", rank=5, score=5.0),
+            RunEntry(query_id="q1", chunk_id="c2", doc_id="D2", rank=9, score=4.0),
+        )
+    )
+    assert aggregate_run(run)["q1"].doc_ranks == (("D1", 1), ("D2", 2))
 
 
 def test_aggregate_qrels_vide() -> None:

@@ -38,6 +38,17 @@ def test_recall_at_2r_capture_au_dela_de_r() -> None:
     assert recall_at_2r(grades, ranked) == 1.0  # top-4 capture les deux
 
 
+def test_diagnostics_bornees_a_1_malgre_un_doublon_dans_le_run() -> None:
+    """Les métriques à coupe (R-Precision, Recall@2R, Doc-Recall@R) restent
+    dans [0, 1] même si un ``doc_id`` apparaît en double dans le classement :
+    un même document ne compte jamais deux fois comme un hit distinct.
+    """
+    grades = {"a": 1}  # R = 1
+    assert r_precision(grades, ["a", "a"]) == 1.0
+    assert recall_at_2r(grades, ["a", "a"]) == 1.0
+    assert doc_recall_at_r(grades, ["a", "a"]) == 1.0
+
+
 def test_map_and_doc_mrr_requete_absente_du_run_vaut_zero() -> None:
     doc_qrels = {"q1": DocQrels(query_id="q1", doc_grades=(("a", 1),))}
     doc_runs: dict[str, DocRun] = {}
