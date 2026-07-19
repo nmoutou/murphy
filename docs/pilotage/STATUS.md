@@ -1,6 +1,6 @@
 # STATUS — État du programme par projet
 
-Dernière mise à jour : 19 juillet 2026 (ADR-026, B-14). Structure alignée
+Dernière mise à jour : 19 juillet 2026 (B-04). Structure alignée
 sur `PROGRAM.md` §2 (chantier 7). Version en cours : **v0** (voir
 `VERSIONS.md`).
 
@@ -21,7 +21,9 @@ sur `PROGRAM.md` §2 (chantier 7). Version en cours : **v0** (voir
 | Sujet | Statut |
 |---|---|
 | Cadrage (`CADRAGE_evaluation` + ADR-004 à 009) | ✅ Fait |
-| Harnais IR (adapter, scorer nDCG@R, test apparié) | ❌ À implémenter |
+| Scorer nDCG@R + diagnostics + agrégation chunk→document (ADR-006/007) | ✅ Fait (B-04) — nouveau projet `eval/`, oracle *auto pur* (cas jouets à la main, ADR-028), cross-check `pytrec_eval` secondaire |
+| Adapter baseline (runs au format ADR-008) | ❌ À implémenter (B-05) |
+| Test statistique apparié (ADR-007) | ❌ À implémenter (B-10) |
 | Qrels citation-minées (strate 2) | ❌ À implémenter |
 | Golden-set v1 synthétique + guide d'annotation (ADR-005) | ❌ À produire |
 

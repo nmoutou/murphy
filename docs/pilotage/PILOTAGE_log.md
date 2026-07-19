@@ -2,6 +2,26 @@
 
 > 10 lignes max par entrée, la plus récente en tête (`PILOTAGE.md` §1.4).
 
+## 2026-07-19 — B-04
+
+- **Fait** : B-04 (scorer nDCG@R + diagnostics + agrégation chunk→document)
+  passé à ✅. Suite verte (54 tests), mypy strict et ruff propres.
+- **Décidé** : **localisation révisée** — nouveau projet dédié `eval/`
+  (dossier in-repo, extraction en submodule différée), pas un sous-paquet
+  `data/ragcore/evaluation/` comme acté à la Revue #1. Fidèle à ADR-027 (P2
+  pilote l'ingestion par sous-processus, sans importer `ragcore`). Diagnostics
+  à coupe adaptative (R-Precision, Recall@2R, Doc-Recall@R) maison ; `ranx`
+  réduit à MAP + Doc-MRR (sans coupe). Requête R=0 → `None`, exclue des
+  moyennes, gardée dans la distribution par requête.
+- **Vérifié** : oracle primaire = cas jouets calculés à la main
+  (`tests/golden/`, ADR-028) ; cross-check `pytrec_eval` secondaire, hors CI
+  par défaut. Constat empirique : `ndcg_cut` de `pytrec_eval` est en gain
+  linéaire, pas exponentiel — documenté dans le test, pas supposé à tort.
+- **Bloqué** : rien.
+- **Prochain pas** : B-05 (adapter baseline) et B-08 (golden-set) tirables en
+  parallèle ; B-13 dépend de B-05.
+- **Hygiène** : `BACKLOG.md` régularisé (statut B-04, note de localisation).
+
 ## 2026-07-19 — B-14
 
 - **Fait** : B-14 (restructuration `conf/` en `base/{workflow,ingestion,evaluation}/`,

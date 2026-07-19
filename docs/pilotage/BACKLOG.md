@@ -16,7 +16,7 @@
 | B-01 | Vérifier l'identité canonique croisée sur les 3 BDD | E-P1-02 | P1 | ✅ |
 | B-02 | Vérifier la stabilité du `doc_id` article LEGI (test de ré-ingestion) | E-P1-03 | P1 | ✅ |
 | B-03 | Modéliser complètement le graphe de citations Neo4j (relations typées) | E-P1-04 | P1 | ✅ |
-| B-04 | Implémenter le scorer nDCG@R + diagnostics + règle d'agrégation chunk→document | E-P2-02, E-P2-03 | P2 | ⬜ |
+| B-04 | Implémenter le scorer nDCG@R + diagnostics + règle d'agrégation chunk→document | E-P2-02, E-P2-03 | P2 | ✅ |
 | B-05 | Implémenter l'adapter baseline (runs au format ADR-008) | E-P2-01, E-T-01 | P2 | ⬜ |
 | B-06 | Implémenter la suite d'invariants structurels (strate 1) | E-P2-04 | P2 | ⬜ |
 | B-07 | Générer les qrels citation-minées (strate 2) depuis le graphe | E-P2-05 | P2 | ⬜ |
@@ -43,8 +43,19 @@
   encore référencé** pour E-P1-02/03/04 malgré la vérification exigée
   par `EXIGENCES_v0.md` — à régulariser avant la clôture v0 (B-12) si
   jugé nécessaire.
-- B-04 (scorer) est tirable en parallèle des travaux data : aucune
-  dépendance aux bases, testable contre des valeurs de référence.
+- **B-04 est ✅** : scorer nDCG@R (coupe adaptative maison, gain injectable —
+  exponentiel par défaut, linéaire en diagnostic) + agrégation chunk→document
+  (ADR-006, max qrels / rang du 1er chunk runs) + diagnostics (R-Precision,
+  Recall@2R, Doc-Recall@R maison ; MAP, Doc-MRR via `ranx`, ADR-027).
+  **Localisation révisée** : nouveau projet dédié `eval/` (dossier in-repo
+  pour l'instant, extraction en submodule différée), et non un sous-paquet de
+  `data/` comme prévu à la revue du 19 juillet 2026 — fidèle à ADR-027 (P2
+  pilote l'ingestion par sous-processus, sans importer `ragcore`). Oracle
+  primaire *auto pur* (ADR-028) : cas jouets calculés à la main
+  (`tests/golden/`), cross-check `trec_eval`/`pytrec_eval` secondaire et hors
+  CI par défaut (`tests/oracle/`). Suite verte (54 tests), mypy strict et
+  ruff propres. Constat empirique notable : `pytrec_eval`'s `ndcg_cut` est en
+  gain linéaire, pas exponentiel — documenté dans le code du cross-check.
 - B-08 (golden-set) est désormais tirable : B-01 et B-02 sont acquis.
 - **B-14 est ✅** : `conf/` restructuré en `base/{workflow,ingestion,evaluation}/`
   (sous-dossiers de `base/`, seul env lu par défaut par Kedro — écart
@@ -72,7 +83,7 @@ flowchart TD
     B02 --> B08
     B03[B-03 graphe citations ✅] --> B07[B-07 qrels citation-minées]
     B03 --> B09[B-09 set graph-hop]
-    B04[B-04 scorer + agrégation] --> B10[B-10 test apparié]
+    B04[B-04 scorer + agrégation ✅] --> B10[B-10 test apparié]
     B04 --> B11[B-11 baseline reproductible]
     B05 --> B06[B-06 invariants strate 1]
     B05 --> B13[B-13 orchestrateur + sweep W×R]

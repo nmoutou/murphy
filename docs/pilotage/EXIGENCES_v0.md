@@ -9,7 +9,7 @@
 >
 > Format : exigence testable — *le système/programme doit… — vérifié
 > par…* Chaque exigence porte un ID stable, référencé par le
-> `BACKLOG.md`. Statuts au 18 juillet 2026, alignés `STATUS.md`.
+> `BACKLOG.md`. Statuts au 19 juillet 2026, alignés `STATUS.md`.
 
 ## 1. Périmètre
 
@@ -39,8 +39,8 @@ non jurisprudentielles, LLM générateur branché à l'évaluation.
 | ID | Exigence | Vérification | Source | Régime | Statut |
 |---|---|---|---|---|---|
 | E-P2-01 | Un adapter baseline doit interroger la configuration de récupération courante et produire des runs au format arrêté | Run produit de bout en bout sur le golden-set v1, conforme au schéma ADR-008 | ADR-008, ADR-016 | auto | ⬜ |
-| E-P2-02 | Le scorer doit calculer **nDCG@R** (métrique primaire) et les diagnostics MAP, R-Precision, Recall@2R, Doc-MRR, Doc-Recall@R | Tests unitaires du scorer contre valeurs de référence calculées indépendamment (cas jouets vérifiables à la main) | ADR-007 | auto | ⬜ |
-| E-P2-03 | L'agrégation chunk→document doit suivre la règle arrêtée, appliquée identiquement au scoring et aux runs | Test unitaire d'agrégation ; aucune métrique calculée au niveau chunk | ADR-006 | auto | ⬜ |
+| E-P2-02 | Le scorer doit calculer **nDCG@R** (métrique primaire) et les diagnostics MAP, R-Precision, Recall@2R, Doc-MRR, Doc-Recall@R | Tests unitaires du scorer contre valeurs de référence calculées indépendamment (cas jouets vérifiables à la main) | ADR-007 | auto | ✅ |
+| E-P2-03 | L'agrégation chunk→document doit suivre la règle arrêtée, appliquée identiquement au scoring et aux runs | Test unitaire d'agrégation ; aucune métrique calculée au niveau chunk | ADR-006 | auto | ✅ |
 | E-P2-04 | Les invariants structurels (strate 1) doivent être vérifiables sans annotation | Suite de tests strate 1 exécutable en CI, verte sur la baseline | ADR-017 | auto | ⬜ |
 | E-P2-05 | Des qrels citation-minées (strate 2) doivent être générées depuis le graphe de citations | Fichier qrels versionné, format ADR-008, volumétrie et méthode documentées ; hypothèse *citation ≈ pertinence* assumée, non testée mécaniquement (ADR-028) | ADR-017 | assisté | ⬜ |
 | E-P2-06 | Un golden-set v1 synthétique solo doit être figé et versionné, avec guide d'annotation et échelle de grades 0–3 | Fichier golden-set + guide versionnés, hash de gel consigné ; **pertinence et grades validés par le porteur** (ADR-028) | ADR-005, ADR-017 | humain | ⬜ |
