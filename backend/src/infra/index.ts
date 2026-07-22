@@ -33,6 +33,20 @@ export const embeddingClient: EmbeddingClient = new Proxy({} as EmbeddingClient,
   },
 });
 
+/**
+ * Fixe la collection Qdrant que le serving interrogera — celle que le pointeur désigne
+ * (cf. `collectionPointer.ts`), donc celle qu'un run `ok` a publiée.
+ *
+ * Explicite, comme `initMongoClient`, et pour la même raison : résoudre la collection
+ * demande un aller-retour Mongo, donc un `await` — impossible dans le constructeur
+ * paresseux du Proxy. Appelé au boot, avant que le serveur écoute.
+ *
+ * Sans cet appel, le Proxy retombe sur `QDRANT_COLLECTION` : le comportement d'avant.
+ */
+export function initQdrantClient(qdrantUrl: string, collectionName: string): void {
+  _qdrantClient = new QdrantVectorClient(qdrantUrl, collectionName);
+}
+
 export const qdrantClient: QdrantVectorClient = new Proxy({} as QdrantVectorClient, {
   get(_target, prop) {
     if (!_qdrantClient) _qdrantClient = new QdrantVectorClient();
