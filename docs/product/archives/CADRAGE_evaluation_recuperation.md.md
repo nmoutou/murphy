@@ -1,5 +1,31 @@
 # Cadrage — Évaluation de la récupération documentaire (RAG juridique, v0)
- 
+
+> ⚠️ **ARCHIVE — document historique, non normatif.** Conservé pour la
+> traçabilité du raisonnement initial. En cas de contradiction avec un ADR
+> ou avec `EXIGENCES_v0.md`, **ce document a tort**. Points périmés
+> connus, à ne pas reprendre :
+>
+> - **§3.3 « Amorçage par le graphe de citations »** — **révoqué par
+>   ADR-029**. Utiliser le graphe pour suggérer ou pré-remplir le
+>   golden-set (B-08) est explicitement écarté : la suggestion
+>   deviendrait la vérité terrain, réinjectant la circularité que la
+>   strate 2 doit prévenir. L'assistance à l'annotation est renvoyée
+>   hors graphe (`BACKLOG.md` §4).
+> - **§3.3 « Qrels citation-minées »** — la strate 2 n'est plus une
+>   source de qrels scorables mais un **diagnostic de co-citation
+>   précision-seulement** (ADR-029) : jamais le rappel, jamais un grade.
+> - **§3.3 échelle « directement applicable / support / périphérique /
+>   hors-sujet »** — remplacée par la **cascade de trois tests binaires**
+>   q1/q2/q3 d'**ADR-005** (l'échelle par démarcations d'intensité y est
+>   explicitement rejetée : arbitraire, désaccords non localisables).
+> - **§9 « décisions encore ouvertes »** — toutes tranchées depuis :
+>   unité document (ADR-004), échelle + guide (ADR-005), agrégation
+>   (ADR-006), coupe et métriques (ADR-007), format (ADR-008), types
+>   d'action (ADR-009).
+>
+> Restent valides et utiles : le reframing IR (§0), le **pooling**
+> (§3.3) et le **garde-fou représentativité** du synthétique (§8).
+
 > Document de cadrage destiné à un agent LLM travaillant dans cette codebase.
 > Objectif : construire un dispositif d'évaluation de la **récupération seule**
 > (sans LLM générateur), **agnostique** au fonctionnement interne du pipeline,

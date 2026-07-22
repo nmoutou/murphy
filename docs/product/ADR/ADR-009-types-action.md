@@ -1,6 +1,13 @@
 # ADR-009 — Types d'action (stratification v0)
 
 **Statut** : acté (chantier 4, 17 juillet 2026) — liste révisable en alpha ph.1
+— **amendé par ADR-030** (22 juillet 2026) : l'axe difficulté est supprimé, le
+type passe de la requête à l'arête `(requête, source, cible)` et cesse d'être
+exclusif, `jurisprudence_sur_question` devient `jurisprudence_applicable`. Les
+quatre types ci-dessous subsistent au sein d'une liste plate de huit
+opérations. **L'exclusion de la vigueur temporelle reste entière** : elle vise
+la capacité produit, non le typage d'une arête en évaluation (ADR-030 §
+`succession_temporelle`).
 
 ## Contexte
 

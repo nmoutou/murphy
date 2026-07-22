@@ -53,7 +53,7 @@ flowchart TB
 
 | De → Vers | Contrat |
 |-----------|---------|
-| P1 → P2 | `chunk_id` / `doc_id` canoniques et déterministes ; payloads Qdrant ; contenu MongoDB ; **graphe de citations Neo4j** (source des qrels citation-minées) |
+| P1 → P2 | `chunk_id` / `doc_id` canoniques et déterministes ; payloads Qdrant ; contenu MongoDB ; **graphe de citations Neo4j** (source du diagnostic de co-citation, strate 2 — ADR-029) |
 | P1 → P3 | Bases pré-peuplées ; contrat de source (`chunkId`, `title`, `type`, `score`, + `excerpt`, `eli` requis alpha) |
 | P2 → P3 | Contrat d'adapter unique : `requête → liste ordonnée d'IDs (+ scores)` (ADR-016) ; formats `qrels` / `runs` (ADR-008) |
 | P3 → P2 | Requêtes réelles + annotations produites par les experts (boucle alpha, ADR-010) ; à partir de la beta, signaux comportementaux de l'environnement panel — opt-in, comparaisons relatives uniquement (ADR-025) |
@@ -114,15 +114,16 @@ d'annotations jetables. Détail dans `CADRAGE_evaluation`.
 | Strate | Nature | Annotation | Pérennité |
 |--------|--------|-----------|-----------|
 | **1. Invariants structurels** | Qualité de données : identité canonique, complétude, déterminisme, intégrité des liens | Aucune | Totale |
-| **2. Qrels citation-minées** | Vérité terrain objective : les citations réelles (magistrats) définissent des pertinences vérifiables | Aucune (garde-fou circularité §3.3) | Permanente |
+| **2. Diagnostic de co-citation** (précision-seulement — **ADR-029**, ex-« qrels citation-minées ») | Garde-fou, non étalon : part des documents remontés qui sont juridiquement liés dans le graphe. **Jamais le rappel, jamais un grade** — l'hypothèse *citation ≈ pertinence* est rétrogradée | Aucune | Permanente |
 | **3. Métriques appariées relatives** | Divergence entre configs (RBO / Jaccard@k, stabilité sous paraphrase) — détecte régressions, cible le pooling | Aucune | Par construction |
 | **4. Qrels humaines** | Synthétiques solo (v0) → expertes poolées (alpha) | Forte | Partielle : le synthétique est **relégué** (`origin: synthetic`), pas jeté |
 | **5. Signaux online panel** (beta — ADR-025) | Comportemental : CTR, dwell time, abandon, reformulation, interleaving — environnement panel opt-in uniquement | Aucune (télémétrie consentie) | Liée au panel ; **comparaisons relatives uniquement** |
 
-**Conséquence** : la baseline v0 s'appuie sur les strates 1–3 +
-citations minées + un petit set synthétique. Seule la dernière tranche
-est dévaluée par l'alpha ; l'infrastructure et l'essentiel des signaux
-survivent.
+**Conséquence** : la baseline v0 s'appuie sur les strates 1–3 + le
+**diagnostic de co-citation** (strate 2, précision-seulement — ADR-029,
+non une source de qrels) + un petit set synthétique. Seule la dernière
+tranche est dévaluée par l'alpha ; l'infrastructure et l'essentiel des
+signaux survivent.
 
 ---
 

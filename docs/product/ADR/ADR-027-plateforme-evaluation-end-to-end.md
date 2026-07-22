@@ -1,6 +1,9 @@
 # ADR-027 — Plateforme d'évaluation end-to-end : le harnais pilote l'ingestion
 
-**Statut** : 🔶 Proposé — 19 juillet 2026
+**Statut** : 🔶 Proposé — 19 juillet 2026 — **étendu par ADR-031**
+(22 juillet 2026) : le couple `(W, R)` devient le triplet **`(W, G, R)`**,
+`G` = version du graphe, identifiée séparément du fingerprint de `W` (qui ne
+couvre que les vecteurs et resterait identique entre deux graphes).
 **Version cible** : v0 (harnais P2)
 
 ## Contexte

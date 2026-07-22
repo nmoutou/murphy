@@ -29,8 +29,18 @@ l'invariant d'exhaustivité des sources.
 ## Conséquences
 
 - Sensibilité accrue à la **complétude des qrels** (R dépend des
-  jugements) → importance renforcée du pooling et des citations minées.
+  jugements) → importance renforcée du **pooling**. *(Amendé par
+  ADR-029 : les citations minées, initialement citées ici comme second
+  levier, ne sont plus une source de qrels — la strate 2 est un
+  diagnostic de précision. La complétude des qrels repose donc
+  entièrement sur le pooling et sur le golden-set humain, B-08.)*
+
+- **Corollaire pour toute ventilation** (par opération, par base) : restreindre
+  les qrels à un sous-ensemble **change R, donc la coupe**. Une ventilation est
+  une **mesure distincte**, à dénominateur propre — elle ne se compare ni à
+  l'agrégat ni à une autre ventilation (ADR-030).
 
 ## Références
 
-ADR-006 (agrégation) · ADR-017 (strates) · `VERSIONS.md` (DoD v0)
+ADR-006 (agrégation) · ADR-017 (strates) · ADR-029 (strate 2
+rétrogradée) · ADR-030 (ventilation par opération) · `VERSIONS.md` (DoD v0)

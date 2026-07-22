@@ -20,7 +20,7 @@
 | B-05 | Implémenter l'adapter baseline (runs au format ADR-008) | E-P2-01, E-T-01 | P2 | ✅ |
 | B-06 | Implémenter la suite d'invariants structurels (strate 1) | E-P2-04 | P2 | ✅ |
 | B-07 | Miner le jeu de **paires de co-citation** (strate 2) depuis le graphe — socle d'extraction (adapter Neo4j dédié dans `eval/`, Cypher, writer des paires), usage diagnostique précision-seulement, **non des qrels** (ADR-029) | E-P2-05 | P2 | ✅ |
-| B-08 | Produire le golden-set v1 synthétique + guide d'annotation + stratification 4 types d'action | E-P2-06, E-P2-07 | P2 | ⬜ |
+| B-08 | Produire le golden-set v1 synthétique + guide d'annotation + stratification **à deux axes** (intention par requête, opérations par arête `(requête, source, cible)` — ADR-030) | E-P2-06, E-P2-07 | P2 | ⬜ |
 | B-09 | Construire ≥ 1 set diagnostique graph-hop | E-P2-08 | P2 | ⬜ |
 | B-10 | Implémenter le test statistique apparié | E-P2-09 | P2 | ⬜ |
 | B-11 | Produire la baseline chiffrée reproductible (double run **(W, R)**, artefacts versionnés) | E-P2-10, E-T-02 | P2 | ⬜ |
@@ -148,6 +148,52 @@
   l'appliquer à B-05. À solder au plus tard dans **B-11** (baseline chiffrée
   reproductible), qui ne peut pas s'en passer.
 - B-08 (golden-set) est désormais tirable : B-01 et B-02 sont acquis.
+- **B-08 recadré (ADR-030 + ADR-031, 22 juillet 2026)** — la stratification
+  passe à **deux axes** : une **intention** par requête, une ou plusieurs
+  **opérations** par arête `(requête, source, cible)`, non exclusives.
+  L'axe *difficulté* est supprimé (jugement d'intensité non falsifiable, qui
+  absorbe la question qu'il prétend documenter). Liste plate de **huit
+  opérations**, dont **cinq dérivées** (calculées depuis `source`, le graphe
+  témoin ou le texte de la requête) et **trois seulement jugées** —
+  `texte_applicable`, `jurisprudence_applicable`, `definition` : le portage par
+  l'arête transforme la majorité de la typologie en calcul et réduit d'autant
+  la surface d'annotation. Les relations dérivées sont **abstraites, jamais
+  ingérées** (ADR-031 §2) : la non-circularité devient structurelle au lieu de
+  reposer sur la discipline. **Deux chantiers induits, hors périmètre B-08** :
+  le modèle de requête (aucune classe `Query` n'existe dans `eval/` — terrain
+  vierge, pas de migration) et le passage du scorer au pluriel
+  (`QueryMetrics.action_type` est un `str | None`, `report.py` reçoit un
+  `dict[str, str]`).
+- **Versionnement du golden-set tranché (ADR-032, 22 juillet 2026)** : le gel
+  d'E-P2-06 porte sur **chaque version**, non sur la suite des versions ; les
+  versions **ne sont pas comparables entre elles** et on ne cherche pas à les
+  rendre telles (ce serait n'autoriser que des ajouts, jamais de correction —
+  ossification de l'artefact). La comparabilité dans le temps s'obtient par
+  **re-notation des runs archivés**, un run ne dépendant pas des qrels (score =
+  fonction pure `(run, qrels)`). Conséquences : B-08 peut geler la v1 **sans
+  l'anticiper parfaitement** et commencer **petit et profond** ; le pooling
+  n'est plus un rempart mais un ordonnanceur d'effort ; un document jamais jugé
+  devient une **dette rattrapable**, non un défaut définitif. **B-11 doit livrer
+  la re-notation de tout l'historique en une commande** — sans elle le modèle
+  n'est pas praticable. Seul l'**ajout de questions** coûte une re-récupération
+  (assumé par le porteur, mais à grouper **par lots** par économie).
+- **Nouvelle dépendance `B-10 → travaux graphe enrichi` (ADR-031)** : un graphe
+  enrichi ne peut entrer dans le balayage qu'après un **passage témoin**
+  — `(W₀, Gᵢ, R₀)` contre `(W₀, G₀, R₀)`, un seul facteur variant — dont le
+  verdict est rendu par **test statistique apparié**, jamais par comparaison de
+  moyennes. B-10 en est donc le prérequis. Limite assumée : sur un jeu de
+  requêtes modeste, « pas de dégradation significative » n'est pas « pas de
+  dégradation » — garde-fou contre les régressions franches, non preuve
+  d'innocuité.
+- **B-13 balaie `W × G × R`** et non `W × R` (ADR-031) : le fingerprint de `W`
+  ne couvre que les vecteurs, donc deux graphes différents produiraient la même
+  collection et seraient **indistinguables sans erreur levée**. À poser avant
+  que l'orchestrateur ne soit figé.
+- **Le sort de `contains` (B-07 → B-09) est réglé par ADR-030** : il devient
+  l'opération dérivée `contexte_structurel`. Les 726 paires cessent d'être un
+  choix binaire (filtrer au minage ou pas) pour devenir une catégorie
+  **observable et neutralisable au diagnostic** — conforme à l'arbitrage
+  « observer d'abord, décider ensuite » retenu pour l'espace des cibles.
 - **B-14 est ✅** : `conf/` restructuré en `base/{workflow,ingestion,evaluation}/`
   (sous-dossiers de `base/`, seul env lu par défaut par Kedro — écart
   assumé à la lettre d'ADR-026, documenté dans l'ADR). Fingerprint
@@ -177,6 +223,7 @@ flowchart TD
     B07 --> B09
     B04[B-04 scorer + agrégation ✅] --> B10[B-10 test apparié]
     B04 --> B11[B-11 baseline reproductible]
+    B10 -.->|passage témoin ADR-031| GE[travaux graphe enrichi<br/>hors v0]
     B05 --> B06[B-06 invariants strate 1 ✅]
     B05 --> B13[B-13 orchestrateur + sweep W×R]
     B14[B-14 restructu. conf/ ADR-026 ✅] --> B13

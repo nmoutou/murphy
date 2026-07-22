@@ -13,7 +13,7 @@ sur `PROGRAM.md` §2 (chantier 7). Version en cours : **v0** (voir
 | Régimes d'ingestion dev/prod — trois portes (content/metadata/liens), clés chemin-complet, épuration Mongo (`SCHEMA_VERSION` 2), hydratation Neo4j, interrupteur d'embedding (ADR-022, amendé ADR-023/024) | ✅ Fait (B-00) — prouvé par deux runs réels, bases vérifiées champ par champ |
 | Identité canonique vérifiée sur les 3 BDD (ADR-018 — critère de sortie v0) | ✅ Fait (B-01) |
 | `doc_id` stable au niveau article pour LEGI (ADR-004) | ✅ Fait (B-02) |
-| Graphe de citations Neo4j (source qrels citation-minées) | ✅ Fait (B-03) — modélisation complète : verbes de citation typés, cibles absentes résolues |
+| Graphe de citations Neo4j (source du diagnostic de co-citation, strate 2 — ADR-029) | ✅ Fait (B-03) — modélisation complète : verbes de citation typés, cibles absentes résolues |
 | Restructuration `conf/` en partition `workflow / ingestion / evaluation` (ADR-026) | ✅ Fait (B-14) — fingerprint identique avant/après, prouvé via le vrai loader Kedro |
 
 ## P2 — Évaluation
