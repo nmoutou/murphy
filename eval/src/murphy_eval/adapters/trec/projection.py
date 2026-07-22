@@ -78,13 +78,15 @@ def dump_jsonl_run(run: Run, path: Path) -> None:
 
     Déterministe : les entrées sont sérialisées dans leur ordre d'apparition
     (l'ordre porte déjà le rang) ; ``model_dump`` fige l'ordre des clés. Deux
-    ``dump`` du même ``Run`` produisent des octets identiques.
+    ``dump`` du même ``Run`` produisent des octets identiques — ce qui exige
+    ``encoding="utf-8"`` explicite : à défaut, ``write_text`` suivrait la locale du
+    poste et le déterminisme ne vaudrait que sur une machine donnée.
     """
     lines = (
         json.dumps(entry.model_dump(), ensure_ascii=False, separators=(",", ":"))
         for entry in run.entries
     )
-    path.write_text("".join(f"{line}\n" for line in lines))
+    path.write_text("".join(f"{line}\n" for line in lines), encoding="utf-8")
 
 
 def load_trec_qrels(path: Path) -> Qrels:
@@ -135,4 +137,7 @@ def load_trec_run(path: Path, resolve_doc_id: Callable[[str], str]) -> Run:
 
 
 def _non_empty_lines(path: Path) -> list[str]:
-    return [line for line in path.read_text().splitlines() if line.strip()]
+    """Lecture UTF-8 explicite : les artefacts sont écrits en UTF-8, quelle que
+    soit la locale de la machine qui les relit."""
+    lines = path.read_text(encoding="utf-8").splitlines()
+    return [line for line in lines if line.strip()]

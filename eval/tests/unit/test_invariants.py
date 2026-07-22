@@ -32,7 +32,9 @@ def test_run_sain_ne_produit_aucune_violation() -> None:
 
 
 def test_rangs_non_contigus_signales() -> None:
-    run = Run(entries=(_entry("q1", "c1", "eli:D1", 1), _entry("q1", "c2", "eli:D2", 3)))
+    run = Run(
+        entries=(_entry("q1", "c1", "eli:D1", 1), _entry("q1", "c2", "eli:D2", 3))
+    )
     violations = check_run(run)
     assert [v.invariant for v in violations] == ["ranks_contiguous"]
     assert violations[0].query_id == "q1"
@@ -40,13 +42,17 @@ def test_rangs_non_contigus_signales() -> None:
 
 def test_rangs_dupliques_signales_avant_contiguite() -> None:
     """Un rang dupliqué est diagnostiqué comme tel (pas comme un trou)."""
-    run = Run(entries=(_entry("q1", "c1", "eli:D1", 1), _entry("q1", "c2", "eli:D2", 1)))
+    run = Run(
+        entries=(_entry("q1", "c1", "eli:D1", 1), _entry("q1", "c2", "eli:D2", 1))
+    )
     violations = check_run(run)
     assert [v.invariant for v in violations] == ["ranks_unique"]
 
 
 def test_chunk_id_duplique_dans_une_requete_signale() -> None:
-    run = Run(entries=(_entry("q1", "c1", "eli:D1", 1), _entry("q1", "c1", "eli:D1", 2)))
+    run = Run(
+        entries=(_entry("q1", "c1", "eli:D1", 1), _entry("q1", "c1", "eli:D1", 2))
+    )
     invariants = {v.invariant for v in check_run(run)}
     assert "no_duplicate_chunk" in invariants
 
@@ -63,13 +69,17 @@ def test_chunk_id_a_blanc_de_bord_signale() -> None:
 
 def test_chunk_id_avec_deux_doc_id_signale() -> None:
     """Même chunk rattaché à deux documents : agrégation chunk→document faussée."""
-    run = Run(entries=(_entry("q1", "c1", "eli:D1", 1), _entry("q1", "c1", "eli:D2", 2)))
+    run = Run(
+        entries=(_entry("q1", "c1", "eli:D1", 1), _entry("q1", "c1", "eli:D2", 2))
+    )
     assert "consistent_chunk_doc" in {v.invariant for v in check_run(run)}
 
 
 def test_chunk_id_meme_doc_id_a_travers_requetes_ne_signale_rien() -> None:
     """Le contrôle est intra-requête : le même (chunk, doc) sur q1 et q2 est sain."""
-    run = Run(entries=(_entry("q1", "c1", "eli:D1", 1), _entry("q2", "c1", "eli:D1", 1)))
+    run = Run(
+        entries=(_entry("q1", "c1", "eli:D1", 1), _entry("q2", "c1", "eli:D1", 1))
+    )
     assert check_run(run) == []
 
 

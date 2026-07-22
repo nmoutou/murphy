@@ -3,7 +3,7 @@
 > Un fichier par ADR (format Nygard). ADR-001 à 010 : arbitrages du
 > chantier 4 · ADR-011 à 020 : rétro-documentation des décisions
 > implicites (chantier 5) · ADR-021 et suivants : au fil de l'exécution.
-> **Prochain numéro : ADR-029.**
+> **Prochain numéro : ADR-030.**
 
 ## Registre
 
@@ -25,7 +25,7 @@
 | [ADR-014](ADR-014-exhaustivite-dila-publication.md) | Exhaustivité DILA = critère de publication | Rétro-documenté |
 | [ADR-015](ADR-015-association-avant-publication.md) | Association entre beta et publication | Rétro-documenté |
 | [ADR-016](ADR-016-decouplage-recuperation-generation.md) | Découplage récupération/génération + pertinence graduée | Rétro-documenté |
-| [ADR-017](ADR-017-evaluation-en-strates.md) | Évaluation en strates de pérennité (T2) | Rétro-documenté — **amendé par ADR-025** (strate 5) |
+| [ADR-017](ADR-017-evaluation-en-strates.md) | Évaluation en strates de pérennité (T2) | Rétro-documenté — **amendé par ADR-025** (strate 5), **ADR-029** (strate 2 rétrogradée) |
 | [ADR-018](ADR-018-identite-ecli-primaire.md) | Identité : ECLI primaire | Rétro-documenté |
 | [ADR-019](ADR-019-rejet-akoma-ntoso.md) | Rejet d'Akoma Ntoso comme format de travail | Rétro-documenté |
 | [ADR-020](ADR-020-tri-base-stateless-failfast.md) | Architecture tri-base + P3 stateless/fail-fast | Rétro-documenté |
@@ -37,6 +37,7 @@
 | [ADR-026](ADR-026-restructuration-configuration.md) | Restructuration de la configuration en partition workflow/ingestion/evaluation | ✅ Accepté (19 juillet 2026, implémenté par B-14) — prérequis P1 d'ADR-027 |
 | [ADR-027](ADR-027-plateforme-evaluation-end-to-end.md) | Plateforme d'évaluation end-to-end : le harnais pilote l'ingestion | 🔶 Proposé (19 juillet 2026) — dépend d'ADR-026 |
 | [ADR-028](ADR-028-frontiere-verification-automatique-humaine.md) | Frontière vérification automatique / validation humaine | Acté (19 juillet 2026) — s'appuie sur ADR-017 |
+| [ADR-029](ADR-029-retrogradation-strate-2-diagnostic-cocitation.md) | Rétrogradation de la strate 2 : diagnostic de co-citation, non qrels | Acté (20 juillet 2026, recadrage B-07) — amende ADR-017, prolonge ADR-028 |
 
 ## Points ouverts rattachés
 

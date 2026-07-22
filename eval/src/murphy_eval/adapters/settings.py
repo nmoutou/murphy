@@ -49,6 +49,21 @@ class EvalInfraSettings(BaseSettings):
     embedding_model: str = Field(alias="EMBEDDING_MODEL")
     embedding_api_key: SecretStr | None = Field(default=None, alias="EMBEDDING_API_KEY")
 
+    # Chemin de lecture Neo4j du socle de co-citation (B-07). Mêmes variables que
+    # l'ingestion (le pipeline s'y authentifie via NEO4J_USERNAME/PASSWORD, pas
+    # NEO4J_AUTH qui ne provisionne que le conteneur — cf. .env.dev).
+    neo4j_uri: str = Field(alias="NEO4J_URI")
+    neo4j_username: str = Field(alias="NEO4J_USERNAME")
+    neo4j_password: SecretStr = Field(alias="NEO4J_PASSWORD")
+
+    owner_id: str = Field(default="default", alias="OWNER_ID")
+    """Le tenant écrit par l'ingestion — **lu, jamais deviné**.
+
+    Même variable et même défaut que ``ragcore`` (``adapters/config/settings.py``
+    : ``owner_id: str = "default"``). Le coder en dur côté harnais produirait un
+    filtre qui ne matche rien, donc un jeu **vide sans erreur** — l'échec
+    silencieux que la strate 2 est censée prévenir, pas commettre."""
+
 
 @lru_cache
 def get_eval_infra_settings() -> EvalInfraSettings:

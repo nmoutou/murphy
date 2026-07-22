@@ -57,7 +57,9 @@ class DocRun(Frozen):
             )
         doc_ids = [doc_id for doc_id, _rank in self.doc_ranks]
         if len(set(doc_ids)) != len(doc_ids):
-            raise ValueError(f"doc_ranks ne doit porter aucun doublon de doc_id ; reçu {doc_ids}")
+            raise ValueError(
+                f"doc_ranks ne doit porter aucun doublon de doc_id ; reçu {doc_ids}"
+            )
         return self
 
     def as_dict(self) -> dict[str, int]:

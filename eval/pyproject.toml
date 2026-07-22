@@ -21,8 +21,16 @@ dependencies = [
     "qdrant-client~=1.12",
     "httpx~=0.28",
     "pymongo~=4.9",
+    # Socle d'extraction des paires de co-citation (B-07) : chemin de lecture
+    # Neo4j dédié, lecture seule, sans importer ragcore (ADR-027).
+    "neo4j~=5.26",
     "pydantic-settings~=2.7",
 ]
+
+[project.scripts]
+# Le socle de co-citation (B-07) : produit le jeu de paires versionné + sa
+# volumétrie (E-P2-05), et sert de procédure de rejeu (E-T-02).
+murphy-eval-cocitation = "murphy_eval.cli.cocitation:main"
 
 [project.optional-dependencies]
 dev = [
@@ -50,7 +58,7 @@ namespaces = false
 pythonpath = ["src"]
 markers = [
     "oracle: cross-check contre trec_eval/pytrec_eval — hors CI par défaut",
-    "integration: nécessite des conteneurs (Qdrant) — hors CI par défaut",
+    "integration: nécessite des conteneurs (Qdrant, Neo4j) — hors CI par défaut",
 ]
 addopts = """
 --cov-report term-missing \
@@ -84,6 +92,8 @@ ignore = ["E501"] # Ruff format takes care of line-too-long
 [tool.ruff.lint.per-file-ignores]
 # Dans un test, la valeur attendue EST le propos de l'assertion (idem data/).
 "**/tests/**" = ["PLR2004"]
+# Une CLI parle à l'opérateur : `print` y est le moyen, pas un oubli de debug.
+"**/cli/**" = ["T201"]
 
 [tool.mypy]
 strict = true
@@ -92,7 +102,7 @@ files = ["src/murphy_eval"]
 exclude = ["/tests/"]
 
 [[tool.mypy.overrides]]
-module = ["ranx.*", "numpy.*", "pytrec_eval.*", "qdrant_client.*", "testcontainers.*"]
+module = ["ranx.*", "numpy.*", "pytrec_eval.*", "qdrant_client.*", "testcontainers.*", "neo4j.*"]
 ignore_missing_imports = true
 
 [tool.pydantic-mypy]

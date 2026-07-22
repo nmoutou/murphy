@@ -19,7 +19,7 @@
 | B-04 | Implémenter le scorer nDCG@R + diagnostics + règle d'agrégation chunk→document | E-P2-02, E-P2-03 | P2 | ✅ |
 | B-05 | Implémenter l'adapter baseline (runs au format ADR-008) | E-P2-01, E-T-01 | P2 | ✅ |
 | B-06 | Implémenter la suite d'invariants structurels (strate 1) | E-P2-04 | P2 | ✅ |
-| B-07 | Générer les qrels citation-minées (strate 2) depuis le graphe | E-P2-05 | P2 | ⬜ |
+| B-07 | Miner le jeu de **paires de co-citation** (strate 2) depuis le graphe — socle d'extraction (adapter Neo4j dédié dans `eval/`, Cypher, writer des paires), usage diagnostique précision-seulement, **non des qrels** (ADR-029) | E-P2-05 | P2 | ✅ |
 | B-08 | Produire le golden-set v1 synthétique + guide d'annotation + stratification 4 types d'action | E-P2-06, E-P2-07 | P2 | ⬜ |
 | B-09 | Construire ≥ 1 set diagnostique graph-hop | E-P2-08 | P2 | ⬜ |
 | B-10 | Implémenter le test statistique apparié | E-P2-09 | P2 | ⬜ |
@@ -79,6 +79,74 @@
   sur BDD peuplées) restent hors v0, déjà couvertes côté `data/` (B-00/B-01/
   B-03) ; les re-faire ici serait un doublon. Ce que B-06 régularise : la
   preuve mécanique versionnée que les artefacts sont structurellement sains.
+- **B-07 recadré (ADR-029, 20 juillet 2026)** : l'hypothèse *citation ≈
+  pertinence* est rétrogradée. La strate 2 n'est plus une source de
+  **qrels scorables** mais un **diagnostic de co-citation
+  précision-seulement** (on mesure la part de documents remontés
+  juridiquement liés dans le graphe ; jamais le rappel, jamais un grade —
+  neutralise l'incomplétude des citations et l'absence de degré). B-07
+  subsiste comme **socle d'extraction** (premier chemin de lecture Neo4j
+  du harnais, hors `ragcore` — ADR-027) et **B-09 le consomme**
+  (`B-07 → B-09`). Le graphe **n'assiste pas** la construction du
+  golden-set (B-08 reste indépendant) : ce serait la circularité même que
+  la strate 2 doit prévenir. L'assistance à l'annotation est renvoyée en
+  §4, hors graphe.
+- **B-07 est ✅ (22 juillet 2026)** : socle d'extraction livré dans `eval/` —
+  adapter Neo4j dédié (hors `ragcore`, ADR-027), Cypher contraint aux labels
+  documentaires, writer JSONL immuable, volumétrie (`summarize_pairs`) et
+  commande `murphy-eval-cocitation` (`[project.scripts]`). **Jeu réel produit et
+  versionné** dans `eval/artifacts/cocitation/` : 1456 paires, 726 documents,
+  reproductible bit-à-bit (md5 identiques sur deux runs). Filtres prouvés contre
+  un vrai Neo4j (testcontainers) ; 110 tests unitaires + 2 d'intégration.
+  E-P2-05 satisfaite (jeu versionné + volumétrie + méthode documentées),
+  E-T-02 servie (procédure de rejeu au README). **Deux défauts trouvés par le
+  run réel, invisibles aux tests** : le tenant codé en dur (`"system"` au lieu
+  d'`OWNER_ID`) qui rendait un jeu vide en code 0, corrigé ; et le sort de
+  `contains`, à trancher avant B-09 (ci-dessous).
+- **B-07 — contrôle de volumétrie ✅ LEVÉ (22 juillet 2026).** Mesuré sur le
+  graphe réellement ingéré (1121 nœuds, tenant `default`) : **1456 paires avec
+  le filtre de labels, 1456 sans** — chiffres identiques, C-01 était bien
+  *latent* et `_DOCUMENT_LABELS` est exhaustif. Les labels observés sont
+  exactement les quatre attendus (`Article` 384, `Document` 352, `Section` 287,
+  `Texte` 98), aucun autre. La réserve ci-dessous est donc close ; elle est
+  conservée pour mémoire de la méthode.
+  <details><summary>Énoncé initial de la réserve</summary>
+
+  Le Cypher
+  de minage contraint les labels documentaires (`Document | Article | Texte |
+  Section`, recopiés depuis le contrat d'ingestion — ADR-027 interdit
+  d'importer `ragcore`). L'exhaustivité de cette liste est **déduite de la
+  lecture de `merge_document_node`, non mesurée sur un corpus** : les tests
+  d'intégration ne la prouvent pas, leur seed portant les labels attendus par
+  construction. Contrôle à faire dès que B-07 est exécutable de bout en bout
+  (C-04) sur un Neo4j réellement ingéré : **compter les paires avec et sans le
+  filtre de labels — les deux chiffres doivent être identiques**. Un écart
+  signalerait un label documentaire non recensé, donc un filtre qui *supprime
+  des paires légitimes* en silence — défaut inverse et plus grave que celui
+  qu'il corrige, puisqu'il appauvrirait le jeu sans lever d'erreur. Sert
+  E-P2-05 (volumétrie documentée) : à solder avant de clore B-07.
+  </details>
+- **B-07 → B-09 : le verbe `contains` est à trancher (constat du 22 juillet
+  2026).** Le premier jeu réel compte **1456 paires, dont 726 `contains`** — la
+  moitié. Or `contains` est de la **structure documentaire**, pas une citation :
+  `Section→Article` (395), `Section→Section` (269), `Texte→Section` (48),
+  `Texte→Article` (14). ADR-029 fonde la strate 2 sur des documents
+  *juridiquement liés* ; un couple parent/enfant ne l'est pas, et le garder
+  gonflerait la précision diagnostique de B-09 avec des paires triviales
+  (retrouver un article et le code qui le contient n'est pas une performance de
+  récupération). Ventilation restante, elle bien citationnelle : `cites` 373,
+  `succeeded_by` 288, `references` 62, `modifies` 7. **Décision à prendre avant
+  B-09** : filtrer `contains` au minage, ou le laisser passer et le neutraliser
+  au moment du diagnostic (ADR-029 déporte déjà le jugement des verbes sur
+  B-09). Ne remet pas en cause le socle : le jeu est reproductible et sa méthode
+  documentée ; c'est son *interprétation* qui est en jeu.
+- **B-05 n'a pas de point d'entrée** (constaté en outillant B-07, 22 juillet
+  2026). `BaselineRetriever` n'est câblé par aucun composeur : produire un run
+  baseline demande encore d'écrire du Python à la main, alors qu'E-T-02 veut une
+  procédure de rejeu documentée. B-07 a posé le patron (`murphy_eval/cli/`,
+  `[project.scripts]`, artefacts versionnés sous `eval/artifacts/`) ; reste à
+  l'appliquer à B-05. À solder au plus tard dans **B-11** (baseline chiffrée
+  reproductible), qui ne peut pas s'en passer.
 - B-08 (golden-set) est désormais tirable : B-01 et B-02 sont acquis.
 - **B-14 est ✅** : `conf/` restructuré en `base/{workflow,ingestion,evaluation}/`
   (sous-dossiers de `base/`, seul env lu par défaut par Kedro — écart
@@ -104,14 +172,14 @@ flowchart TD
     B01 --> B05[B-05 adapter baseline ✅]
     B01 --> B08[B-08 golden-set v1]
     B02 --> B08
-    B03[B-03 graphe citations ✅] --> B07[B-07 qrels citation-minées]
+    B03[B-03 graphe citations ✅] --> B07[B-07 socle co-citation strate 2]
     B03 --> B09[B-09 set graph-hop]
+    B07 --> B09
     B04[B-04 scorer + agrégation ✅] --> B10[B-10 test apparié]
     B04 --> B11[B-11 baseline reproductible]
     B05 --> B06[B-06 invariants strate 1 ✅]
     B05 --> B13[B-13 orchestrateur + sweep W×R]
     B14[B-14 restructu. conf/ ADR-026 ✅] --> B13
-    B07 --> B11
     B08 --> B11
     B09 --> B11
     B10 --> B11
@@ -128,6 +196,10 @@ insère l'orchestrateur end-to-end, lui-même précédé de B-14 côté P1).
 Liste sans engagement ni ordre — rien ici ne sert une exigence v0.
 Réexaminée au changement de version, jamais pendant.
 
+- Méthode d'assistance à l'annotation du golden-set (suggestion de
+  candidats à l'annotateur), **hors graphe de citations** — le graphe
+  recréerait la circularité qu'ADR-029 écarte. À cadrer autrement (réveil :
+  construction de B-08 ou alpha ph.1)
 - Câblage Neo4j dans le pipeline RAG de P3 (réveil : alpha ph.1)
 - Composant de jugement inline (alpha ph.1 — ADR-010)
 - Exposition externe de métriques IR agrégées vs signal binaire

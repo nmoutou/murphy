@@ -1,6 +1,6 @@
 # STATUS — État du programme par projet
 
-Dernière mise à jour : 19 juillet 2026 (B-06). Structure alignée
+Dernière mise à jour : 22 juillet 2026 (B-07). Structure alignée
 sur `PROGRAM.md` §2 (chantier 7). Version en cours : **v0** (voir
 `VERSIONS.md`).
 
@@ -25,7 +25,7 @@ sur `PROGRAM.md` §2 (chantier 7). Version en cours : **v0** (voir
 | Adapter baseline (runs au format ADR-008) | ✅ Fait (B-05) — `BaselineRetriever` Qdrant dense dans `eval/`, `doc_id` lu du payload `identifier` (ADR-018), runs JSONL immuables ; unit + integration testcontainers Qdrant |
 | Invariants structurels strate 1 (ADR-017) | ✅ Fait (B-06) — part *pure* dans `eval/` (`core/services/invariants.py`), aucune BDD : rangs contigus/uniques, pas de doublon, ids non vides, namespaces run↔qrels ; loaders JSONL validants (`InvariantError`). Strate 1 *live* (complétude/liens) hors v0, déjà acquise côté data |
 | Test statistique apparié (ADR-007) | ❌ À implémenter (B-10) |
-| Qrels citation-minées (strate 2) | ❌ À implémenter |
+| Diagnostic de co-citation (strate 2 — **ADR-029**, ex-« qrels citation-minées ») | ✅ Socle fait (B-07) — commande `murphy-eval-cocitation` dans `eval/`, chemin de lecture Neo4j dédié (hors `ragcore`, ADR-027), artefacts versionnés `eval/artifacts/cocitation/`. **Premier jeu réel : 1456 paires, 726 documents**, reproductible bit-à-bit. Exhaustivité des labels documentaires **prouvée** (1456 avec/sans filtre). ⚠️ Sort du verbe `contains` (726 paires, structure documentaire et non citation) **à trancher avant B-09** |
 | Golden-set v1 synthétique + guide d'annotation (ADR-005) | ❌ À produire |
 
 ## P3 — Applicatif
