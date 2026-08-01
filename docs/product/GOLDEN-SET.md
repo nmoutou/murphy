@@ -23,12 +23,16 @@
 > |---|---|---|
 > | **§4** — les deux axes | ⛔ **faux** | La cardinalité n'est plus un axe. Le tableau des huit mécanismes est périmé sur deux points : la liste tombe à **sept** (`robustesse_paraphrase` devient une variante) et la colonne `Régime` classe `concept_vers_instance` en *détenu*, ce qui est faux — son label asserté est une opinion. |
 > | **§4.1** — les quatorze cellules | ⛔ **supprimé** | La grille n'existe plus. Aucune cellule n'est à peupler. |
-> | **§6** — les matières, §6.1 douze strates, §6.2 pondération | ⛔ **supprimé** | Les strates ne survivent pas comme cadre d'échantillonnage ; le vecteur D₁ tombe avec elles. `WIP/B-08-prior-ponderation.md` est sans objet. |
+> | **§6** — les matières, §6.1 douze strates | ⛔ **supprimé** | Les strates ne survivent pas comme cadre d'échantillonnage ; le vecteur de pondération tombe avec elles. `WIP/B-08-prior-ponderation.md` est sans objet. **§6.3 (registre) et §6.4 (date pivot) survivent** et sont à replacer hors du §6 mourant — [ticket #12](https://github.com/left-eyebr0w/murphy/issues/12). |
+> | **§6.2** — pondération au rapport | ✅ **traité** | **Supprimé, chiffre et principe** (YAGNI) : un seul chiffre publié, non pondéré, aucune estimation production. Seule survit la mise en garde sur les ventilations. [Ticket #4](https://github.com/left-eyebr0w/murphy/issues/4). |
 > | **§7** — dimensionnement | ⚠️ **à re-dériver** | `N_q ≈ 155` reposait sur `14 cellules × 10` : les facteurs n'existent plus. Et `N_j ≈ 60–70` (§7.4) est **optimiste d'un facteur ≈ 2,5** — la pratique publiée demande **150–165 requêtes jugées** pour départager deux configurations proches (Webber/Moffat/Zobel, CIKM 2008 §5.1 — dossier : [`recherche/realisme-collections.md`](recherche/realisme-collections.md)). La distinction `N_q` / `N_j` elle-même, et l'argument de coût du §7.2, survivent. |
 > | **§8.1** — paires isosémantiques | ⚠️ **requalifié** | Elles ne sont plus un sous-ensemble d'un mécanisme : la paraphrase devient une **variante** applicable à n'importe quel cas, donc mesurable partout sans coût de label. |
 > | **§8.3** — strate-frontière | ⚠️ **suspendu** | Défini par rapport aux strates, qui tombent. |
 > | **§4.4** — les types de difficulté | ✅ **tient** | Son raisonnement est indépendant de la grille. |
-> | **§1, §2, §3, §5, §9, §10, §11** | ⚠️ **à instruire** | Non démolis, mais leurs dépendances bougent. §2 (la doctrine) et §10 (ce qu'on exige de l'ingestion, dérivé des strates S6/S11/S12) sont des tickets ouverts de la carte. |
+> | **§2** — la doctrine | ✅ **réécrit** | Intégralement, le 1ᵉʳ août 2026 : **aucun cadre d'échantillonnage** (assumé), **le corpus est entrée matérielle** et l'interdit anti-circularité porte désormais sur la *liste des mécanismes*, **`pending` délibéré sur la source `identite`** seule. Le vocabulaire D₁/D₂/D₃ a disparu du document. [Ticket #4](https://github.com/left-eyebr0w/murphy/issues/4). |
+> | **§10** — ce qu'on exige de l'ingestion | ✅ **re-dérivé** | Depuis la source de gratuité au lieu des strates. Devient un **constat émergent**, donc un critère **non exhaustif** pour ADR-003. [Ticket #4](https://github.com/left-eyebr0w/murphy/issues/4). |
+> | **§5.1** — hiérarchie de provenance | ⚠️ **contesté** | Le rang 1 s'y déclare *permanent, survit à la ré-ingestion* — faux pour la source `frontiere_corpus`, dont le label **se retourne** quand le corpus s'étend. [Ticket #15](https://github.com/left-eyebr0w/murphy/issues/15). |
+> | **§1, §3, §5, §9, §11** | ⚠️ **à instruire** | Non démolis, mais leurs dépendances bougent. |
 >
 > **Ce qui est acquis et n'est écrit nulle part ici encore** : l'axe unique des
 > mécanismes ; le remplacement du test de sens de dérivation d'ADR-034 par
@@ -57,41 +61,117 @@ séparés, à côté, jamais des variantes du jeu principal.
 
 ---
 
-## 2. La doctrine : on spécifie l'usage, pas le stock
+## 2. La doctrine : le jeu n'échantillonne pas le droit, il énumère des fonctions
 
-Trois distributions coexistent et divergent fortement.
+> Section **réécrite intégralement** le 1ᵉʳ août 2026
+> ([ticket #4](https://github.com/left-eyebr0w/murphy/issues/4)). La version
+> précédente construisait le jeu sur une distribution du contentieux réel ; ce
+> cadre est tombé avec les douze strates. Le vocabulaire D₁ / D₂ / D₃ ne figure
+> plus dans ce document.
 
-| | Nature | Biais propre |
+### 2.1 Aucun cadre d'échantillonnage, et c'est par construction
+
+ADR-034 §1 range le paradigme fonctionnel — celui de ce jeu — dans la colonne
+*cadre d'échantillonnage* : **aucun**. Ce n'est pas un manque à combler, c'est
+la définition du paradigme.
+
+**Le jeu n'échantillonne pas le droit ; il énumère des fonctions de
+récupération.** L'ensemble des mécanismes est petit, borné et testable au sens
+logiciel ; l'ensemble des contenus juridiques ne l'est pas. Organiser par
+mécanisme, c'est renoncer explicitement à représenter quoi que ce soit du
+*contenu* du droit.
+
+Deux cadres de remplacement ont été examinés et écartés :
+
+| Écarté | Pourquoi |
+|---|---|
+| **Un cadre promis à la taxonomie** (`docs/droit/taxomonie/`, ADR-034 §5) | Elle est hors chemin critique et sur son propre calendrier. Écrire une dépendance qu'on ne peut pas honorer en v1 revient à dater un chèque. |
+| **Le corpus lui-même comme cadre par défaut** | C'est exactement la circularité qu'ADR-029 écarte pour la strate 2 et qu'ADR-031 écarte pour le graphe. |
+
+L'argument décisif n'est pas qu'un meilleur cadre resterait à trouver, mais que
+**tout cadre de contenu est devenu sans objet** : un cas
+`known_item_identifiant` n'a pas de matière au sens utile — la région du droit
+de sa cible est un accident du document tiré, pas une propriété du test.
+
+> ⚠️ **Conséquence assumée, et elle coûte.** Sans cadre d'échantillonnage, **un
+> trou n'est plus chiffrable** : plus rien ne dit par rapport à quoi une absence
+> est grave. La couverture régulière du contenu relève du **second instrument**
+> (la taxonomie), la représentativité du besoin relève du **paradigme usage**
+> (le panel, ADR-025) — ni l'une ni l'autre n'est mesurable ici. ADR-034 §5 :
+> triangulation, jamais fusion.
+
+### 2.2 Le corpus est une entrée matérielle assumée
+
+La v1 gratuite tient en quatre mécanismes, et **tous ont besoin du corpus** —
+l'un d'eux y prend directement son label :
+
+| Mécanisme | Source de gratuité | Rapport au corpus |
 |---|---|---|
-| **D₁ — contentieux réel** | Volume d'affaires portées devant un juge | Dominé par les atteintes aux biens (35,1 % du socle), dont la majorité sans auteur identifié, donc quasiment sans jurisprudence publiée |
-| **D₂ — empreinte documentaire** | Volume de documents effectivement ingérés | Reflète les choix d'ingestion et les biais éditoriaux des bases, pas le besoin |
-| **D₃ — questions réellement posées** | Besoin de décision des utilisateurs | Non observable avant l'alpha ph.1 ; gouverné par l'enjeu, non par la fréquence |
+| `resolution_reference` | `identite` | le label (ELI) se calcule **hors** corpus ; le corpus sert à *scorer* |
+| `known_item_identifiant` | `identite` | idem (ECLI) |
+| `multi_hop` | `graphe_g0` | `G₀` est **construit depuis les documents ingérés** |
+| `absence_hors_corpus` | `frontiere_corpus` | la frontière du corpus **est** la source du label |
 
-**Le jeu se construit sur D₃, approché par D₁ corrigé. D₂ est écarté comme
-entrée de conception.**
+Un jeu dont un mécanisme sur quatre est étiqueté par l'empreinte documentaire
+ne peut pas prétendre écarter le corpus de sa conception. On l'assume donc :
+**le corpus fournit le matériau.**
 
-C'est la décision structurante de ce document, et elle a une raison de fond :
-dimensionner depuis le corpus laisserait **l'ingestion définir ce qu'on
-mesure**. L'instrument suivrait l'objet — la circularité qu'ADR-029 écarte
-pour la strate 2, et qu'ADR-031 écarte pour le graphe, revenue par la porte
-du corpus.
+Mais la raison de fond de l'ancien interdit — *dimensionner depuis le corpus
+laisserait l'ingestion définir ce qu'on mesure* — reste valide. Elle change
+simplement d'objet, du contenu vers la fonction :
 
-**Conséquence assumée, et c'est un bénéfice :** le golden-set est écrit
-**avant** l'ingestion étendue. Une question dont la cible exige une base non
-encore ingérée n'est pas un défaut du jeu — c'est une **exigence adressée à
-l'ingestion** (voir §10). Le jeu cesse d'être un miroir du corpus pour devenir
-une spécification de ce que Murphy doit savoir répondre.
+> **La liste des mécanismes est fixée a priori, jamais par ce qui se trouve
+> ingéré.**
 
-**Bénéfice secondaire, structurel** : écrire les questions sans avoir les
-documents sous les yeux rend le piège de la **requête-décalque** (P-01,
-`WIP/B-08-cadrage.md`) matériellement impossible. On ne décalque pas un
-document qu'on n'a pas. Le risque résiduel est inverse et bénin — une question
-sans cible, qui reste `pending` jusqu'à ce que l'ingestion la serve.
+L'ingestion fournit les cibles ; elle ne décide pas quelles **fonctions** sont
+testées. C'est le seul niveau où la non-circularité ait encore un objet — sous
+§2.1 il n'y a plus de contenu à biaiser. Le risque concret que cet interdit
+couvre : déduire de « KALI n'est pas ingéré » qu'on renonce à `multi_hop` sur le
+droit du travail. L'ingestion aurait repris la main sur la mesure.
 
-> ⚠️ Le corpus revient en fin de chaîne, et à un seul titre : **ordonnancer
-> l'effort d'annotation** (quelles questions sont jugeables aujourd'hui). Le
-> même déplacement de rôle que le pooling a subi avec ADR-032 — de levier de
-> complétude à ordonnanceur.
+### 2.3 Le jeu n'est pas écrit avant l'ingestion — sauf sur la source `identite`
+
+L'ancienne rédaction tirait deux bénéfices de la doctrine : le jeu écrit avant
+l'ingestion, et la **requête-décalque** (P-01) rendue « matériellement
+impossible ». Les deux tombent.
+
+- Le décalque n'est pas supprimé, il est **déplacé vers la sélection** du
+  document germe (ADR-034 §*Constat*). Il n'existe pas d'authoring qui l'évite ;
+  il se traite au guide d'annotation, pas par une propriété structurelle.
+- Écrire avant l'ingestion est **structurellement impossible** pour
+  `graphe_g0` et `frontiere_corpus`, dont le label vit *dans* le corpus.
+
+Ce qui survit, et ce n'est pas rien : **le label de la source `identite` vit
+hors du corpus.** L'ELI se calcule depuis « article 1240 du Code civil »,
+l'ECLI depuis un numéro de pourvoi (ADR-018) — sans que le document soit
+ingéré. Le corpus n'est nécessaire que pour *scorer*, pas pour *étiqueter*.
+
+**Donc une question `identite` peut être écrite sur une cible absente, et le
+jeu en écrit délibérément.** Elle reste `pending` : écrite, gelée, interrogée à
+chaque run, non jugée — et jugeable sans aucune re-récupération le jour où sa
+base arrive (§7.2, §10).
+
+C'est **délibéré et non simplement toléré**, parce qu'un auteur qui travaille
+depuis le corpus n'en produira jamais par accident : il ouvrira le document.
+Tolérer sans rechercher équivaudrait à abandonner, et le jeu redeviendrait un
+miroir du corpus — au niveau des cibles, ce que §2.2 vient d'interdire au
+niveau des mécanismes.
+
+L'argument de coût est solide **et il est local à cette source** : §7.2 pose
+qu'écrire large coûte moins que d'écrire deux fois, tandis qu'ADR-034
+§*Conséquences* avertit que sur-investir l'authoring pré-panel achète du volume
+artefactuel. Sur `identite`, la tension n'existe pas — c'est l'exception nommée
+par ADR-034 §*Constat*, où le sens de dérivation n'est pas un artefact et où le
+label est gratuit **et** réaliste. Une question `pending` y est le cas le moins
+cher du jeu : label gratuit, hors corpus, zéro jugement, zéro re-récupération.
+
+Le **volume** de `pending` n'est pas fixé ici (voir §7 et
+[ticket #11](https://github.com/left-eyebr0w/murphy/issues/11)).
+
+> ⚠️ Le corpus intervient aussi en fin de chaîne, à un titre distinct :
+> **ordonnancer l'effort d'annotation** (quelles questions sont jugeables
+> aujourd'hui). Même déplacement de rôle que le pooling a subi avec ADR-032 —
+> de levier de complétude à ordonnanceur.
 
 ---
 
@@ -288,6 +368,16 @@ détenu, jamais jugé ; (2) on peut **nommer la question** qu'on répondrait en
 *slice*-ant dessus — pas de question, pas de tag ; (3) son vocabulaire est clos
 et le **null est permis**.
 
+> ⚠️ **La permanence du rang 1 est contestée, depuis le 1ᵉʳ août 2026.** Les
+> trois sources de gratuité établies pour les labels n'ont pas la même
+> permanence : `identite` (ELI, ECLI) est stable, `graphe_g0` est au moins
+> versionné (ADR-031), mais **`frontiere_corpus` bouge à chaque vague
+> d'ingestion**. La bonne réponse d'un cas `absence_hors_corpus` passe alors de
+> « rien » à « ce document » : le label ne se dégrade pas, **il se retourne** —
+> et le jeu travaille activement à provoquer ce retournement (§2.3, §10).
+> Arbitrage en cours :
+> [ticket #15](https://github.com/left-eyebr0w/murphy/issues/15).
+
 **Le soulagement est structurel.** Les trois angles *wicked* du départ —
 thématiques, domaines, institutions — sont **déjà encodés dans la structure du
 corpus DILA**. La juridiction est dans l'ECLI, la chambre dans les métadonnées,
@@ -352,11 +442,28 @@ plutôt qu'affirmer, ADR-012 poussé jusqu'au tag.
 
 ---
 
-## 6. Les matières
+## 6. ⛔ Les matières — supprimé
+
+> **§6 et §6.1 sont supprimés** depuis le 1ᵉʳ août 2026. Les douze strates ne
+> survivent pas comme cadre d'échantillonnage, et le vecteur de pondération
+> tombe avec elles (§2.1 : le jeu n'a **aucun** cadre d'échantillonnage, par
+> construction). `WIP/B-08-prior-ponderation.md` est sans objet.
+>
+> **Le texte est conservé en l'état à titre d'archive, pas de spécification.**
+> Rien de ce qui suit jusqu'à §6.2 n'est à appliquer. En particulier, « ses
+> trous sont permis et chiffrés » ne tient plus : sans cadre, **un trou n'est
+> plus chiffrable** — voir §2.1 et
+> [ticket #10](https://github.com/left-eyebr0w/murphy/issues/10).
+>
+> **§6.3 (registre) et §6.4 (date pivot) survivent** et sont à replacer hors de
+> cette section — [ticket #12](https://github.com/left-eyebr0w/murphy/issues/12).
+
+<details>
+<summary>Archive — statut sous ADR-033 (périmé)</summary>
 
 > **Statut sous ADR-033 : facette, non axe.** La matière reste le **cadre
-> d'échantillonnage stratifié** et conserve son vecteur de repondération D₁,
-> mais elle n'entre pas dans les cellules à couvrir (§4.1). Elle est équilibrée
+> d'échantillonnage stratifié** et conserve son vecteur de repondération, mais
+> elle n'entre pas dans les cellules à couvrir (§4.1). Elle est équilibrée
 > au mieux sur la grille, et **ses trous sont permis et chiffrés** — c'est
 > précisément l'information que la couverture forcée détruisait.
 >
@@ -364,7 +471,14 @@ plutôt qu'affirmer, ADR-012 poussé jusqu'au tag.
 > pas épuisée, elle est confinée à une dimension où l'exhaustivité n'est plus
 > exigée.
 
-### 6.1 Douze strates
+</details>
+
+### 6.1 ⛔ Douze strates — supprimé (archive)
+
+> Conservé à titre documentaire. Les poids ci-dessous n'ont plus d'emploi :
+> ils ne sont ni une clé d'allocation, ni une clé de pondération au rapport
+> (§6.2). Les références au « §2 » dans ce qui suit visent l'ancienne doctrine,
+> réécrite depuis.
 
 Reprises de l'analyse statistique (RSJ 2025, Chiffres clés 2025, Chiffres clés
 JA 2025), refondues pour l'usage documentaire. La nomenclature d'origine était
@@ -396,27 +510,36 @@ affaires parce que personne ne saisit un tribunal pour connaître le RGPD ou le
 délai d'un référé — ce sont des besoins d'**information**, pas de litige. Les
 omettre reviendrait à laisser la statistique judiciaire définir le produit.
 
-### 6.2 Le tirage est uniforme, la pondération vient au rapport
+### 6.2 ⛔ Supprimé — la pondération au rapport
 
-**On échantillonne pour le pouvoir diagnostique, on pondère au moment du
-rapport.** Un plancher par case garantit que chaque strate dit quelque chose ;
-les poids D₁ ne sont jamais une clé d'allocation.
+> **Supprimé le 1ᵉʳ août 2026**
+> ([ticket #4](https://github.com/left-eyebr0w/murphy/issues/4)), chiffre **et**
+> principe.
+>
+> Le **score d'estimation production** était défini comme le score de diagnostic
+> repondéré par les poids du contentieux réel : il meurt avec eux, sans
+> arbitrage.
+>
+> Le **principe** qui l'accompagnait — *on échantillonne pour le pouvoir
+> diagnostique, on pondère au rapport ; un poids gravé dans l'échantillonnage
+> est irréversible, alors que changer d'avis au rapport est un changement de
+> classe 1 (ADR-032)* — aurait pu survivre en changeant de rôle : garantir que
+> l'absence de cadre d'échantillonnage (§2.1) soit rattrapable en classe 1 le
+> jour où la taxonomie en fournit un. **Écarté par YAGNI** : tant que la
+> taxonomie n'existe pas, on ne conserve pas un principe pour une reprise
+> hypothétique, et l'on ne conçoit pas non plus son point d'accroche.
+>
+> **Ce que le rapport publie donc : un seul chiffre, non pondéré.** Le jeu
+> n'estime pas la performance en production — c'est le paradigme usage (panel,
+> ADR-025) qui répond à cette question, pas celui-ci.
 
-Deux chiffres sortent d'un jeu unique :
+**Ce qui survivait dans cette section sans dépendre de la pondération**, et qui
+reste en vigueur :
 
-- un **score de diagnostic**, non pondéré, lisible strate par strate ;
-- un **score d'estimation production**, repondéré par les poids ci-dessus.
-
-Ce n'est pas une commodité mais une propriété de coût : un poids gravé dans
-l'échantillonnage est irréversible sans réécrire le jeu, alors que changer
-d'avis sur la représentativité au rapport est un changement de **classe 1**
-(ADR-032) — re-notation seule, zéro re-récupération.
-
-> ⚠️ Une ventilation (par strate, par base, par opération) est une **mesure
+> ⚠️ Une ventilation (par base, par opération, par mécanisme) est une **mesure
 > distincte à dénominateur propre**. Restreindre les qrels à un sous-ensemble
-> change `R`, donc la coupe adaptative de nDCG@R (ADR-007, ADR-030). Deux
-> ventilations ne se comparent ni entre elles ni à l'agrégat. À énoncer dans
-> chaque rapport.
+> change `R`, donc la coupe adaptative (ADR-007, ADR-030). Deux ventilations ne
+> se comparent ni entre elles ni à l'agrégat. À énoncer dans chaque rapport.
 
 ### 6.3 Registre
 
@@ -667,24 +790,42 @@ pas qu'ajouter du bruit : **elles déplacent la coupe**.
 
 ## 10. Ce que le jeu exige de l'ingestion
 
-Effet de bord recherché de la doctrine du §2 : construit sur l'usage, le
-golden-set **désigne les manques du corpus** au lieu de les épouser.
+> Section **re-dérivée** le 1ᵉʳ août 2026
+> ([ticket #4](https://github.com/left-eyebr0w/murphy/issues/4)). Elle tirait
+> auparavant ses exigences des strates S6 / S11 / S12, qui sont tombées. Elle se
+> tire désormais de la **source de gratuité du label** — un objet qui, lui,
+> tient (§2.3).
 
-| Strate | Ce qu'elle réclame | État |
-|---|---|---|
-| S6 — Travail | KALI, ACCO (conventions et accords collectifs) | Non ingérés |
-| S11 — Libertés publiques | CONSTIT en volume, CNIL | CONSTIT ingéré à l'état de trace |
-| S12 — Procédure | CPC, CJA, CPP dans LEGI ; CASS et JADE en volume | Partiel |
-| Toutes | Volumétrie des 5 bases de jurisprudence | CAPP et INCA à l'état de trace |
+Le golden-set **désigne les manques du corpus** au lieu de les épouser. Le
+mécanisme est celui de §2.3 : sur la source `identite`, le label vit hors du
+corpus, donc une question peut être écrite sur une cible non ingérée.
 
-Ces lignes alimentent directement le point ouvert d'ADR-003 (contenu de la
-vague 2 d'ingestion, candidates KALI et CIRCULAIRES), qui attendait un critère
-pour être tranché. **Le golden-set est ce critère** : ce qu'il faut ingérer est
-ce sans quoi des questions légitimes restent sans réponse possible.
+Une telle question reste **`pending`** : écrite, gelée, interrogée à chaque run,
+non jugée. Elle devient jugeable **sans aucun coût de re-récupération** le jour
+où sa base arrive (§7.2). C'est le cas le moins cher du jeu, et il en est écrit
+délibérément.
 
-Une question sans cible disponible reste **`pending`** : écrite, gelée,
-interrogée à chaque run, non jugée. Elle devient jugeable sans aucun coût de
-re-récupération le jour où sa base arrive (§7.2).
+### 10.1 Un constat émergent, non une dérivation exhaustive
+
+C'est le changement de nature qu'il faut tenir. L'ancienne table disait *voici
+les strates, donc voici ce qu'il faut ingérer* — une dérivation qui se
+prétendait complète parce qu'un cadre d'échantillonnage la fondait. **Ce cadre
+n'existe plus** (§2.1), donc la liste ne peut plus être qu'un relevé :
+
+> **Voici ce que le jeu a réclamé et que le corpus ne sert pas.**
+
+Elle se lit sur les questions `pending` du jeu, à tout moment, sans travail
+supplémentaire — chaque `pending` nomme la base qui lui manque.
+
+**Conséquence à ne pas masquer** : le critère fourni à ADR-003 (contenu de la
+vague 2 d'ingestion, candidates KALI et CIRCULAIRES) est désormais **non
+exhaustif**. Il reste un critère — *ce qu'il faut ingérer est ce sans quoi des
+questions légitimes restent sans réponse possible* — mais il ne peut plus
+prétendre couvrir tout ce qui manque, seulement ce que le jeu a eu l'occasion
+de demander.
+
+Le **volume** de `pending` à écrire n'est pas fixé ici : voir §7 et
+[ticket #11](https://github.com/left-eyebr0w/murphy/issues/11).
 
 ---
 
