@@ -21,18 +21,25 @@
 >
 > | Section | État | Pourquoi |
 > |---|---|---|
-> | **§4** — les deux axes | ⛔ **faux** | La cardinalité n'est plus un axe. Le tableau des huit mécanismes est périmé sur deux points : la liste tombe à **sept** (`robustesse_paraphrase` devient une variante) et la colonne `Régime` classe `concept_vers_instance` en *détenu*, ce qui est faux — son label asserté est une opinion. |
+> | **§4** — les deux axes | ⛔ **faux** | La cardinalité n'est plus un axe. Le tableau des huit mécanismes est périmé sur deux points : la liste tombe à **six** — `robustesse_paraphrase` devient une variante ([#2](https://github.com/left-eyebr0w/murphy/issues/2)) et `correspondance_litterale` **quitte le golden-set** pour les instruments diagnostiques du §1 ([#10](https://github.com/left-eyebr0w/murphy/issues/10)) — et la colonne `Régime` classe `concept_vers_instance` en *détenu*, ce qui est faux — son label asserté est une opinion. **La v1 compte cinq mécanismes** — quatre gratuits + `concept_vers_instance` **jugé**, qui peuple la branche `ouvert` restée vide ; `desambiguisation` sort de la v1. Ne pas confondre **la liste** (six) et **la composition de la v1** (cinq) : la couverture exigée par E-P2-07 porte sur la seconde. [Tickets #9](https://github.com/left-eyebr0w/murphy/issues/9) et [#10](https://github.com/left-eyebr0w/murphy/issues/10). |
 > | **§4.1** — les quatorze cellules | ⛔ **supprimé** | La grille n'existe plus. Aucune cellule n'est à peupler. |
 > | **§6** — les matières, §6.1 douze strates | ⛔ **supprimé** | Les strates ne survivent pas comme cadre d'échantillonnage ; le vecteur de pondération tombe avec elles. `WIP/B-08-prior-ponderation.md` est sans objet. **§6.3 (registre) et §6.4 (date pivot) survivent** et sont à replacer hors du §6 mourant — [ticket #12](https://github.com/left-eyebr0w/murphy/issues/12). |
 > | **§6.2** — pondération au rapport | ✅ **traité** | **Supprimé, chiffre et principe** (YAGNI) : un seul chiffre publié, non pondéré, aucune estimation production. Seule survit la mise en garde sur les ventilations. [Ticket #4](https://github.com/left-eyebr0w/murphy/issues/4). |
-> | **§7** — dimensionnement | ⚠️ **à re-dériver** | `N_q ≈ 155` reposait sur `14 cellules × 10` : les facteurs n'existent plus. Et `N_j ≈ 60–70` (§7.4) est **optimiste d'un facteur ≈ 2,5** — la pratique publiée demande **150–165 requêtes jugées** pour départager deux configurations proches (Webber/Moffat/Zobel, CIKM 2008 §5.1 — dossier : [`recherche/realisme-collections.md`](recherche/realisme-collections.md)). La distinction `N_q` / `N_j` elle-même, et l'argument de coût du §7.2, survivent. |
+> | **§7** — dimensionnement | ⚠️ **à re-dériver** | `N_q ≈ 155` reposait sur `14 cellules × 10` : les facteurs n'existent plus. Et `N_j ≈ 60–70` (§7.4) est **optimiste d'un facteur ≈ 2,5** — la pratique publiée demande **150–165 requêtes jugées** pour départager deux configurations proches (Webber/Moffat/Zobel, CIKM 2008 §5.1 — dossier : [`recherche/realisme-collections.md`](recherche/realisme-collections.md)). La distinction `N_q` / `N_j` elle-même, et l'argument de coût du §7.2, survivent. **Attention au motif** : ce n'est pas un problème de volume. Les labels gratuits rendent le volume gratuit ; ce qui manque est de la **variance discriminante**, et les 150–165 sont dérivées sur des deltas d'AP **continus** — un test apparié sur du binaire ne consomme que les paires discordantes. [Tickets #9](https://github.com/left-eyebr0w/murphy/issues/9) et [#11](https://github.com/left-eyebr0w/murphy/issues/11). |
 > | **§8.1** — paires isosémantiques | ⚠️ **requalifié** | Elles ne sont plus un sous-ensemble d'un mécanisme : la paraphrase devient une **variante** applicable à n'importe quel cas, donc mesurable partout sans coût de label. |
 > | **§8.3** — strate-frontière | ⚠️ **suspendu** | Défini par rapport aux strates, qui tombent. |
 > | **§4.4** — les types de difficulté | ✅ **tient** | Son raisonnement est indépendant de la grille. |
 > | **§2** — la doctrine | ✅ **réécrit** | Intégralement, le 1ᵉʳ août 2026 : **aucun cadre d'échantillonnage** (assumé), **le corpus est entrée matérielle** et l'interdit anti-circularité porte désormais sur la *liste des mécanismes*, **`pending` délibéré sur la source `identite`** seule. Le vocabulaire D₁/D₂/D₃ a disparu du document. [Ticket #4](https://github.com/left-eyebr0w/murphy/issues/4). |
 > | **§10** — ce qu'on exige de l'ingestion | ✅ **re-dérivé** | Depuis la source de gratuité au lieu des strates. Devient un **constat émergent**, donc un critère **non exhaustif** pour ADR-003. [Ticket #4](https://github.com/left-eyebr0w/murphy/issues/4). |
 > | **§5.1** — hiérarchie de provenance | ⚠️ **contesté** | Le rang 1 s'y déclare *permanent, survit à la ré-ingestion* — faux pour la source `frontiere_corpus`, dont le label **se retourne** quand le corpus s'étend. [Ticket #15](https://github.com/left-eyebr0w/murphy/issues/15). |
-> | **§1, §3, §5, §9, §11** | ⚠️ **à instruire** | Non démolis, mais leurs dépendances bougent. |
+> | **§1** — instruments séparés | ⚠️ **précisé + contesté** | Précisé : **un instrument est séparé quand il a ses propres cas, pas quand il a sa propre lecture** — graph-hop et co-citation ont un corpus de cas propre ; une lecture nouvelle des mêmes runs reste dans le jeu. Contesté : « mesurer le **delta** de chaque brique » suggère *trancher*, alors que **B-10 ordonne** — amendement acquis, à porter à la réécriture. **Un troisième instrument rejoint la famille** : `correspondance_litterale`, sorti du golden-set comme **test de fumée** — requête artefactuelle, précondition d'interprétabilité du reste, **sans exigence propre** dans `EXIGENCES_v0.md` ([#10](https://github.com/left-eyebr0w/murphy/issues/10)). [Ticket #9](https://github.com/left-eyebr0w/murphy/issues/9). |
+> | **§3** — les deux couches | ⚠️ **à instruire** | La séparation questions / jugements **tient** et absorbe le noyau jugé sans rouvrir E-P2-06. Mais la **couche jugements devient hétérogène en provenance** (qrels dérivées pour quatre mécanismes, jugées pour le cinquième) : chaque qrel doit porter la sienne — [ticket #12](https://github.com/left-eyebr0w/murphy/issues/12). Vérifier au passage qu'ADR-032, écrit avant cette hétérogénéité, couvre encore les classes de changement. |
+> | **§4.3** — les opérations d'ADR-030 | ⚠️ **rétrogradation confirmée, obligation supprimée** | La machinerie tient (portage par l'arête, régime jugée/dérivée, dérivation depuis `G₀`), mais l'obligation de **non-vide sur les trois opérations jugées** disparaît d'E-P2-07 : c'était une **couverture** imposée à une facette, contre la doctrine du §5. Elle est de surcroît **insatisfiable en v1** — les quatre mécanismes gratuits ne produisent que des opérations *dérivées* (`known_item`, `graph_hop`/`fondement_textuel`), `absence_hors_corpus` ne produit **aucune arête**, et **`jurisprudence_applicable` n'a aucun producteur**. La surface d'annotation tombe de trois à **deux, portées par un seul mécanisme**. [Ticket #10](https://github.com/left-eyebr0w/murphy/issues/10). |
+> | **§5.2** — les facettes | ⚠️ **triées + erreur de rangement** | Tri par le test d'ADR-030 (« dois-je rouvrir les documents ? ») : **date pivot** et **doc(s) germe** exigés à 100 % — le second devient le **support matériel du typage**, plus une commodité ; **`intention` n'est plus exigée du tout** (on n'exige pas la conformité à un vocabulaire non acté, §11.2) ; **`matière` et `polysemique` disparaissent**. Erreur relevée : les opérations y sont rangées en bloc parmi les facettes *« dérivées — lues, jamais saisies »*, alors qu'ADR-030 en déclare **trois jugées**. [Ticket #10](https://github.com/left-eyebr0w/murphy/issues/10). |
+> | **§5.3** — la difficulté en sortie | ⚠️ **boucle à fermer** | *« Un cas que la baseline rate est de facto difficile »* est juste comme **mesure**, mais laisse la boucle ouverte : écrire les cas suivants en relisant le run rend le jeu circulaire. Second cran à écrire — **la difficulté d'un cas se dérive de propriétés de la tâche, jamais d'un run observé** (E-P2-07 + guide d'annotation). [Ticket #10](https://github.com/left-eyebr0w/murphy/issues/10). |
+> | **§6.3** — registre | ⚠️ **quota déplacé** | Le tag survit ; les *« parts approximativement égales »* sont une **couverture** sur une facette. E-P2-07 affirme des **présences**, le dimensionnement affirme des **masses** — l'équilibre part à [#11](https://github.com/left-eyebr0w/murphy/issues/11). [Ticket #10](https://github.com/left-eyebr0w/murphy/issues/10). |
+> | **§4.2** — écrire des cas qu'on s'attend à rater | ✅ **promu** | De conseil de rédaction à **critère de sortie** : le pouvoir discriminant devient l'une des deux bases d'E-P2-07, publié comme **grandeur sans seuil** (taux de réussite de la baseline ventilé par mécanisme, ADR-034 §4). [Ticket #10](https://github.com/left-eyebr0w/murphy/issues/10). |
+> | **§5, §9, §11** | ⚠️ **à instruire** | Non démolis, mais leurs dépendances bougent. |
 >
 > **Ce qui est acquis et n'est écrit nulle part ici encore** : l'axe unique des
 > mécanismes ; le remplacement du test de sens de dérivation d'ADR-034 par
@@ -43,6 +50,28 @@
 > `concept_vers_instance` et `desambiguisation` requalifiés « à jugement ».
 > Détail :
 > [résolution du ticket racine](https://github.com/left-eyebr0w/murphy/issues/2#issuecomment-5152165131).
+>
+> **De même, acquis et écrit nulle part ici** ([ticket #9](https://github.com/left-eyebr0w/murphy/issues/9)) :
+>
+> - **B-10 *ordonne*, il ne tranche pas.** La v0 range des configurations ; elle
+>   ne conclut pas qu'une brique est inutile. Ce pouvoir s'achète à l'alpha ph.2.
+> - **Deux lectures des mêmes runs et des mêmes qrels** : binaire
+>   (`success@1`, `Recall@R`, précision sur `R=0`) pour le rapport et la
+>   non-régression ; **continue et sensible au rang** pour la comparaison de
+>   configurations. `success@1` détruit de la variance ; la comparaison ne le lit
+>   plus. *Quelle* métrique continue reste ouvert
+>   ([ticket #14](https://github.com/left-eyebr0w/murphy/issues/14)).
+> - **`concept_vers_instance` est financé et rédigé *besoin d'abord***, comme
+>   **noyau de contrôle de transfert** — il audite l'ordre obtenu sur les
+>   mécanismes gratuits au lieu de l'alimenter. R-05 revient sur ce mécanisme et
+>   lui seul.
+> - **L'accord entre les deux ordres est une grandeur permanente**, publiée à
+>   chaque run, **sans seuil**, direction pré-enregistrée : un accord qui décroît
+>   à mesure qu'entrent des configurations `W` signale que l'ordre gratuit ne
+>   transfère pas. ADR-034 §4 appliqué à un second dispositif.
+> - **La puissance du contrôle de transfert vient du nombre `k` de
+>   configurations classées**, plafonné par le coût de ré-ingestion (`W`), pas
+>   par le budget d'annotation.
 
 ---
 
