@@ -1,0 +1,8 @@
+[
+  {"id": 1, "situation": "Un automobiliste a été contrôlé au volant après avoir bu quelques verres lors d'un repas de famille et attend la suite.", "question": "J'ai été arrêté par les gendarmes en rentrant d'un repas et j'avais bu, qu'est-ce que je risque exactement ?"},
+  {"id": 2, "situation": "Un habitant subit les aboiements du chien de son voisin toute la journée pendant que celui-ci travaille.", "question": "Le chien de mon voisin hurle toute la journée quand il n'est pas là, est-ce que c'est interdit et qui peut intervenir ?"},
+  {"id": 3, "situation": "Un particulier a brûlé des branches et des vieilles planches dans son jardin et un voisin l'a menacé de le signaler.", "question": "J'ai fait un feu dans mon jardin pour me débarrasser de branches et de bois, est-ce que j'avais le droit ?"},
+  {"id": 4, "situation": "Un parent découvre que son fils mineur a acheté des cigarettes seul au bureau de tabac du quartier.", "question": "Mon fils de 15 ans a réussi à acheter des cigarettes dans un tabac près de chez nous, est-ce que le commerçant est en faute ?"},
+  {"id": 5, "situation": "Un conducteur a reçu un courrier lui reprochant d'avoir utilisé son téléphone au volant lors d'un contrôle.", "question": "On me reproche d'avoir eu mon téléphone à la main en conduisant, qu'est-ce que la loi prévoit pour ça ?"},
+  {"id": 6, "situation": "Un riverain constate qu'une entreprise déverse régulièrement des eaux troubles dans le ruisseau au bord de son terrain.", "question": "Une entreprise à côté de chez moi rejette des eaux sales dans le ruisseau derrière mon terrain, est-ce que c'est puni et par qui ?"}
+]

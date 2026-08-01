@@ -1,0 +1,8 @@
+[
+  {"id": 1, "situation": "Un salarié a hébergé sa mère chez lui toute l'année et se demande si cela change quelque chose à ses impôts.", "question": "Ma mère vit chez moi depuis un an et je paie tout pour elle, est-ce que je peux déduire quelque chose de mes impôts ?"},
+  {"id": 2, "situation": "Un particulier a reçu un courrier du fisc qui lui réclame un supplément d'impôt sur le revenu et il n'est pas d'accord.", "question": "Le fisc me réclame de l'argent en plus sur mes impôts alors que je pense avoir bien déclaré, comment je fais pour contester ?"},
+  {"id": 3, "situation": "Une personne a vendu la maison où elle habitait et s'inquiète de devoir payer un impôt sur le bénéfice réalisé.", "question": "J'ai vendu la maison où je vivais et j'ai gagné de l'argent dessus, est-ce que je dois payer des impôts sur cette somme ?"},
+  {"id": 4, "situation": "Un locataire a reçu un avis de taxe d'habitation pour un logement qu'il avait quitté avant la période concernée.", "question": "On me demande la taxe d'habitation d'un appartement que j'avais déjà quitté, qui doit la payer ?"},
+  {"id": 5, "situation": "Une personne vend régulièrement des objets sur internet et se demande si elle doit le signaler au fisc.", "question": "Je revends pas mal de choses sur des sites en ligne et ça me rapporte un peu d'argent, est-ce que je dois le déclarer ?"},
+  {"id": 6, "situation": "Après un divorce, un parent qui a la garde alternée des enfants ne sait pas qui peut les compter à charge.", "question": "Depuis mon divorce on se partage la garde des enfants une semaine sur deux, lequel de nous deux peut les mettre sur sa déclaration d'impôts ?"}
+]
