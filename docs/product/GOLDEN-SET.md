@@ -23,10 +23,10 @@
 > |---|---|---|
 > | **§4** — les deux axes | ⛔ **faux** | La cardinalité n'est plus un axe. Le tableau des huit mécanismes est périmé sur deux points : la liste tombe à **six** — `robustesse_paraphrase` devient une variante ([#2](https://github.com/left-eyebr0w/murphy/issues/2)) et `correspondance_litterale` **quitte le golden-set** pour les instruments diagnostiques du §1 ([#10](https://github.com/left-eyebr0w/murphy/issues/10)) — et la colonne `Régime` classe `concept_vers_instance` en *détenu*, ce qui est faux — son label asserté est une opinion. **La v1 compte cinq mécanismes** — quatre gratuits + `concept_vers_instance` **jugé**, qui peuple la branche `ouvert` restée vide ; `desambiguisation` sort de la v1. Ne pas confondre **la liste** (six) et **la composition de la v1** (cinq) : la couverture exigée par E-P2-07 porte sur la seconde. [Tickets #9](https://github.com/left-eyebr0w/murphy/issues/9) et [#10](https://github.com/left-eyebr0w/murphy/issues/10). |
 > | **§4.1** — les quatorze cellules | ⛔ **supprimé** | La grille n'existe plus. Aucune cellule n'est à peupler. |
-> | **§6** — les matières, §6.1 douze strates | ⛔ **supprimé** | Les strates ne survivent pas comme cadre d'échantillonnage ; le vecteur de pondération tombe avec elles. `WIP/B-08-prior-ponderation.md` est sans objet. **§6.3 (registre) et §6.4 (date pivot) survivent** et sont à replacer hors du §6 mourant — [ticket #12](https://github.com/left-eyebr0w/murphy/issues/12). |
+> | **§6** — les matières, §6.1 douze strates | ⛔ **supprimé** | Les strates ne survivent pas comme cadre d'échantillonnage ; le vecteur de pondération tombe avec elles. `WIP/B-08-prior-ponderation.md` est sans objet. **Seul §6.4 (date pivot) survit** et est à replacer hors du §6 mourant — [ticket #12](https://github.com/left-eyebr0w/murphy/issues/12). **§6.3 (registre) ne survit plus** : il se dissout dans `variante_de` — voir sa ligne ci-dessous. |
 > | **§6.2** — pondération au rapport | ✅ **traité** | **Supprimé, chiffre et principe** (YAGNI) : un seul chiffre publié, non pondéré, aucune estimation production. Seule survit la mise en garde sur les ventilations. [Ticket #4](https://github.com/left-eyebr0w/murphy/issues/4). |
-> | **§7** — dimensionnement | ⚠️ **à re-dériver** | `N_q ≈ 155` reposait sur `14 cellules × 10` : les facteurs n'existent plus. Et `N_j ≈ 60–70` (§7.4) est **optimiste d'un facteur ≈ 2,5** — la pratique publiée demande **150–165 requêtes jugées** pour départager deux configurations proches (Webber/Moffat/Zobel, CIKM 2008 §5.1 — dossier : [`recherche/realisme-collections.md`](recherche/realisme-collections.md)). La distinction `N_q` / `N_j` elle-même, et l'argument de coût du §7.2, survivent. **Attention au motif** : ce n'est pas un problème de volume. Les labels gratuits rendent le volume gratuit ; ce qui manque est de la **variance discriminante**, et les 150–165 sont dérivées sur des deltas d'AP **continus** — un test apparié sur du binaire ne consomme que les paires discordantes. [Tickets #9](https://github.com/left-eyebr0w/murphy/issues/9) et [#11](https://github.com/left-eyebr0w/murphy/issues/11). |
-> | **§8.1** — paires isosémantiques | ⚠️ **requalifié** | Elles ne sont plus un sous-ensemble d'un mécanisme : la paraphrase devient une **variante** applicable à n'importe quel cas, donc mesurable partout sans coût de label. |
+> | **§7** — dimensionnement | ⛔ **remplacé** — contenu arrêté le 1er août 2026, rédaction en attente d'ADR-035 | **Le §7 est faux en entier, y compris ses parties que les révisions précédentes déclaraient survivantes.** `N_q ≈ 155` reposait sur `14 cellules × 10` (facteurs disparus) ; `N_j ≈ 60–70` (§7.4) est **optimiste d'un facteur ≈ 2,5** (Webber/Moffat/Zobel, CIKM 2008 §5.1 — dossier : [`recherche/realisme-collections.md`](recherche/realisme-collections.md)) ; la **carotte** de §7.4 n'a plus de sous-ensemble à tirer ; le tableau de croissance §7.5 décrit une croissance qui n'aura pas lieu. **`N_j` sort du vocabulaire** — quatre grandeurs le remplacent : `N_cas` (cas **indépendants**, unité du plancher et du taux ventilé), `N_q` (interrogé à chaque run — cas **+ variantes**), `N_pending`, et un **budget de jugement**. La dérivation devient **ascendante, unité = le mécanisme** : `N_cas` est une somme de planchers, jamais un total réparti. **Plancher = 30 cas par mécanisme**, par la règle de trois — zéro échec sur 30 borne l'échec à < 10 %, seuil de lisibilité de la sentinelle d'E-P2-07 ; uniforme, **noyau jugé compris**. **v1 = 150 cas, dont 30 jugés ; `N_q ≥ 180`.** Budget d'annotation en **jugements totaux alloués par pondération RBP** (CLEF eHealth 2016), **jamais en profondeur fixe**. **§7.2 garde sa prémisse et perd sa conclusion** : le rejeu qu'il fuyait est déjà au calendrier (vague 2, ADR-003, après alpha ph.1), donc c'est un argument de **calendrier des lots** → **v0 n'ajoute ni ne retire jamais un cas** (gel **bilatéral** : retirer casse la comparabilité sans qu'ADR-032 le signale). **Attention au motif** : ce n'est pas un problème de volume. Les labels gratuits rendent le volume gratuit ; ce qui manque est de la **variance discriminante**. [Tickets #9](https://github.com/left-eyebr0w/murphy/issues/9) et [#11](https://github.com/left-eyebr0w/murphy/issues/11). |
+> | **§8.1** — paires isosémantiques | ⚠️ **requalifié + dimensionné** | Elles ne sont plus un sous-ensemble d'un mécanisme : la paraphrase devient une **variante** applicable à n'importe quel cas, donc mesurable partout sans coût de label. Masse fixée : **30 cas variés**, répartis sur les mécanismes, ≥ 1 variante chacun, **qrels partagées** (le label ne bouge pas sous paraphrase) — zéro divergence borne alors la divergence à < 10 %. **Les variantes comptent dans `N_q`, jamais dans le plancher** : trois paraphrases d'un même cas ne sont pas trois observations indépendantes, et les compter rendrait fausse la borne de la règle de trois. Précédent : CLEF eHealth 2016 compte 300 requêtes (50 scénarios × 6 variantes) mais alloue les jugements **par scénario**. [Ticket #11](https://github.com/left-eyebr0w/murphy/issues/11). |
 > | **§8.3** — strate-frontière | ⚠️ **suspendu** | Défini par rapport aux strates, qui tombent. |
 > | **§4.4** — les types de difficulté | ✅ **tient** | Son raisonnement est indépendant de la grille. |
 > | **§2** — la doctrine | ✅ **réécrit** | Intégralement, le 1ᵉʳ août 2026 : **aucun cadre d'échantillonnage** (assumé), **le corpus est entrée matérielle** et l'interdit anti-circularité porte désormais sur la *liste des mécanismes*, **`pending` délibéré sur la source `identite`** seule. Le vocabulaire D₁/D₂/D₃ a disparu du document. [Ticket #4](https://github.com/left-eyebr0w/murphy/issues/4). |
@@ -37,7 +37,7 @@
 > | **§4.3** — les opérations d'ADR-030 | ⚠️ **rétrogradation confirmée, obligation supprimée** | La machinerie tient (portage par l'arête, régime jugée/dérivée, dérivation depuis `G₀`), mais l'obligation de **non-vide sur les trois opérations jugées** disparaît d'E-P2-07 : c'était une **couverture** imposée à une facette, contre la doctrine du §5. Elle est de surcroît **insatisfiable en v1** — les quatre mécanismes gratuits ne produisent que des opérations *dérivées* (`known_item`, `graph_hop`/`fondement_textuel`), `absence_hors_corpus` ne produit **aucune arête**, et **`jurisprudence_applicable` n'a aucun producteur**. La surface d'annotation tombe de trois à **deux, portées par un seul mécanisme**. [Ticket #10](https://github.com/left-eyebr0w/murphy/issues/10). |
 > | **§5.2** — les facettes | ⚠️ **triées + erreur de rangement** | Tri par le test d'ADR-030 (« dois-je rouvrir les documents ? ») : **date pivot** et **doc(s) germe** exigés à 100 % — le second devient le **support matériel du typage**, plus une commodité ; **`intention` n'est plus exigée du tout** (on n'exige pas la conformité à un vocabulaire non acté, §11.2) ; **`matière` et `polysemique` disparaissent**. Erreur relevée : les opérations y sont rangées en bloc parmi les facettes *« dérivées — lues, jamais saisies »*, alors qu'ADR-030 en déclare **trois jugées**. [Ticket #10](https://github.com/left-eyebr0w/murphy/issues/10). |
 > | **§5.3** — la difficulté en sortie | ⚠️ **boucle à fermer** | *« Un cas que la baseline rate est de facto difficile »* est juste comme **mesure**, mais laisse la boucle ouverte : écrire les cas suivants en relisant le run rend le jeu circulaire. Second cran à écrire — **la difficulté d'un cas se dérive de propriétés de la tâche, jamais d'un run observé** (E-P2-07 + guide d'annotation). [Ticket #10](https://github.com/left-eyebr0w/murphy/issues/10). |
-> | **§6.3** — registre | ⚠️ **quota déplacé** | Le tag survit ; les *« parts approximativement égales »* sont une **couverture** sur une facette. E-P2-07 affirme des **présences**, le dimensionnement affirme des **masses** — l'équilibre part à [#11](https://github.com/left-eyebr0w/murphy/issues/11). [Ticket #10](https://github.com/left-eyebr0w/murphy/issues/10). |
+> | **§6.3** — registre | ⛔ **dissous** | **Le quota et le tag disparaissent tous deux.** Un décalage praticien ↔ citoyen est *même besoin, même label, formulation différente* — c'est la définition de la **variante** ([#2](https://github.com/left-eyebr0w/murphy/issues/2)), et c'en est le membre le plus fort : §6.3 y localise lui-même *« le premier facteur d'échec d'une recherche vectorielle en droit »*, et #10 §5 range la « paraphrase agressive » parmi les propriétés de la tâche dont on a le droit de dériver la difficulté. Le mot `registre` **sort du vocabulaire**. Ce qui survit est une **contrainte de rédaction** au guide d'annotation : *les cas variés sont des décalages de registre, pas des reformulations lexicales*. [Ticket #11](https://github.com/left-eyebr0w/murphy/issues/11). |
 > | **§4.2** — écrire des cas qu'on s'attend à rater | ✅ **promu** | De conseil de rédaction à **critère de sortie** : le pouvoir discriminant devient l'une des deux bases d'E-P2-07, publié comme **grandeur sans seuil** (taux de réussite de la baseline ventilé par mécanisme, ADR-034 §4). [Ticket #10](https://github.com/left-eyebr0w/murphy/issues/10). |
 > | **§5, §9, §11** | ⚠️ **à instruire** | Non démolis, mais leurs dépendances bougent. |
 >
@@ -570,7 +570,20 @@ reste en vigueur :
 > change `R`, donc la coupe adaptative (ADR-007, ADR-030). Deux ventilations ne
 > se comparent ni entre elles ni à l'agrégat. À énoncer dans chaque rapport.
 
-### 6.3 Registre
+### 6.3 ⛔ Registre — dissous dans `variante_de`
+
+> **Supprimé le 1ᵉʳ août 2026 par le [ticket #11](https://github.com/left-eyebr0w/murphy/issues/11)
+> — le quota *et* le tag.** Un décalage praticien ↔ citoyen est *même besoin, même
+> label, formulation différente* : c'est la définition de la **variante** (#2), et
+> le paragraphe ci-dessous en est l'argument le plus fort — il localise lui-même
+> dans l'écart lexical *le premier facteur d'échec*. Le mot `registre` sort du
+> vocabulaire ; ce qui survit est une **contrainte de rédaction** au guide
+> d'annotation : *les cas variés sont des décalages de registre, pas des
+> reformulations lexicales*. Les *« parts approximativement égales »* étaient une
+> **couverture** sur une facette, ce que §2.1 a évacué partout ailleurs.
+>
+> Contrairement au reste du §6, ce paragraphe **n'est pas mort avec les strates** :
+> il est mort d'avoir été absorbé par un mécanisme plus général.
 
 Chaque question porte un registre, `praticien` ou `citoyen`, à parts
 approximativement égales. Le registre n'est pas décoratif : l'écart lexical
@@ -587,7 +600,53 @@ n'est pas ré-interprétable après coup.
 
 ---
 
-## 7. Dimensionnement
+## 7. ⛔ Dimensionnement — remplacé
+
+> **Le §7 est faux en entier depuis le 1ᵉʳ août 2026**, y compris les parties que
+> les révisions précédentes déclaraient survivantes (la distinction `N_q` / `N_j`,
+> et la conclusion de §7.2). Contenu de remplacement arrêté par le
+> [ticket #11](https://github.com/left-eyebr0w/murphy/issues/11) ; rédaction en
+> attente d'**ADR-035**.
+>
+> **Le texte est conservé en l'état à titre d'archive, pas de spécification.**
+> Ce qui le remplace, en résumé :
+>
+> - **`N_j` sort du vocabulaire** (comme `cardinalité` et `D₁/D₂/D₃`). Quatre
+>   grandeurs : **`N_cas`** — cas *indépendants*, unité du plancher et du taux
+>   ventilé ; **`N_q`** — ce qui est interrogé à chaque run, cas *et* variantes ;
+>   **`N_pending`** ; et un **budget de jugement**. `N_cas` et `N_q` ne sont pas la
+>   même chose, et la confusion est le piège principal de la réécriture.
+> - **La dérivation est ascendante, unité = le mécanisme.** `N_cas` est une somme
+>   de planchers, jamais un total réparti — §2.1 ayant supprimé le tout à répartir.
+> - **Plancher = 30 cas par mécanisme**, par la règle de trois : zéro échec sur
+>   30 cas borne le taux d'échec réel à < 10 % (IC 95 %). C'est l'effectif à partir
+>   duquel un sans-faute devient informatif, donc la condition de lisibilité de la
+>   sentinelle d'E-P2-07. Uniforme, **noyau jugé compris**, et y compris quand un
+>   mécanisme couvre deux branches métriques.
+> - **v1 = 150 cas, dont 30 jugés ; `N_q ≥ 180`** (150 + les 30 cas variés du §8.1).
+>   Les `pending` sont **hors plancher et hors taux** : la baseline les rate par
+>   construction, et leur fonction est de désigner les manques (§10), pas de
+>   mesurer.
+> - **Le budget d'annotation est un nombre total de jugements**, alloué par
+>   pondération RBP, **jamais une profondeur fixe** (CLEF eHealth 2016 ; dossier
+>   [`recherche/realisme-collections.md`](recherche/realisme-collections.md) §5).
+>   Ordre de grandeur : 30 questions × pool ≈ 20 ≈ **600 jugements**.
+> - **§7.2 garde sa prémisse et perd sa conclusion.** Le rejeu qu'il cherchait à
+>   éviter est **déjà au calendrier** — ADR-003 diffère la vague 2 à « après retours
+>   alpha », et `VERSIONS.md` place alpha ph.1 juste après v0. Un lot post-panel
+>   monte donc dans un rejeu déjà payé, à coût marginal nul, et vaut plus cher à
+>   l'unité. §7.2 est un argument de **calendrier des lots**, pas de volume.
+> - **§7.5 se re-dérive en un seul énoncé : `v0` n'ajoute ni ne retire jamais un
+>   cas.** Gel **bilatéral** — ajouter coûte un rejeu, retirer rend deux runs
+>   incomparables sans qu'aucune classe de changement d'ADR-032 ne le signale. Un
+>   cas recalé au typage se **neutralise**, il ne se supprime pas. Trois vecteurs
+>   de croissance seulement : la **profondeur du noyau**, la **résorption des
+>   `pending`**, et **`k`** (le nombre de configurations classées).
+> - **La carotte de §7.4 se dissout** : il n'y a plus de sous-ensemble à tirer, le
+>   jeu jugé *est* un mécanisme de l'axe. Et toute sélection maligne est fermée par
+>   la littérature — les bons sous-ensembles de topics existent mais **ne sont pas
+>   identifiables a priori** (Guiver/Mizzaro/Robertson TOIS 2009, puis Robertson
+>   ECIR 2011, Berto/Mizzaro/Robertson ICTIR 2013, Roitero 2020).
 
 ### 7.1 Deux volumes, pas un
 
