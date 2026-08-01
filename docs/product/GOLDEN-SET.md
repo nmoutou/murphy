@@ -2,7 +2,7 @@
 
 > Document **permanent**. Décrit ce qu'est le golden-set, ce qu'il mesure,
 > comment il est dimensionné et comment il vit. Les décisions qu'il applique
-> vivent en ADR (004 à 008, 017, 028 à 032) ; les chiffres et leur dérivation
+> vivent en ADR (004 à 008, 017, 028 à 033) ; les chiffres et leur dérivation
 > vivent ici.
 >
 > **Statut** : v1 en construction (B-08). Les nombres du §7 sont une
@@ -73,7 +73,7 @@ documents ? »**
 
 | Couche | Contenu | Coût | Gel |
 |---|---|---|---|
-| **Questions** | Texte, `intention`, `matière`, `registre`, date pivot | Rédaction | Gelée, hashée |
+| **Questions** | Texte, `mécanisme`, `cardinalité`, `intention`, `matière`, `registre`, date pivot | Rédaction | Gelée, hashée |
 | **Jugements** | `q1/q2/q3` par arête, `grade` dérivé, `source`, `origin`, `annotator` | **Lecture — poste dominant** | Gelée, hashée (ADR-008) |
 | **Dérivations** | 5 opérations dérivées, taxonomie, définition des strates | Calcul | **Versionnée à part** |
 
@@ -82,37 +82,116 @@ documents ? »**
 graphe témoin `G₀` (ADR-031) — jamais ingérées, jamais annotées.
 
 La couche **questions** est propre à ce document : ADR-030 note qu'aucune
-classe `Query` n'existe dans `eval/` et que l'axe intention est du terrain
-vierge. C'est ici qu'il se peuple.
+classe `Query` n'existe dans `eval/`. C'est ici qu'elle se peuple.
 
 ---
 
 ## 4. Les deux axes
 
-ADR-030 fixe la structure, et elle n'est pas celle qu'on attend d'un jeu de
-test classique.
+ADR-033 fixe la structure, et elle n'est pas celle qu'on attend d'un jeu de
+test classique : **on n'évalue pas un contenu, on évalue une fonction de
+récupération.**
 
-| Axe | Porté par | Cardinalité |
+| Axe | Porté par | Cardinalité | Ce qu'il fait |
+|---|---|---|---|
+| **Mécanisme** | le cas de test | une seule valeur | Localise la panne — *quelle fonction décroche ?* |
+| **Cardinalité** | le cas de test | une seule valeur | Détermine **quelle métrique est valide** dans la cellule |
+
+Le renversement par rapport à ADR-030 tient en une phrase : organiser le jeu
+par *ce que l'utilisateur veut* adosse l'axe au **contenu** du droit — espace
+non borné, sans complétion naturelle. Organiser par *mécanisme exercé* donne un
+ensemble **énumérable et petit** de fonctions testables au sens logiciel. Le
+contenu descend au rang de facette qu'on tague et qu'on slice (§5), jamais
+qu'on énumère.
+
+**Huit mécanismes, aucun jugé :**
+
+| # | Mécanisme | Nature du test | Régime |
+|---|---|---|---|
+| 1 | `correspondance_litterale` | Requête = texte source verbatim | détenu |
+| 2 | `resolution_reference` | « article 1240 du Code civil » → l'article (ELI) | dérivé (requête) |
+| 3 | `known_item_identifiant` | ECLI, n° de pourvoi → la décision | dérivé (requête) |
+| 4 | `robustesse_paraphrase` | Reformulation → même cible | détenu (paire) |
+| 5 | `concept_vers_instance` | Notion juridique → l'article qui la fonde | détenu |
+| 6 | `multi_hop` | Cible atteignable seulement via une citation | dérivé (`G₀`) |
+| 7 | `desambiguisation` | Terme à référents concurrents attestés | détenu + constatable |
+| 8 | `absence_hors_corpus` | Besoin hors corpus → *fail-fast* | détenu |
+
+**Les known-item auto-étiquetés sont la famille la moins chère du jeu.** La
+requête est *construite à partir* du document cible : le label n'est pas une
+intuition, c'est un **fait d'authoring**. Citer verbatim l'article 1240 ⇒ le
+système *doit* le rendre au rang 1. Aucun jugement de pertinence n'intervient,
+donc **R-05 est esquivé par construction**, pas atténué. C'est ce qui justifie
+de commencer par là plutôt que par le topique gradué.
+
+**Quatre cardinalités, chacune déclarant sa métrique :**
+
+| Cardinalité | Nature du besoin | Métrique de la cellule |
 |---|---|---|
-| **Intention** | la requête | une seule |
-| **Opérations** | l'arête `(requête, source, cible)` | plusieurs par requête |
+| **0 — vide attendu** | Hors corpus, hors périmètre | **Précision seule**, statut ADR-029 : jamais de rappel, jamais de grade |
+| **1 — cible unique** | Known-item, référence résolue | **Doc-MRR**, lecture *success@1* |
+| **n — ensemble borné** | Conjonctif (principe + exception) | **Recall@R**, tout-ou-rien |
+| **ouvert — topique** | Pertinence graduée | **nDCG@R** |
 
-**Le second axe ne partitionne pas les requêtes.** Une question sur le congé
-pour vente porte une arête `texte_applicable` *et* une arête
-`jurisprudence_applicable` : une requête, deux cases remplies. C'est pourquoi
-on ne peut pas dériver un nombre de requêtes en multipliant les axes — voir §7.
+Faire de la cardinalité un axe *explicite* **interdit mécaniquement** l'erreur
+« nDCG@R partout ». Et aucune métrique n'est à implémenter : *success@1* se lit
+sur Doc-MRR, `R` est écrit par authoring dans la cellule « ensemble borné »
+donc la coupe y reste adaptative (ADR-007 — **le refus des coupes constantes
+tient**, il n'y a pas de `Recall@k` dans ce jeu).
 
-Huit opérations, dont **trois seulement sont jugées** :
+### 4.1 Les quatorze cellules valides
 
-| Jugées (coûtent une lecture) | Dérivées (calculées depuis `G₀` ou la requête) |
-|---|---|
-| `texte_applicable` | `known_item`, `graph_hop`, `contexte_structurel`, `succession_temporelle`, `fondement_textuel` |
-| `jurisprudence_applicable` | |
-| `definition` | |
+Les deux axes se **croisent et se couvrent** — c'est le coût engageant, et la
+raison pour laquelle il n'y en a que deux. La grille brute fait 32 cellules,
+dont 18 sont vides par construction : un known-item par identifiant n'est pas
+de cardinalité ouverte.
 
-**La surface d'annotation est donc `matière × 3`, pas `matière × 8`.**
+| Mécanisme | 0 | 1 | n | ouvert |
+|---|:-:|:-:|:-:|:-:|
+| 1 `correspondance_litterale` | | ✓ | ✓ | |
+| 2 `resolution_reference` | | ✓ | | |
+| 3 `known_item_identifiant` | | ✓ | | |
+| 4 `robustesse_paraphrase` | | ✓ | ✓ | ✓ |
+| 5 `concept_vers_instance` | | | ✓ | ✓ |
+| 6 `multi_hop` | | ✓ | ✓ | |
+| 7 `desambiguisation` | | | ✓ | ✓ |
+| 8 `absence_hors_corpus` | ✓ | | | |
 
-### 4.1 Où sont passés les « types de difficulté »
+**Le vide impossible est de l'information ; le vide non observé est un défaut.**
+Cette table les sépare : une cellule non cochée n'est jamais à peupler, une
+cellule cochée et vide est un manque de couverture, chiffré au rapport.
+
+> **Réserve d'orthogonalité, assumée.** La cardinalité corrèle partiellement
+> avec le mécanisme — un known-item *est* de cardinalité 1. La table rend cette
+> corrélation explicite au lieu de la laisser produire des doublons à
+> l'authoring.
+
+### 4.2 Écrire des cas qu'on s'attend à rater
+
+Exigence de conception, pas conseil de rédaction. **Une suite réussie à 100 %
+par la baseline a un pouvoir discriminant nul** et ne mesure aucune marge de
+progression — la baseline de B-11 ne prouverait alors rien.
+
+On écrit donc délibérément des cas de stress — paraphrase agressive, graph-hop
+profond, homonymes inter-domaines — *à côté* des cas triviaux, dans les mêmes
+cellules.
+
+### 4.3 Où sont passées les opérations d'ADR-030
+
+Elles ne portent pas sur le même objet que les mécanismes : l'**opération**
+type une arête `(requête, source, cible)` — *pourquoi ce document-ci est
+pertinent* — quand le **mécanisme** qualifie un cas — *quelle fonction est
+exercée*. ADR-033 leur retire le statut d'axe ; il ne les supprime pas.
+
+Elles deviennent des **facettes dérivées** (§5), et tout ce qui en dépendait
+reste en vigueur : le régime jugée / dérivée, le champ `source` de `Judgment`,
+la dérivation depuis `G₀`, la réserve sur la ventilation.
+
+**La surface d'annotation reste `3`** — `texte_applicable`,
+`jurisprudence_applicable`, `definition` — et elle ne se multiplie plus par la
+matière, qui n'est plus un axe.
+
+### 4.4 Où sont passés les « types de difficulté »
 
 Une conception antérieure (`docs/droit/stats/`, 23 juillet 2026) proposait six
 « types de difficulté de retrieval » T1–T6 comme second axe. Ils ne sont pas
@@ -121,47 +200,138 @@ différentes**, ce qui explique l'inconfort du croisement.
 
 | Type d'origine | Ce qu'il est réellement | Où il atterrit |
 |---|---|---|
-| T1 — Identifiant | Une opération **dérivée** | `known_item` (ADR-030 #4), calculée depuis le texte de la requête |
+| T1 — Identifiant | Un **mécanisme** | `known_item_identifiant` (§4, #3) |
 | T2 — Langage courant | Un **registre** | Champ `registre` sur la question (§6.3) |
-| T3 — Polysémie | Un **fait constatable** sur le vocabulaire | Flag `polysemique`, avec ses référents concurrents (§8.4) |
+| T3 — Polysémie | Un **mécanisme** | `desambiguisation` (§4, #7), matériau en §8.2 |
 | T4 — Temporel | Une opération **dérivée** + une date | `succession_temporelle` + date pivot (§6.4) |
-| T5 — Multi-base | Une **propriété émergente** | Non-exclusivité des opérations : la question porte les deux arêtes |
-| T6 — Négatif | Une **propriété des qrels** | Sous-ensemble à part, hors métrique primaire (§8.1) |
+| T5 — Multi-base | Une **cardinalité** | Niveau « n — ensemble borné » (§4) |
+| T6 — Négatif | Un **mécanisme** + une cardinalité | `absence_hors_corpus` × cardinalité 0 (§4) |
 
-L'axe *difficulté* comme tel est supprimé (ADR-030) : étiqueter une requête
-« difficile » enregistre une impression, et l'étiquette **absorbe la question
-qu'elle prétend documenter**. T3 survit précisément parce qu'il est le seul des
-six à être **constatable** : « ce terme a trois référents dans les
-nomenclatures officielles » est un fait, pas un degré.
+Sous ADR-033, **trois des six atterrissent sur l'axe primaire**. L'intuition de
+départ était donc bonne pour moitié : elle avait identifié de vrais mécanismes,
+mais les mêlait à un registre, à une date et à une cardinalité — quatre natures
+d'objet dans un seul axe, ce qui explique l'inconfort du croisement.
+
+L'axe *difficulté* comme tel est supprimé. Étiqueter une requête « difficile »
+enregistre une impression, et l'étiquette **absorbe la question qu'elle prétend
+documenter** — quand le score s'effondre sur les requêtes difficiles,
+« c'était difficile » n'explique rien.
+
+> Ce point est le plus solide du dossier : ADR-030 et une synthèse de session
+> menée sans accès au corpus ADR l'ont établi **indépendamment, sans se
+> connaître, avec le même argument** (ADR-033). Il a cessé d'être une
+> préférence de conception.
+
+La difficulté n'est pas perdue pour autant — elle est **reframée en sortie**
+(§5.3).
 
 ---
 
-## 5. Les intentions
+## 5. Les facettes
 
-Vocabulaire proposé, à valider. Une intention par question, obligatoire
-(E-P2-07). Le critère de bonne intention est qu'elle décrive **ce que
-l'utilisateur veut**, jamais comment la réponse est atteinte.
+**Un axe se croise et se couvre ; une facette se tague et se slice.** Le
+premier coûte de l'authoring combinatoire, la seconde est quasi gratuite. C'est
+toute la différence, et c'est pourquoi il n'y a que deux axes (§4) et autant de
+facettes qu'on veut.
 
-| Intention | Ce que l'utilisateur veut | Opérations typiquement portées |
+Une facette est **promouvable en axe — mais sur preuve chiffrée
+d'interaction**, jamais a priori. On tague tout dès le départ ; on ne promeut
+que quand les nombres montrent que le mécanisme se comporte différemment selon
+les valeurs. C'est ADR-012 appliqué à l'évaluation : un changement d'état est un
+constat sur preuves, pas une pré-décision.
+
+### 5.1 D'où vient la valeur d'un tag
+
+La bonne question n'est pas « ce tag est-il pertinent ? » — tout l'est
+vaguement — mais **d'où vient sa valeur ?** La source détermine le coût *et* le
+risque R-05.
+
+| Rang | Source | Coût | Statut |
+|---|---|---|---|
+| 1 | **Dérivé de l'identité canonique** — lu depuis l'ECLI, l'ELI, la structure, `G₀` | gratuit, objectif, **permanent** (survit à la ré-ingestion) | le tag idéal |
+| 2 | **Détenu par construction** — connu parce qu'on a fabriqué le cas | gratuit, objectif | admis |
+| 3 | **Jugé** — arbitrage de pertinence ou de difficulté | cher, R-05 | **banni en v0** |
+
+**Règle d'admission.** Un tag mérite sa place **ssi** (1) il est dérivé ou
+détenu, jamais jugé ; (2) on peut **nommer la question** qu'on répondrait en
+*slice*-ant dessus — pas de question, pas de tag ; (3) son vocabulaire est clos
+et le **null est permis**.
+
+**Le soulagement est structurel.** Les trois angles *wicked* du départ —
+thématiques, domaines, institutions — sont **déjà encodés dans la structure du
+corpus DILA**. La juridiction est dans l'ECLI, la chambre dans les métadonnées,
+le domaine se lit sur le code (LEGI) ou la chambre (CASS). On ne les énumère
+pas : **on les lit sur l'identité canonique** (ADR-018). La wickedness de
+contenu disparaît non parce qu'on l'épuise, mais parce que DILA l'a déjà
+étiquetée.
+
+### 5.2 Registre
+
+**Dérivées — lues, jamais saisies :**
+
+| Facette | Question répondue en *slice*-ant | Vocabulaire |
 |---|---|---|
-| `trouver_la_regle` | Quelle norme régit ma situation | `texte_applicable` |
-| `verifier_une_solution` | Comment le juge a tranché ce cas | `jurisprudence_applicable`, souvent + `fondement_textuel` |
-| `definir_un_terme` | Que signifie ce mot en droit | `definition` |
-| `retrouver_un_document` | J'ai la référence, donne-moi le texte | `known_item` |
-| `connaitre_une_procedure` | Comment agir, dans quel délai, devant qui | `texte_applicable` (CPC, CJA, CPP) |
+| **Opérations** (ADR-030) | pourquoi ce document est-il pertinent ? | 8 valeurs, dont 3 jugées (§4.3) |
+| **Registre / provenance** | le mécanisme dégrade-t-il selon droit positif vs jurisprudence ? | positif / jurisprudence (JORF-KALI plus tard, ADR-003) |
+| **Juridiction émettrice** | quelle institution le système sert-il mal ? | clos (ECLI) |
+| **Chambre / formation** | quelle formation décroche ? proxy de domaine en jurisprudence | clos (métadonnées) |
+| **Matière** | couverture par matière ? | 12 strates, **null admis** (§6) |
+| **Statut temporel** | régression sur l'abrogé, le mort-né ? | en vigueur / abrogé / mort-né (`succeeded_by`) |
+| **Profondeur de hop** | courbe de dégradation par hop | 0 / 1 / 2+ (depuis `G₀`) |
+
+**Détenues par construction — posées à l'authoring :**
+
+| Facette | Rôle | Vocabulaire |
+|---|---|---|
+| **Intention** | le mécanisme dégrade-t-il selon ce que l'utilisateur veut ? | 5 valeurs, ci-dessous |
+| **Registre de langue** | coût du décalage de vocabulaire | praticien / citoyen (§6.3) |
+| **`polysemique`** | matériau de désambiguïsation, avec ses référents concurrents | booléen + liste (§8.2) |
+| **Doc(s) germe** | rend le label auto-étiqueté rejouable | référence(s) |
+
+**Les cinq intentions.** Rétrogradées d'axe en facette par ADR-033 : taguées
+sur 100 % des questions, **non couvertes**. Le critère d'une bonne intention
+reste qu'elle décrive *ce que l'utilisateur veut*, jamais comment la réponse
+est atteinte.
+
+| Intention | Ce que l'utilisateur veut |
+|---|---|
+| `trouver_la_regle` | Quelle norme régit ma situation |
+| `verifier_une_solution` | Comment le juge a tranché ce cas |
+| `definir_un_terme` | Que signifie ce mot en droit |
+| `retrouver_un_document` | J'ai la référence, donne-moi le texte |
+| `connaitre_une_procedure` | Comment agir, dans quel délai, devant qui |
 
 `connaitre_une_procedure` mérite d'exister séparément : la procédure n'est le
 sujet d'aucune nomenclature statistique officielle, et elle est pourtant une
-part majeure des pourvois et du contentieux administratif. Sans intention
-dédiée, elle reste un angle mort par construction.
+part majeure des pourvois et du contentieux administratif. Sans valeur dédiée,
+elle reste un angle mort par construction.
 
-> Intention et opération se **corrèlent sans se confondre** : une même
-> intention `trouver_la_regle` peut être satisfaite par un article ou par une
-> décision qui l'interprète. C'est exactement pourquoi il faut deux axes.
+### 5.3 Deux pièges, traités explicitement
+
+**Le null est une valeur de première classe**, pas un trou. Le droit non
+codifié → matière `null`, jamais devinée. Le rapport affichera « X % des cas
+portent une matière » — **et ce pourcentage est lui-même une information**.
+Forcer une valeur pour éviter un trou, c'est exactement le jugement arbitraire
+que R-05 interdit.
+
+**La difficulté ne se tague pas en entrée.** Elle se reframe en sortie : **un
+cas que la baseline rate est *de facto* difficile.** La difficulté devient un
+label **calculé par le harnais**, jamais asserté par l'annotateur — mesurer
+plutôt qu'affirmer, ADR-012 poussé jusqu'au tag.
 
 ---
 
 ## 6. Les matières
+
+> **Statut sous ADR-033 : facette, non axe.** La matière reste le **cadre
+> d'échantillonnage stratifié** et conserve son vecteur de repondération D₁,
+> mais elle n'entre pas dans les cellules à couvrir (§4.1). Elle est équilibrée
+> au mieux sur la grille, et **ses trous sont permis et chiffrés** — c'est
+> précisément l'information que la couverture forcée détruisait.
+>
+> C'est ce qui rend le renversement tenable : la wickedness du contenu n'est
+> pas épuisée, elle est confinée à une dimension où l'exhaustivité n'est plus
+> exigée.
 
 ### 6.1 Douze strates
 
@@ -279,34 +449,43 @@ fois.
 
 ### 7.3 Dériver N_q
 
-L'ancienne conception calculait `12 strates × 6 types × 4 requêtes = 288`. Le
-produit est invalide sous ADR-030 : **le second facteur n'est pas une partition
-des requêtes** (§4). Une requête porte plusieurs opérations à la fois ;
-multiplier suppose qu'elle n'en porte qu'une.
+Deux dérivations ont été écartées avant celle-ci, et pour des raisons
+différentes.
 
-La dérivation correcte alloue sur `matière × intention` — les deux axes qui
-sont bien des propriétés de la requête — et **vérifie** ensuite la couverture
-en opérations.
+`12 strates × 6 types × 4 requêtes = 288` (conception d'origine) : le second
+facteur n'était pas une partition. `12 matières × 5 intentions × 2 = 120`
+(sous ADR-030) : les deux facteurs étaient bien des propriétés de la requête,
+mais **la matière n'est plus un axe** sous ADR-033 — la faire multiplier
+réintroduirait le contenu comme dimension à couvrir.
+
+L'allocation porte donc sur les **cellules valides** de §4.1, et la matière est
+équilibrée à l'intérieur.
 
 ```
-Allocation      12 matières × 5 intentions × 2 questions     = 120
-Isosémantiques  sur sous-ensemble citoyen (S1, S3, S5, S6)   ≈  20
+Allocation      14 cellules (mécanisme × cardinalité) × 10   = 140
+                matière équilibrée ≈ 12 par matière, trous permis
 Strate-frontière  questions à cheval sur deux matières       ≈  15
                                                              ─────
-N_q (scorables)                                              ≈ 155
-
-+ Négatives / hors-corpus, HORS métrique primaire (§8.1)     ≈  20
+N_q                                                          ≈ 155
+   dont cellule (8, cardinalité 0) → précision seule         ≈  10
+   dont scorables Doc-MRR / Recall@R / nDCG@R                ≈ 145
 ```
 
-**Vérification ex post, non allocation** (E-P2-07) : une opération au moins sur
-100 % des arêtes ; les trois opérations jugées non vides dans chaque matière.
-Si une matière ne produit aucune arête `jurisprudence_applicable`, c'est un
-constat à corriger en ajoutant des questions à cette case — pas une case à
-remplir mécaniquement.
+**Les paires isosémantiques ne s'ajoutent plus, elles sont dans la grille.** Le
+mécanisme 4 (`robustesse_paraphrase`) occupe trois cellules, soit ≈ 30
+questions = **15 paires à qrels partagés**. Le poste cher — les jugements — est
+divisé par deux sur ces cellules ; seule la rédaction est dupliquée.
 
-Le résultat tombe dans le même ordre de grandeur que les 288 d'origine. **Le
-chiffre n'était pas absurde ; sa dérivation l'était.** Et la distinction N_q /
-N_j, elle, change tout : les 288 étaient présentés comme un objectif
+**Vérification ex post, non allocation** (E-P2-07) : les 14 cellules non vides ;
+mécanisme et cardinalité sur 100 % des cas ; intention et matière taguées à
+100 % mais **non couvertes**. Si une matière ne produit aucun cas dans une
+cellule, c'est un constat chiffré au rapport — pas une case à remplir
+mécaniquement.
+
+Le résultat tombe dans le même ordre de grandeur que les 288 d'origine et que
+les 120 intermédiaires. **Le chiffre n'a jamais été absurde ; c'est sa
+dérivation qui l'était, deux fois de suite.** La distinction N_q / N_j, elle,
+reste ce qui change tout : les 288 étaient présentés comme un objectif
 d'annotation.
 
 ### 7.4 Dériver N_j — la puissance statistique
@@ -351,53 +530,47 @@ ajouts de questions se font **par lots**, jamais à l'unité.
 
 ---
 
-## 8. Sous-ensembles hors quota
+## 8. Sous-ensembles
 
-### 8.1 Questions négatives — pourquoi elles sortent du total
+### 8.1 Trois sous-ensembles sont entrés dans la grille
 
-Une question dont la bonne réponse est *aucun résultat pertinent* (droit
-étranger, hors périmètre DILA) a `R = 0` documents pertinents. Or nDCG@R coupe
-le classement à `R` (ADR-007) : **la coupe est indéfinie, la métrique aussi.**
+ADR-033 absorbe comme cellules trois dispositifs qui vivaient à côté du jeu.
+Ils n'ont pas disparu : ils ont cessé d'être des exceptions.
 
-Ces questions ne peuvent donc pas entrer dans le jeu primaire. Elles forment un
-**diagnostic de précision séparé**, mesuré autrement (taux de résultats au-delà
-d'un seuil de score, sur un jeu où toute remontée est un faux positif) — le
-même statut que le diagnostic de co-citation (ADR-029) : précision seulement,
-jamais de rappel, jamais de grade.
+| Ancien sous-ensemble | Devient | Ce que ça change |
+|---|---|---|
+| Questions négatives | Cellule `(8, cardinalité 0)` | Entrent dans la couverture, restent hors métrique primaire |
+| Paires isosémantiques | Dispositif du mécanisme 4 | Comptées dans N_q (§7.3), plus en surplus |
+| Matériau de polysémie | Matériau du mécanisme 7 | Devient une ligne d'axe, plus un flag isolé |
 
-Sans elles, le jeu ne mesure que le rappel et jamais la précision. C'est le
-sous-ensemble le plus souvent omis, et le moins cher à produire.
+**Ce qui n'a pas changé, et ne pouvait pas changer.** Une question dont la
+bonne réponse est *aucun résultat pertinent* (droit étranger, hors périmètre
+DILA) a `R = 0`. Or nDCG@R coupe le classement à `R` (ADR-007) : **la coupe est
+indéfinie, la métrique aussi.** Ces questions restent donc mesurées autrement —
+taux de résultats au-delà d'un seuil de score, sur un jeu où toute remontée est
+un faux positif — au **même statut que le diagnostic de co-citation**
+(ADR-029) : précision seulement, jamais de rappel, jamais de grade.
 
-### 8.2 Paires isosémantiques — sur sous-ensemble
+Le niveau de cardinalité 0 est exactement ce qui permet de les **couvrir** sans
+les **scorer** comme le reste. Sans elles, le jeu ne mesure que le rappel et
+jamais la précision : c'est le sous-ensemble le plus souvent omis, et le moins
+cher à produire.
 
-Une même question de droit, **des qrels identiques**, deux formulations : l'une
-praticien, l'autre citoyen. Le delta de score entre les deux membres donne **le
-coût du décalage de vocabulaire en un seul nombre**, mesurable strate par
-strate.
+**L'économie des paires isosémantiques est intacte** : une même question de
+droit, **des qrels identiques**, deux formulations — praticien et citoyen. Le
+delta de score entre les deux membres donne **le coût du décalage de
+vocabulaire en un seul nombre**. Le poste cher (les jugements) est partagé,
+seule la rédaction est dupliquée. Elles restent concentrées sur les matières où
+l'écart de registre est le plus large, donc les plus exposées au public — S1
+(pénal courant), S3 (famille), S5 (logement), S6 (travail) — la matière étant
+désormais une facette (§6), c'est un choix d'équilibrage et non un quota.
 
-Économiquement, c'est le meilleur rapport du jeu : le poste cher (les
-jugements) est **partagé**, seule la rédaction est dupliquée.
-
-Retenues sur un **sous-ensemble** — les matières où l'écart de registre est le
-plus large, donc les plus exposées au public : S1 (pénal courant), S3 (famille),
-S5 (logement), S6 (travail). Généraliser doublerait N_q pour un gain
-décroissant sur les matières purement techniques, où le registre citoyen
-n'existe guère.
-
-### 8.3 Strate-frontière
-
-Questions tombant **entre deux matières**. Elles réintroduisent délibérément ce
-que la stratification uniforme rend invisible : le résidu de 6,32 % non
-rattachable de l'analyse D₁ — « autres » civils, référés, « autres
-contentieux » administratifs. Une classification qui n'a jamais de cas limite
-n'est pas une bonne classification, c'est une classification qu'on n'a pas
-testée.
-
-### 8.4 Matériau adversarial de polysémie
+### 8.2 Matériau adversarial de polysémie
 
 Le corpus statistique fournit **cinq nomenclatures officielles divergentes
 décrivant la même réalité**. C'est du matériau de désambiguïsation authentique,
-produit par l'administration elle-même — et non fabriqué pour le test.
+produit par l'administration elle-même — et non fabriqué pour le test. Il
+peuple directement les cellules du mécanisme 7.
 
 | Piège | Divergence |
 |---|---|
@@ -408,7 +581,20 @@ produit par l'administration elle-même — et non fabriqué pour le test.
 
 Ces questions portent le flag `polysemique` avec la liste de leurs référents
 concurrents. Le flag est **constatable** (le terme a N référents attestés), à la
-différence d'une étiquette de difficulté.
+différence d'une étiquette de difficulté — c'est la raison pour laquelle T3
+avait survécu là où T1–T6 tombaient, et pourquoi il est aujourd'hui un
+mécanisme à part entière (§4.4).
+
+### 8.3 Strate-frontière — le seul vrai hors quota
+
+Questions tombant **entre deux matières**. Elles réintroduisent délibérément ce
+que la stratification rend invisible : le résidu de 6,32 % non rattachable de
+l'analyse D₁ — « autres » civils, référés, « autres contentieux »
+administratifs.
+
+Elles portent `matière = null`, qui est une valeur de première classe et non un
+trou (§5.3). Une classification qui n'a jamais de cas limite n'est pas une
+bonne classification, c'est une classification qu'on n'a pas testée.
 
 ---
 
@@ -476,7 +662,7 @@ re-récupération le jour où sa base arrive (§7.2).
 | # | Point | Qui tranche |
 |---|---|---|
 | 1 | **Méthode de génération des requêtes** (D-01). E-T-01 interdit toute dépendance du *harnais* à un LLM générateur ; employer un LLM **hors ligne** pour fabriquer des requêtes n'est pas exclu, mais la frontière doit être écrite. Règle déjà posée : **jeter, jamais reformuler**. | B-08 |
-| 2 | **Vocabulaire d'intentions** (§5) — proposition non validée. | Porteur (ADR-028) |
+| 2 | **Vocabulaire des mécanismes** (§4) — liste de travail issue d'ADR-033, destinée à évoluer ; et **vocabulaire d'intentions** (§5.2), proposition non validée. | Porteur (ADR-028) |
 | 3 | **Nombres du §7** — dérivés, non actés. | Porteur (ADR-028) |
 | 4 | **Espace des cibles.** `Section` et `Texte` ne sont pas des unités de citation au sens d'ADR-004 mais pèsent un tiers du graphe. Décision prise : **ne pas restreindre, observer d'abord** — si elles ne remontent jamais, la question se clôt sans qu'on ait rien décidé. | Observation |
 | 5 | **Point d'entrée outillage** — la re-notation de tout l'historique doit tenir en **une commande**, sans quoi le modèle de versionnement d'ADR-032 n'est pas praticable. | B-11 |
@@ -489,9 +675,12 @@ re-récupération le jour où sa base arrive (§7.2).
 (cascade q1–q3, échelle 0–3) · ADR-006 (agrégation chunk→document) · ADR-007
 (nDCG@R, coupe adaptative, complétude) · ADR-008 (format JSONL, provenance) ·
 ADR-016 (découplage récupération/génération) · ADR-017 (strates de pérennité) ·
-ADR-028 (régimes de vérification) · ADR-029 (garde-fou de circularité) ·
-**ADR-030** (deux axes, opérations) · **ADR-031** (graphe témoin `G₀`) ·
-**ADR-032** (gel par version, re-notation)
+ADR-012 (constat sur preuves) · ADR-018 (identité canonique — support des tags
+dérivés) · ADR-028 (régimes de vérification) · ADR-029 (garde-fou de
+circularité ; statut de la cardinalité 0) · ADR-030 (opérations, régime
+jugée/dérivée — **axes remplacés par ADR-033**) · **ADR-031** (graphe témoin
+`G₀`) · **ADR-032** (gel par version, re-notation) · **ADR-033** (axes
+mécanisme × cardinalité)
 
 **Exigences** — `EXIGENCES_v0.md` E-P2-06 (gel + guide + grades), E-P2-07 (deux
 axes), E-P2-09 (test apparié), E-P2-10 (reproductibilité), E-T-01, E-T-02

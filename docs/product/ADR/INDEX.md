@@ -38,9 +38,10 @@
 | [ADR-027](ADR-027-plateforme-evaluation-end-to-end.md) | Plateforme d'évaluation end-to-end : le harnais pilote l'ingestion | 🔶 Proposé (19 juillet 2026) — dépend d'ADR-026 — **étendu par ADR-031** (`(W, R)` → `(W, G, R)`) |
 | [ADR-028](ADR-028-frontiere-verification-automatique-humaine.md) | Frontière vérification automatique / validation humaine | Acté (19 juillet 2026) — s'appuie sur ADR-017 |
 | [ADR-029](ADR-029-retrogradation-strate-2-diagnostic-cocitation.md) | Rétrogradation de la strate 2 : diagnostic de co-citation, non qrels | Acté (20 juillet 2026, recadrage B-07) — amende ADR-017, prolonge ADR-028 |
-| [ADR-030](ADR-030-typologie-actions-deux-axes.md) | Typologie des actions : deux axes, type porté par l'arête | Acté (22 juillet 2026, préparation B-08) — amende ADR-009, révise E-P2-07 |
+| [ADR-030](ADR-030-typologie-actions-deux-axes.md) | Typologie des actions : deux axes, type porté par l'arête | Acté (22 juillet 2026, préparation B-08) — amende ADR-009, révise E-P2-07 — **axes remplacés par ADR-033**, machinerie conservée |
 | [ADR-031](ADR-031-graphe-temoin-versionnement.md) | Graphe témoin, versionnement du graphe enrichi, protocole de comparaison | Acté (22 juillet 2026, préparation B-08) — étend ADR-027, prolonge ADR-029 |
 | [ADR-032](ADR-032-golden-set-versionne-renotation.md) | Golden-set versionné : gel par version, comparabilité par re-notation | Acté (22 juillet 2026, préparation B-08) — précise E-P2-06 et E-P2-10 |
+| [ADR-033](ADR-033-axes-mecanisme-cardinalite.md) | Axes du golden-set : mécanisme de récupération × cardinalité | Acté (31 juillet 2026, arbitrage de session) — **amende ADR-030** (axes remplacés, machinerie conservée), révise E-P2-07, **confirme ADR-007** |
 
 ## Points ouverts rattachés
 

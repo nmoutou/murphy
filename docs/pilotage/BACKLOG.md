@@ -20,7 +20,7 @@
 | B-05 | Implémenter l'adapter baseline (runs au format ADR-008) | E-P2-01, E-T-01 | P2 | ✅ |
 | B-06 | Implémenter la suite d'invariants structurels (strate 1) | E-P2-04 | P2 | ✅ |
 | B-07 | Miner le jeu de **paires de co-citation** (strate 2) depuis le graphe — socle d'extraction (adapter Neo4j dédié dans `eval/`, Cypher, writer des paires), usage diagnostique précision-seulement, **non des qrels** (ADR-029) | E-P2-05 | P2 | ✅ |
-| B-08 | Produire le golden-set v1 synthétique + guide d'annotation + stratification **à deux axes** (intention par requête, opérations par arête `(requête, source, cible)` — ADR-030) | E-P2-06, E-P2-07 | P2 | ⬜ |
+| B-08 | Produire le golden-set v1 synthétique + guide d'annotation + stratification **à deux axes** (mécanisme de récupération × cardinalité, 14 cellules — ADR-033 ; opérations conservées comme facettes d'arête — ADR-030) | E-P2-06, E-P2-07 | P2 | ⬜ |
 | B-09 | Construire ≥ 1 set diagnostique graph-hop | E-P2-08 | P2 | ⬜ |
 | B-10 | Implémenter le test statistique apparié | E-P2-09 | P2 | ⬜ |
 | B-11 | Produire la baseline chiffrée reproductible (double run **(W, R)**, artefacts versionnés) | E-P2-10, E-T-02 | P2 | ⬜ |
@@ -148,9 +148,29 @@
   l'appliquer à B-05. À solder au plus tard dans **B-11** (baseline chiffrée
   reproductible), qui ne peut pas s'en passer.
 - B-08 (golden-set) est désormais tirable : B-01 et B-02 sont acquis.
-- **B-08 recadré (ADR-030 + ADR-031, 22 juillet 2026)** — la stratification
-  passe à **deux axes** : une **intention** par requête, une ou plusieurs
-  **opérations** par arête `(requête, source, cible)`, non exclusives.
+- **B-08 recadré une seconde fois (ADR-033, 31 juillet 2026)** — les **deux
+  axes changent**, la machinerie d'ADR-030 reste. L'axe primaire devient le
+  **mécanisme de récupération exercé** (8 valeurs, porté par le cas) et l'axe
+  secondaire la **cardinalité** (4 niveaux, porté par le cas) ; `intention` et
+  `matière` sont **rétrogradées en facettes** — taguées à 100 %, non couvertes,
+  trous permis et chiffrés. Motif : un axe de *besoin* est adossé au contenu du
+  droit, donc non bornable ; un axe de *mécanisme* est énumérable et petit.
+  **14 cellules valides** sur 32 (`GOLDEN-SET.md` §4.1), toutes à couvrir. Le
+  niveau de **cardinalité 0** est l'ajout qui rend l'arbitrage cohérent : sans
+  lui, les questions négatives seraient une colonne à couvrir mais non scorable
+  (`R = 0` ⇒ coupe de nDCG@R indéfinie). Trois sous-ensembles hors quota sont
+  **absorbés** dans la grille (négatives, paires isosémantiques, matériau de
+  polysémie) ; seule la strate-frontière reste dehors. **ADR-007 est confirmé
+  contre la proposition concurrente** : pas de `Recall@k`, la cellule « ensemble
+  borné » utilise `Recall@R`, `R` étant écrit par authoring. **Coût
+  d'implémentation neuf** : le routage de la métrique par cardinalité dans le
+  scorer. Les 72 questions déjà générées dans `eval/artifacts/questions/raw/`
+  restent du matériau valide — elles peuplent 1 à 2 cellules sur 14 et demandent
+  un re-tagage, pas une réécriture.
+- **B-08 recadré (ADR-030 + ADR-031, 22 juillet 2026)** — ⚠️ **axes remplacés
+  par ADR-033** (ci-dessus) ; le reste de ce paragraphe est en vigueur. La
+  stratification passait à **deux axes** : une **intention** par requête, une ou
+  plusieurs **opérations** par arête `(requête, source, cible)`, non exclusives.
   L'axe *difficulté* est supprimé (jugement d'intensité non falsifiable, qui
   absorbe la question qu'il prétend documenter). Liste plate de **huit
   opérations**, dont **cinq dérivées** (calculées depuis `source`, le graphe

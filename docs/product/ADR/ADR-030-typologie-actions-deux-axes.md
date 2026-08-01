@@ -2,7 +2,22 @@
 
 **Statut** : Acté (22 juillet 2026, préparation de B-08) — **amende ADR-009**
 (quatre types d'action), **révise E-P2-07**, **prolonge ADR-028** (frontière
-observation / dérivation)
+observation / dérivation) — ⚠️ **partiellement amendé par
+[ADR-033](ADR-033-axes-mecanisme-cardinalite.md)** (31 juillet 2026)
+
+> **Ce qui a changé, et ce qui n'a pas changé.** ADR-033 remplace les **deux
+> axes** fixés ici : l'axe primaire devient le **mécanisme de récupération**
+> (porté par le cas) et l'axe secondaire la **cardinalité du golden-set**.
+> `intention` est rétrogradée en facette ; les **opérations cessent d'être un
+> axe** sans cesser d'exister.
+>
+> **Tout le reste de cet ADR reste en vigueur** : le régime jugée / dérivée, le
+> portage du type par l'arête `(requête, source, cible)`, le champ `source` de
+> `Judgment`, la dérivation depuis le graphe témoin `G₀`, la règle de tri
+> *enregistrer ce qui a coûté une lecture*, et la réserve sur la ventilation
+> (restreindre les qrels change `R`, donc la coupe). L'analyse des trois
+> défauts d'ADR-009 reste valide — ADR-033 la prolonge, il ne la contredit
+> pas.
 
 ## Contexte
 
