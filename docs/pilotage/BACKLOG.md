@@ -20,7 +20,7 @@
 | B-05 | Implémenter l'adapter baseline (runs au format ADR-008) | E-P2-01, E-T-01 | P2 | ✅ |
 | B-06 | Implémenter la suite d'invariants structurels (strate 1) | E-P2-04 | P2 | ✅ |
 | B-07 | Miner le jeu de **paires de co-citation** (strate 2) depuis le graphe — socle d'extraction (adapter Neo4j dédié dans `eval/`, Cypher, writer des paires), usage diagnostique précision-seulement, **non des qrels** (ADR-029) | E-P2-05 | P2 | ✅ |
-| B-08 | Produire le golden-set v1 synthétique + guide d'annotation + stratification **à deux axes** (mécanisme de récupération × cardinalité, 14 cellules — ADR-033 ; opérations conservées comme facettes d'arête — ADR-030) | E-P2-06, E-P2-07 | P2 | ⬜ |
+| B-08 | Produire le golden-set v1 synthétique + guide d'annotation + stratification sur l'**axe unique des mécanismes de récupération** (opérations conservées comme facettes d'arête — ADR-030). ⚠️ **La spécification est en cours de refonte** sur la carte [Golden-set v1 — spécification prête à l'authoring](https://github.com/left-eyebr0w/murphy/issues/1) et atterrira en **ADR-035** ; ADR-033 (deux axes, 14 cellules) est **obsolète**. Aucun authoring avant clôture de la carte | E-P2-06, E-P2-07 | P2 | ⬜ |
 | B-09 | Construire ≥ 1 set diagnostique graph-hop | E-P2-08 | P2 | ⬜ |
 | B-10 | Implémenter le test statistique apparié | E-P2-09 | P2 | ⬜ |
 | B-11 | Produire la baseline chiffrée reproductible (double run **(W, R)**, artefacts versionnés) | E-P2-10, E-T-02 | P2 | ⬜ |

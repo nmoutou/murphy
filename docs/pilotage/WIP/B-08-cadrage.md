@@ -1,5 +1,11 @@
 # B-08 — Cadrage du golden-set v1
 
+> ## ⚠️ Cadrage du 22 juillet 2026 — largement dépassé
+>
+> Ce document précède ADR-033 et ADR-034. Le cadrage courant de B-08 vit sur la
+> carte [Golden-set v1 — spécification prête à l'authoring](https://github.com/left-eyebr0w/murphy/issues/1),
+> et atterrira en **ADR-035**. À lire comme une trace, pas comme un plan.
+
 > Document de travail (`WIP/`), **éphémère par conception** : il vit le
 > temps de B-08 et disparaît à sa clôture. Ce qui doit survivre part
 > ailleurs — une décision en ADR, une dette en `BACKLOG.md` §4, un

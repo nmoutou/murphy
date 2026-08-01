@@ -11,6 +11,37 @@
 
 ---
 
+> ## ⚠️ Sections périmées — ne pas appliquer sans lire ceci
+>
+> **Au 1er août 2026, plusieurs sections de ce document décrivent une conception
+> abandonnée.** Elles n'ont pas encore été réécrites : la refonte est en cours
+> sur la carte
+> [Golden-set v1 — spécification prête à l'authoring](https://github.com/left-eyebr0w/murphy/issues/1)
+> et atterrira en **ADR-035**, qui remplacera ADR-033 et amendera ADR-034.
+>
+> | Section | État | Pourquoi |
+> |---|---|---|
+> | **§4** — les deux axes | ⛔ **faux** | La cardinalité n'est plus un axe. Le tableau des huit mécanismes est périmé sur deux points : la liste tombe à **sept** (`robustesse_paraphrase` devient une variante) et la colonne `Régime` classe `concept_vers_instance` en *détenu*, ce qui est faux — son label asserté est une opinion. |
+> | **§4.1** — les quatorze cellules | ⛔ **supprimé** | La grille n'existe plus. Aucune cellule n'est à peupler. |
+> | **§6** — les matières, §6.1 douze strates, §6.2 pondération | ⛔ **supprimé** | Les strates ne survivent pas comme cadre d'échantillonnage ; le vecteur D₁ tombe avec elles. `WIP/B-08-prior-ponderation.md` est sans objet. |
+> | **§7** — dimensionnement | ⚠️ **à re-dériver** | `N_q ≈ 155` reposait sur `14 cellules × 10` : les facteurs n'existent plus. Et `N_j ≈ 60–70` (§7.4) est **optimiste d'un facteur ≈ 2,5** — la pratique publiée demande **150–165 requêtes jugées** pour départager deux configurations proches (Webber/Moffat/Zobel, CIKM 2008 §5.1). La distinction `N_q` / `N_j` elle-même, et l'argument de coût du §7.2, survivent. |
+> | **§8.1** — paires isosémantiques | ⚠️ **requalifié** | Elles ne sont plus un sous-ensemble d'un mécanisme : la paraphrase devient une **variante** applicable à n'importe quel cas, donc mesurable partout sans coût de label. |
+> | **§8.3** — strate-frontière | ⚠️ **suspendu** | Défini par rapport aux strates, qui tombent. |
+> | **§4.4** — les types de difficulté | ✅ **tient** | Son raisonnement est indépendant de la grille. |
+> | **§1, §2, §3, §5, §9, §10, §11** | ⚠️ **à instruire** | Non démolis, mais leurs dépendances bougent. §2 (la doctrine) et §10 (ce qu'on exige de l'ingestion, dérivé des strates S6/S11/S12) sont des tickets ouverts de la carte. |
+>
+> **Ce qui est acquis et n'est écrit nulle part ici encore** : l'axe unique des
+> mécanismes ; le remplacement du test de sens de dérivation d'ADR-034 par
+> **deux propriétés indépendantes** — la *source de gratuité du label*
+> (`identite` / `graphe_g0` / `frontiere_corpus` / `aucun`) et le *réalisme de la
+> requête* ; et la v1 gratuite à quatre mécanismes (`resolution_reference`,
+> `known_item_identifiant`, `multi_hop`, `absence_hors_corpus`), avec
+> `concept_vers_instance` et `desambiguisation` requalifiés « à jugement ».
+> Détail :
+> [résolution du ticket racine](https://github.com/left-eyebr0w/murphy/issues/2#issuecomment-5152165131).
+
+---
+
 ## 1. Ce que c'est
 
 Une **collection de test de Recherche d'Information** au sens classique : le

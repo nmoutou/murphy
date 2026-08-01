@@ -1,8 +1,37 @@
 # ADR-033 — Axes du golden-set : mécanisme de récupération × cardinalité
 
-**Statut** : Acté (31 juillet 2026, arbitrage de session) — **amende ADR-030**
-(remplace ses deux axes, conserve sa machinerie), **révise E-P2-07** pour la
-seconde fois, **confirme ADR-007** contre une proposition concurrente
+**Statut** : ⛔ **OBSOLÈTE** (1er août 2026) — **remplacé par ADR-035**, en cours
+de rédaction. Acté le 31 juillet 2026 ; **amendait ADR-030** (remplace ses deux
+axes, conserve sa machinerie), **révisait E-P2-07** pour la seconde fois,
+**confirmait ADR-007** contre une proposition concurrente.
+
+> ## ⛔ Ne pas appliquer ce document
+>
+> Une session de cadrage du 1er août 2026 a démoli l'essentiel de cette
+> décision. **Seul survit son axe primaire** — les mécanismes de récupération,
+> qui restent la structure du golden-set. Sont tombés :
+>
+> - **la cardinalité comme second axe**, et avec elle la grille des quatorze
+>   cellules valides (§*Décision*) ;
+> - **les douze strates** comme cadre d'échantillonnage, et le vecteur de
+>   pondération D₁ ;
+> - **le re-tagage des 72 questions** de `eval/artifacts/questions/raw/` prescrit
+>   en §*Conséquences* — elles sont rebutées, pas re-taguées.
+>
+> S'y ajoute, depuis le 1er août, un changement dans l'axe survivant lui-même :
+> **la liste passe de huit mécanismes à sept** (`robustesse_paraphrase` devient
+> une variante applicable à tout cas), et `concept_vers_instance` cesse d'être
+> de régime *détenu* — son label asserté est une opinion, pas un fait
+> d'authoring.
+>
+> **ADR-007 n'est plus confirmé par ce document**, puisqu'il est obsolète ; la
+> validité de `nDCG@R` est rouverte.
+>
+> Le nouveau socle se construit sur la carte
+> [Golden-set v1 — spécification prête à l'authoring](https://github.com/left-eyebr0w/murphy/issues/1),
+> et atterrira en **ADR-035**. Ce document est conservé comme **archive** : son
+> raisonnement sur le renversement contenu → mécanisme (§*Contexte*, §4.4 de
+> `GOLDEN-SET.md`) reste le fondement de l'axe survivant.
 
 ## Contexte
 

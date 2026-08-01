@@ -1,5 +1,15 @@
 # B-08 — Prior de pondération : notes de travail et prompts
 
+> ## ⛔ SANS OBJET (1er août 2026)
+>
+> Ce document dérive un vecteur de pondération **D₁** sur les **douze strates**
+> de `GOLDEN-SET.md` §6. Les strates ne survivent pas comme cadre
+> d'échantillonnage, et D₁ tombe avec elles. Rien ici n'est à appliquer.
+> Conservé le temps que la carte
+> [Golden-set v1](https://github.com/left-eyebr0w/murphy/issues/1) statue sur ce
+> qui remplace le cadre d'échantillonnage — voir ADR-034 §1 (le paradigme
+> *contenu* devient un second instrument, non un cadre).
+
 > Document de travail (`WIP/`), **éphémère par conception** — compagnon de
 > [B-08-cadrage.md](B-08-cadrage.md), dont il détaille l'**étape 1** du
 > protocole de génération des requêtes. Il vit le temps de l'analyse et

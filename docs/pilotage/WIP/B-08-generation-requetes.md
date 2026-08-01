@@ -1,5 +1,19 @@
 # B-08 — Génération des requêtes : protocole et prompts (résolution de D-01)
 
+> ## ⚠️ EN SURSIS (1er août 2026) — ne pas relancer la récolte
+>
+> Le protocole en deux phases du §5 est structuré par `intention × registre` et
+> présuppose le cadre d'échantillonnage tombé avec les strates ; les **72
+> questions** déjà produites sont **rebutées**, pas re-taguées. Le sort de ce
+> document est le ticket
+> [Le sort du protocole de génération des requêtes](https://github.com/left-eyebr0w/murphy/issues/13)
+> de la carte [#1](https://github.com/left-eyebr0w/murphy/issues/1).
+>
+> **Ce qui survit vraisemblablement** : la frontière E-T-01 (§2), l'hygiène de
+> prompt (§3), le schéma de provenance (§7) et le critère de sélection (§6) —
+> tous indépendants de la grille. **Ce qui ne survit pas** : la structuration
+> par `intention × registre` et les quotas qui en descendent.
+
 > Document de travail (`WIP/`), **éphémère par conception** — compagnon de
 > [B-08-cadrage.md](B-08-cadrage.md), dont il tranche la décision ouverte
 > **D-01**. Il vit le temps de la récolte et disparaît quand
