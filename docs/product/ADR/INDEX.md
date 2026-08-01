@@ -3,7 +3,7 @@
 > Un fichier par ADR (format Nygard). ADR-001 à 010 : arbitrages du
 > chantier 4 · ADR-011 à 020 : rétro-documentation des décisions
 > implicites (chantier 5) · ADR-021 et suivants : au fil de l'exécution.
-> **Prochain numéro : ADR-033.**
+> **Prochain numéro : ADR-035.**
 
 ## Registre
 
@@ -41,7 +41,8 @@
 | [ADR-030](ADR-030-typologie-actions-deux-axes.md) | Typologie des actions : deux axes, type porté par l'arête | Acté (22 juillet 2026, préparation B-08) — amende ADR-009, révise E-P2-07 — **axes remplacés par ADR-033**, machinerie conservée |
 | [ADR-031](ADR-031-graphe-temoin-versionnement.md) | Graphe témoin, versionnement du graphe enrichi, protocole de comparaison | Acté (22 juillet 2026, préparation B-08) — étend ADR-027, prolonge ADR-029 |
 | [ADR-032](ADR-032-golden-set-versionne-renotation.md) | Golden-set versionné : gel par version, comparabilité par re-notation | Acté (22 juillet 2026, préparation B-08) — précise E-P2-06 et E-P2-10 |
-| [ADR-033](ADR-033-axes-mecanisme-cardinalite.md) | Axes du golden-set : mécanisme de récupération × cardinalité | Acté (31 juillet 2026, arbitrage de session) — **amende ADR-030** (axes remplacés, machinerie conservée), révise E-P2-07, **confirme ADR-007** |
+| [ADR-033](ADR-033-axes-mecanisme-cardinalite.md) | Axes du golden-set : mécanisme de récupération × cardinalité | Acté (31 juillet 2026, arbitrage de session) — **amende ADR-030** (axes remplacés, machinerie conservée), révise E-P2-07, **confirme ADR-007** — **prolongé par ADR-034** (cadre d'échantillonnage) |
+| [ADR-034](ADR-034-paradigmes-evaluation-triangulation.md) | Paradigmes d'évaluation : fonctionnel, contenu, usage — séparation et triangulation | Acté (1er août 2026, session de cadrage) — **prolonge ADR-033**, amende la direction de `GOLDEN-SET.md` §7 |
 
 ## Points ouverts rattachés
 
