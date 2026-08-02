@@ -7,6 +7,16 @@
 > `EXIGENCES_v0.md` ou avec `GOLDEN-SET.md`, **ce document a tort.** Points
 > périmés connus, à ne pas reprendre :
 >
+> - **La métrique** — le document annonce en tête *« la métrique primaire est
+>   **nDCG@R**, à coupe adaptative »* et justifie la gradation par *« sans
+>   gradation, pas de nDCG »*. **`nDCG@R` est retiré le 2 août 2026**
+>   ([#14](https://github.com/left-eyebr0w/murphy/issues/14)) au profit de
+>   `RBP(p) + résidu`
+>   ([ADR-007](../../product/ADR/ADR-007-metrique-rbp-residu.md)). *L'échelle
+>   graduée, elle, survit* — elle est un **invariant** (ADR-016), non une
+>   dépendance de nDCG : c'est la justification qui était fausse, pas la
+>   conclusion.
+>
 > - **§5 « second axe — 6 types de difficulté »** — **révoqué par ADR-030**.
 >   L'axe difficulté est supprimé : étiqueter une requête *difficile*
 >   enregistre une impression, non un fait, et l'étiquette absorbe la question

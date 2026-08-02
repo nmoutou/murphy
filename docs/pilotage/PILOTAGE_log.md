@@ -4,7 +4,7 @@
 
 ## 2026-07-19 — B-04
 
-- **Fait** : B-04 (scorer nDCG@R + diagnostics + agrégation chunk→document)
+- **Fait** : B-04 (agrégation chunk→document + harnais de scoring) — *intitulé corrigé le 2 août 2026 : il portait « scorer nDCG@R + diagnostics », métrique retirée par [#14](https://github.com/left-eyebr0w/murphy/issues/14) ; le scorer part en B-15*
   passé à ✅. Suite verte (54 tests), mypy strict et ruff propres.
 - **Décidé** : **localisation révisée** — nouveau projet dédié `eval/`
   (dossier in-repo, extraction en submodule différée), pas un sous-paquet
@@ -53,7 +53,7 @@
   main, pas de dépendance `pytrec_eval`).
 - **Bloqué** : rien.
 - **Prochain pas** : implémenter B-04 dans `data/` (sous-paquet
-  `ragcore/evaluation/` : agrégation ADR-006 + scorer nDCG@R ADR-007).
+  `ragcore/evaluation/` : agrégation ADR-006 + scorer nDCG@R ADR-007 — *scorer retiré le 2 août 2026, voir B-15*).
 - **Hygiène** : documents de cadrage (ADR-025/026/027, STATUS, BACKLOG,
   EXIGENCES_v0, PROGRAM, VERSIONS, VISION, HANDBOOK, INSTITUTIONNEL)
   toujours non commités depuis la session de travail précédente — à

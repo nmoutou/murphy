@@ -16,7 +16,7 @@
 | B-01 | Vérifier l'identité canonique croisée sur les 3 BDD | E-P1-02 | P1 | ✅ |
 | B-02 | Vérifier la stabilité du `doc_id` article LEGI (test de ré-ingestion) | E-P1-03 | P1 | ✅ |
 | B-03 | Modéliser complètement le graphe de citations Neo4j (relations typées) | E-P1-04 | P1 | ✅ |
-| B-04 | Implémenter le scorer nDCG@R + diagnostics + règle d'agrégation chunk→document | E-P2-02, E-P2-03 | P2 | ✅ |
+| B-04 | Implémenter la règle d'agrégation chunk→document + le harnais de scoring (oracle *auto pur*, gain injectable) | E-P2-03 | P2 | ✅ — ⚠️ **intitulé corrigé le 2 août 2026** : il disait « scorer nDCG@R + diagnostics », or `nDCG@R` et les diagnostics normalisés par `R` sont **retirés** ([#14](https://github.com/left-eyebr0w/murphy/issues/14), [ADR-007](../product/ADR/ADR-007-metrique-rbp-residu.md)). **B-04 reste clos sur ce qu'il a livré et qui tient** — l'agrégation (E-P2-03), l'oracle, la discipline de gain injectable. Le scorer lui-même part en **B-15**, et E-P2-02 est rouverte |
 | B-05 | Implémenter l'adapter baseline (runs au format ADR-008) | E-P2-01, E-T-01 | P2 | ✅ |
 | B-06 | Implémenter la suite d'invariants structurels (strate 1) | E-P2-04 | P2 | ✅ |
 | B-07 | Miner le jeu de **paires de co-citation** (strate 2) depuis le graphe — socle d'extraction (adapter Neo4j dédié dans `eval/`, Cypher, writer des paires), usage diagnostique précision-seulement, **non des qrels** (ADR-029) | E-P2-05 | P2 | ✅ |
@@ -27,6 +27,7 @@
 | B-12 | Mini-ADR de clôture v0 (constat sur preuves) | §5 `EXIGENCES_v0.md` | — | ⬜ |
 | B-13 | Orchestrateur d'ingestion + sweep `W×R` (sous-processus `kedro run --params W`, séquentiel, `nuke` entre `W`, reprise sur incident) — plateforme end-to-end (ADR-027) | E-P2-10 (étendue) | P2 | ⬜ |
 | B-14 | Restructurer `conf/` en partition `workflow / ingestion / evaluation` (ADR-026), fingerprint inchangé (test de non-régression) | E-P2-10 (prérequis couplage) | P1 | ✅ |
+| B-15 | **Implémenter le scorer `RBP(p)` + résidu** ([ADR-007](../product/ADR/ADR-007-metrique-rbp-residu.md), réécrit) : score et **résidu calculé trou par trou sur le run**, `p` obtenu par la règle `p = 0,01^(1/d̄)` et publié avec tout score, projection linéaire `g/3` des grades (ADR-005), lectures de rapport par branche, indicateurs de trous `RankUnj` / `%jugés@k`, et les **deux refus** — pas de publication sous 50 % de jugés dans le top-`k`, pas de test apparié si l'intervalle d'écart contient zéro. Réutilise l'oracle et le gain injectable de **B-04** | E-P2-02 | P2 | ⬜ |
 
 ## 2. Notes d'ordonnancement
 
@@ -43,6 +44,7 @@
   encore référencé** pour E-P1-02/03/04 malgré la vérification exigée
   par `EXIGENCES_v0.md` — à régulariser avant la clôture v0 (B-12) si
   jugé nécessaire.
+- ⚠️ **B-04 : le scorer est retiré, le reste tient** (2 août 2026, [#14](https://github.com/left-eyebr0w/murphy/issues/14)). `nDCG@R` et les diagnostics normalisés par `R` (MAP, R-Precision, Recall@2R, Doc-Recall@R) sont **retirés** ; `Doc-MRR` survit comme *lecture* de `Recall@R` à `R = 1`, non comme métrique. **Ce qui reste livré et valide** : l'agrégation chunk→document (E-P2-03), l'oracle *auto pur*, la discipline de gain injectable — c'est le patron sur lequel **B-15** écrira `RBP + résidu`. Le paragraphe ci-dessous est conservé pour ce qu'il documente du harnais, **pas de la métrique**.
 - **B-04 est ✅** : scorer nDCG@R (coupe adaptative maison, gain injectable —
   exponentiel par défaut, linéaire en diagnostic) + agrégation chunk→document
   (ADR-006, max qrels / rang du 1er chunk runs) + diagnostics (R-Precision,
@@ -158,7 +160,11 @@
   **14 cellules valides** sur 32 (`GOLDEN-SET.md` §4.1), toutes à couvrir. Le
   niveau de **cardinalité 0** est l'ajout qui rend l'arbitrage cohérent : sans
   lui, les questions négatives seraient une colonne à couvrir mais non scorable
-  (`R = 0` ⇒ coupe de nDCG@R indéfinie). Trois sous-ensembles hors quota sont
+  (`R = 0` ⇒ coupe de nDCG@R indéfinie). *(2 août 2026 : le motif change, la
+  conclusion non. `nDCG@R` est retiré ([#14](https://github.com/left-eyebr0w/murphy/issues/14)) ;
+  sur `R = 0` c'est désormais `RBP = 0` pour tout run — métrique définie mais
+  **identiquement nulle, donc sans pouvoir discriminant**. La branche reste
+  couverte et non comparable, ce qui était déjà sa situation.)* Trois sous-ensembles hors quota sont
   **absorbés** dans la grille (négatives, paires isosémantiques, matériau de
   polysémie) ; seule la strate-frontière reste dehors. **ADR-007 est confirmé
   contre la proposition concurrente** : pas de `Recall@k`, la cellule « ensemble

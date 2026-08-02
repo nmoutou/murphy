@@ -16,8 +16,12 @@ versionné, scorable** (format ADR-008).
 pas en droit. Quatre raisons, la troisième décisive :
 
 1. **Le graphe ne porte pas le degré de pertinence.** Une arête « A cite
-   B » est binaire ; nDCG@R (ADR-007) attend des grades 0–3. Une citation
-   ne dit pas *à quel point* B est pertinent.
+   B » est binaire ; la métrique de décision attend des grades 0–3. Une citation
+   ne dit pas *à quel point* B est pertinent. *(Référence mise à jour le 2 août
+   2026 : la métrique n'est plus `nDCG@R` mais `RBP(p) + résidu`
+   — [ADR-007](ADR-007-metrique-rbp-residu.md) — qui consomme les mêmes grades par
+   projection linéaire `g/3`. **L'argument est inchangé** : il porte sur la nature
+   binaire de l'arête, pas sur la métrique qui la consommerait.)*
 2. **La gestion des relations est lourde** — coût réel, mais ce n'est pas
    un argument de validité.
 3. **Les textes ne citent pas explicitement les concepts qu'ils
@@ -106,6 +110,6 @@ hors graphe de citations** (idée non engageante, `BACKLOG.md` §4).
 ## Références
 
 ADR-017 (strates ; amendé ici) · ADR-028 (régimes de vérification ;
-prolongé ici) · ADR-005 (échelle 0–3) · ADR-007 (nDCG@R) · ADR-008
+prolongé ici) · ADR-005 (échelle 0–3) · [ADR-007](ADR-007-metrique-rbp-residu.md) (RBP + résidu) · ADR-008
 (format) · ADR-027 (frontière `eval/` sans `ragcore`) · `EXIGENCES_v0.md`
 E-P2-05 · `BACKLOG.md` B-07/B-08/B-09/B-11

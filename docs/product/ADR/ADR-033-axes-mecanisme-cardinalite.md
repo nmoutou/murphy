@@ -27,7 +27,10 @@ axes, conserve sa machinerie), **révisait E-P2-07** pour la seconde fois,
 > d'authoring.
 >
 > **ADR-007 n'est plus confirmé par ce document**, puisqu'il est obsolète ; la
-> validité de `nDCG@R` est rouverte.
+> validité de `nDCG@R` est rouverte. ⛔ **Refermé le 2 août 2026**
+> ([#14](https://github.com/left-eyebr0w/murphy/issues/14)) : `nDCG@R` est **retiré**,
+> [ADR-007](ADR-007-metrique-rbp-residu.md) est réécrit autour de `RBP(p) + résidu`.
+> La table « ouvert — topique → nDCG@R » ci-dessous est donc doublement périmée.
 >
 > Le nouveau socle se construit sur la carte
 > [Golden-set v1 — spécification prête à l'authoring](https://github.com/left-eyebr0w/murphy/issues/1),

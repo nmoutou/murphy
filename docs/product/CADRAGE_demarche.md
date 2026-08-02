@@ -43,7 +43,7 @@ conception : la beta (réécriture post-alpha) et le contenu de la vague 2.
 ### 4. Trancher les décisions ouvertes bloquantes — ✅ clos (17 juillet 2026)
 Dix décisions tranchées en session : ADR-001 à 010 (statut P4, périmètre
 jurisprudentiel v0, séquençage DILA, unité document, échelle de pertinence,
-agrégation, métriques nDCG@R, formats qrels/runs, types d'action, deux modes
+agrégation, métrique de comparaison (`RBP(p)` + résidu — ADR-007, réécrit le 2 août 2026), formats qrels/runs, types d'action, deux modes
 de P3). *Arbitrage.*
 
 ### 5. Consolider le registre de décisions → `ADR/` — ✅ clos

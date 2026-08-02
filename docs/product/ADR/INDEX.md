@@ -18,9 +18,9 @@
 | [ADR-002](ADR-002-perimetre-jurisprudentiel-v0.md) | Périmètre jurisprudentiel de la v0 | Acté (constaté) |
 | [ADR-003](ADR-003-sequencage-dila.md) | Séquençage d'ingestion DILA | Acté — clôture vague 2 différée |
 | [ADR-004](ADR-004-unite-document.md) | Définition de l'unité « document » | Acté |
-| [ADR-005](ADR-005-echelle-pertinence.md) | Échelle de pertinence et guide d'annotation | Acté |
+| [ADR-005](ADR-005-echelle-pertinence.md) | Échelle de pertinence et guide d'annotation | Acté — **complété le 2 août 2026** ([#14](https://github.com/left-eyebr0w/murphy/issues/14)) : projection linéaire `g/3` des grades dans RBP |
 | [ADR-006](ADR-006-agregation-chunk-document.md) | Agrégation chunk→document | Acté |
-| [ADR-007](ADR-007-metriques-ndcg-r.md) | Métriques sans coupes constantes (nDCG@R) | Acté |
+| [ADR-007](ADR-007-metrique-rbp-residu.md) | Métrique de comparaison : RBP(p) + résidu | Acté — **réécrit le 2 août 2026** ([#14](https://github.com/left-eyebr0w/murphy/issues/14)) : `nDCG@R` **retiré**, le refus des coupes constantes survit. *Ancien fichier : `ADR-007-metriques-ndcg-r.md`* |
 | [ADR-008](ADR-008-format-qrels-runs.md) | Format de stockage qrels/runs | Acté |
 | [ADR-009](ADR-009-types-action.md) | Types d'action (stratification v0) | Acté — liste révisable en alpha ph.1 — **amendé par ADR-030** (deux axes, type porté par l'arête) |
 | [ADR-010](ADR-010-deux-modes-p3.md) | Architecture des deux modes d'annotation de P3 | Acté |
@@ -43,7 +43,7 @@
 | [ADR-027](ADR-027-plateforme-evaluation-end-to-end.md) | Plateforme d'évaluation end-to-end : le harnais pilote l'ingestion | 🔶 Proposé (19 juillet 2026) — dépend d'ADR-026 — **étendu par ADR-031** (`(W, R)` → `(W, G, R)`) |
 | [ADR-028](ADR-028-frontiere-verification-automatique-humaine.md) | Frontière vérification automatique / validation humaine | Acté (19 juillet 2026) — s'appuie sur ADR-017 |
 | [ADR-029](ADR-029-retrogradation-strate-2-diagnostic-cocitation.md) | Rétrogradation de la strate 2 : diagnostic de co-citation, non qrels | Acté (20 juillet 2026, recadrage B-07) — amende ADR-017, prolonge ADR-028 |
-| [ADR-030](ADR-030-typologie-actions-deux-axes.md) | Typologie des actions : deux axes, type porté par l'arête | Acté (22 juillet 2026, préparation B-08) — amende ADR-009, révise E-P2-07 — **axes remplacés par ADR-033**, machinerie conservée |
+| [ADR-030](ADR-030-typologie-actions-deux-axes.md) | Typologie des actions : deux axes, type porté par l'arête | Acté (22 juillet 2026, préparation B-08) — amende ADR-009, révise E-P2-07 — **axes remplacés par ADR-033**, machinerie conservée — **réserve sur la ventilation dissoute le 2 août 2026** ([#14](https://github.com/left-eyebr0w/murphy/issues/14)) |
 | [ADR-031](ADR-031-graphe-temoin-versionnement.md) | Graphe témoin, versionnement du graphe enrichi, protocole de comparaison | Acté (22 juillet 2026, préparation B-08) — étend ADR-027, prolonge ADR-029 |
 | [ADR-032](ADR-032-golden-set-versionne-renotation.md) | Golden-set versionné : ~~gel par version~~, comparabilité par re-notation | Acté (22 juillet 2026, préparation B-08) — précise E-P2-06 et E-P2-10. ⛔ **Titre et §1 périmés le 2 août 2026** ([#18](https://github.com/left-eyebr0w/murphy/issues/18)) : **`gel` est sorti du vocabulaire**, remplacé par l'**identification** (trois hashes `corpus`/`cas`/`qrels`). **§2 (re-notation), §4 et §5 survivent** — §4 étant seulement *incomplète*, la classe *corpus* y manquait. Réécriture en ADR-036 |
 | [ADR-033](ADR-033-axes-mecanisme-cardinalite.md) | Axes du golden-set : mécanisme de récupération × cardinalité | ⛔ **OBSOLÈTE** (1er août 2026) — **à remplacer par ADR-036**. Seul survit son **axe primaire** (les mécanismes) ; la cardinalité comme second axe, la grille des 14 cellules et les 12 strates sont tombées. Sa confirmation d'ADR-007 ne porte plus. Conservé comme archive |

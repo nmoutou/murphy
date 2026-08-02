@@ -8,8 +8,10 @@ Les exigences de sortie (`EXIGENCES_v0.md`) demandent que chaque critère
 soit « vérifié ». Le mot écrase deux questions de nature différente :
 
 - **mécanique** — *le système calcule-t-il correctement la formule qu'on
-  lui a donnée ?* Entrée → sortie déterministe (ex. nDCG@R, diff de
-  `doc_id`). Un oracle indépendant tranche.
+  lui a donnée ?* Entrée → sortie déterministe (ex. le **résidu RBP**, diff de
+  `doc_id`).*(Exemple mis à jour le 2 août 2026 : il citait `nDCG@R`, retiré par
+  [#14](https://github.com/left-eyebr0w/murphy/issues/14). Le résidu est un meilleur
+  exemple — il est **déterministe et local à un run**, donc oraclable sans pool.)* Un oracle indépendant tranche.
 - **sémantique** — *la métrique mesure-t-elle la bonne chose ? ce grade
   0–3 est-il juste ? cette citation vaut-elle un jugement de
   pertinence ?* Question ouverte : **produire l'oracle, ce serait

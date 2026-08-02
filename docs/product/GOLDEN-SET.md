@@ -261,9 +261,29 @@ classe `Query` n'existe dans `eval/`. C'est ici qu'elle se peuple.
 
 ---
 
-## 4. Les deux axes
+## 4. ⛔ Les deux axes — **remplacé par ADR-035**
 
-ADR-033 fixe la structure, et elle n'est pas celle qu'on attend d'un jeu de
+> **Statut.** ADR-033 est obsolète ; la section est **remplacée, pas amendée**
+> ([ticket #3](https://github.com/left-eyebr0w/murphy/issues/3)) : elle est
+> écrite autour de deux axes dont le second a été dissous. **§4.1 (les quatorze
+> cellules) disparaît avec elle.** Ce qui subsiste, et qu'on lit ci-dessous : le
+> renversement de l'axe primaire (mécanisme plutôt que contenu), qui tient.
+>
+> **Trois corrections à porter avant relecture :**
+> 1. **L'axe « cardinalité » n'existe plus.** Ce qu'il empilait se rend à deux
+>    concepts déjà présents ailleurs : un **compte**, `R = len(qrels)`, jamais
+>    asserté ; et une **clôture**, qui *est* la source de gratuité du label
+>    ([#2](https://github.com/left-eyebr0w/murphy/issues/2)).
+> 2. **La liste des mécanismes n'est plus à huit** : sept après #2
+>    (`robustesse_paraphrase` devient une *variante* applicable à tout cas),
+>    puis six après [#10](https://github.com/left-eyebr0w/murphy/issues/10)
+>    (`correspondance_litterale` passe aux instruments diagnostiques). La
+>    **composition de la v1** en compte cinq. Renumérotation et cimetière de
+>    vocabulaire à écrire en ADR-036.
+> 3. **La table des métriques ci-dessous est périmée** — voir la table de
+>    remplacement, plus bas dans cette même section.
+
+ADR-033 fixait la structure, et elle n'est pas celle qu'on attend d'un jeu de
 test classique : **on n'évalue pas un contenu, on évalue une fonction de
 récupération.**
 
@@ -299,20 +319,35 @@ système *doit* le rendre au rang 1. Aucun jugement de pertinence n'intervient,
 donc **R-05 est esquivé par construction**, pas atténué. C'est ce qui justifie
 de commencer par là plutôt que par le topique gradué.
 
-**Quatre cardinalités, chacune déclarant sa métrique :**
+⛔ ~~**Quatre cardinalités, chacune déclarant sa métrique.**~~ *(Table retirée :
+la cardinalité est dissoute, et `nDCG@R` avec elle.)*
 
-| Cardinalité | Nature du besoin | Métrique de la cellule |
-|---|---|---|
-| **0 — vide attendu** | Hors corpus, hors périmètre | **Précision seule**, statut ADR-029 : jamais de rappel, jamais de grade |
-| **1 — cible unique** | Known-item, référence résolue | **Doc-MRR**, lecture *success@1* |
-| **n — ensemble borné** | Conjonctif (principe + exception) | **Recall@R**, tout-ou-rien |
-| **ouvert — topique** | Pertinence graduée | **nDCG@R** |
+**Le routage de métrique, sous sa forme dérivée** — trois branches, toutes
+**lues**, aucune assertée ([#3](https://github.com/left-eyebr0w/murphy/issues/3),
+[#14](https://github.com/left-eyebr0w/murphy/issues/14)) :
 
-Faire de la cardinalité un axe *explicite* **interdit mécaniquement** l'erreur
-« nDCG@R partout ». Et aucune métrique n'est à implémenter : *success@1* se lit
-sur Doc-MRR, `R` est écrit par authoring dans la cellule « ensemble borné »
-donc la coupe y reste adaptative (ADR-007 — **le refus des coupes constantes
-tient**, il n'y a pas de `Recall@k` dans ce jeu).
+| Condition | Cas v1 | Rapport / couverture | **Comparaison de configurations** |
+|---|---|---|---|
+| `R = 0` | 30 (`absence_hors_corpus`) | **précision seule**, statut ADR-029 : jamais de rappel, jamais de grade | **taux de remontée au-delà du seuil** (§8.1) — `RBP` y est identiquement nul, donc aucune métrique de **classement** ; cette lecture ne se compare pas aux deux autres branches |
+| `R ≥ 1` **et ensemble clos** | 90 | **`Recall@R`** tout-ou-rien (`R = 1` se *lit* success@1 — Doc-MRR n'est pas une branche) | **RBP(`p`) + résidu** |
+| **ensemble ouvert** | 30 (noyau jugé) | — | **RBP(`p`) + résidu** |
+
+La colonne de comparaison est **commune aux deux branches où une comparaison a
+un sens**, soit **120 cas sur 150** : RBP ne demande pas `R`, il couvre donc
+aussi les cas gratuits — où il n'y a d'ailleurs **aucun trou**,
+l'ensemble-réponse étant exact, et où le résidu est donc **nul** (pas de trous,
+et une queue de `0,75¹⁰⁰ ≈ 3·10⁻¹³` sous le `d_min` d'ADR-007). **Toute
+l'incertitude du dispositif vient des 30 cas jugés.**
+
+**Le refus des coupes constantes tient, et il est mieux servi** : RBP n'est pas
+une coupe mais une pondération géométrique, il n'a pas à choisir où couper. `R`
+n'est écrit nulle part en propre — il **est** la longueur de l'ensemble-réponse.
+Voir [ADR-007](ADR/ADR-007-metrique-rbp-residu.md) pour la règle de `p`, la
+projection linéaire des grades et la **porte du résidu**.
+
+⛔ *La garantie revendiquée ici — « faire de la cardinalité un axe explicite
+interdit mécaniquement l'erreur nDCG@R partout » — est sans objet : il n'y a
+plus de `nDCG@R` à interdire nulle part.*
 
 ### 4.1 Les quatorze cellules valides
 
@@ -597,13 +632,25 @@ omettre reviendrait à laisser la statistique judiciaire définir le produit.
 > n'estime pas la performance en production — c'est le paradigme usage (panel,
 > ADR-025) qui répond à cette question, pas celui-ci.
 
-**Ce qui survivait dans cette section sans dépendre de la pondération**, et qui
-reste en vigueur :
+**Ce qui survivait dans cette section sans dépendre de la pondération** — ⛔ et
+qui est **dissous à son tour le 2 août 2026**
+([#14](https://github.com/left-eyebr0w/murphy/issues/14)) :
 
-> ⚠️ Une ventilation (par base, par opération, par mécanisme) est une **mesure
-> distincte à dénominateur propre**. Restreindre les qrels à un sous-ensemble
-> change `R`, donc la coupe adaptative (ADR-007, ADR-030). Deux ventilations ne
-> se comparent ni entre elles ni à l'agrégat. À énoncer dans chaque rapport.
+> ⛔ ~~⚠️ Une ventilation (par base, par opération, par mécanisme) est une
+> **mesure distincte à dénominateur propre**. Restreindre les qrels à un
+> sous-ensemble change `R`, donc la coupe adaptative (ADR-007, ADR-030). Deux
+> ventilations ne se comparent ni entre elles ni à l'agrégat. À énoncer dans
+> chaque rapport.~~
+
+**Ce qui la remplace.** La gêne était **entièrement** un effet de la
+normalisation par `R`. `nDCG@R` est retiré ; RBP se moyenne par cas **sans
+dénominateur global** ([ADR-007](ADR/ADR-007-metrique-rbp-residu.md)), donc une
+ventilation redevient une **moyenne sur un sous-ensemble, directement comparable**
+à l'agrégat et aux autres ventilations. Le rapport n'a plus d'avertissement à
+porter — il a en revanche **un résidu à publier avec chaque moyenne, ventilée
+comprise**, et la **porte du résidu** s'applique à une ventilation comme à
+l'agrégat : elle y est simplement **plus large**, sur moins de cas, ce qui est le
+bon comportement.
 
 ### 6.3 ⛔ Registre — dissous dans `variante_de`
 
@@ -822,8 +869,17 @@ Ils n'ont pas disparu : ils ont cessé d'être des exceptions.
 
 **Ce qui n'a pas changé, et ne pouvait pas changer.** Une question dont la
 bonne réponse est *aucun résultat pertinent* (droit étranger, hors périmètre
-DILA) a `R = 0`. Or nDCG@R coupe le classement à `R` (ADR-007) : **la coupe est
-indéfinie, la métrique aussi.** Ces questions restent donc mesurées autrement —
+DILA) a `R = 0`, donc **aucune métrique de rappel n'y est définie** — c'était
+déjà vrai quand la métrique primaire coupait à `R`, et ça le reste. *(Mise à
+jour du 2 août : la coupe à `R` a disparu avec `nDCG@R`
+— [ADR-007](ADR/ADR-007-metrique-rbp-residu.md) — mais le fait est indépendant
+de la métrique : sans pertinent, il n'y a pas de rappel à mesurer. **RBP n'y
+supplée pas** : tous les gains valant 0, `RBP = 0` pour tout run, quel que soit
+le volume de bruit remonté — la métrique est définie mais **identiquement nulle,
+donc sans pouvoir discriminant**. La branche `R = 0` reste précision-seule. Elle
+n'est pas inerte pour autant : le **taux de remontée au-delà du seuil**, décrit
+ci-dessous, **se compare entre configurations** — une régression du *fail-fast*
+s'y voit. Ce qui manque est une métrique de *classement*, pas une comparaison.)* Ces questions restent donc mesurées autrement —
 taux de résultats au-delà d'un seuil de score, sur un jeu où toute remontée est
 un faux positif — au **même statut que le diagnostic de co-citation**
 (ADR-029) : précision seulement, jamais de rappel, jamais de grade.
@@ -897,11 +953,39 @@ est l'unité stable. Annoter au chunk casse à chaque re-chunking. Un
 sous-ensemble d'une cinquantaine d'items annotés au passage permet de
 diagnostiquer le chunking séparément, sans contaminer la référence.
 
-**Complétude — le point de vigilance.** ADR-007 fondait la robustesse de nDCG@R
-sur le pooling **et** les citations minées ; ADR-029 ayant retiré les secondes,
-elle repose désormais **entièrement sur le pooling et sur ce jeu**. Comme `R`
-dépend du nombre de documents jugés pertinents, des qrels incomplètes ne font
-pas qu'ajouter du bruit : **elles déplacent la coupe**.
+**Projection dans la métrique** : les grades entrent dans RBP par **projection
+linéaire** `g/3` (0 · 0,33 · 0,67 · 1) — l'échelle est un *compte de portes
+franchies*, non une intensité (ADR-005, [ADR-007](ADR/ADR-007-metrique-rbp-residu.md)).
+Conséquence de rédaction pour le guide : **chaque porte doit se franchir ou non
+sans demi-mesure**, c'est la propriété sur laquelle la métrique s'appuie. Les
+cas gratuits, eux, ont un label **binaire** — un fait détermine
+l'ensemble-réponse — et entrent avec des gains `{0, 1}`.
+
+**Complétude — le point de vigilance a changé de nature le 2 août 2026.**
+
+> ⛔ *Rédaction antérieure :* « ADR-007 fondait la robustesse de nDCG@R sur le
+> pooling **et** les citations minées ; ADR-029 ayant retiré les secondes, elle
+> repose entièrement sur le pooling et sur ce jeu. Comme `R` dépend du nombre de
+> documents jugés pertinents, des qrels incomplètes ne font pas qu'ajouter du
+> bruit : **elles déplacent la coupe**. »
+
+Le déplacement de coupe **n'existe plus** : `nDCG@R` est retiré, et RBP ne
+dépend pas de `R` ([#14](https://github.com/left-eyebr0w/murphy/issues/14)).
+L'incomplétude n'a pas disparu pour autant — elle cesse d'être **subie** pour
+devenir **mesurée** :
+
+- **le résidu** l'exprime, trou par trou, run par run. Tout score publié est
+  `score + résidu` ; l'écart entre deux configurations porte une **borne
+  déterministe**, et un intervalle contenant zéro **n'admet aucun test** ;
+- **juger davantage ne peut que réduire l'incertitude** — propriété que `nDCG@R`
+  n'avait pas, où trois effets de signes différents se composaient (Lu, Moffat &
+  Culpepper, IRJ 2016 §4) ;
+- la complétude repose toujours **entièrement sur le pooling et sur ce jeu**
+  (ADR-029 ayant retiré les citations minées), mais ce n'est plus une fragilité
+  silencieuse : c'est une grandeur publiée. **Le biais de pool, lui, reste non
+  mesurable en solo mono-système, par construction** — la position défendable
+  est de l'assumer, non de prétendre le contraire
+  ([#7](https://github.com/left-eyebr0w/murphy/issues/7)).
 
 > ⚠️ **Garde-fou, non négociable.** Une modification de qrels ne se justifie
 > **jamais** par un résultat de run. « J'ai relu, ce grade 1 est un 2 » est
@@ -967,8 +1051,9 @@ Le **volume** de `pending` à écrire n'est pas fixé ici : voir §7 et
 ## 12. Références
 
 **Décisions** — ADR-004 (unité document, ventilation par base) · ADR-005
-(cascade q1–q3, échelle 0–3) · ADR-006 (agrégation chunk→document) · ADR-007
-(nDCG@R, coupe adaptative, complétude) · ADR-008 (format JSONL, provenance) ·
+(cascade q1–q3, échelle 0–3, projection linéaire) · ADR-006 (agrégation
+chunk→document) · [ADR-007](ADR/ADR-007-metrique-rbp-residu.md) (**RBP + résidu**
+— réécrit le 2 août 2026, `nDCG@R` retiré) · ADR-008 (format JSONL, provenance) ·
 ADR-016 (découplage récupération/génération) · ADR-017 (strates de pérennité) ·
 ADR-012 (constat sur preuves) · ADR-018 (identité canonique — support des tags
 dérivés) · ADR-028 (régimes de vérification) · ADR-029 (garde-fou de

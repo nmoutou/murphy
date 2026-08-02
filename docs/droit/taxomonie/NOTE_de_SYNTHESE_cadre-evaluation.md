@@ -2,6 +2,25 @@
 
 /!\ Partiellement divergent
 
+> ⚠️ **Péremption précisée le 2 août 2026.** Ce document reproduit **la grille
+> d'ADR-033** (deux axes, quatorze cellules, *« chaque cellule déclare sa
+> métrique »*, mapping `Doc-MRR / Recall@k / nDCG@R`). **ADR-033 est obsolète**,
+> et trois de ses pièces sont mortes séparément :
+>
+> - l'**axe cardinalité** est **dissous** — il empilait un compte (`R = len(qrels)`)
+>   et une clôture (la gratuité du label)
+>   ([#3](https://github.com/left-eyebr0w/murphy/issues/3)) ;
+> - **`nDCG@R` est retiré** — il ne s'appliquait qu'à la branche ouverte, seul
+>   endroit où `R` est indisponible
+>   ([#14](https://github.com/left-eyebr0w/murphy/issues/14)). La métrique de
+>   comparaison est `RBP(p) + résidu`
+>   ([ADR-007](../../product/ADR/ADR-007-metrique-rbp-residu.md)) ;
+> - il n'y a **pas de `Recall@k`** dans ce dispositif, et il n'y en a jamais eu.
+>
+> Le socle de remplacement est ADR-035, puis ADR-036 ; il se construit sur la
+> carte [#1](https://github.com/left-eyebr0w/murphy/issues/1). **En cas de
+> contradiction avec un ADR ou avec `GOLDEN-SET.md`, ce document a tort.**
+
 > Synthèse de **session de travail** (source éphémère au sens `PILOTAGE.md` §4) :
 > fixe les **axes et tags** du golden-set, en amont de leur formalisation dans
 > `CADRAGE_evaluation` et de leur exécution (B-08 ; exigences E-P2-06 / E-P2-07 /

@@ -22,7 +22,7 @@ récupération.
 | **In** | LEGI (fait) + les **5 bases de jurisprudence** (CASS, INCA, CAPP, JADE, CONSTIT — ADR-002) ingérées avec identité canonique **vérifiée sur les 3 BDD** (ADR-018) ; harnais d'évaluation (strates 1–3 + diagnostic de co-citation + set synthétique solo — ADR-017, amendé ADR-029) ; baseline chiffrée et reproductible |
 | **Out** | Applicatif web, experts, bases DILA non jurisprudentielles, LLM générateur branché à l'évaluation |
 | **Critères d'entrée** | Pipeline LEGI stable ; modèle de données tri-base arrêté |
-| **Critères de sortie** | DoD du `CADRAGE_evaluation` (étendu jurisprudence) : identité canonique vérifiée · adapter baseline implémenté · golden-set v1 figé et versionné · scorer **nDCG@R** + diagnostics MAP, R-Precision, Recall@2R, Doc-MRR, Doc-Recall@R (ADR-007) · test statistique apparié · ≥ 1 set diagnostique graph-hop · stratification en 4 types d'action (ADR-009) · baseline reproductible |
+| **Critères de sortie** | DoD du `CADRAGE_evaluation` (étendu jurisprudence) : identité canonique vérifiée · adapter baseline implémenté · golden-set v1 **identifié par ses trois hashes** et versionné · scorer **`RBP(p)` + résidu** ([ADR-007](ADR/ADR-007-metrique-rbp-residu.md), réécrit le 2 août 2026 — *ancienne rédaction : « nDCG@R + diagnostics MAP, R-Precision, Recall@2R, Doc-MRR, Doc-Recall@R », tous retirés sauf Doc-MRR qui devient une lecture*) · test statistique apparié **sous la porte du résidu** (un intervalle d'écart contenant zéro n'admet aucun test) · ≥ 1 set diagnostique graph-hop · stratification en 4 types d'action (ADR-009) · baseline reproductible |
 
 ## Alpha phase 1 — « Usage & requêtes réelles » ✅ (ADR-013)
 

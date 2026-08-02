@@ -1,5 +1,11 @@
 """CLIQUET — le scorer, contre des cas jouets calculés à la main (ADR-028).
 
+⚠️ **La métrique testée ici est dépréciée** : ``nDCG@R`` est retiré le 2 août 2026
+(ticket #14, ADR-007 réécrit autour de ``RBP(p) + résidu``). Ces cliquets restent
+verts et sont **conservés comme patron** pour les cliquets de B-15 — c'est la
+*méthode* (oracle auto pur, valeurs calculées à la main) qui est reprise, pas la
+métrique. Voir ``core/services/ndcg.py`` pour le détail.
+
 Le régime de vérification du scorer est **auto pur** : ADR-006 l'a voulu
 « trivial et neutre » précisément pour qu'aucun jugement n'y vive, et
 ADR-028 exige que son test se fasse « contre des cas jouets vérifiables à la

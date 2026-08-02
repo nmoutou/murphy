@@ -1,4 +1,27 @@
-"""nDCG@R — la métrique de décision (ADR-007), MAISON, sans coupe fixe.
+"""⚠️ DÉPRÉCIÉ — nDCG@R n'est plus la métrique de décision (2 août 2026).
+
+ADR-007 a été **réécrit** (ticket #14, https://github.com/left-eyebr0w/murphy/issues/14) :
+``nDCG@R`` est **retiré**, remplacé par ``RBP(p) + résidu``. Motif décisif, et il
+est interne : ``nDCG@R`` ne s'appliquait qu'à la branche des ensembles *ouverts*,
+qui est peuplée des seuls 30 cas jugés — le seul endroit du dispositif où ``R``
+n'est ni connu ni estimable. Moffat & Zobel (TOIS 2008, §4.6) disqualifient par
+ailleurs nommément nDCG dans ce régime.
+
+**Ce module est conservé, non supprimé**, jusqu'à ce que le scorer ``RBP``
+existe (backlog B-15) : son harnais d'oracle *auto pur*, sa discipline de gain
+injectable et le cross-check ``pytrec_eval`` sont le patron sur lequel B-15
+s'écrira. **Ne pas l'appeler pour trancher une comparaison de configurations.**
+
+Note pour B-15 : la convention de gain figée par ADR-007 est désormais la
+**projection linéaire** ``g/3`` (ADR-005) — l'échelle 0-3 est un *compte de
+portes franchies*, non une intensité. Le défaut exponentiel ci-dessous est
+l'ancienne convention de nDCG et **ne se transporte pas** vers RBP.
+
+---
+
+Rédaction antérieure :
+
+nDCG@R — la métrique de décision (ADR-007), MAISON, sans coupe fixe.
 
 `ranx` ne connaît que des coupes fixes ``@k`` : c'est précisément le point
 que rejette ADR-007 (« les k fixes relèvent du modèle web search, incompatible

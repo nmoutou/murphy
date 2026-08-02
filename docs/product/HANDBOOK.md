@@ -86,7 +86,7 @@ Deux mesures, relevées à chaque revue bimensuelle, en tête du log :
 
 Rien d'autre. Les KPIs à quatre niveaux (livrable 2 du chantier 8)
 sont un cadre à audience externe, sans recouvrement avec ces deux
-mesures internes. Les métriques IR (nDCG@R, etc.) mesurent le
+mesures internes. Les métriques IR (`RBP(p)` + résidu, `Recall@R`) mesurent le
 *système*, pas le *programme* — elles restent dans P2.
 
 **Invariant transverse sur les métriques** (reformulé par ADR-025) :

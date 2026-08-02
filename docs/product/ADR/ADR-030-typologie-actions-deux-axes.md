@@ -14,8 +14,11 @@ observation / dérivation) — ⚠️ **partiellement amendé par
 > **Tout le reste de cet ADR reste en vigueur** : le régime jugée / dérivée, le
 > portage du type par l'arête `(requête, source, cible)`, le champ `source` de
 > `Judgment`, la dérivation depuis le graphe témoin `G₀`, la règle de tri
-> *enregistrer ce qui a coûté une lecture*, et la réserve sur la ventilation
-> (restreindre les qrels change `R`, donc la coupe). L'analyse des trois
+> *enregistrer ce qui a coûté une lecture*, et ~~la réserve sur la ventilation
+> (restreindre les qrels change `R`, donc la coupe)~~ — **cette dernière est
+> dissoute le 2 août 2026** avec le retrait de `nDCG@R`
+> ([#14](https://github.com/left-eyebr0w/murphy/issues/14), voir *Conséquences*).
+> L'analyse des trois
 > défauts d'ADR-009 reste valide — ADR-033 la prolonge, il ne la contredit
 > pas.
 
@@ -170,14 +173,24 @@ cessent de s'opposer parce qu'ils ne portent pas sur le même objet.
   `query_id`. Le portage par l'arête impose de revoir ces deux signatures.
   L'**injection** reste le bon design (le scorer demeure agnostique du contenu
   de la taxonomie) ; seule la cardinalité change.
-- **La ventilation par opération n'est pas une sous-partie de la métrique
-  globale.** nDCG@R se calcule sur le classement entier, et **R dépend du
-  nombre de documents pertinents** (ADR-007) : restreindre les qrels aux arêtes
-  d'un type **change R, donc la coupe**. Un « nDCG@R sur les arêtes
-  `texte_applicable` » est calculable mais constitue une **mesure différente**,
-  au dénominateur distinct. À énoncer explicitement dans les rapports : deux
-  ventilations ne se comparent pas entre elles, et aucune ne se compare à
-  l'agrégat.
+- ⛔ ~~**La ventilation par opération n'est pas une sous-partie de la métrique
+  globale.**~~ **Réserve dissoute le 2 août 2026**
+  ([#14](https://github.com/left-eyebr0w/murphy/issues/14)). Elle disait : nDCG@R
+  se calcule sur le classement entier et `R` dépend du nombre de documents
+  pertinents, donc restreindre les qrels aux arêtes d'un type **change `R`, donc
+  la coupe** — d'où *« deux ventilations ne se comparent pas entre elles, et
+  aucune ne se compare à l'agrégat »*.
+
+  **Cette gêne était entièrement un effet de la normalisation par `R`.** `nDCG@R`
+  est retiré ; la métrique de comparaison est **RBP(`p`) + résidu**
+  ([ADR-007](ADR-007-metrique-rbp-residu.md)), qui se moyenne par cas **sans
+  dénominateur global**. Une ventilation redevient donc une **moyenne sur un
+  sous-ensemble**, directement comparable à l'agrégat et aux autres
+  ventilations. Le rapport n'a plus d'avertissement à porter — il a en revanche
+  un résidu à publier avec chaque moyenne, ventilée comprise, et la **porte du
+  résidu** s'applique à une ventilation comme à l'agrégat (un intervalle d'écart
+  contenant zéro n'admet aucun test — et il est **plus large** sur un
+  sous-ensemble, ce qui est le bon comportement).
 - **Le modèle de requête reste à créer** — aucune classe `Query` n'existe dans
   `eval/`. L'axe intention est du terrain vierge : aucune migration.
 - **`Judgment` (ADR-008) gagne le champ `source`**, nullable. Les opérations
@@ -190,7 +203,8 @@ cessent de s'opposer parce qu'ils ne portent pas sur le même objet.
 ## Références
 
 ADR-004 (unité document) · ADR-005 (cascade q1–q3, pertinence topique) ·
-ADR-007 (coupe adaptative `@R`) · ADR-008 (format ; champ `source`) ·
+[ADR-007](ADR-007-metrique-rbp-residu.md) (RBP + résidu ; dissout la réserve de
+ventilation) · ADR-008 (format ; champ `source`) ·
 ADR-009 (amendé ici) · ADR-028 (régimes de vérification) · ADR-029
 (circularité) · ADR-031 (graphe témoin) · `EXIGENCES_v0.md` E-P2-06/07 ·
 `BACKLOG.md` B-08
