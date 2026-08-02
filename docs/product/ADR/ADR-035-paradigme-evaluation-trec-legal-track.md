@@ -1,7 +1,9 @@
 # ADR-035 — Le paradigme d'évaluation s'aligne sur le TREC Legal Track
 
 **Statut** : Acté (2 août 2026, session de la carte
-[#1](https://github.com/left-eyebr0w/murphy/issues/1))
+[#1](https://github.com/left-eyebr0w/murphy/issues/1)) — **§2 amendé le 2 août 2026** en
+session de [#18](https://github.com/left-eyebr0w/murphy/issues/18) : l'inclusion `B ⊃ A` est
+retirée au profit d'une **frontière fixe**. Voir §2.
 
 ## Contexte
 
@@ -40,7 +42,15 @@ des participants** — et elle n'est pas un accessoire du projet, elle est sa vo
 
 Motif : le primat du rappel. Les traits transférables sont ceux calibrés sous ce primat.
 
-### 2. Deux machines, disjointes et ordonnées
+### 2. Deux machines, séparées par une **frontière fixe**
+
+> ⚠️ **Amendé le 2 août 2026**, en session de
+> [#18](https://github.com/left-eyebr0w/murphy/issues/18), décision de porteur. La rédaction
+> initiale posait **`B ⊃ A`** — une **inclusion** — et en tirait que *tout* B est
+> post-publication. **C'était un saut** : de la **dépendance d'exécution** (on ne juge pas
+> des runs contre une collection inexistante), qui est un fait, l'ADR a inféré une
+> **inclusion**, qui est une convention. La précédence d'exécution est **conservée** ;
+> l'inclusion est **retirée**. Rédaction antérieure conservée en fin de section.
 
 - **Machine A — production d'une collection de test réutilisable** : le triplet *corpus
   figé + topics + qrels*. Menable **en solo**. C'est, mot pour mot, la raison d'être de
@@ -48,10 +58,38 @@ Motif : le primat du rappel. Les traits transférables sont ceux calibrés sous 
 - **Machine B — campagne communautaire** : plusieurs équipes indépendantes soumettent des
   *runs* concurrents, poolés et jugés. **Structurellement plurielle.**
 
-**B ⊃ A** : aucune campagne sans collection préalable. **A d'abord, B après.**
+**Elles sont séparées par une frontière fixe, et cette frontière est le contrat de
+recevabilité** arrêté par [#18](https://github.com/left-eyebr0w/murphy/issues/18) §8 :
+projections déterministes vers les qrels/runs TREC plats (ADR-008), profondeur minimale de
+soumission dérivée de `p`, déclaration du hash corpus, résidu RBP comme signal
+d'appartenance au pool, embargo sur les requêtes booléennes. Avant #18, il n'existait **rien
+à quoi une frontière pût se fixer** — c'est pourquoi l'amendement n'était pas prononçable
+plus tôt.
 
-Rattachement : **A est dans P2** ; **B est post-publication**, sa couche institutionnelle
-relevant du **chantier 8** (`INSTITUTIONNEL.md`).
+**Règle de partage** : ce qui, côté B, n'a besoin que du **contrat** peut se construire
+**dès maintenant** ; seul ce qui a besoin du **contenu** attend la collection.
+**Conséquence** : une campagne ne s'exécute pas avant qu'une collection existe, mais
+concevoir l'appareil qui la recevra n'est plus subordonné à sa livraison — c'est
+exactement le §4 (*appareil de réception avant*), appliqué à la frontière elle-même.
+
+**Le prix, à connaître** : une frontière est un **engagement**. Le jour où quelqu'un
+construit contre le contrat de recevabilité, le modifier casse son travail. C'est le
+critère « rien à jeter » (§6) retourné vers le programme lui-même.
+
+Rattachement : **A est dans P2** ; la **couche institutionnelle de B** relève du
+**chantier 8** (`INSTITUTIONNEL.md`).
+
+<details><summary>Rédaction antérieure du §2 (2 août 2026, avant amendement)</summary>
+
+> **B ⊃ A** : aucune campagne sans collection préalable. **A d'abord, B après.**
+>
+> Rattachement : **A est dans P2** ; **B est post-publication**, sa couche institutionnelle
+> relevant du **chantier 8** (`INSTITUTIONNEL.md`).
+
+*Ce qui a changé : l'inclusion devient une frontière ; « B est post-publication » cesse de
+valoir pour la **construction** de B et ne vaut plus que pour son **exécution**.*
+
+</details>
 
 > ⚠️ **Point ouvert, non tranché ici.** `VERSIONS.md` s'arrête à *publication* et **ne
 > contient aucun jalon où la machine B puisse se poser**. Son ouverture exigera un
@@ -76,11 +114,29 @@ dimensions et n'en partage qu'**une** — celle-là même qui a fait le choisir.
 
 | | Legal Track | Murphy au 2 août 2026 |
 |---|---|---|
-| Corpus | ~7 M documents OCR (IIT CDIP) | corpus DILA |
+| Corpus | ~7 M documents OCR (IIT CDIP), **2006–2009 seulement** | corpus DILA |
 | Participants | 6 à 30+ équipes | **un** |
-| Assesseurs | réviseurs juridiques professionnellement formés | **zéro** |
-| Budget d'assessment | NIST | néant |
+| Assesseurs | ⚠️ **volontaires**, majoritairement des **étudiants en droit** — voir ci-dessous | **zéro** |
+| Budget d'assessment | NIST — un seul chiffre publié, **2007, ≈ 1 400 h auto-déclarées, jamais facturées** | néant |
 | **Primat du rappel** | ✅ | ✅ |
+
+> ⚠️ **Correction de prémisse, 2 août 2026** — la ligne « Assesseurs » disait *« réviseurs
+> juridiques professionnellement formés »*, reprise de `trec-legal-track.md` §3 **sans
+> vérification à la source**. [#17](https://github.com/left-eyebr0w/murphy/issues/17) l'a
+> lue : pour les tâches Ad Hoc et Batch (2006–2009), ce sont des **volontaires** —
+> 35 hétérogènes en 2006 (8 avocats, 10 étudiants en droit, 3 paralégaux, 1 archiviste,
+> 1 historien), **42 étudiants en droit** en 2007 au titre d'une obligation *pro bono* — à
+> **20–25 documents/heure**. Le corps professionnel et nominatif est celui des **Topic
+> Authorities**, **distinct** des assesseurs et **postérieur à 2008**. Second point : le
+> **bruit d'assessment est mesuré par le track lui-même dès 2006** (**kappa de Cohen +0,49**,
+> 40 topics, 50 documents rejugés à l'aveugle par topic, 12 volontaires — overview 2006
+> §4.3) ; la citation de Grossman & Cormack pour ce fait, en §Références, est **superflue et
+> non vérifiée**.
+>
+> **Aucune conclusion du présent ADR n'est inversée**, mais **ce qu'« emprunter » coûte
+> change** : le régime d'assessment du Legal Track est **plus proche du nôtre** que cet ADR
+> ne le supposait, pas plus lointain. C'est ce qui a rendu ce kappa employable comme seuil de
+> sortie du régime pilote de [#18](https://github.com/left-eyebr0w/murphy/issues/18) §2.
 
 Une présomption **asymétrique** — départ coûteux, emprunt gratuit — serait à l'envers :
 le départ est visible, c'est l'**emprunt qui fait les dégâts en silence**. Elle
@@ -173,6 +229,17 @@ condition permanente** — alors qu'elle n'est que la condition **actuelle** —
 - **ADR-029 n'est pas rouvert.** Les qrels citation-minées restent abandonnées. Il en
   résulte seulement que la **pluralité externe est la seule réponse restante** à la
   diversité du pool.
+- ⛔ **`gel` est sorti du vocabulaire** le 2 août 2026
+  ([#18](https://github.com/left-eyebr0w/murphy/issues/18) §0), sixième mot retiré par cette
+  carte. Motif : *le gel ne garantissait la validité de rien* — un grade faux et gelé reste
+  faux — et il exigeait de savoir d'avance ce qui mérite d'être scellé. Remplacé par
+  **l'identification** : trois hashes (`corpus` sur identités canoniques donc *stable sous
+  `W`*, `cas`, `qrels`), comparabilité mécanique par égalité, et une version de collection =
+  un triplet **nommé**. **ADR-032 §1 et son titre sont périmés** ; sa mécanique (§2
+  re-notation, §4 classes de changement, §5 garde-fou) **survit**, sa table du §4 étant
+  seulement **incomplète** — la classe *corpus* y manquait. `GOLDEN-SET.md` §3 et E-P2-06
+  sont marqués périmés sur le même mot. Réécriture d'ensemble : **ADR-036**, à la clôture de
+  la carte.
 - **ADR-007 reste ouvert** par le ticket
   [#14](https://github.com/left-eyebr0w/murphy/issues/14), qui reçoit un **troisième
   terme** : `F1@K` avec **K déclaré par le système**, par topic (Legal Track, tâche batch

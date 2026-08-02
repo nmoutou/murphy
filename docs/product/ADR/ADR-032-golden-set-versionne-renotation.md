@@ -1,8 +1,56 @@
-# ADR-032 — Golden-set versionné : gel par version, comparabilité par re-notation
+# ADR-032 — Golden-set versionné : ~~gel par version~~, comparabilité par re-notation
 
 **Statut** : Acté (22 juillet 2026, préparation de B-08) — **précise E-P2-06**
 (gel), **précise E-P2-10** (reproductibilité), **prolonge ADR-029** (garde-fou
 de circularité), **clôt D-02** (`WIP/B-08-cadrage.md`)
+
+> ## ⛔ Le mot `gel` est périmé — 2 août 2026
+>
+> **Le titre et le §1 de cet ADR sont périmés.** Le mot **`gel` est sorti du vocabulaire**
+> le 2 août 2026, en session de
+> [#18](https://github.com/left-eyebr0w/murphy/issues/18) (§0) — sixième mot retiré par la
+> carte [#1](https://github.com/left-eyebr0w/murphy/issues/1), après `cardinalité`,
+> `D₁/D₂/D₃`, `N_j`, `registre` et la `carotte`.
+>
+> **Motif : le gel ne garantissait la validité de rien.** Un grade faux et gelé reste faux.
+> Il promettait l'immuabilité, or l'immuabilité n'a jamais été le besoin — le besoin est de
+> **pouvoir dire contre quoi on a mesuré**. Et geler exige de savoir d'avance ce qui mérite
+> d'être scellé, ce que personne ne sait.
+>
+> **Remplacement : on ne gèle rien, on identifie tout.** Trois hashes portés par chaque run —
+> `corpus` (sur les **identités canoniques de document**, donc *stable sous `W`*), `cas`,
+> `qrels` ; deux runs sont comparables **ssi** leurs hashes sont égaux ; une version de
+> collection est un triplet de hashes qu'on **nomme** et publie, l'acte étant **déclaré** et
+> sans sémantique de mesure.
+>
+> ### Ce qui, dans cet ADR, **survit intégralement**
+>
+> - **§2 — la re-notation**, et c'est la pièce maîtresse : *un run ne dépend pas des qrels*,
+>   le score est une fonction pure `(run, qrels)`, donc quand les qrels bougent on re-note
+>   les runs archivés et **la comparabilité est entièrement restaurée, gratuitement**. Cette
+>   propriété appartient au **scoring**, pas au gel, et lui survit sans retouche. La règle
+>   opératoire qui en découle : **on ne cite jamais un chiffre d'un état antérieur, on
+>   re-note.**
+> - **§3** — toute mesure nomme l'état contre lequel elle a été prise (désormais : ses trois
+>   hashes).
+> - **§4 — les classes de changement**, mais **incomplètes** : la table n'a que des classes
+>   *internes au jeu*. La **quatrième — le corpus bouge** (vague d'ingestion, ADR-003) — y
+>   manquait, et c'est la seule qui exige **ré-ingestion *et* re-récupération**. #18 §0
+>   l'ajoute, et rend la classe **dérivable** (par lequel des trois hashes a bougé) au lieu
+>   de déclarée.
+> - **§5 — le garde-fou de circularité** : *une modification de qrels ne se justifie jamais
+>   par un résultat de run*. Inchangé, et il devient la **prémisse** du ticket
+>   [Comment une correction entre dans la collection ?](https://github.com/left-eyebr0w/murphy/issues/21),
+>   qui lui fournit la **porte d'entrée** qu'il n'a jamais eue.
+>
+> ### Ce qui est périmé
+>
+> Le **titre**, le **§1** en entier, et les *Alternatives rejetées* qui argumentent entre
+> variantes de gel (« pas de gel du tout », « version unique gelée définitivement »). Elles
+> restent lisibles comme trace du raisonnement ; elles ne décident plus rien.
+>
+> **Réécriture d'ensemble : ADR-036**, à la clôture de la carte #1 — pas avant, pour ne pas
+> amender trois fois en une semaine.
 
 ## Contexte
 

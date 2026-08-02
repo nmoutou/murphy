@@ -213,7 +213,33 @@ Le **volume** de `pending` n'est pas fixé ici (voir §7 et
 
 ---
 
-## 3. Trois couches, trois régimes de gel
+## 3. ⛔ Trois couches, trois régimes de gel — **périmé sur le mot `gel`**
+
+> **Périmé le 2 août 2026** ([#18](https://github.com/left-eyebr0w/murphy/issues/18) §0).
+> **`gel` est sorti du vocabulaire** — sixième mot retiré par la carte
+> [#1](https://github.com/left-eyebr0w/murphy/issues/1). Motif : *il ne garantissait la
+> validité de rien* — un grade faux et gelé reste faux — et il exigeait de savoir d'avance
+> ce qui mérite d'être scellé.
+>
+> **Remplacement : on ne gèle rien, on identifie tout.** La colonne « Gel » ci-dessous se
+> lit désormais comme une colonne **d'identification**, et l'empilement en trois couches
+> **survit** — c'est même lui qui donne les **trois hashes** portés par chaque run :
+>
+> | Couche | Hash | Ce que coûte son déplacement |
+> |---|---|---|
+> | **Corpus** *(couche neuve — elle manquait ici comme dans ADR-032 §4)* | sur les **identités canoniques de document** (ADR-004 / ADR-018), donc **stable sous `W`** | ré-ingestion **et** re-récupération |
+> | **Questions** | hash `cas` | re-récupération sur les cas neufs |
+> | **Jugements** | hash `qrels` | **re-notation seule, gratuite** (ADR-032 §2) |
+>
+> Deux runs sont comparables **ssi** leurs trois hashes sont égaux. Une **version de
+> collection** est un triplet qu'on **nomme** et publie — un nom, jamais un hash, et pas de
+> quatrième hash composé. Le contenu de la ligne « Questions » ci-dessous est par ailleurs
+> **doublement périmé** : `cardinalité`, `intention`, `matière` et `registre` ont tous
+> disparu (#3, #10, #11), et le champ **`narrative`** s'y ajoute (#18 §5).
+>
+> Réécriture d'ensemble : **ADR-036**, à la clôture de la carte.
+
+### Rédaction antérieure
 
 Le jeu n'est pas un fichier mais un empilement. La règle de partage est celle
 d'ADR-030 : *enregistrer ce qui a coûté une lecture, dériver tout le reste*.
