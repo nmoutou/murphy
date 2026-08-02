@@ -57,5 +57,6 @@
 | Contenu de la vague 2 d'ingestion (JORF + candidates KALI, CIRCULAIRES) | ADR-003 | Mini-ADR à l'issue de l'alpha |
 | `doc_id` stable au niveau article pour LEGI | ADR-004 | v0 (E-P1-03) |
 | ADR-INST-01 (forme juridique) · ADR-INST-02 (licence du code) · ADR-INST-03 (soutenabilité) | `INSTITUTIONNEL.md` §6 (chantier 8) | Approche de la beta |
+| **Jalon d'ouverture de la campagne communautaire** (machine B) — `VERSIONS.md` s'arrête à *publication*. Bloqué sur le périmètre de B et ses artefacts de gouvernance ; ses critères de sortie ne peuvent pas s'énoncer honnêtement aujourd'hui (aucun `N` d'équipes fondé — le régime du NIST ne transfère pas) | ADR-035 §2 · `VERSIONS.md` §Statuts non finaux · R-09 | Approche de la publication — **ADR dédié** |
 | Contrat de stabilité inverse P1→P4 (non-régression du graphe de citations typées) | ADR-001 | Non planifié |
 | ~~Architecture deux modes de P3 (public/panel)~~ | — | **Clos par ADR-025** |
