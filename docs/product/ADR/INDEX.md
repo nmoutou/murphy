@@ -3,7 +3,12 @@
 > Un fichier par ADR (format Nygard). ADR-001 à 010 : arbitrages du
 > chantier 4 · ADR-011 à 020 : rétro-documentation des décisions
 > implicites (chantier 5) · ADR-021 et suivants : au fil de l'exécution.
-> **Prochain numéro : ADR-035.**
+> **Prochain numéro : ADR-036** — réservé au **contenu** du golden-set, à la
+> clôture de la carte
+> [#1](https://github.com/left-eyebr0w/murphy/issues/1). *(ADR-035, d'abord
+> réservé à ce contenu, a été pris le 2 août par l'ADR de **méthode** — le
+> paradigme TREC. Deux objets : la méthode arbitre les tickets et ne bouge pas ;
+> le contenu bouge à chaque ticket résolu.)*
 
 ## Registre
 
@@ -41,8 +46,9 @@
 | [ADR-030](ADR-030-typologie-actions-deux-axes.md) | Typologie des actions : deux axes, type porté par l'arête | Acté (22 juillet 2026, préparation B-08) — amende ADR-009, révise E-P2-07 — **axes remplacés par ADR-033**, machinerie conservée |
 | [ADR-031](ADR-031-graphe-temoin-versionnement.md) | Graphe témoin, versionnement du graphe enrichi, protocole de comparaison | Acté (22 juillet 2026, préparation B-08) — étend ADR-027, prolonge ADR-029 |
 | [ADR-032](ADR-032-golden-set-versionne-renotation.md) | Golden-set versionné : gel par version, comparabilité par re-notation | Acté (22 juillet 2026, préparation B-08) — précise E-P2-06 et E-P2-10 |
-| [ADR-033](ADR-033-axes-mecanisme-cardinalite.md) | Axes du golden-set : mécanisme de récupération × cardinalité | ⛔ **OBSOLÈTE** (1er août 2026) — **à remplacer par ADR-035**. Seul survit son **axe primaire** (les mécanismes) ; la cardinalité comme second axe, la grille des 14 cellules et les 12 strates sont tombées. Sa confirmation d'ADR-007 ne porte plus. Conservé comme archive |
-| [ADR-034](ADR-034-paradigmes-evaluation-triangulation.md) | Paradigmes d'évaluation : fonctionnel, contenu, usage — séparation et triangulation | Acté (1er août 2026, session de cadrage) — amende la direction de `GOLDEN-SET.md` §7. ⚠️ **§Constat amendé** : le test du sens de dérivation est remplacé par **deux propriétés indépendantes** (source de gratuité du label / réalisme de la requête) — l'exclusion « label gratuit ⊥ besoin réaliste » ne vaut que pour la source *identité*. Sa mention « prolonge ADR-033 » est caduque ; son §1 et son §5 s'appuient sur une grille disparue. À reprendre en ADR-035 |
+| [ADR-033](ADR-033-axes-mecanisme-cardinalite.md) | Axes du golden-set : mécanisme de récupération × cardinalité | ⛔ **OBSOLÈTE** (1er août 2026) — **à remplacer par ADR-036**. Seul survit son **axe primaire** (les mécanismes) ; la cardinalité comme second axe, la grille des 14 cellules et les 12 strates sont tombées. Sa confirmation d'ADR-007 ne porte plus. Conservé comme archive |
+| [ADR-034](ADR-034-paradigmes-evaluation-triangulation.md) | Paradigmes d'évaluation : fonctionnel, contenu, usage — séparation et triangulation | Acté (1er août 2026, session de cadrage) — amende la direction de `GOLDEN-SET.md` §7. ⚠️ **§Constat amendé** : le test du sens de dérivation est remplacé par **deux propriétés indépendantes** (source de gratuité du label / réalisme de la requête) — l'exclusion « label gratuit ⊥ besoin réaliste » ne vaut que pour la source *identité*. Sa mention « prolonge ADR-033 » est caduque ; son §1 et son §5 s'appuient sur une grille disparue. À reprendre en ADR-036 |
+| [ADR-035](ADR-035-paradigme-evaluation-trec-legal-track.md) | Le paradigme d'évaluation s'aligne sur le **TREC Legal Track** | Acté (2 août 2026, session de la carte [#1](https://github.com/left-eyebr0w/murphy/issues/1)) — **ADR de méthode**, il arbitre les tickets sans être arbitré par eux. Deux machines ordonnées (**A** = collection, solo, P2 · **B** = campagne communautaire, plurielle, post-publication + chantier 8) ; **présomption symétrique** (s'écarter de TREC exige une raison, **emprunter exige de nommer le régime de calibration**) ; l'**appareil de réception** se construit avant, la **machinerie d'évaluation** se promeut après panne ; la vérité s'achète **par assesseur**, les labels gratuits en sont le premier incrément ; critère « **rien à jeter** ». Conforte ADR-008 et ADR-010, ne rouvre pas ADR-029, ajoute un troisième terme à [#14](https://github.com/left-eyebr0w/murphy/issues/14) (`F1@K`, K déclaré par le système). Ouvre R-09 |
 
 ## Points ouverts rattachés
 

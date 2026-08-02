@@ -1,7 +1,9 @@
 # ADR-033 — Axes du golden-set : mécanisme de récupération × cardinalité
 
-**Statut** : ⛔ **OBSOLÈTE** (1er août 2026) — **remplacé par ADR-035**, en cours
-de rédaction. Acté le 31 juillet 2026 ; **amendait ADR-030** (remplace ses deux
+**Statut** : ⛔ **OBSOLÈTE** (1er août 2026) — **remplacé par ADR-036**, en cours
+de rédaction (renuméroté le 2 août : ADR-035 est devenu l'ADR *de méthode*
+— le paradigme TREC Legal Track — et le contenu du golden-set atterrit en
+ADR-036). Acté le 31 juillet 2026 ; **amendait ADR-030** (remplace ses deux
 axes, conserve sa machinerie), **révisait E-P2-07** pour la seconde fois,
 **confirmait ADR-007** contre une proposition concurrente.
 
@@ -29,7 +31,7 @@ axes, conserve sa machinerie), **révisait E-P2-07** pour la seconde fois,
 >
 > Le nouveau socle se construit sur la carte
 > [Golden-set v1 — spécification prête à l'authoring](https://github.com/left-eyebr0w/murphy/issues/1),
-> et atterrira en **ADR-035**. Ce document est conservé comme **archive** : son
+> et atterrira en **ADR-036**. Ce document est conservé comme **archive** : son
 > raisonnement sur le renversement contenu → mécanisme (§*Contexte*, §4.4 de
 > `GOLDEN-SET.md`) reste le fondement de l'axe survivant.
 
