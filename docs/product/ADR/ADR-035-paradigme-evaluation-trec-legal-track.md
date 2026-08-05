@@ -170,8 +170,18 @@ du pilotage).
 ### 5. La vérité s'achète par **assesseur** ; les labels gratuits sont un **incrément**, pas un paradigme concurrent
 
 Le golden-set v1 tire ses labels de faits extérieurs à l'opinion — identité canonique,
-graphe `G₀`, frontière du corpus. C'est un **avantage que TREC n'a pas**, et il est
-conservé.
+graphe `G₀`, ~~frontière du corpus~~ **frontière de périmètre**. C'est un **avantage que
+TREC n'a pas**, et il est conservé.
+
+> ⚠️ **Vocabulaire corrigé le 5 août 2026**
+> ([#15](https://github.com/left-eyebr0w/murphy/issues/15)) — la **substance de ce §5 est
+> intacte**, seule la troisième source change de nom et de fondement.
+> **`frontiere_corpus` est sorti du vocabulaire (neuvième mot)** : il s'indexait sur un
+> *état* (le corpus ingéré), qui se retourne à chaque vague, là où un label gratuit doit
+> se dériver d'une *définition*. La source est re-fondée sur le **périmètre DILA**
+> (`VISION.md` §2, ADR-014), externe et que nos ingestions ne déplacent pas.
+> **Ce §5 s'en trouve renforcé, pas affaibli** : l'avantage que TREC n'a pas cesse d'être
+> payé par un label que le jeu travaillait lui-même à invalider.
 
 Mais il **ne remplace pas** l'assessment : il en est le **premier incrément**, dans un
 régime où les assesseurs n'existent pas encore. La trajectoire est celle que R-05
