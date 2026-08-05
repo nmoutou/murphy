@@ -140,6 +140,15 @@ de sa cible est un accident du document tiré, pas une propriété du test.
 
 ### 2.2 Le corpus est une entrée matérielle assumée
 
+> ⚠️ **Support corrigé le 5 août 2026**
+> ([#15](https://github.com/left-eyebr0w/murphy/issues/15)). **La thèse tient, son
+> exemple porteur tombe.** La table ci-dessous faisait reposer l'aveu sur
+> `absence_hors_corpus` — or ce mécanisme ne tire plus son label de la frontière
+> du **corpus** (un *état*, qui bouge à chaque vague) mais de celle du **périmètre
+> DILA** (une *définition*, externe). **`frontiere_corpus` est sorti du
+> vocabulaire — neuvième mot.** Ce qui reste vrai : le corpus est bien une entrée
+> matérielle, mais **par `graphe_g0` seul**. Rédaction définitive en ADR-036.
+
 La v1 gratuite tient en quatre mécanismes, et **tous ont besoin du corpus** —
 l'un d'eux y prend directement son label :
 
@@ -147,12 +156,18 @@ l'un d'eux y prend directement son label :
 |---|---|---|
 | `resolution_reference` | `identite` | le label (ELI) se calcule **hors** corpus ; le corpus sert à *scorer* |
 | `known_item_identifiant` | `identite` | idem (ECLI) |
-| `multi_hop` | `graphe_g0` | `G₀` est **construit depuis les documents ingérés** |
-| `absence_hors_corpus` | `frontiere_corpus` | la frontière du corpus **est** la source du label |
+| `multi_hop` | `graphe_g0` | `G₀` est **construit depuis les documents ingérés** — **seul appui survivant de cette section** |
+| ~~`absence_hors_corpus`~~ | ~~`frontiere_corpus`~~ | ⛔ **faux depuis le 5 août** — le label se lit sur le **périmètre DILA**, pas sur le corpus ingéré ; la cible d'un tel cas est hors périmètre **définitivement**, et une cible seulement *pas encore ingérée* relève de `pending` sur `identite` (§2.3, §10) |
 
 Un jeu dont un mécanisme sur quatre est étiqueté par l'empreinte documentaire
 ne peut pas prétendre écarter le corpus de sa conception. On l'assume donc :
 **le corpus fournit le matériau.**
+
+> **Le compte est désormais d'un mécanisme sur quatre, non plus deux** — et
+> l'aveu ne perd rien : `G₀` étant construit depuis les documents ingérés, il
+> suffit à lui seul à interdire de prétendre écarter le corpus. La différence
+> est que cet appui-là est **réparable** (les qrels de graphe se re-dérivent,
+> §2.3), là où celui qu'on retire ne l'était pas.
 
 Mais la raison de fond de l'ancien interdit — *dimensionner depuis le corpus
 laisserait l'ingestion définir ce qu'on mesure* — reste valide. Elle change
@@ -177,7 +192,34 @@ impossible ». Les deux tombent.
   document germe (ADR-034 §*Constat*). Il n'existe pas d'authoring qui l'évite ;
   il se traite au guide d'annotation, pas par une propriété structurelle.
 - Écrire avant l'ingestion est **structurellement impossible** pour
-  `graphe_g0` et `frontiere_corpus`, dont le label vit *dans* le corpus.
+  `graphe_g0` et ~~`frontiere_corpus`~~, dont le label vit *dans* le corpus.
+
+> ⚠️ **Le partage devient ternaire, le 5 août 2026**
+> ([#15](https://github.com/left-eyebr0w/murphy/issues/15)). Il n'y a plus deux
+> régimes mais **trois**, et le titre de cette section (« sauf sur la source
+> `identite` ») est trop étroit — deux sources sur trois échappent désormais au
+> corpus. Rédaction définitive en ADR-036.
+>
+> | Source | Où vit le label | Écrire avant l'ingestion ? | Ce qu'une extension lui fait |
+> |---|---|---|---|
+> | `identite` | **hors** corpus (ELI, ECLI) | oui, délibérément (`pending`) | **maturation** — le label ne change pas, il acquiert une cible |
+> | `graphe_g0` | **dans** le corpus (`G₀` en est dérivé) | non | **dérive** — l'ensemble-réponse *croît* ; réparable, voir ci-dessous |
+> | **frontière de périmètre** | **hors** corpus (le catalogue DILA, autorité externe) | oui | **rien** — le périmètre ne bouge pas quand nous ingérons |
+>
+> **`graphe_g0` ne se périme pas, il se re-dérive.** Ses qrels sont un ensemble
+> **calculable** depuis `G₀` (les cibles à distance 1 du germe) : elles sont
+> **re-dérivées à chaque version de collection déclarée, jamais recopiées**. `G₀`
+> bouge donc → le hash `qrels` change → la comparabilité se restaure **par
+> re-notation, gratuitement** (ADR-032 §2 ; ADR-031 §1 garde `G₀` au rôle de
+> *dérivation*, donc le run archivé avait bien accès aux documents). Deux
+> conditions : **le germe reste asserté, jamais dérivé** — sinon le hash `cas`
+> bougerait quand seul `G₀` a bougé — et **la gratuité meurt le jour où le levier
+> `G₁` d'ADR-031 alimente le retriever**.
+>
+> **Sans cette obligation, le trou est silencieux** : le lot d'extraction de
+> références n'exige **aucune ré-ingestion**, donc il ajoute des arêtes sans
+> ajouter de documents — ni le hash `corpus` ni le hash `cas` ne bougent, et `G₀`
+> se déplace sous des qrels que rien ne signale.
 
 Ce qui survit, et ce n'est pas rien : **le label de la source `identite` vit
 hors du corpus.** L'ELI se calcule depuis « article 1240 du Code civil »,
@@ -467,15 +509,29 @@ détenu, jamais jugé ; (2) on peut **nommer la question** qu'on répondrait en
 *slice*-ant dessus — pas de question, pas de tag ; (3) son vocabulaire est clos
 et le **null est permis**.
 
-> ⚠️ **La permanence du rang 1 est contestée, depuis le 1ᵉʳ août 2026.** Les
-> trois sources de gratuité établies pour les labels n'ont pas la même
-> permanence : `identite` (ELI, ECLI) est stable, `graphe_g0` est au moins
-> versionné (ADR-031), mais **`frontiere_corpus` bouge à chaque vague
-> d'ingestion**. La bonne réponse d'un cas `absence_hors_corpus` passe alors de
-> « rien » à « ce document » : le label ne se dégrade pas, **il se retourne** —
-> et le jeu travaille activement à provoquer ce retournement (§2.3, §10).
-> Arbitrage en cours :
-> [ticket #15](https://github.com/left-eyebr0w/murphy/issues/15).
+> ✅ **Contestation levée le 5 août 2026**
+> ([#15](https://github.com/left-eyebr0w/murphy/issues/15)) — **la règle « rang 1
+> = permanent » était juste ; c'est `frontiere_corpus` qui n'était pas rang 1.**
+> Cette section n'avait donc rien à corriger, seulement à être déchargée.
+>
+> La contestation du 1ᵉʳ août observait que les trois sources de gratuité n'ont
+> pas la même permanence, `frontiere_corpus` bougeant à chaque vague d'ingestion.
+> Exact — mais le défaut était dans la source, pas dans le rang : **un label de
+> rang 1 se dérive d'une *définition*, jamais d'un *état***. Une frontière de
+> corpus ingéré est un état ; la **frontière de périmètre DILA** est une
+> définition, externe et que nos vagues d'ingestion ne déplacent pas
+> (`VISION.md` §2, ADR-014). Le mécanisme est re-fondé sur la seconde, et **le
+> jeu cesse de travailler à invalider ses propres labels**.
+>
+> `graphe_g0` reste rang 1 lui aussi, à une condition **mécanique** posée par
+> §2.3 : ses qrels sont **re-dérivées**, jamais recopiées. Un label dérivé est
+> permanent au sens qui compte ici — non pas *immobile*, mais **recalculable sans
+> jugement**.
+>
+> **`frontiere_corpus` est sorti du vocabulaire (neuvième mot).** Le nom du
+> mécanisme doit dénoter le **périmètre** et jamais l'état d'ingestion
+> (proposition : `absence_hors_perimetre`) ; l'acte de renommage est groupé avec
+> la renumérotation des mécanismes, en ADR-036.
 
 **Le soulagement est structurel.** Les trois angles *wicked* du départ —
 thématiques, domaines, institutions — sont **déjà encodés dans la structure du
@@ -1002,6 +1058,31 @@ devenir **mesurée** :
 > auparavant ses exigences des strates S6 / S11 / S12, qui sont tombées. Elle se
 > tire désormais de la **source de gratuité du label** — un objet qui, lui,
 > tient (§2.3).
+
+> ⚠️ **Frontière explicitée le 5 août 2026**
+> ([#15](https://github.com/left-eyebr0w/murphy/issues/15)). Deux objets étaient
+> confondus parce qu'ils ont **la même observation aujourd'hui** — le système ne
+> trouve rien — et des **verdicts opposés**. Rédaction définitive en ADR-036.
+>
+> | Cible | Source | Statut | Fonction |
+> |---|---|---|---|
+> | Hors du **périmètre DILA**, définitivement | frontière de périmètre | **scoré**, `R = 0` | teste le *fail-fast* (ADR-020) |
+> | Dans DILA, **pas encore ingérée** | `identite` | **`pending`** — interrogé, non jugé | **désigne les manques** — c'est cette section |
+>
+> **Leur intersection — une cible non ingérée mais scorée `R = 0` — est
+> exactement ce qui se périmait, et c'est la seule chose qui n'aurait jamais dû
+> exister.** Le mécanisme hors périmètre cesse donc d'en absorber une part : le
+> non-ingéré n'a plus qu'un domicile, `pending`, et `N_pending` devient le
+> **seul** véhicule de la fonction décrite ci-dessous (dimensionnement →
+> [#20](https://github.com/left-eyebr0w/murphy/issues/20)).
+>
+> **Contrôle mécanique associé** : à chaque version de collection déclarée, on
+> re-vérifie qu'aucune cible déclarée hors périmètre n'a été ingérée. Ce contrôle
+> **ne devrait jamais se déclencher** — c'est une **alarme**, pas une réparation,
+> et son déclenchement signifie que *la définition du périmètre était fausse*
+> (intake → [#21](https://github.com/left-eyebr0w/murphy/issues/21)). C'est parce
+> que cette alarme existe que **rien n'est enregistré par cas**, bien que le
+> périmètre DILA ne soit énuméré par aucun document de ce dépôt.
 
 Le golden-set **désigne les manques du corpus** au lieu de les épouser. Le
 mécanisme est celui de §2.3 : sur la source `identite`, le label vit hors du
