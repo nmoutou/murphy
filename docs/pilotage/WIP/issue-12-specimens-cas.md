@@ -234,8 +234,16 @@ le fichier*.
   il est **impossible à reconstituer une fois les origines mélangées**, et il sert une
   question qu'on se posera — *les questions écrites par des experts se comportent-elles
   autrement que les générées ?* Son vocabulaire reste à fixer par
-  [#13](https://github.com/left-eyebr0w/murphy/issues/13).
-- **Date pivot** — la proposition du §7 de `B-08-generation-requetes.md` tient sur le fond
+  [#13](https://github.com/left-eyebr0w/murphy/issues/13). *⚠️ Fixé le 7 août par #13 §6, et
+  **le champ se dédouble** : `origin` (auteur du **texte** — `porteur` | `expert` | `llm`,
+  uniformément `porteur` en v1) et **`origine_notion`** (ce qui a **suggéré** le cas —
+  `porteur` | `llm`, rempli sur `concept_vers_instance` seul). Le motif de la dérogation
+  ci-dessus est **re-fondé** : la v1 étant uniforme, `origin` est reconstituable depuis la
+  version, et son dernier appui est qu'une correction puisse réécrire le texte d'un cas —
+  question ouverte de [#21](https://github.com/left-eyebr0w/murphy/issues/21).*
+- **Date pivot** — la proposition du §7 de `B-08-generation-requetes.md` *(fichier supprimé le
+  7 août par [#13](https://github.com/left-eyebr0w/murphy/issues/13) ; sa résolution en tient
+  lieu)* tient sur le fond
   (une date pour toute la v1, sauf les cas portant délibérément sur une succession
   temporelle), mais son ancrage — *« celle du gel »* — désigne un **mot mort** (#18). Elle est
   réénoncée sur une date **déclarée**.
