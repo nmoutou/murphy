@@ -279,6 +279,20 @@ Le **volume** de `pending` n'est pas fixé ici (voir §7 et
 > **doublement périmé** : `cardinalité`, `intention`, `matière` et `registre` ont tous
 > disparu (#3, #10, #11), et le champ **`narrative`** s'y ajoute (#18 §5).
 >
+> ⛔ **Second point périmé, constaté le 7 août 2026**
+> ([#12](https://github.com/left-eyebr0w/murphy/issues/12)) : **la dernière phrase de la
+> rédaction antérieure est fausse.** Une classe existe — `Topic(query_id, text)`, dans
+> `eval/src/murphy_eval/core/models/runtime.py`, délibérément minimale. #12 en tire un
+> cadrage : l'objet que ce document spécifie est l'enregistrement d'**authoring**, dont
+> `Topic` est la **projection runtime, inchangée** — même patron qu'ADR-008, qui projette son
+> JSONL canonique vers du TREC plat. La séparation **se paie zéro**, et le hash `cas` porte
+> sur l'authoring, jamais sur la projection.
+>
+> ⚠️ **Et l'attribution des champs aux hashes ne suit plus les couches de la table
+> ci-dessous** : #12 §4 amende #18 §0 en posant que **le hash suit le coût, pas le fichier**.
+> `narrative` vit dans la couche questions mais appartient au hash **`qrels`**, aucun run ne
+> la consommant.
+>
 > Réécriture d'ensemble : **ADR-036**, à la clôture de la carte.
 
 ### Rédaction antérieure
@@ -300,6 +314,9 @@ graphe témoin `G₀` (ADR-031) — jamais ingérées, jamais annotées.
 
 La couche **questions** est propre à ce document : ADR-030 note qu'aucune
 classe `Query` n'existe dans `eval/`. C'est ici qu'elle se peuple.
+⛔ **Faux depuis le 7 août 2026** — voir l'encadré en tête de section :
+`Topic` existe, et l'objet spécifié ici est l'enregistrement d'authoring
+dont `Topic` est la projection.
 
 ---
 
