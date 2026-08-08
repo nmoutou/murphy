@@ -6,11 +6,29 @@
 > carte [Golden-set v1 — spécification prête à l'authoring](https://github.com/left-eyebr0w/murphy/issues/1),
 > et atterrira en **ADR-036**. À lire comme une trace, pas comme un plan.
 
-> Document de travail (`WIP/`), **éphémère par conception** : il vit le
-> temps de B-08 et disparaît à sa clôture. Ce qui doit survivre part
-> ailleurs — une décision en ADR, une dette en `BACKLOG.md` §4, un
-> statut en `STATUS.md`.
+> ## ⛔ Ce statut est faux — constaté le 7 août 2026 ([#13](https://github.com/left-eyebr0w/murphy/issues/13) §8)
 >
+> **Ce document n'est pas éphémère : il est portant, et il ne peut pas être supprimé en
+> l'état.** Il est le **seul lieu de définition de P-01 à P-04** (§*Pièges de construction*),
+> que `GOLDEN-SET.md` §2.3 invoque **par sigle**, et **six documents durables le citent** —
+> `GOLDEN-SET.md`, ADR-032, ADR-035, `ADR/INDEX.md`, `recherche/requetes-generees.md`,
+> `droit/taxomonie/SOURCES.md`. Son homonyme `B-08-generation-requetes.md`, lui, avait
+> **zéro** lien durable entrant : il a été supprimé le 7 août, et **confondre les deux
+> ferait le dégât**.
+>
+> **Obligation d'écriture ouverte, non une décision** : **P-01 à P-04 migrent en ADR-036**,
+> et `GOLDEN-SET.md` §2.3 se repointe. Ce fichier ne redevient supprimable **qu'après** cette
+> migration. ⚠️ **P-01 change de statut en migrant** : sa portée déclarée (`known_item`,
+> `graph_hop`) et son symptôme annoncé (« bon marché à peupler ») désignent **exactement le
+> design retenu pour la v1** — il se requalifie de **piège en propriété déclarée**, sauf sur
+> `concept_vers_instance`, P-02 traitant déjà son observation.
+>
+> *Rédaction antérieure, conservée pour la trace :* « Document de travail (`WIP/`),
+> **éphémère par conception** : il vit le temps de B-08 et disparaît à sa clôture. Ce qui
+> doit survivre part ailleurs — une décision en ADR, une dette en `BACKLOG.md` §4, un statut
+> en `STATUS.md`. »
+>
+
 > Session de cadrage du 22 juillet 2026, en amont de toute écriture de
 > code. Consigne ici ce qui a été établi **et n'a pas trouvé place**
 > dans ADR-030 / ADR-031 : l'analyse par opération, les pièges de
@@ -116,6 +134,26 @@ non-exclusivité ; on ne perd que la *raison* du lien, dégradée en
 
 ## 4. Pièges de construction identifiés
 
+> ⚠️ **Section portante — c'est elle qui interdit la suppression du fichier.** Seul lieu de
+> définition de P-01 à P-04, cités par sigle ailleurs. **Migre en ADR-036**, et deux entrées
+> y arrivent modifiées :
+>
+> - **P-01 se retourne** — de *piège* il devient **propriété déclarée** de la v1
+>   ([#13](https://github.com/left-eyebr0w/murphy/issues/13) §4). Sa portée et son symptôme
+>   décrivent le design retenu. Le décalque reste un **défaut** sur le seul mécanisme
+>   *besoin d'abord*, `concept_vers_instance` — et il siège dans la **dérivation**, pas dans
+>   la sélection.
+> - ⛔ **P-04 raisonne sur `nDCG@R`, métrique retirée** le 2 août
+>   ([#14](https://github.com/left-eyebr0w/murphy/issues/14)). **Son fond survit et se
+>   renforce** : la complétude repose entièrement sur le pooling, et c'est précisément
+>   pourquoi tout score se publie désormais en **`score + résidu`** — mais l'énoncé ci-dessous
+>   est à réécrire, pas à recopier.
+>
+> ⛔ **Vocabulaire mort dans le tableau** : `known_item`, `graph_hop` et `texte_applicable`
+> sont des **opérations** d'ADR-030 sous leurs noms de juillet ; la liste des mécanismes est
+> arrêtée à **sept**, et `multi_hop` a été **scindé** le 5 août — un document antérieur qui
+> l'emploie désigne le mécanisme à **un** saut.
+
 | ID | Piège | Portée |
 |---|---|---|
 | P-01 | **Requête-décalque.** Fabriquer la requête *à partir* de la cible produit une requête qui recopie le document : on mesure alors la capacité du moteur à retrouver un texte par ses propres mots, pas une performance de récupération. Structurellement le même défaut que le `contains` de B-07 — une paire triviale qui gonfle le score. **Le fait qu'un type soit bon marché à peupler en est souvent le symptôme.** | `known_item`, `graph_hop` |
@@ -190,9 +228,9 @@ représentativité** du synthétique (§8).
 
 | ID | Décision | Bloquant pour |
 |---|---|---|
-| D-01 | **Méthode de génération des requêtes.** Jamais tranchée. Le cadrage cite doc2query / InPars / Promptagator / RAGAS, rien n'est acté. À noter : E-T-01 interdit toute dépendance du **harnais** à un LLM générateur — cela n'interdit pas d'en employer un **hors ligne** pour fabriquer des requêtes, mais la frontière doit être écrite. Voir aussi **P-01**. | Démarrage effectif de B-08 |
-| ~~D-02~~ | **Gel vs extensibilité — ✅ CLOSE par ADR-032** (voir §7 bis). | — |
-| D-03 | **Taille du jeu.** Aucun document ne fixe de nombre. Arbitrage entre coût d'annotation solo et puissance statistique — un test apparié (B-10) sur peu de requêtes détecte mal les petits effets. Ne pas trancher par le coût (**P-03**). **Dédramatisé par ADR-032** : commencer petit et profond est désormais sans risque, les questions s'ajoutant par lots ultérieurs. | Construction |
+| ~~D-01~~ | **Méthode de génération des requêtes — ✅ CLOSE par [ADR-037](../../product/ADR/ADR-037-provenance-authoring.md)** (7 août 2026, ticket [#13](https://github.com/left-eyebr0w/murphy/issues/13)). *« La frontière doit être écrite »* : **elle l'est**. Et la réponse est double. **(a)** La question posée ici — *l'emploi hors ligne contrevient-il à E-T-01 ?* — reçoit **« E-T-01 n'en dit rien »**, pas « il l'autorise » : sa source ADR-016 gouverne le couplage *runtime*, jamais la **provenance d'authoring**, qui est un autre objet. **(b)** Un LLM hors ligne entre en v1 mais **pour un autre acte que celui envisagé ici** — il propose des **notions**, jamais des textes, et sur `concept_vers_instance` seul ; le porteur rédige. ⛔ *doc2query / InPars / Promptagator sont hors sujet* : le protocole de génération de textes est mort **par inversion de prémisse** — sur quatre des cinq mécanismes de la v1, on **a** le document sous les yeux. | ~~Démarrage effectif de B-08~~ |
+| ~~D-02~~ | **Gel vs extensibilité — ✅ CLOSE par ADR-032** (voir §7 bis). ⚠️ *Le mot `gel` est lui-même sorti du vocabulaire le 2 août 2026 — trois hashes identifient au lieu de sceller ; le titre et le §1 d'ADR-032 sont périmés, sa mécanique survit.* | — |
+| ~~D-03~~ | **Taille du jeu — ✅ CLOSE par [#11](https://github.com/left-eyebr0w/murphy/issues/11)** (1er août 2026) : dérivation **ascendante**, plancher **30 cas/mécanisme** par la règle de trois, **v1 = 150 cas** (dont 30 jugés), `N_q ≥ 180`. La consigne *« ne pas trancher par le coût »* a **tenu** — et [#20](https://github.com/left-eyebr0w/murphy/issues/20) l'a confortée en figeant la **largeur** sur les seuls critères insensibles au budget, la **profondeur** absorbant l'incertitude. | ~~Construction~~ |
 
 ## 7 bis. Le modèle de versionnement (résolution de D-02)
 

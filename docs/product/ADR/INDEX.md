@@ -3,12 +3,14 @@
 > Un fichier par ADR (format Nygard). ADR-001 à 010 : arbitrages du
 > chantier 4 · ADR-011 à 020 : rétro-documentation des décisions
 > implicites (chantier 5) · ADR-021 et suivants : au fil de l'exécution.
-> **Prochain numéro : ADR-036** — réservé au **contenu** du golden-set, à la
-> clôture de la carte
-> [#1](https://github.com/left-eyebr0w/murphy/issues/1). *(ADR-035, d'abord
-> réservé à ce contenu, a été pris le 2 août par l'ADR de **méthode** — le
-> paradigme TREC. Deux objets : la méthode arbitre les tickets et ne bouge pas ;
-> le contenu bouge à chaque ticket résolu.)*
+> **Prochain numéro : ADR-038.** ⚠️ **ADR-036 reste réservé** au **contenu** du
+> golden-set, à la clôture de la carte
+> [#1](https://github.com/left-eyebr0w/murphy/issues/1) — **le trou entre 035 et 037
+> est une réservation, pas un oubli**. *(ADR-035, d'abord réservé à ce contenu, a été
+> pris le 2 août par l'ADR de **méthode** — le paradigme TREC. Deux objets : la méthode
+> arbitre les tickets et ne bouge pas ; le contenu bouge à chaque ticket résolu.
+> ADR-037 a été écrit le 7 août **avant** 036 parce que son objet — la provenance
+> d'authoring — ne dépend d'aucun ticket ouvert et porte **au-delà** du golden-set.)*
 
 ## Registre
 
@@ -20,7 +22,7 @@
 | [ADR-004](ADR-004-unite-document.md) | Définition de l'unité « document » | Acté |
 | [ADR-005](ADR-005-echelle-pertinence.md) | Échelle de pertinence et guide d'annotation | Acté — **complété le 2 août 2026** ([#14](https://github.com/left-eyebr0w/murphy/issues/14)) : projection linéaire `g/3` des grades dans RBP |
 | [ADR-006](ADR-006-agregation-chunk-document.md) | Agrégation chunk→document | Acté |
-| [ADR-007](ADR-007-metrique-rbp-residu.md) | Métrique de comparaison : RBP(p) + résidu | Acté — **réécrit le 2 août 2026** ([#14](https://github.com/left-eyebr0w/murphy/issues/14)) : `nDCG@R` **retiré**, le refus des coupes constantes survit. *Ancien fichier : `ADR-007-metriques-ndcg-r.md`* |
+| [ADR-007](ADR-007-metrique-rbp-residu.md) | Métrique de comparaison : RBP(p) + résidu | Acté — **réécrit le 2 août 2026** ([#14](https://github.com/left-eyebr0w/murphy/issues/14)) : `nDCG@R` **retiré**, le refus des coupes constantes survit. **§6.2 amendé le 8 août 2026** ([#23](https://github.com/left-eyebr0w/murphy/issues/23)) : l'écart apparié se borne par `Σ|w_A − w_B|`, **atteignable**, et non plus par `r_A + r_B` ; l'allocation de #18 ne bouge pas mais **cesse d'être la même fonction** que le critère de décision. *Ancien fichier : `ADR-007-metriques-ndcg-r.md`* |
 | [ADR-008](ADR-008-format-qrels-runs.md) | Format de stockage qrels/runs | Acté |
 | [ADR-009](ADR-009-types-action.md) | Types d'action (stratification v0) | Acté — liste révisable en alpha ph.1 — **amendé par ADR-030** (deux axes, type porté par l'arête) |
 | [ADR-010](ADR-010-deux-modes-p3.md) | Architecture des deux modes d'annotation de P3 | Acté |
@@ -49,6 +51,8 @@
 | [ADR-033](ADR-033-axes-mecanisme-cardinalite.md) | Axes du golden-set : mécanisme de récupération × cardinalité | ⛔ **OBSOLÈTE** (1er août 2026) — **à remplacer par ADR-036**. Seul survit son **axe primaire** (les mécanismes) ; la cardinalité comme second axe, la grille des 14 cellules et les 12 strates sont tombées. Sa confirmation d'ADR-007 ne porte plus. Conservé comme archive |
 | [ADR-034](ADR-034-paradigmes-evaluation-triangulation.md) | Paradigmes d'évaluation : fonctionnel, contenu, usage — séparation et triangulation | Acté (1er août 2026, session de cadrage) — amende la direction de `GOLDEN-SET.md` §7. ⚠️ **§Constat amendé** : le test du sens de dérivation est remplacé par **deux propriétés indépendantes** (source de gratuité du label / réalisme de la requête) — l'exclusion « label gratuit ⊥ besoin réaliste » ne vaut que pour la source *identité*. Sa mention « prolonge ADR-033 » est caduque ; son §1 et son §5 s'appuient sur une grille disparue. À reprendre en ADR-036 |
 | [ADR-035](ADR-035-paradigme-evaluation-trec-legal-track.md) | Le paradigme d'évaluation s'aligne sur le **TREC Legal Track** | Acté (2 août 2026, session de la carte [#1](https://github.com/left-eyebr0w/murphy/issues/1)) — **ADR de méthode**, il arbitre les tickets sans être arbitré par eux. Deux machines **séparées par une frontière fixe** (**A** = collection, solo, P2 · **B** = campagne communautaire, plurielle, chantier 8) — ⚠️ **§2 amendé le 2 août 2026** ([#18](https://github.com/left-eyebr0w/murphy/issues/18)) : l'**inclusion `B ⊃ A` est retirée** (l'ADR avait écrit une inclusion là où il n'avait démontré qu'une **précédence d'exécution**) ; la frontière **est le contrat de recevabilité de #18 §8**, et ce qui côté B n'a besoin que du **contrat** se construit dès maintenant. **§3 corrigé** au passage : les assesseurs Ad Hoc/Batch sont des **volontaires étudiants en droit**, pas des réviseurs professionnels, et le **kappa +0,49** est mesuré par le track lui-même dès 2006 ; **présomption symétrique** (s'écarter de TREC exige une raison, **emprunter exige de nommer le régime de calibration**) ; l'**appareil de réception** se construit avant, la **machinerie d'évaluation** se promeut après panne ; la vérité s'achète **par assesseur**, les labels gratuits en sont le premier incrément ; critère « **rien à jeter** ». Conforte ADR-008 et ADR-010, ne rouvre pas ADR-029, ajoute un troisième terme à [#14](https://github.com/left-eyebr0w/murphy/issues/14) (`F1@K`, K déclaré par le système). Ouvre R-09 |
+| *(ADR-036)* | *Contenu du golden-set — **réservé**, non écrit* | ⏳ **À écrire à la clôture de la carte [#1](https://github.com/left-eyebr0w/murphy/issues/1)**. Le numéro est tenu parce que quatre documents y renvoient déjà (ADR-032, ADR-033, ADR-034, `GOLDEN-SET.md`, E-P2-06/07/08). Doit porter, **en plus du contenu** : le **cimetière de vocabulaire** (neuf mots, neuf motifs), la lecture *instrument* du critère de sortie de v0 ([#20](https://github.com/left-eyebr0w/murphy/issues/20) §6, **sans amender `VERSIONS.md`**), et **P-01 à P-04** migrés depuis `WIP/B-08-cadrage.md` (P-01 **requalifié** de piège en propriété déclarée) |
+| [ADR-037](ADR-037-provenance-authoring.md) | **Provenance d'authoring** : qui écrit une question, et ce que la machine reçoit | Acté (7 août 2026, session de la carte [#1](https://github.com/left-eyebr0w/murphy/issues/1), ticket [#13](https://github.com/left-eyebr0w/murphy/issues/13)) — **renverse le « pas d'ADR »** du document mort `WIP/B-08-generation-requetes.md` §11. **Couplage runtime ≠ provenance d'authoring** : E-T-01 (source ADR-016) gouverne le premier et **ne dit rien** du second ; il reçoit un **renvoi**, pas le contenu. **Frontière** : `eval/` n'appelle jamais un LLM · aucun texte non relu n'entre dans le jeu · un LLM **hors ligne propose des notions** pour `concept_vers_instance` seul, **le porteur rédige**. **Test de reproductibilité** énoncé comme critère général réutilisable (*« un run devient-il irreproductible si le fournisseur change de modèle demain ? »*) — deux applications, deux verdicts opposés, dont l'une **hors carte** ([#5](https://github.com/left-eyebr0w/murphy/issues/5) §2). **Hygiène de prompt** refondée : les poids D₁ meurent **sans remplaçant**, remplacés par deux interdits neufs (ne pas exiger un fondement textuel identifiable · ne pas annoncer le jugement ni le nombre de pertinents espérés). Réserve assumée : la **monoculture stylistique empire**, parade en v2 |
 
 ## Points ouverts rattachés
 

@@ -1,8 +1,29 @@
 # ADR-034 — Paradigmes d'évaluation : fonctionnel, contenu, usage — séparation et triangulation
 
-**Statut** : Acté (1er août 2026, session de cadrage) — **prolonge ADR-033**
-(qui fixe l'axe, celui-ci fixe le cadre d'échantillonnage), **amende la
-direction** de `GOLDEN-SET.md` §7, **ne touche à aucun axe**
+**Statut** : Acté (1er août 2026, session de cadrage) — ~~**prolonge ADR-033**
+(qui fixe l'axe, celui-ci fixe le cadre d'échantillonnage)~~, **amende la
+direction** de `GOLDEN-SET.md` §7, ~~**ne touche à aucun axe**~~
+
+> ## ⚠️ Les deux clauses barrées du statut sont fausses — marqueur posé le 7 août 2026
+>
+> Ce fichier ne portait **aucun marqueur** jusqu'ici, alors que ses amendements étaient
+> enregistrés depuis le 1er août dans [`INDEX.md`](INDEX.md). Un lecteur arrivant
+> directement sur l'ADR lisait donc un texte périmé sans avertissement. Réparé ici ;
+> la **réécriture d'ensemble reste ADR-036**, à la clôture de la carte
+> [#1](https://github.com/left-eyebr0w/murphy/issues/1).
+>
+> - ⛔ **« prolonge ADR-033 » est caduque** : ADR-033 est **obsolète** depuis le 1er août.
+>   Seul survit son axe primaire — les mécanismes. La grille des quatorze cellules, la
+>   cardinalité comme second axe et les douze strates sont tombées.
+> - ⛔ **« ne touche à aucun axe » est faux dans ses effets** : le §Constat ci-dessous
+>   **commandait** le tri des mécanismes, et son amendement par
+>   [#2](https://github.com/left-eyebr0w/murphy/issues/2) a redécoupé la liste.
+>
+> **Ce qui survit, et c'est l'essentiel** : le §Constat — *le label gratuit et le besoin
+> réaliste s'excluent* — est **indépendant de la grille disparue** et il tient. C'est le
+> §1 et le §5 qui s'appuient sur elle. **Vocabulaire** : cet ADR emploie des noms de
+> mécanismes dont trois sont morts depuis — voir le cimetière en tête de chaque section
+> concernée.
 
 ## Contexte
 
@@ -17,6 +38,28 @@ manque. La question posée en session était donc : **peut-on s'en passer ?**
 La réponse est oui pour la v0 — mais pas gratuitement, et le prix a un nom.
 
 ## Le constat qui commande le reste
+
+> ⚠️ **Amendé, non renversé — 1er août 2026**
+> ([#2](https://github.com/left-eyebr0w/murphy/issues/2)). Le **test unique** de cette
+> section est remplacé par **deux propriétés indépendantes** : la **source de gratuité du
+> label** (quel fait extérieur à l'opinion détermine l'ensemble-réponse — `identite` ou
+> `graphe_g0` ; un blanc est un défaut) et le **réalisme de la requête** (le test ci-dessous,
+> rendu à son objet propre). **L'exclusion ne vaut que pour la source `identite`** : elle
+> n'est pas une loi générale, et c'est ce qui a permis à quatre mécanismes d'être gratuits
+> *sans* être artefactuels. Le constat lui-même **tient** et ne dépend d'aucune grille.
+>
+> ⛔ **Vocabulaire mort dans cette section** : la troisième source de gratuité,
+> `frontiere_corpus`, a été **retirée** le 5 août ([#15](https://github.com/left-eyebr0w/murphy/issues/15)) —
+> elle s'indexait sur un **état** (le corpus ingéré) là où le rang 1 exige une
+> **définition** ; le mécanisme qu'elle portait tire désormais son label du **périmètre
+> DILA** et s'appelle `absence_attendue`
+> ([#12](https://github.com/left-eyebr0w/murphy/issues/12)).
+>
+> ⚠️ **Le corollaire final est dépassé** : `correspondance_litterale` échoue bien ce test,
+> mais il a **quitté le golden-set** le 1er août pour les instruments diagnostiques
+> ([#10](https://github.com/left-eyebr0w/murphy/issues/10)) — il n'est plus un mécanisme à
+> requalifier, il est dehors, et son résultat se publie **en tête du rapport comme condition
+> de lecture**.
 
 > **Le label gratuit et le besoin réaliste s'excluent.**
 
@@ -59,6 +102,15 @@ sa requalification en test de fumée.
 
 ### 1. Trois paradigmes, spécifiés comme instruments distincts
 
+> ⚠️ **La colonne « Fonctionnel (ADR-033) » renvoie à un ADR obsolète** — lire **ADR-036**,
+> et « aucun cadre d'échantillonnage » y est désormais **assumé et écrit**, non plus
+> constaté en creux ([#4](https://github.com/left-eyebr0w/murphy/issues/4) : *le jeu
+> n'échantillonne pas le droit, il énumère des fonctions*). **La séparation des trois
+> instruments tient** ; c'est le seul point du §1 qui ne dépende pas de la grille disparue,
+> et [#9](https://github.com/left-eyebr0w/murphy/issues/9) l'a même **durci** en énonçant le
+> critère qui manquait : *un instrument est séparé quand il a ses propres cas, pas quand il
+> a sa propre lecture*.
+
 | | Organise par | Cadre d'échantillonnage | Répond à | Aveugle à |
 |---|---|---|---|---|
 | **Fonctionnel** (ADR-033) | la fonction de récupération exercée | aucun | « la récupération marche-t-elle ? » | l'importance des questions posées |
@@ -87,6 +139,19 @@ l'opportunité du pari, mais sur son **instrumentation**.
 
 ### 3. Le capteur — ce qui rend le pari réfutable
 
+> ⚠️ **Le 2×2 ci-dessous survit comme *intention*, pas comme structure de sortie** — 5 août
+> 2026 ([#5](https://github.com/left-eyebr0w/murphy/issues/5)). Trois choses ont changé
+> et un lecteur qui construirait le capteur sur cette section seule se tromperait :
+> (1) **le capteur émet une énumération d'items, jamais un taux** — le résidu comme
+> proportion est illisible à l'effectif d'alpha ph.1 ; (2) **il n'y a pas de routeur** :
+> c'est le **testeur** qui déclare, par verdict binaire puis liste fermée d'hypothèses en
+> langue de mode d'échec, une table déclarée *a priori* traduisant vers les mécanismes —
+> ce qui rend la contamination **structurellement impossible** et remplace la règle d'ordre
+> ci-dessous par une garantie plus forte ; (3) la ligne « **le testeur réussit** » n'est
+> **plus classée** — la case *faux positif* est vide et inactionnable, aucun cas ne pouvant
+> être retiré de la v0. **La règle d'ordre reste juste** dans son motif, elle n'est
+> simplement plus le dispositif qui l'assure. La **construction** du capteur est hors carte.
+
 Un golden-set biaisé n'échoue pas bruyamment : **il échoue en rassurant.** Il
 continue de produire de bons chiffres pendant que la zone qu'il ne couvre pas se
 dégrade. Le tâtonnement exige que l'erreur soit détectable ; celle-ci ne l'est
@@ -109,6 +174,23 @@ lumière du résultat annule le capteur.
 
 ### 4. Pas de seuil numérique
 
+> ⚠️ **Portée restreinte — 2 août 2026** (session d'audit de la carte
+> [#1](https://github.com/left-eyebr0w/murphy/issues/1)). Ce §4 vaut pour une
+> **sentinelle** : une grandeur qu'on observe et dont la direction s'interprète seule (taux
+> de réussite ventilé d'E-P2-07, taux de rejet à l'authoring, stabilité du classement). Il
+> **ne vaut pas** pour la **résolution de l'instrument** qui observe — là, « on publiera
+> sans seuil » ne dit rien d'autre que *« on ne sait pas si c'est lisible »*. Motif :
+> **quatre** questions quantitatives de la carte avaient reçu la même réponse en invoquant
+> ce §4, faute d'une seconde issue de secours. **Première application de la restriction** :
+> le contrôle d'auto-cohérence des assesseurs reçoit **un seuil obligatoire** (≥ +0,49,
+> [#18](https://github.com/left-eyebr0w/murphy/issues/18) §2), précisément parce qu'il *est*
+> la résolution de l'instrument.
+>
+> **L'issue de secours a un nom** ([#5](https://github.com/left-eyebr0w/murphy/issues/5)) :
+> ***cesser d'agréger plutôt que baisser le seuil***. Cinq fois la carte a rencontré un
+> agrégat illisible, cinq fois la sortie a été de **garder la structure sous-jacente au lieu
+> de la réduire à un nombre**. À essayer **avant** d'invoquer ce §4.
+
 On pré-enregistre **la grandeur, sa direction et l'engagement à la publier** ;
 pas de valeur de déclenchement. Un seuil dont on ignore ce qu'il vaut ne rend pas
 le test réfutable, il le rend *arbitrairement* réfutable — et le jour où il est
@@ -128,10 +210,19 @@ Les instruments s'auditent mutuellement **a posteriori**, sans jamais se
 contraindre :
 
 - le paradigme contenu passe **par-dessus** la suite et rapporte où tombent les
-  cas — diagnostic, jamais obligation de couverture. ADR-033 le fait déjà à
+  cas — diagnostic, jamais obligation de couverture. ~~ADR-033 le fait déjà à
   moitié (« la matière est équilibrée au mieux ; ses trous sont permis et
-  **chiffrés** ») ; ce qui est neuf est de le nommer comme un **second
+  **chiffrés** »)~~ ; ce qui est neuf est de le nommer comme un **second
   instrument**, non comme un tag ;
+
+  > ⛔ **L'appui barré est mort deux fois** : `matiere` a disparu comme facette
+  > ([#10](https://github.com/left-eyebr0w/murphy/issues/10), puis
+  > [#12](https://github.com/left-eyebr0w/murphy/issues/12) qui l'identifie au tag `domaine
+  > juridique` et clôt le reliquat), et **les trous ne sont plus chiffrés** — `GOLDEN-SET.md`
+  > §6.2 est mort en entier ([#4](https://github.com/left-eyebr0w/murphy/issues/4), YAGNI du
+  > porteur : un chiffre nu, non pondéré, aucune estimation de production). **Le second
+  > instrument survit, son point d'accroche est explicitement ajourné** : tant que la
+  > taxonomie n'existe pas, on ne conçoit pas son accroche — décision, non flou.
 - le paradigme usage audite le paradigme fonctionnel par le capteur du §3.
 
 **Ce que la triangulation achète, et c'est sa seule justification sérieuse :** on
@@ -176,20 +267,41 @@ déjà ; elle est ici érigée en dispositif.
   qu'une suite large majoritairement artefactuelle. Les nombres de
   `GOLDEN-SET.md` §7 sont à re-dériver sous cette direction — ils relevaient
   déjà du régime **humain** (ADR-028) et n'étaient pas actés.
+  ✅ *Fait le 1er août par [#11](https://github.com/left-eyebr0w/murphy/issues/11)* : la
+  dérivation est devenue **ascendante** (unité = le mécanisme, `N_cas` est une somme de
+  planchers, jamais un total réparti), plancher **30 cas/mécanisme** par la règle de trois,
+  **v1 = 150 cas**, `N_q ≥ 180`. Le mot `N_j` est sorti du vocabulaire au passage.
 - **Les mécanismes gagnent une propriété distincte du régime.** La colonne
   `Régime` d'ADR-033 dit d'où vient le **label** ; il manque **le sens de
   dérivation** (fidèle / artefactuel), qui dit ce que le cas vaut en réalisme.
   Deux propriétés aujourd'hui confondues, à séparer dans `GOLDEN-SET.md` §4–§5.
+  ✅ *Séparées le 1er août par [#2](https://github.com/left-eyebr0w/murphy/issues/2)*, mais
+  **pas sous ces noms** : ce sont la **source de gratuité du label** et le **réalisme de la
+  requête**, et elles sont **indépendantes** — c'est tout l'objet de l'amendement du
+  §Constat. ⚠️ Et la propriété est celle du **mécanisme**, jamais une déclaration par cas
+  ([#10](https://github.com/left-eyebr0w/murphy/issues/10)) : le test s'exerce **une fois, à
+  l'admission d'un mécanisme**.
 - **Le capteur du §3 est un prérequis du pari, pas un agrément.** À implémenter
   au harnais avant que le panel produise des retours exploitables (rattachement
   ADR-025 / ADR-027).
 - **Le chantier taxonomie n'est ni abandonné ni bloquant.** Il devient le second
   instrument, sur son propre calendrier, et cesse d'être sur le chemin critique
   de B-08.
-- **Hors périmètre de cet ADR**, et toujours en attente : la rétrogradation de la
+- ⛔ ~~**Hors périmètre de cet ADR**, et toujours en attente : la rétrogradation de la
   cardinalité en attribut, la renumérotation des mécanismes, le statut du tag
   `domaine juridique`, le resserrement de la cardinalité 0. Ces points amendent
-  ADR-033 et seront traités ensemble.
+  ADR-033 et seront traités ensemble.~~
+
+  > **Ce reliquat est éteint — 7 août 2026.** Les quatre points sont clos, et pas dans le
+  > sens annoncé : la cardinalité **ne se rétrograde pas, elle se dissout** — `0/1/n` est un
+  > **compte** (`R = len(qrels)`, gratuit, jamais asserté), et le mot sort du vocabulaire
+  > ([#3](https://github.com/left-eyebr0w/murphy/issues/3)), ce qui emporte au passage le
+  > **resserrement de la cardinalité 0** ; le **tag `domaine juridique`** est `matiere` sous
+  > son nom d'ADR-033, **morte avec les strates**
+  > ([#12](https://github.com/left-eyebr0w/murphy/issues/12)) ; la **renumérotation** est
+  > arrêtée — liste **7**, composition v1 **5**, noms fixés
+  > ([#16](https://github.com/left-eyebr0w/murphy/issues/16), #12) — et il ne reste que
+  > l'**acte d'écriture**, en ADR-036.
 
 ## Références
 
@@ -197,6 +309,9 @@ ADR-007 (métriques) · ADR-012 (constat sur preuves — fondement du §4) ·
 ADR-016 (découplage récupération/génération) · ADR-017 (strates) · ADR-025
 (environnement panel consenti — porteur du paradigme usage) · ADR-027
 (plateforme d'évaluation end-to-end — hôte du capteur) · ADR-028 (frontière
-vérification/validation) · **ADR-033 (prolongé : il fixe l'axe, celui-ci fixe le
-cadre)** · `GOLDEN-SET.md` §4, §5, §7 · `docs/droit/taxomonie/` (second
-instrument) · R-05 (`RISQUES.md`)
+vérification/validation) · ~~**ADR-033 (prolongé : il fixe l'axe, celui-ci fixe le
+cadre)**~~ ⛔ **obsolète — lire ADR-036** · ADR-035 (paradigme TREC, ADR de méthode : il
+arbitre cet ADR et non l'inverse) · ADR-037 (provenance d'authoring) · `GOLDEN-SET.md` §4,
+§5, §7 — **tous trois estampillés périmés** dans le fichier · `docs/droit/taxomonie/`
+(second instrument) · R-05 (`RISQUES.md`) ·
+[carte #1](https://github.com/left-eyebr0w/murphy/issues/1)

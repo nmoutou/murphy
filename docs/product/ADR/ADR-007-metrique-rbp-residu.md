@@ -1,7 +1,8 @@
 # ADR-007 — Métrique de comparaison : RBP(p) + résidu
 
 **Statut** : acté (chantier 4, 17 juillet 2026) — **réécrit le 2 août 2026**
-([ticket #14](https://github.com/left-eyebr0w/murphy/issues/14))
+([ticket #14](https://github.com/left-eyebr0w/murphy/issues/14)) — **§6.2 amendé
+le 8 août 2026** ([ticket #23](https://github.com/left-eyebr0w/murphy/issues/23))
 
 > ⚠️ **Cet ADR a été réécrit, pas amendé.** Sa décision de 2026-07-17 était
 > `nDCG@R` ; elle est **retirée**. Ce qui survit est son **argument** — le refus
@@ -159,12 +160,80 @@ rejeté l'intensité. Un compte se projette linéairement. La pertinence gradué
 1. **Tout score est `score + résidu`**, le résidu calculé **trou par trou sur le
    run**, jamais depuis une profondeur nominale.
 2. L'écart apparié entre deux configurations hérite d'une **borne
-   déterministe** : si `RBP_A ∈ [a, a+r_A]` et `RBP_B ∈ [b, b+r_B]`, l'écart
-   vrai est dans **`[a − b − r_B, a − b + r_A]`**. Sa largeur `r_A + r_B` est
-   exactement ce que l'allocation gloutonne de
-   [#18](https://github.com/left-eyebr0w/murphy/issues/18) §6 minimise à budget
-   donné : **la règle d'achat des jugements et le critère de décision sont la
-   même fonction.**
+   déterministe**, et elle est **atteignable** — ⚠️ **amendé le 8 août 2026**
+   ([#23](https://github.com/left-eyebr0w/murphy/issues/23)), voir l'encadré
+   ci-dessous pour la rédaction antérieure et son motif de retrait.
+
+   Soit `w_A(d) = (1−p)·p^(rang_A(d)−1)` le poids du document non jugé `d` dans
+   le classement de `A`, nul si `d` n'est pas dans le top-`d_min` de `A`. Le gain
+   `g(d)` est celui **du document**, donc le même des deux côtés — les deux
+   enclos individuels ne sont **pas** indépendants. D'où
+
+   ```
+   RBP_A − RBP_B  ∈  [ a − b − Σ_d (w_B−w_A)⁺ ,  a − b + Σ_d (w_A−w_B)⁺ ]
+
+   largeur  =  Σ_d | w_A(d) − w_B(d) |
+   ```
+
+   **atteinte** à un sommet (`g(d) ∈ {0,1}`), donc atteignable sur l'échelle 0–3
+   projetée en `g/3`. Le terme de **queue** fait exception et reste additif : les
+   documents au-delà du rang `d_min` ne sont pas identifiés, donc ne s'apparient
+   pas (`0,75¹⁰⁰ ≈ 3·10⁻¹³`).
+
+   `r_A + r_B` **majore** cette largeur au lieu de lui être égal, avec égalité au
+   seul cas où les ensembles de non-jugés sont disjoints. **L'allocation
+   gloutonne de [#18](https://github.com/left-eyebr0w/murphy/issues/18) §6 ne
+   bouge pas** : elle reste **monotone** sur la largeur resserrée — juger `d` le
+   retire des non-jugés des deux côtés — donc l'arrêt prématuré reste sûr et le
+   préfixe exact. Ce qui tombe est l'**identité de fonctions** : on achète sur
+   l'agrégat, on lit sur la structure. Une part du budget n'achète donc rien pour
+   la comparaison courante ; c'est le prix de l'agnosticité aux paires, et il est
+   assumé — un jugement est permanent et agnostique au run, une largeur de paire
+   est dérivée à la lecture.
+
+   **Sentinelle publiée avec l'intervalle**, par paire et sans seuil :
+   `taux d'annulation = 1 − Σ|w_A−w_B| / (r_A + r_B)`, le recouvrement **pondéré**
+   des non-jugés. Elle n'est pas la résolution de l'instrument — c'est la largeur
+   qui l'est, et elle a ses deux terminaux depuis
+   [#20](https://github.com/left-eyebr0w/murphy/issues/20) — elle **audite** le
+   resserrement. **Une seule largeur est publiée, la resserrée** : en publier deux
+   ferait citer la plus commode, motif du quatrième hash refusé en #18 §0.
+
+   **Portée réelle** : le resserrement ne mord que sur les **30 cas jugés**, les
+   90 cas gratuits comparables étant à résidu nul (§2). Il porte donc sur toute
+   l'incertitude du dispositif, mais ne touche pas les trois quarts des cas
+   comparables.
+
+   **Conditions d'emploi** — chacune désigne ce qu'il faut rouvrir si elle tombe :
+   les qrels portent sur des **identités de document**
+   ([#9](https://github.com/left-eyebr0w/murphy/issues/9) §4 — sur des chunks,
+   `g(d)` n'est pas le même objet des deux côtés et l'appariement n'existe pas) ·
+   l'échelle de gain **contient 0 et 1** (sinon la borne reste valide et cesse
+   d'être atteignable) · la queue reste négligeable **relativement** à une largeur
+   qui, elle, rétrécit (à `p` = 0,955 elle vaut ≈ 1 % : à rouvrir si `p` monte
+   en v2) · il y a **plusieurs** configurations comparées et des contributeurs qui
+   ne sont pas comparés (#18 §4), ce qui interdit une allocation par paire.
+
+   > ⚠️ **Rédaction antérieure (2 août 2026, [#14](https://github.com/left-eyebr0w/murphy/issues/14)), retirée le 8 août.**
+   >
+   > > « L'écart apparié entre deux configurations hérite d'une **borne
+   > > déterministe** : si `RBP_A ∈ [a, a+r_A]` et `RBP_B ∈ [b, b+r_B]`, l'écart
+   > > vrai est dans **`[a − b − r_B, a − b + r_A]`**. Sa largeur `r_A + r_B` est
+   > > exactement ce que l'allocation gloutonne de #18 §6 minimise à budget
+   > > donné : **la règle d'achat des jugements et le critère de décision sont la
+   > > même fonction.** »
+   >
+   > **L'enclos était valide ; la seconde phrase est fausse.** Les deux extrémités
+   > ne sont atteintes que si les non-jugés de `A` valent tous 1 *pendant que* ceux
+   > de `B` valent tous 0 — or `A` et `B` classent le même corpus, et un document
+   > partagé monte les deux scores ensemble. La borne était donc **plus large que
+   > l'ensemble des écarts possibles**, d'autant plus que les configurations sont
+   > proches — c'est-à-dire le plus là où B-10 sert. Sens de faute
+   > **conservateur** (la porte refusait trop, elle ne déclarait rien de faux),
+   > donc **aucune décision antérieure n'est à défaire**. Le défaut n'était pas la
+   > gradation mais une **somme prise trop tôt** : `r_A + r_B` jette l'identité des
+   > documents sur lesquels le résidu est assis. Sixième instance de *cesser
+   > d'agréger plutôt que baisser le seuil*.
 3. **Porte** : si cet intervalle contient zéro, **aucun test n'est recevable**.
    La phrase à écrire est *« au budget de jugement dépensé, ces deux
    configurations ne sont pas distinguables »* — jamais *« pas de différence

@@ -77,7 +77,7 @@ non jurisprudentielles, LLM générateur branché à l'évaluation.
 
 | ID | Exigence | Vérification | Source | Régime | Statut |
 |---|---|---|---|---|---|
-| E-T-01 | Le harnais P2 doit être découplé de la génération : aucune dépendance à un LLM générateur | Revue du code du harnais : périmètre récupération seule | ADR-016 | auto | ⬜ |
+| E-T-01 | Le harnais P2 doit être découplé de la génération : aucune dépendance à un LLM générateur. ⚠️ **Renvoi, non extension — 7 août 2026** ([ADR-037](../product/ADR/ADR-037-provenance-authoring.md), ticket [#13](https://github.com/left-eyebr0w/murphy/issues/13)) : cette exigence gouverne le **couplage runtime du harnais à la couche générative**, et **elle ne dit rien de la provenance d'authoring** — de ce qui a écrit le texte d'une question. C'est un **autre objet**, traité par ADR-037 (un LLM hors ligne propose des *notions* pour `concept_vers_instance`, le porteur rédige ; aucun texte non relu n'entre dans le jeu ; test de reproductibilité). **L'énoncé et la vérification ci-contre sont inchangés** : le renvoi dit seulement où lire le second objet, il n'élargit pas celui-ci | Revue du code du harnais : périmètre récupération seule. *(La provenance d'authoring ne se vérifie pas ici — elle se vérifie sur l'enregistrement d'un cas, ADR-037 §1.)* | ADR-016 · ADR-037 (renvoi) | auto | ⬜ |
 | E-T-02 | Tout artefact d'évaluation (qrels, runs, golden-sets) doit être versionné et rejouable | Artefacts sous contrôle de version ; procédure de rejeu documentée | ADR-008 | auto | ⬜ |
 
 ## 5. Sortie de version
