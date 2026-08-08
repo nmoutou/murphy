@@ -187,9 +187,31 @@ lumière du résultat annule le capteur.
 > la résolution de l'instrument.
 >
 > **L'issue de secours a un nom** ([#5](https://github.com/left-eyebr0w/murphy/issues/5)) :
-> ***cesser d'agréger plutôt que baisser le seuil***. Cinq fois la carte a rencontré un
-> agrégat illisible, cinq fois la sortie a été de **garder la structure sous-jacente au lieu
+> ***cesser d'agréger plutôt que baisser le seuil***. **Sept** fois la carte a rencontré un
+> agrégat illisible, sept fois la sortie a été de **garder la structure sous-jacente au lieu
 > de la réduire à un nombre**. À essayer **avant** d'invoquer ce §4.
+> *(Compte corrigé le 8 août 2026 : il était resté à cinq. Sixième instance —
+> [#23](https://github.com/left-eyebr0w/murphy/issues/23), la largeur appariée par document
+> contre `r_A+r_B` ; septième — [#19](https://github.com/left-eyebr0w/murphy/issues/19), le
+> versant *inter* de l'accord entre assesseurs, qui refuse le kappa au profit d'une
+> ventilation par porte.)*
+>
+> ⚠️ **Un candidat examiné et écarté le 8 août 2026, pour que le compte ne dérive pas dans
+> l'autre sens** : la **famille sentinelle de `p`** d'ADR-007 §4 réécrit
+> ([#19](https://github.com/left-eyebr0w/murphy/issues/19)) **n'est pas** une huitième
+> instance. La faute réparée n'était pas une **somme prise trop tôt** — signature de
+> l'idiome — mais une **dérivation depuis la mauvaise source** (`p` tiré de l'effort
+> d'annotation au lieu du lecteur), et une **grandeur de décision unique est conservée**.
+> C'est le motif d'une **sentinelle** (§4 ci-dessous : seuil facultatif), non celui d'un
+> refus d'agréger. **Le compte reste à sept.**
+>
+> ⚠️ **Précision du 8 août 2026** ([#19](https://github.com/left-eyebr0w/murphy/issues/19)) —
+> **un seuil n'est pas nécessairement un nombre.** La restriction ci-dessus exige qu'une
+> résolution d'instrument porte un seuil ; elle **n'exige pas** qu'il soit numérique. Sa
+> **seconde application** en est la preuve : la porte q1 de l'accord inter-assesseurs reçoit
+> un seuil **structurel** — *zéro désaccord inattribuable à un défaut de cas réparable* —
+> qui peut échouer, donc qui satisfait ce §4 sans chiffre. Sans cette précision, un lecteur
+> jugerait ce seuil non conforme et chercherait à lui inventer une valeur.
 
 On pré-enregistre **la grandeur, sa direction et l'engagement à la publier** ;
 pas de valeur de déclenchement. Un seuil dont on ignore ce qu'il vaut ne rend pas

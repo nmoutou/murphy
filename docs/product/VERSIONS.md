@@ -22,7 +22,7 @@ récupération.
 | **In** | LEGI (fait) + les **5 bases de jurisprudence** (CASS, INCA, CAPP, JADE, CONSTIT — ADR-002) ingérées avec identité canonique **vérifiée sur les 3 BDD** (ADR-018) ; harnais d'évaluation (strates 1–3 + diagnostic de co-citation + set synthétique solo — ADR-017, amendé ADR-029) ; baseline chiffrée et reproductible |
 | **Out** | Applicatif web, experts, bases DILA non jurisprudentielles, LLM générateur branché à l'évaluation |
 | **Critères d'entrée** | Pipeline LEGI stable ; modèle de données tri-base arrêté |
-| **Critères de sortie** | DoD du `CADRAGE_evaluation` (étendu jurisprudence) : identité canonique vérifiée · adapter baseline implémenté · golden-set v1 **identifié par ses trois hashes** et versionné · scorer **`RBP(p)` + résidu** ([ADR-007](ADR/ADR-007-metrique-rbp-residu.md), réécrit le 2 août 2026 — *ancienne rédaction : « nDCG@R + diagnostics MAP, R-Precision, Recall@2R, Doc-MRR, Doc-Recall@R », tous retirés sauf Doc-MRR qui devient une lecture*) · test statistique apparié **sous la porte du résidu** (un intervalle d'écart contenant zéro n'admet aucun test) · ≥ 1 set diagnostique graph-hop · stratification en 4 types d'action (ADR-009) · baseline reproductible |
+| **Critères de sortie** | DoD du `CADRAGE_evaluation` (étendu jurisprudence) : identité canonique vérifiée · adapter baseline implémenté · golden-set v1 **identifié par ses trois hashes** et versionné · scorer **`RBP(p)` + résidu** ([ADR-007](ADR/ADR-007-metrique-rbp-residu.md), réécrit le 2 août 2026 — *ancienne rédaction : « nDCG@R + diagnostics MAP, R-Precision, Recall@2R, Doc-MRR, Doc-Recall@R », tous retirés sauf Doc-MRR qui devient une lecture* ; **§4 réécrit le 8 août 2026** — [#19](https://github.com/left-eyebr0w/murphy/issues/19) : `p` vient du **lecteur** et non de l'effort d'annotation, une **famille sentinelle** l'accompagne sans seuil ; les critères ci-dessous sont **inchangés**) · test statistique apparié **sous la porte du résidu** (un intervalle d'écart contenant zéro n'admet aucun test) · ≥ 1 set diagnostique graph-hop · stratification en 4 types d'action (ADR-009) · baseline reproductible |
 
 ## Alpha phase 1 — « Usage & requêtes réelles » ✅ (ADR-013)
 
@@ -107,9 +107,24 @@ communautaire** (ci-dessous). Tout le reste est tranché.
 **ADR-035** (2 août 2026) aligne le paradigme d'évaluation sur le TREC
 Legal Track et distingue **deux machines** : **A** — produire la
 collection de test (*corpus figé + topics + qrels*), menable en solo,
-c'est **P2** ; **B** — la campagne où des équipes indépendantes
+c'est **P2** — *« en solo » est une **propriété** de la machine et un choix
+de **prudence** (s'assurer de la qualité avant de montrer, en préparation
+de l'ouverture), non une autarcie : un lecteur extérieur peut intervenir dès
+la v0 sans que la propriété tombe, ce qui est exclu étant d'en **dépendre
+pour livrer** ([#19](https://github.com/left-eyebr0w/murphy/issues/19),
+8 août 2026)* ; **B** — la campagne où des équipes indépendantes
 soumettent des runs concurrents, poolés et jugés, **structurellement
-plurielle**. `B ⊃ A` : aucune campagne sans collection préalable.
+plurielle**. ~~`B ⊃ A`~~ **A précède B** : aucune campagne sans collection
+préalable.
+
+> ⛔ **Corrigé le 8 août 2026** — la notation `B ⊃ A` énonçait une **inclusion**
+> là où seule une **précédence d'exécution** avait été démontrée. L'inclusion a
+> été **retirée** le 2 août par [#18](https://github.com/left-eyebr0w/murphy/issues/18)
+> et ADR-035 §2 porte l'amendement depuis ; ce fichier ne l'avait pas reçu. La
+> glose (« aucune campagne sans collection préalable ») était, elle, correcte —
+> c'est bien la précédence. Conséquence à ne pas manquer : **A et B sont séparées
+> par une frontière fixe**, et ce qui, côté B, n'a besoin que du **contrat** peut
+> se construire dès maintenant.
 
 La machine A est **entièrement couverte** par la trajectoire ci-dessus :
 golden-set v1 en v0, golden-set v2 (expert, poolé, calibré) en alpha

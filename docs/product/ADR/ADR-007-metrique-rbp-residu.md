@@ -3,6 +3,9 @@
 **Statut** : acté (chantier 4, 17 juillet 2026) — **réécrit le 2 août 2026**
 ([ticket #14](https://github.com/left-eyebr0w/murphy/issues/14)) — **§6.2 amendé
 le 8 août 2026** ([ticket #23](https://github.com/left-eyebr0w/murphy/issues/23))
+— **§4 réécrit le 8 août 2026** ([ticket #19](https://github.com/left-eyebr0w/murphy/issues/19)) :
+la règle `p = 0,01^(1/d̄)` et la valeur 0,750 sont **retirées**, `p` vient
+désormais du **lecteur** ; `d_min` passe de 100 à **200**
 
 > ⚠️ **Cet ADR a été réécrit, pas amendé.** Sa décision de 2026-07-17 était
 > `nDCG@R` ; elle est **retirée**. Ce qui survit est son **argument** — le refus
@@ -67,7 +70,8 @@ demande pas `R` : il couvre donc aussi les cas gratuits, où il n'y a d'ailleurs
 jugé par construction.
 
 **Conséquence, et elle est forte : le résidu de la couche gratuite est nul.**
-Pas de trous, et une queue de `0,75¹⁰⁰ ≈ 3·10⁻¹³` sous le `d_min` du §4. **Toute
+Pas de trous, et sous le `d_min = 200` du §4 une queue de `0,80²⁰⁰ ≈ 5·10⁻²⁰` au
+`p` de décision, `0,95²⁰⁰ ≈ 3·10⁻⁵` au membre le plus exigeant de la famille. **Toute
 l'incertitude du dispositif vient donc des 30 cas jugés.** C'est un effet du
 découplage de `d_min`, qui n'ouvre pas seulement l'avenir de `p` : il annule le
 résidu là où les qrels sont complètes par construction.
@@ -102,51 +106,154 @@ donc il n'a plus besoin d'une coupe adaptative pour réaliser ce refus.
 R-précision et à `F1@R` (TREC Legal Track 2009 §3.10.4 : *« at depth R,
 precision, recall and F1 are all the same »*).
 
-### 4. `p` est fixé par une **règle**, jamais par une valeur
+### 4. `p` vient du **lecteur**, jamais de l'effort d'annotation
 
-> `p` est le plus grand `p` tel que le **résidu de queue** à la profondeur de
-> jugement médiane atteinte reste sous la précision qu'on prétend publier :
-> `p^d̄ ≤ 0,01`, soit **`p = 0,01^(1/d̄)`**.
+> ⚠️ **§4 réécrit le 8 août 2026** ([#19](https://github.com/left-eyebr0w/murphy/issues/19)).
+> La règle antérieure — *« `p` le plus grand tel que `p^d̄ ≤ 0,01`, soit
+> `p = 0,01^(1/d̄)` »* — et sa valeur de planification **0,750** sont **retirées**.
+> Rédaction antérieure et motif du retrait dans l'encadré en fin de section.
 
-*On achète le modèle d'utilisateur le plus persistant que le budget sache
-mesurer.* Le droit est orienté rappel et pousse vers un `p` élevé ; le budget
-l'interdit, et la règle dit de combien.
+**Prémisse : deux dimensions, jamais additionnées.** La **profondeur de pool**
+`d` (combien de rangs sont jugés) gouverne le **résidu**. La **redondance** `n`
+(combien d'assesseurs par couple *(cas, document)*) gouverne l'**accord**
+([#19](https://github.com/left-eyebr0w/murphy/issues/19)). Elles sont
+orthogonales ; les porter à un même budget est une confusion de catégorie, et
+c'est celle qui a produit la règle retirée.
 
-| `p` | Poids top 10 | Docs examinés `1/(1−p)` | Résidu de queue à `d̄ = 16` |
-|---|---|---|---|
-| 0,50 | 99,9 % | 2 | 0,000015 |
-| **0,750** | **94 %** | **4,0** | **0,010** |
-| 0,80 | 89 % | 5 | 0,028 |
-| 0,90 | 65 % | 10 | 0,185 |
-| 0,95 | 40 % | 20 | 0,440 |
+#### a. Le `p` de décision — un seul, déclaré *ex ante*
 
-- **Au pilote la règle se résout en forme close.** Un seul run : l'allocation
-  gloutonne dégénère en « juger dans l'ordre de rang »
-  ([#18](https://github.com/left-eyebr0w/murphy/issues/18) §6), le poids au rang
-  `i` vaut `(1−p)·p^(i−1)` pour tous les cas, donc la profondeur atteinte est
-  **uniforme quel que soit `p`** — il n'y a ni valeur provisoire ni circularité.
-  **`d̄` compte les jugements *neufs*, non les jugements *rendus*** : le
-  **contrôle d'auto-cohérence** (≈ 20 % du budget,
-  [#9](https://github.com/left-eyebr0w/murphy/issues/9) condition 2, inscrit au
-  budget par [#11](https://github.com/left-eyebr0w/murphy/issues/11)) re-juge des
-  couples *(cas, document)* **déjà jugés** et n'ajoute donc **aucune
-  profondeur**. Sur ≈ 600 jugements dont 20 % de re-jugement :
-  `480 / 30 = 16`, d'où **`p = 0,01^(1/16) = 0,750`**.
-- **C'est une valeur de *planification*, pas le mot de la fin.** `d̄` est une
-  profondeur **mesurée** : le pilote la rendra, et `p` s'y ajustera. Ce que 0,750
-  fixe est l'allocation *pendant* le pilote — donc ce qui produira `d̄`.
-- **En campagne**, `p` est **déclaré par génération de pool**, calculé sur la
-  profondeur médiane réalisée de la génération précédente.
+`p` est un **modèle de lecteur** (Moffat & Zobel : probabilité de passer au
+résultat suivant). Il se déclare donc depuis ce que le lecteur **reçoit**, et
+jamais depuis ce que le porteur peut se payer.
+
+> **Ancre** : le système sert `RETRIEVAL_TOP_K = 5` sources. Le lecteur en voit
+> cinq, et `1/(1−p) = 5` donne **`p = 0,80`**.
+
+- Il est **déclaré avant** de regarder les runs. Le choisir après est
+  littéralement la circularité d'ADR-032 §5 ; son motif ne peut jamais être un
+  résultat.
+- **Condition d'emploi** : si une configuration comparée modifie le **nombre de
+  sources affichées**, l'ancre tombe et `p` se redéclare sur une autre base.
+- **Il est révisable, et son remplaçant est déjà identifié** : l'**alpha ph.1**
+  met Murphy entre les mains d'experts réels — c'est là que la persistance
+  s'**observe** au lieu de s'assumer. Le paramètre cesse alors de venir d'une
+  ancre de produit pour venir d'un usage mesuré.
 - **`p` est publié avec tout score.** Deux runs notés à des `p` différents ne
   sont pas comparables ; la re-notation (ADR-032 §2) restaure la comparabilité.
-- **Identité à ne pas manquer** : sous cette règle, la formule d'origine
-  `d_min = ⌈ln(0,01)/ln(p)⌉` rend **exactement `d̄`** — soit 16. Le découplage du
-  §4 n'ajoute donc pas de la marge à une marge : il en crée là où il n'y en avait
-  **aucune**.
-- **Le résidu de queue n'est employé que pour ce qu'il sait faire.** `p^d` n'est
-  **pas** le résidu total — le terme des trous s'y ajoute, rang par rang — donc
-  il ne borne aucun score. Il est en revanche la seule part connaissable *avant*
-  expérimentation, donc l'instrument exact pour choisir `p` *ex ante*.
+
+#### b. La famille sentinelle — 0,50 / 0,80 / 0,95
+
+Le `p` de décision répond à *« pour le lecteur que nous servons, de combien A
+vaut-il mieux que B ? »*. Il ne répond pas à *« cette conclusion tient-elle quel
+que soit le lecteur ? »*. Cette seconde question a son propre organe : **la
+famille**, publiée à côté, **sans seuil**, sur le modèle exact de la sentinelle
+du §6.2 — *elle n'est pas la résolution de l'instrument, elle l'audite*
+(ADR-034 §4 : seuil obligatoire pour la résolution, facultatif pour une
+sentinelle).
+
+| `p` | Poids top 10 | Docs examinés `1/(1−p)` | Queue `p^d` à `d = 5` | à `d = 10` | à `d = 20` |
+|---|---|---|---|---|---|
+| 0,50 | 99,9 % | 2 | 0,031 | 0,00098 | ~10⁻⁶ |
+| **0,80** *(décision)* | **89 %** | **5** | **0,328** | **0,107** | **0,012** |
+| 0,95 | 40 % | 20 | 0,774 | 0,599 | 0,358 |
+
+- **La famille ne bloque pas, elle dicte la phrase.** Si A l'emporte à 0,50 et
+  perd à 0,95, la conclusion n'est pas refusée : la phrase à écrire devient *« A
+  l'emporte pour un lecteur pressé, B pour un lecteur persistant »*. C'est un
+  **résultat sur les configurations**, pas une panne — même mécanique qu'au §6.3,
+  où l'instrument dicte le libellé sans rendre de feu vert ou rouge.
+- **Un veto serait une agrégation déguisée.** Exiger qu'une conclusion survive à
+  *tous* les `p` ferait gouverner le membre le plus conservateur ; la famille
+  n'est donc pas une porte.
+- **Elle se publie entière ou pas du tout.** Le dépôt a déjà refusé deux fois de
+  publier deux grandeurs dont l'une serait plus commode à citer (quatrième hash,
+  [#18](https://github.com/left-eyebr0w/murphy/issues/18) §0 ; largeur non
+  resserrée, [#23](https://github.com/left-eyebr0w/murphy/issues/23)). Ici aucun
+  membre n'est uniformément plus flatteur — une config qui gagne à 0,50 perd à
+  0,95 — mais la règle de publication entière **s'écrit**, elle ne se déduit pas.
+
+#### c. `d_min` passe de 100 à **200**
+
+Le membre le plus exigeant de la famille l'impose : `0,95¹⁰⁰ ≈ 0,6 %` n'est plus
+négligeable devant une largeur qui rétrécit, `0,95²⁰⁰ ≈ 3·10⁻⁵` l'est. C'est une
+profondeur d'**archive** — un coût de stockage, pas de jugement — donc le
+relèvement est préférable à une troncature de la famille.
+
+#### d. Ce que la profondeur de jugement gouverne désormais : le **résidu**, pas `p`
+
+`p` étant libéré de `d`, la queue vaut `0,80^d` et **décroît avec les passes** :
+0,33 au niveau 5, 0,107 au niveau 10, 0,012 au niveau 20. Le résidu **rapporte
+donc l'avancement de la couverture**, ce que la règle retirée lui interdisait.
+Il retrouve le ≈ 1 % que celle-ci épinglait — mais **gagné** au lieu d'être
+décrété.
+
+Il n'y a plus de budget de profondeur : **la porte du §6.3 est le critère
+d'arrêt** — on étend la profondeur tant que l'intervalle d'écart contient zéro
+pour l'effet qu'on veut détecter. La redondance a son critère jumeau, la **table
+de réparation** de #19. Aucun des deux n'est budgétaire ; chacun se lit sur son
+instrument, et un effort insuffisant ne rate plus une cible — il laisse la porte
+fermée, phrase déjà écrite au §6.3.
+
+**Et l'ordonnancement par famine ([#19](https://github.com/left-eyebr0w/murphy/issues/19),
+protocole en ADR-038) est ce qui rend cette porte non manipulable** : « juger
+jusqu'à ce que l'intervalle exclue zéro » est exposé à l'**arrêt optionnel**.
+La famine retire ce pouvoir — on ne choisit pas *quels* couples juger, et on
+s'arrête à une **frontière de passe**, non à un instant. C'est le garde-fou de
+circularité d'ADR-032 §5 porté sur le temps de l'allocation.
+
+**Le résidu de queue n'est employé que pour ce qu'il sait faire.** `p^d` n'est
+**pas** le résidu total — le terme des trous s'y ajoute, rang par rang — donc il
+ne borne aucun score.
+
+> ⚠️ **Rédaction antérieure (2 août – 8 août 2026), retirée par [#19](https://github.com/left-eyebr0w/murphy/issues/19).**
+>
+> > « `p` est le plus grand `p` tel que le **résidu de queue** à la profondeur de
+> > jugement médiane atteinte reste sous la précision qu'on prétend publier :
+> > `p^d̄ ≤ 0,01`, soit **`p = 0,01^(1/d̄)`**. *On achète le modèle d'utilisateur le
+> > plus persistant que le budget sache mesurer.* […] `d̄` compte les jugements
+> > *neufs*, non les jugements *rendus* : le contrôle d'auto-cohérence (≈ 20 % du
+> > budget, [#9](https://github.com/left-eyebr0w/murphy/issues/9) condition 2,
+> > inscrit au budget par [#11](https://github.com/left-eyebr0w/murphy/issues/11))
+> > re-juge des couples déjà jugés et n'ajoute donc aucune profondeur. Sur ≈ 600
+> > jugements dont 20 % de re-jugement : `480 / 30 = 16`, d'où
+> > `p = 0,01^(1/16) = 0,750`. […] En campagne, `p` est déclaré par génération de
+> > pool, calculé sur la profondeur médiane réalisée de la génération précédente.
+> > […] Identité à ne pas manquer : sous cette règle, `d_min = ⌈ln(0,01)/ln(p)⌉`
+> > rend exactement `d̄` — soit 16. »
+>
+> **L'intention était honnête** — ne pas revendiquer un lecteur qu'on ne sait pas
+> mesurer. **Quatre défauts la condamnent** :
+>
+> 1. **Elle neutralise le résidu de queue.** Par construction `p^d̄ ≤ 0,01` : juger
+>    moins profond fait baisser `p`, et la queue reste à 1 %. La part du résidu qui
+>    répond à *« ai-je jugé assez profond ? »* était **épinglée quelle que soit la
+>    profondeur**. L'« identité à ne pas manquer » aggravait le défaut en rendant
+>    `d_min = d̄` : **le modèle de lecteur était défini pour s'arrêter précisément où
+>    le jugement s'arrêtait**, donc RBP ne pouvait jamais voir qu'une configuration
+>    avait enterré un bon document au rang 25.
+> 2. **Elle inverse l'instrument.** Noter à `p = 0,95` sur une profondeur 16 donne
+>    un résidu de 0,44 : ce n'est pas malhonnête, c'est **le rapport honnête** — *« à
+>    ce niveau de persistance, je ne peux rien distinguer »*. La règle remplaçait un
+>    gros résidu informatif par un petit résidu muet.
+> 3. **Sous une couverture homogène par passes, elle fait de `p` une fonction du
+>    calendrier de travail** : `d̄` devient un niveau de passe, donc `p` vaudrait
+>    0,01 après la passe 1, 0,398 au niveau 5, 0,794 au niveau 20. Le lecteur que
+>    Murphy sert ne devient pas plus patient parce qu'on a jugé davantage la semaine
+>    dernière.
+> 4. **Le `480` confond deux dimensions** : `600 − 20 %` soustrait une quantité de
+>    **redondance** d'une quantité de **profondeur**. Même avec le bon pourcentage,
+>    la soustraction était une confusion de catégorie.
+>
+> **Sens de faute** : la règle rétrécissait le champ de vision de la métrique en
+> même temps que l'effort, si bien qu'un jeu peu jugé **paraissait bien jugé**.
+> Contrairement au défaut de #23, ce sens n'est **pas** conservateur — d'où la
+> réécriture plutôt qu'une note. Aucune mesure n'ayant encore été produite, rien
+> n'est à défaire en aval.
+>
+> *Ce n'est pas une instance de « cesser d'agréger plutôt que baisser le seuil »
+> (ADR-034) : la faute n'était pas une somme prise trop tôt mais une **dérivation
+> depuis la mauvaise source**, et une grandeur de décision unique est conservée.
+> Le compte d'ADR-034 reste à **sept**.*
 
 ### 5. Les grades entrent par **projection linéaire** `g/3`
 
@@ -178,7 +285,7 @@ rejeté l'intensité. Un compte se projette linéairement. La pertinence gradué
    **atteinte** à un sommet (`g(d) ∈ {0,1}`), donc atteignable sur l'échelle 0–3
    projetée en `g/3`. Le terme de **queue** fait exception et reste additif : les
    documents au-delà du rang `d_min` ne sont pas identifiés, donc ne s'apparient
-   pas (`0,75¹⁰⁰ ≈ 3·10⁻¹³`).
+   pas (`0,80²⁰⁰ ≈ 5·10⁻²⁰`, et `0,95²⁰⁰ ≈ 3·10⁻⁵` au pire membre de la famille).
 
    `r_A + r_B` **majore** cette largeur au lieu de lui être égal, avec égalité au
    seul cas où les ensembles de non-jugés sont disjoints. **L'allocation
@@ -210,8 +317,12 @@ rejeté l'intensité. Un compte se projette linéairement. La pertinence gradué
    `g(d)` n'est pas le même objet des deux côtés et l'appariement n'existe pas) ·
    l'échelle de gain **contient 0 et 1** (sinon la borne reste valide et cesse
    d'être atteignable) · la queue reste négligeable **relativement** à une largeur
-   qui, elle, rétrécit (à `p` = 0,955 elle vaut ≈ 1 % : à rouvrir si `p` monte
-   en v2) · il y a **plusieurs** configurations comparées et des contributeurs qui
+   qui, elle, rétrécit — ⚠️ **condition satisfaite autrement depuis le §4 réécrit**
+   ([#19](https://github.com/left-eyebr0w/murphy/issues/19)) : la famille sentinelle
+   admet `p = 0,95`, ce qui aurait fait valoir la queue ≈ 0,6 % à l'ancien
+   `d_min = 100` ; le relèvement à **200** la ramène à `3·10⁻⁵`. **À rouvrir si un
+   `p` au-delà de 0,95 entre dans la famille sans que `d_min` suive** · il y a
+   **plusieurs** configurations comparées et des contributeurs qui
    ne sont pas comparés (#18 §4), ce qui interdit une allocation par paire.
 
    > ⚠️ **Rédaction antérieure (2 août 2026, [#14](https://github.com/left-eyebr0w/murphy/issues/14)), retirée le 8 août.**
@@ -280,11 +391,19 @@ rejeté l'intensité. Un compte se projette linéairement. La pertinence gradué
   [#18](https://github.com/left-eyebr0w/murphy/issues/18) §8 clause 1). La
   profondeur d'**archive** n'est pas une grandeur de mesure ; sans ce
   découplage, une hausse de `p` rendrait inexploitables les runs déjà archivés.
-- **Le dimensionnement reçoit une seconde dérivation.** La porte du §6.3 donne
-  un critère là où [#11](https://github.com/left-eyebr0w/murphy/issues/11)
-  n'avait qu'une règle de trois : *on juge jusqu'à ce que l'intervalle d'écart
-  exclue zéro pour l'effet qu'on veut détecter*
-  ([#20](https://github.com/left-eyebr0w/murphy/issues/20)).
+  ⚠️ **Porté à 200 le 8 août 2026** (§4c) — et le découplage y démontre son
+  utilité en acte : l'entrée de `p = 0,95` dans la famille sentinelle ne touche
+  **aucune mesure**, seulement l'archive.
+- ⚠️ **Le dimensionnement n'a plus qu'une seule dérivation, et c'est celle-ci**
+  (amendé le 8 août 2026, [#19](https://github.com/left-eyebr0w/murphy/issues/19)).
+  La porte du §6.3 donne un critère là où
+  [#11](https://github.com/left-eyebr0w/murphy/issues/11) n'avait qu'une règle de
+  trois : *on juge jusqu'à ce que l'intervalle d'écart exclue zéro pour l'effet
+  qu'on veut détecter* ([#20](https://github.com/left-eyebr0w/murphy/issues/20)).
+  La règle de trois de #11 **ne fonde plus aucun paramètre** — elle reste une aide
+  à la **planification** horaire, jamais une source de grandeur (§4). C'est ce
+  critère-là qui rendait le budget de profondeur superflu depuis le 2 août ;
+  personne ne l'avait branché sur la question de l'allocation.
 - **Sensibilité à la complétude des qrels : le sens du problème change.** La
   rédaction antérieure la subissait (`R` dépend des jugements). RBP la **mesure**
   et la publie ; et contrairement à `nDCG@R`, augmenter la profondeur de
@@ -301,7 +420,10 @@ rejeté l'intensité. Un compte se projette linéairement. La pertinence gradué
 ADR-005 (échelle 0–3, cascade q1–q3) · ADR-006 (agrégation) · ADR-008 (format
 qrels/runs) · ADR-016 (pertinence graduée, invariant) · ADR-029 (strate 2
 rétrogradée) · ADR-030 (ventilation — réserve dissoute) · ADR-032 (re-notation)
-· ADR-035 (paradigme TREC) · `docs/product/recherche/incompletude-qrels.md`
+· ADR-034 (triangulation ; seuil facultatif pour une sentinelle, §4) · ADR-035
+(paradigme TREC ; profondeur de soumission au contrat de frontière) · ADR-038
+(protocole d'assessment — famine, passes, redondance)
+· `docs/product/recherche/incompletude-qrels.md`
 §4–§7 · `docs/product/recherche/deep-sampling-legal-track.md` §3 ·
 `VERSIONS.md` (DoD v0)
 

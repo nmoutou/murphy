@@ -55,13 +55,28 @@ Motif : le primat du rappel. Les traits transférables sont ceux calibrés sous 
 - **Machine A — production d'une collection de test réutilisable** : le triplet *corpus
   figé + topics + qrels*. Menable **en solo**. C'est, mot pour mot, la raison d'être de
   **P2**.
+
+  > **Précision du 8 août 2026** ([#19](https://github.com/left-eyebr0w/murphy/issues/19)) —
+  > *« menable en solo »* est une **propriété de la machine**, pas un vœu d'autarcie, et son
+  > motif est de la **prudence** : le porteur s'assure de la qualité de ce qu'il montre
+  > **avant** de le montrer, en préparation de l'ouverture. Un lecteur extérieur peut donc
+  > intervenir dès la v0 **sans que la propriété tombe** — ce qui est exclu est d'en
+  > **dépendre pour livrer**. Corollaire opératoire côté assessment : l'**essai de
+  > l'appareil** se mène à **deux casquettes portées par une seule tête** (il teste la
+  > machinerie), tandis que la **mesure d'extériorité** attend une tête distincte —
+  > une seule tête ne peut pas constater qu'un critère sort d'elle (ADR-038). La frontière
+  > entre les deux régimes est **floue, et assumée comme telle**.
 - **Machine B — campagne communautaire** : plusieurs équipes indépendantes soumettent des
   *runs* concurrents, poolés et jugés. **Structurellement plurielle.**
 
 **Elles sont séparées par une frontière fixe, et cette frontière est le contrat de
 recevabilité** arrêté par [#18](https://github.com/left-eyebr0w/murphy/issues/18) §8 :
 projections déterministes vers les qrels/runs TREC plats (ADR-008), profondeur minimale de
-soumission dérivée de `p`, déclaration du hash corpus, résidu RBP comme signal
+soumission dérivée de `p` — ⚠️ **précisé le 8 août 2026**
+([#19](https://github.com/left-eyebr0w/murphy/issues/19)) : `p` n'étant plus un scalaire
+unique mais un **`p` de décision plus une famille sentinelle** (ADR-007 §4 réécrit), la
+profondeur de soumission dérive du membre **le plus exigeant**, c'est-à-dire de
+**`d_min = 200`**. C'est un terme du contrat, donc il s'écrit —, déclaration du hash corpus, résidu RBP comme signal
 d'appartenance au pool, embargo sur les requêtes booléennes. Avant #18, il n'existait **rien
 à quoi une frontière pût se fixer** — c'est pourquoi l'amendement n'était pas prononçable
 plus tôt.

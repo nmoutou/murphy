@@ -786,6 +786,16 @@ n'est pas ré-interprétable après coup.
 >   pondération RBP, **jamais une profondeur fixe** (CLEF eHealth 2016 ; dossier
 >   [`recherche/realisme-collections.md`](recherche/realisme-collections.md) §5).
 >   Ordre de grandeur : 30 questions × pool ≈ 20 ≈ **600 jugements**.
+>   > ⚠️ **Corrigé le 8 août 2026** ([#19](https://github.com/left-eyebr0w/murphy/issues/19)) —
+>   > *« jamais une profondeur fixe »* **survit**, mais le **total** cesse d'être une
+>   > grandeur gouvernante. Le budget redevient de la **planification** (combien d'heures
+>   > je me réserve) et ne fonde **plus aucun paramètre ni critère** : deux dimensions
+>   > orthogonales, la **profondeur de pool** (RBP gouverne l'admission) et la
+>   > **redondance** (la famine la gouverne), chacune avec son critère d'arrêt lu sur son
+>   > instrument — **porte du résidu** (ADR-007 §6.3) et **table de réparation** (ADR-038).
+>   > Le `600` reste un ordre de grandeur de planification ; le **`480 = 600 − 20 %`** qui
+>   > en était tiré est **retiré** — il soustrayait de la redondance à de la profondeur, et
+>   > c'est lui qui fondait l'ancien `p = 0,750` (ADR-007 §4 réécrit).
 > - **§7.2 garde sa prémisse et perd sa conclusion.** Le rejeu qu'il cherchait à
 >   éviter est **déjà au calendrier** — ADR-003 diffère la vague 2 à « après retours
 >   alpha », et `VERSIONS.md` place alpha ph.1 juste après v0. Un lot post-panel
