@@ -7,7 +7,9 @@
 > Échelles : probabilité et impact **F**aible / **M**oyen / **É**levé.
 > Réponses PM² : éviter / réduire / accepter / transférer.
 >
-> État au **2 août 2026** (R-05 actualisé, R-09 ajouté — ADR-035).
+> État au **8 août 2026** — R-05 : renforts des 2, 5 et 8 août (le dernier lui
+> donnant enfin son **constat**, [#19](https://github.com/left-eyebr0w/murphy/issues/19)) ;
+> R-09 ajouté le 2 août (ADR-035), **précisé le 8 août** (v0 reste solo-livrable).
 
 | ID | Risque | P | I | Réponse | Mitigation / déclencheur de revue |
 |---|---|---|---|---|---|

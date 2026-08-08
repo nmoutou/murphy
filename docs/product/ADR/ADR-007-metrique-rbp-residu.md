@@ -187,6 +187,17 @@ donc l'avancement de la couverture**, ce que la règle retirée lui interdisait.
 Il retrouve le ≈ 1 % que celle-ci épinglait — mais **gagné** au lieu d'être
 décrété.
 
+**Fait conservé de la rédaction antérieure, et il devient charnière** : le poids
+RBP au rang `i` vaut `(1−p)·p^(i−1)` — **le même pour tous les cas**. L'allocation
+gloutonne de [#18](https://github.com/left-eyebr0w/murphy/issues/18) §6 dégénère
+donc en « juger dans l'ordre de rang », et la profondeur atteinte est **uniforme
+quel que soit `p`**. Ce fait ne dépendait en rien de la règle retirée ; il est ce
+qui rend l'**admission par couche complète** (rang `d+1` pour toutes les questions
+à la fois) non pas une contrainte ajoutée par #19 mais la forme **déjà produite**
+par l'allocation de #18. Les deux régimes ne se contredisent pas : **RBP gouverne
+l'admission, la famine gouverne la redondance**, et l'homogénéité tient dans les
+deux dimensions sans arbitrage à écrire.
+
 Il n'y a plus de budget de profondeur : **la porte du §6.3 est le critère
 d'arrêt** — on étend la profondeur tant que l'intervalle d'écart contient zéro
 pour l'effet qu'on veut détecter. La redondance a son critère jumeau, la **table

@@ -1,7 +1,7 @@
 # STATUS — État du programme par projet
 
-Dernière mise à jour : 5 août 2026 ([#15](https://github.com/left-eyebr0w/murphy/issues/15)
-— précédente : 22 juillet, B-07). Structure alignée
+Dernière mise à jour : 8 août 2026 ([#19](https://github.com/left-eyebr0w/murphy/issues/19)
+— précédentes : 5 août [#15](https://github.com/left-eyebr0w/murphy/issues/15), 22 juillet B-07). Structure alignée
 sur `PROGRAM.md` §2 (chantier 7). Version en cours : **v0** (voir
 `VERSIONS.md`).
 
@@ -35,7 +35,7 @@ sur `PROGRAM.md` §2 (chantier 7). Version en cours : **v0** (voir
 | Invariants structurels strate 1 (ADR-017) | ✅ Fait (B-06) — part *pure* dans `eval/` (`core/services/invariants.py`), aucune BDD : rangs contigus/uniques, pas de doublon, ids non vides, namespaces run↔qrels ; loaders JSONL validants (`InvariantError`). Strate 1 *live* (complétude/liens) hors v0, déjà acquise côté data |
 | Test statistique apparié (ADR-007) | ❌ À implémenter (B-10) |
 | Diagnostic de co-citation (strate 2 — **ADR-029**, ex-« qrels citation-minées ») | ✅ Socle fait (B-07) — commande `murphy-eval-cocitation` dans `eval/`, chemin de lecture Neo4j dédié (hors `ragcore`, ADR-027), artefacts versionnés `eval/artifacts/cocitation/`. **Premier jeu réel : 1456 paires, 726 documents**, reproductible bit-à-bit. Exhaustivité des labels documentaires **prouvée** (1456 avec/sans filtre). ⚠️ Sort du verbe `contains` (726 paires, structure documentaire et non citation) **à trancher avant B-09** |
-| Golden-set v1 synthétique + guide d'annotation (ADR-005) | ❌ À produire — **spécification en cours**, conduite en carte de wayfinding ([#1](https://github.com/left-eyebr0w/murphy/issues/1)). Au 5 août : **15 décisions closes, 6 tickets ouverts**, aucun bloqué. Acquis structurants — axe unique des mécanismes (**liste 7, composition v1 5**), `N_cas` = 150 dont 30 jugés et `N_q` ≥ 180, plancher de **30 cas/mécanisme**, métrique **`RBP(p) + résidu`** (`nDCG@R` et `F1@K` retirés), trois hashes d'identification à la place du gel, protocole de pooling à allocation gloutonne, **six** contraintes de rédaction acquises pour le guide. **Rien n'est écrit tant que la carte n'est pas close** : elle s'arrête avant la première question et avant tout code, et atterrit en **ADR-036** |
+| Golden-set v1 synthétique + guide d'annotation (ADR-005) | ❌ À produire — **spécification en cours**, conduite en carte de wayfinding ([#1](https://github.com/left-eyebr0w/murphy/issues/1)). Au **8 août** : **21 décisions closes, 2 tickets ouverts** ([#21](https://github.com/left-eyebr0w/murphy/issues/21), [#24](https://github.com/left-eyebr0w/murphy/issues/24)), aucun bloqué, aucun réclamé. Acquis structurants — axe unique des mécanismes (**liste 7, composition v1 5**), `N_cas` = 150 dont 30 jugés et `N_q` ≥ 180, plancher de **30 cas/mécanisme**, métrique **`RBP(p) + résidu`** (`nDCG@R` et `F1@K` retirés) avec un **`p` de décision `0,80` venu du lecteur** et une **famille sentinelle** sans seuil ([#19](https://github.com/left-eyebr0w/murphy/issues/19), ADR-007 §4 réécrit — *la règle `p = 0,01^(1/d̄)` est retirée*), trois hashes d'identification à la place du gel, protocole de pooling à **allocation gloutonne pour l'admission** et **règle de famine pour la redondance**, **huit** contraintes de rédaction acquises pour le guide. **Rien n'est écrit tant que la carte n'est pas close** : elle s'arrête avant la première question et avant tout code, et atterrit en **ADR-036** (contenu) et **ADR-038** (protocole d'assessment) |
 
 ## P3 — Applicatif
 
