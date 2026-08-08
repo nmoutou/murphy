@@ -248,7 +248,12 @@ le fichier*.
   `porteur` | `llm`, rempli sur `concept_vers_instance` seul). Le motif de la dérogation
   ci-dessus est **re-fondé** : la v1 étant uniforme, `origin` est reconstituable depuis la
   version, et son dernier appui est qu'une correction puisse réécrire le texte d'un cas —
-  question ouverte de [#21](https://github.com/left-eyebr0w/murphy/issues/21).*
+  ~~question ouverte de [#21](https://github.com/left-eyebr0w/murphy/issues/21)~~ **tranchée
+  le 8 août : l'appui tombe, mais pas par l'immuabilité du texte** (une réécriture sans
+  changement de sujet garde son id et déplace le hash `cas`) — **l'intake ne transporte
+  jamais de texte**, l'unité étant une contestation et les corrections étant dérivées en
+  interne, donc `origin` reste à variance nulle **sous toutes les ères** et la dérogation est
+  à reprendre à l'écriture d'ADR-036.*
 - **Date pivot** — la proposition du §7 de `B-08-generation-requetes.md` *(fichier supprimé le
   7 août par [#13](https://github.com/left-eyebr0w/murphy/issues/13) ; sa résolution en tient
   lieu)* tient sur le fond

@@ -191,10 +191,25 @@ il doit être **indépendant du système évalué**.
   en **ADR-036** avec le reste de l'enregistrement ; le **taux de rejet à l'authoring**,
   publié sans seuil et ventilé par cause, est une **sentinelle** du rapport.
 - **`origin` reste à variance nulle en v1** : sous cet ADR le porteur écrit **tous** les
-  textes. La dérogation qui le conserve est suspendue à
+  textes. ~~La dérogation qui le conserve est suspendue à
   [#21](https://github.com/left-eyebr0w/murphy/issues/21) — *si le texte d'un cas est
   immuable, `origin` redevient reconstituable depuis la version et la dérogation est à
-  reprendre.*
+  reprendre.*~~
+  ✅ **Tranché le 8 août 2026, et pas dans le sens anticipé**
+  ([#21](https://github.com/left-eyebr0w/murphy/issues/21) §1c et §0). **Le texte d'un cas
+  n'est pas immuable** : une réécriture **sans changement de sujet** (coquille, formulation
+  qui viole une contrainte de rédaction) garde son `case_id`, déplace le hash `cas` et
+  laisse les qrels valides ; seul le **changement de sujet** cesse d'être une correction pour
+  devenir un **retrait + ajout** sous id neuf. **La dérogation tombe quand même, et sur un
+  motif plus solide** : l'unité de l'intake est une **contestation, jamais un patch**, et les
+  corrections sont **dérivées et proposées en interne** — donc **l'intake ne transporte
+  jamais de texte**. Un texte corrigé est toujours écrit par le porteur : `origin` reste à
+  variance nulle **sous toutes les ères** (porteur seul, panel ADR-025, communauté), donc
+  **reconstituable depuis la version**, et la dérogation de
+  [#12](https://github.com/left-eyebr0w/murphy/issues/12) §7 est **à reprendre à l'écriture
+  d'ADR-036**. Le motif anticipé ici dépendait du régime d'authoring de la v1 ; celui-ci est
+  **stable sous l'enfichabilité des acteurs**. *(`origine_notion` n'est pas concerné : il
+  relève de la **couche de dérivation** d'ADR-030, pas d'un hash.)*
 - ⚠️ **Réserve assumée — la monoculture stylistique empire.** Le document mort la donnait
   comme *« le seul risque qu'aucune parade interne ne traite »*. Sous cet ADR elle
   s'aggrave : le porteur écrit **seul les 30 textes** du seul mécanisme jugé, là où le

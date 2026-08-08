@@ -123,6 +123,37 @@ rapport trace la version de graphe ayant servi à la dérivation, comme
 
 ### Ce que le golden-set enregistre
 
+> ⚠️ **Section porteuse, à deux réserves — 8 août 2026**
+> ([#21](https://github.com/left-eyebr0w/murphy/issues/21)).
+>
+> **(1) Le mot `gel` y est mort** — sorti du vocabulaire le 2 août 2026
+> ([#18](https://github.com/left-eyebr0w/murphy/issues/18) §0), sixième mot retiré par la
+> carte [#1](https://github.com/left-eyebr0w/murphy/issues/1) : *il ne garantissait la
+> validité de rien*. Remplacement : **on ne gèle rien, on identifie tout** — trois hashes
+> (`corpus` · `cas` · `qrels`) portés par chaque run, deux runs comparables **ssi** ils sont
+> égaux. La dernière phrase du corps ci-dessous se lit donc *« la couche d'observation est
+> **hachée** »*, et le partage qu'elle énonce est **exact et inchangé**.
+>
+> **(2) La couche de dérivation est désormais peuplée, et c'est cette section qui la
+> gouverne.** #21 devait attribuer chaque champ de l'enregistrement à l'un des trois hashes
+> et a constaté que certains ne relèvent d'**aucun** — `mecanisme`, `leurre`, `origin`,
+> `origine_notion`, et le champ *mode de résolution* d'ADR-008. Ce n'est **pas** un manque
+> d'identification ni un quatrième hash : c'est **la couche de dérivation définie ici**, qui
+> porte sa **propre version**. Ses habitants aujourd'hui : le **guide d'annotation**
+> (`guide_version` voyage sur chaque jugement, [#19](https://github.com/left-eyebr0w/murphy/issues/19)),
+> le **vocabulaire des mécanismes** (objet-frontière publié versionné,
+> [#5](https://github.com/left-eyebr0w/murphy/issues/5) §5c — *trois mécanismes renommés la
+> semaine du 5 août, aucun run rejoué*), le **journal des déplacements de hash** et la
+> **requête booléenne rédigée** (#21).
+>
+> ⚠️ **Et c'est le test ci-dessous qui fait autorité**, pas la formule *« le hash suit le
+> coût »* de [#12](https://github.com/left-eyebr0w/murphy/issues/12) §4 : ***« si je change
+> d'avis là-dessus, dois-je rouvrir les documents ? »***. La règle de #12 en est la forme
+> abrégée ; celle-ci est antérieure, plus générale, et tranche les cas où l'autre hésite.
+>
+> La table complète champ → hash s'écrit en `GOLDEN-SET.md` §3 ; le régime, en **ADR-032
+> réécrit**.
+
 Application de la règle d'ADR-028 étendue : *enregistrer ce qui a coûté une
 lecture, dériver le reste*. Le test de tri est opérationnel — **« si je change
 d'avis là-dessus, dois-je rouvrir les documents ? »** Si oui, c'est une

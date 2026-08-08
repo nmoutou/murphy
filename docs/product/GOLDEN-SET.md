@@ -293,7 +293,34 @@ Le **volume** de `pending` n'est pas fixé ici (voir §7 et
 > `narrative` vit dans la couche questions mais appartient au hash **`qrels`**, aucun run ne
 > la consommant.
 >
-> Réécriture d'ensemble : **ADR-036**, à la clôture de la carte.
+> ✅ **La table complète est décidée le 8 août 2026**
+> ([#21](https://github.com/left-eyebr0w/murphy/issues/21) §1) **et c'est ici qu'elle
+> s'écrit.** Reformulation qui la rend calculable : *un hash est une fonction de contenu sur
+> un **ensemble de champs déclaré**, donc la question est « dans quelle **préimage** ».*
+>
+> | Champ | Préimage | Motif |
+> |---|---|---|
+> | `case_id` | **index** de `cas` | identité — **immuable, jamais réemployée** |
+> | `texte` | `cas` | le run l'embarque via la projection `Topic` |
+> | `germe` | `qrels` | les qrels s'en re-dérivent ; aucun run ne le lit |
+> | `narrative` | `qrels` | #12 §4 |
+> | `date_pivot` | `qrels` | l'assesseur en a besoin pour q1 ; aucun run ne le lit |
+> | `variante_de` | `qrels` | lie la variante aux qrels qu'elle **partage** |
+> | `pending` | `qrels` | cas `pending` **interrogés et archivés, exclus du seul scoring** |
+> | `mecanisme`, `leurre`, `origin`, `origine_notion` | **aucune** | **couche de dérivation** (ADR-030) — version propre, pas de hash |
+>
+> **Le test qui fait autorité est celui d'ADR-030**, pas la formule abrégée de #12 §4 :
+> ***« si je change d'avis là-dessus, dois-je rouvrir les documents ? »***. La « troisième
+> catégorie » n'est donc **pas un manque d'identification ni un quatrième hash** : c'est la
+> couche de dérivation, définie de longue date et désormais peuplée (guide, vocabulaire des
+> mécanismes, journal des déplacements de hash, requête booléenne rédigée).
+>
+> ⏳ **Statut de cette table : provisoire, décision du porteur du 8 août 2026.** Elle est écrite ici **maintenant** parce que la marque ci-dessus ne pointait plus vers rien une fois la carte close sur ce point ; la discipline *rien n'est écrit tant que la carte n'est pas close* (`STATUS.md`) reste entière pour le reste, et **§3 est à refondre de toute façon** — avant et après la clôture. Ne pas la lire comme la rédaction définitive.
+>
+> ~~Réécriture d'ensemble : **ADR-036**, à la clôture de la carte.~~ ✅ **Corrigé le 8 août** :
+> le **régime** part en **ADR-032 réécrit** (il gouverne toute collection versionnée, pas le
+> seul golden-set) ; ADR-036 garde le **contenu** et le cimetière de vocabulaire, et cette
+> section-ci garde la **table**.
 
 ### Rédaction antérieure
 
@@ -1118,7 +1145,11 @@ devenir **mesurée** :
 > re-vérifie qu'aucune cible déclarée hors périmètre n'a été ingérée. Ce contrôle
 > **ne devrait jamais se déclencher** — c'est une **alarme**, pas une réparation,
 > et son déclenchement signifie que *la définition du périmètre était fausse*
-> (intake → [#21](https://github.com/left-eyebr0w/murphy/issues/21)). C'est parce
+> (~~intake → [#21](https://github.com/left-eyebr0w/murphy/issues/21)~~ — ✅ **clos le
+> 8 août 2026** : le déclenchement de l'alarme **n'entre pas par l'intake**, qui ne reçoit
+> que des contestations portant sur **ce qui est écrit**. Il est **mécanique** — `pending`
+> est asserté à l'authoring puis vérifié contre le hash `corpus` à chaque version déclarée —
+> et c'est un résultat de premier rang, non une contestation à instruire). C'est parce
 > que cette alarme existe que **rien n'est enregistré par cas**, bien que le
 > périmètre DILA ne soit énuméré par aucun document de ce dépôt.
 

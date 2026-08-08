@@ -39,9 +39,14 @@ de circularité), **clôt D-02** (`WIP/B-08-cadrage.md`)
 >   l'ajoute, et rend la classe **dérivable** (par lequel des trois hashes a bougé) au lieu
 >   de déclarée.
 > - **§5 — le garde-fou de circularité** : *une modification de qrels ne se justifie jamais
->   par un résultat de run*. Inchangé, et il devient la **prémisse** du ticket
->   [Comment une correction entre dans la collection ?](https://github.com/left-eyebr0w/murphy/issues/21),
->   qui lui fournit la **porte d'entrée** qu'il n'a jamais eue.
+>   par un résultat de run*. Inchangé, et ✅ **il a reçu sa porte d'entrée le 8 août 2026** —
+>   [Comment une correction entre dans la collection ?](https://github.com/left-eyebr0w/murphy/issues/21)
+>   est **clos**. Mieux : le garde-fou **cesse d'être un contrôle de politesse**. Le motif
+>   d'une contestation est tiré d'une **liste fermée** (relecture · erreur de transcription ·
+>   incohérence interne · violation d'une contrainte de rédaction · divergence de lecture ·
+>   « autre »), dont aucune case ne peut être satisfaite en citant un résultat de run :
+>   *« cette config remonte ce document, il doit être pertinent »* **n'a plus d'endroit où
+>   s'écrire**. Le §5 devient une propriété du formulaire.
 >
 > ### Ce qui est périmé
 >
@@ -49,8 +54,35 @@ de circularité), **clôt D-02** (`WIP/B-08-cadrage.md`)
 > variantes de gel (« pas de gel du tout », « version unique gelée définitivement »). Elles
 > restent lisibles comme trace du raisonnement ; elles ne décident plus rien.
 >
-> **Réécriture d'ensemble : ADR-036**, à la clôture de la carte #1 — pas avant, pour ne pas
-> amender trois fois en une semaine.
+> ~~**Réécriture d'ensemble : ADR-036**, à la clôture de la carte #1 — pas avant, pour ne pas
+> amender trois fois en une semaine.~~
+>
+> ✅ **Corrigé le 8 août 2026** ([#21](https://github.com/left-eyebr0w/murphy/issues/21) §9) :
+> **la réécriture d'ensemble est celle de cet ADR, pas un transfert vers ADR-036.** Motif —
+> 032 **est déjà** l'ADR de la collection versionnée, de la correction, de la re-notation et
+> du garde-fou de circularité, et il gouverne **au-delà du golden-set** (v1 solo, v2 expert,
+> machine B), ce qui l'exclut d'ADR-036 par le test même qui a fait naître ADR-037 et
+> ADR-038. Écrire l'intake ailleurs laisserait ici *un critère que personne ne peut exercer
+> et un titre faux sans avertissement* — le motif employé par
+> [#23](https://github.com/left-eyebr0w/murphy/issues/23) le 8 août pour amender ADR-007
+> plutôt qu'écrire ailleurs.
+>
+> **Ce que la réécriture doit porter**, à la clôture de la carte : le **titre** et le **§1**
+> réparés · l'**intake des contestations** (unité = une contestation jamais un patch,
+> corrections dérivées en interne · **porte unique, triage interne** · périmètre *on conteste
+> ce qui est écrit, jamais ce qui manque* · liste fermée de motifs · **cinq issues** toutes
+> enregistrées · routage par classe de coût, qui est le §4 rendu calculable · **journal des
+> déplacements de hash à quatre causes typées**, en ajout seul et non haché · déclarant par
+> rôle) · la **règle d'attribution champ → hash** (*le hash suit le coût, pas le fichier*,
+> [#12](https://github.com/left-eyebr0w/murphy/issues/12) §4) **sous le test d'ADR-030**
+> — *« si je change d'avis là-dessus, dois-je rouvrir les documents ? »* —, la table complète
+> vivant en `GOLDEN-SET.md` §3 · et le **renvoi croisé dû par
+> [#24](https://github.com/left-eyebr0w/murphy/issues/24)** (la monotonie contraint ce qu'un
+> nom de version peut désigner), **dans la même passe** — c'était déjà la consigne d'`INDEX.md`,
+> et la réécriture l'absorbe au lieu de juxtaposer deux amendements partiels.
+>
+> *ADR-036 conserve le **cimetière de vocabulaire** — dont l'entrée `gel` et ses traces
+> ailleurs — mais **perd la réécriture de cet ADR**.*
 
 ## Contexte
 

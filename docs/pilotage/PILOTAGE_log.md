@@ -2,6 +2,28 @@
 
 > 10 lignes max par entrée, la plus récente en tête (`PILOTAGE.md` §1.4).
 
+## 2026-08-08 — B-08, carte de wayfinding [#1](https://github.com/left-eyebr0w/murphy/issues/1)
+
+- **Fait** : rien de livrable — la carte (*golden-set v1, spécification prête à
+  l'authoring*) est en cours : **23 décisions closes, aucun ticket ouvert**, clôture
+  **non prononcée**.
+- **Décidé** (structurant) : axe unique des mécanismes (liste **7**, composition v1 **5**) ;
+  `N_cas` = 150 dont 30 jugés, plancher **30 cas/mécanisme** ; métrique **`RBP(p) + résidu`**,
+  `nDCG@R` et `F1@K` **retirés** ([#14](https://github.com/left-eyebr0w/murphy/issues/14)) ;
+  **trois hashes** à la place du gel ([#18](https://github.com/left-eyebr0w/murphy/issues/18)) ;
+  protocole d'assessment ([#19](https://github.com/left-eyebr0w/murphy/issues/19)) ; plancher de
+  composition portant sur le **nom** ([#24](https://github.com/left-eyebr0w/murphy/issues/24)) ;
+  **intake des contestations** ([#21](https://github.com/left-eyebr0w/murphy/issues/21)).
+- **Vérifié** : aucune question écrite, aucun code touché — la carte est de la planification,
+  contrainte posée dans ses propres *Notes*.
+- **Bloqué** : rien.
+- **Prochain pas** : relire les quatre patches de *Not yet specified*, puis clore la carte ;
+  écriture due de **ADR-036** (contenu), **ADR-038** (protocole) et **ADR-032 réécrit**
+  (intake + attribution champ → hash).
+- **Hygiène** : passe de propagation du 8 août (7 commentaires d'amendement, 7 lignes de carte,
+  8 documents). ⚠️ **Ce journal était décroché depuis le 19 juillet** — cette entrée couvre la
+  période **d'un bloc**, aucune revue intermédiaire n'est reconstituée.
+
 ## 2026-07-19 — B-04
 
 - **Fait** : B-04 (agrégation chunk→document + harnais de scoring) — *intitulé corrigé le 2 août 2026 : il portait « scorer nDCG@R + diagnostics », métrique retirée par [#14](https://github.com/left-eyebr0w/murphy/issues/14) ; le scorer part en B-15*
