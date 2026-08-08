@@ -24,6 +24,42 @@ récupération.
 | **Critères d'entrée** | Pipeline LEGI stable ; modèle de données tri-base arrêté |
 | **Critères de sortie** | DoD du `CADRAGE_evaluation` (étendu jurisprudence) : identité canonique vérifiée · adapter baseline implémenté · golden-set v1 **identifié par ses trois hashes** et versionné · scorer **`RBP(p)` + résidu** ([ADR-007](ADR/ADR-007-metrique-rbp-residu.md), réécrit le 2 août 2026 — *ancienne rédaction : « nDCG@R + diagnostics MAP, R-Precision, Recall@2R, Doc-MRR, Doc-Recall@R », tous retirés sauf Doc-MRR qui devient une lecture* ; **§4 réécrit le 8 août 2026** — [#19](https://github.com/left-eyebr0w/murphy/issues/19) : `p` vient du **lecteur** et non de l'effort d'annotation, une **famille sentinelle** l'accompagne sans seuil ; les critères ci-dessous sont **inchangés**) · test statistique apparié **sous la porte du résidu** (un intervalle d'écart contenant zéro n'admet aucun test) · ≥ 1 set diagnostique graph-hop · stratification en 4 types d'action (ADR-009) · baseline reproductible |
 
+> ### ⚠️ Deux pièges de lecture sur le critère de sortie — **les critères ci-dessus ne changent pas**
+>
+> **Cette section n'est pas amendée** ([#20](https://github.com/left-eyebr0w/murphy/issues/20) §6,
+> [#24](https://github.com/left-eyebr0w/murphy/issues/24)) : ses critères sont inchangés, c'est
+> leur **lecture** qui est fixée, et elle atterrit en **ADR-036**. Le marqueur est ici parce
+> qu'un lecteur qui applique le critère littéralement se trompe **deux fois, en sens opposés**.
+>
+> **1. Lecture *instrument* — v0 n'est otage d'aucun résultat** ([#20](https://github.com/left-eyebr0w/murphy/issues/20) §6).
+> *« Test statistique apparié sous la porte du résidu »* se lit sur la **présence et le
+> fonctionnement de l'appareil**, jamais sur l'issue de la mesure. Une campagne dont **toutes les
+> paires sont inertes** — *« au budget dépensé, ces configurations ne se distinguent pas »* —
+> **satisfait le critère**. Le verdict inerte est une **sortie correcte** de l'instrument
+> (E-P2-02 vérifie précisément que le refus se déclenche), pas une panne, et il est informatif
+> dans la direction utile : c'est lui qui justifie de financer des assesseurs, donc d'aller en
+> v2. **Sans cette phrase, le premier lecteur qui rencontrera une campagne inerte croira le jalon
+> bloqué.**
+>
+> **2. Mais un objet renommé ne clôt pas v0** ([#24](https://github.com/left-eyebr0w/murphy/issues/24),
+> passe d'hygiène du 8 août 2026). Le piège est ici **inverse du premier, et plus dangereux parce
+> que le cadran le récompense** : une collection **sans composant jugé** a un résidu **nul**, donc
+> un intervalle d'écart **réduit à un point** — elle franchit la porte du résidu **mieux** que la
+> collection nominale. Ce qu'on y perd n'est pas la résolution mais la **validité** : rien
+> n'atteste plus que les labels ne sont pas une propriété du porteur (`RISQUES.md` **R-05**),
+> puisque le falsificateur n'a d'objet que là où l'on juge
+> ([#19](https://github.com/left-eyebr0w/murphy/issues/19)).
+>
+> Le **plancher de composition** de #24 refuse à un tel objet le **nom** d'une collection de test
+> — il se déclare et se publie, sous un autre nom, en portant écrit que son résidu nul n'est pas
+> un signal de qualité. **La clôture de v0 est indexée sur ce nom**, faute de quoi le plancher ne
+> bornerait qu'une étiquette.
+>
+> **La distinction entre les deux points, à ne pas perdre** : #19 pose qu'*un appareil de
+> réception qui n'a jamais rien reçu est une intention, pas un appareil*. Un verdict **inerte**
+> clôt v0 — l'appareil a fonctionné et a rendu son verdict. Un appareil **inexercé** ne le clôt
+> pas — il n'avait rien à quoi rendre un verdict. ***Résultat inerte ≠ appareil inexercé.***
+
 ## Alpha phase 1 — « Usage & requêtes réelles » ✅ (ADR-013)
 
 **Objectif** : mettre Murphy entre les mains d'experts pour recueillir

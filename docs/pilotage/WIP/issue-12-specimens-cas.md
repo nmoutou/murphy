@@ -169,8 +169,16 @@ l'interdit de circularité de `#10`. Le champ vide n'est pas une négligence, c'
 l'attestation.
 
 *Limite connue, à emporter* : la lecture tient tant que `concept_vers_instance` est le **seul**
-mécanisme rédigé besoin d'abord. `desambiguisation` l'est aussi et il est hors v1 (#9) ;
-[#24](https://github.com/left-eyebr0w/murphy/issues/24) peut faire bouger la composition.
+mécanisme rédigé besoin d'abord. `desambiguisation` l'est aussi et il est hors v1 (#9).
+
+✅ **Levée le 8 août 2026** ([#24](https://github.com/left-eyebr0w/murphy/issues/24)) — la limite
+ne peut plus mordre. #24 a instruit puis **écarté** l'entrée de `desambiguisation` en
+substitution : remplacer le composant jugé **change l'objet en gardant le nom**, donc franchit le
+plancher de composition au lieu de l'éviter. Il n'existe **aucun repli**, et la v1 garde donc
+`concept_vers_instance` comme **unique** mécanisme besoin-d'abord aussi longtemps qu'elle porte
+son nom. *Corollaire utile pour ce document* : l'absence de germe reste une preuve de typage
+valable sur toute la v1 — si un second mécanisme besoin-d'abord entrait un jour, ce serait par un
+**changement de nom**, donc sur une collection dont ce spécimen ne parle plus.
 
 ## 3. `germe` et `leurre` sont deux champs, pas un
 
@@ -287,3 +295,19 @@ tranchable ici : le mécanisme serait sorti du périmètre scoré — compositio
 `N_cas` de **150 à 120**, disparition du **seul contrôle du fail-fast**. C'est mot pour mot le
 second déclencheur de [#24](https://github.com/left-eyebr0w/murphy/issues/24). Une composition
 ne se change pas depuis un ticket de **forme**.
+
+✅ **Tranché le 8 août 2026 par #24 — l'identification est refusée**, et le renvoi est honoré.
+Trois motifs, dont deux que ce document ne pouvait pas produire : **(1)** identifier maintenant,
+c'est **décider la panne avant de l'observer**, alors qu'ADR-035 pose *machinerie après panne
+observée, jamais par anticipation* — et #15 a montré que le cas hors périmètre lexicalement
+voisin est le cas **dur** ; **(2)** la surveillance du *fail-fast* **ne survit pas au transfert**,
+parce que `pending` s'indexe sur un **état** et que sa population **s'évapore** avec la résorption
+du corpus (#11 §7) — pire, toute ingestion déplace le hash `corpus`, donc deux configurations
+mesurées à deux moments ne seraient **pas comparables** : la sentinelle serait structurellement
+incomparable, pas seulement transitoire ; **(3)** c'est la faute *état vs définition* que #15
+vient de réparer en retirant `frontiere_corpus`, et que **le nom choisi ici encode déjà** —
+`attendue` porte la charge de la séparation *`pending` non scoré ↔ hors périmètre scoré*.
+
+*Coût du refus : nul.* Le second déclencheur reste vivant, #20 §5 l'a déjà rendu propre, et sous
+la **condition de monotonie** de #24 il produit un **retrait** — donc un sous-ensemble, donc **le
+nom se garde**. **#15, #4 et #14 n'ont pas à être rouverts ensemble.**
