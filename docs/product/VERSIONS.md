@@ -44,7 +44,7 @@ d'annotation poolées sur les requêtes réelles de la ph.1.
 
 | | |
 |--|--|
-| **In** | **Mode campagne** — même composant de jugement que l'inline (ADR-010), orchestré en file poolée : guide d'annotation affiché, calibration inter-experts, progression trackée |
+| **In** | **Mode campagne** — même composant de jugement que l'inline (ADR-010), orchestré en file poolée : guide d'annotation affiché, calibration inter-experts (**spécifiée en ADR-038** depuis le 8 août 2026, [#19](https://github.com/left-eyebr0w/murphy/issues/19) — les critères ci-dessous sont inchangés), progression trackée |
 | **Out** | Beta (A/B, feedback produit) |
 | **Critères d'entrée** | Pool de requêtes réelles disponible |
 | **Critères de sortie** | Golden-set v2 (expert, poolé, calibré) figé et versionné ; baseline **re-mesurée** sur qrels expertes |

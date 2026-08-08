@@ -1006,6 +1006,17 @@ bonne classification, c'est une classification qu'on n'a pas testée.
 
 ## 9. Comment on juge
 
+> ⚠️ **Section incomplète — 8 août 2026** ([#19](https://github.com/left-eyebr0w/murphy/issues/19)).
+> Rien de ce qui suit n'est faux ; il y **manque le protocole d'assessment**. Cette section
+> décrit l'échelle, la granularité, la projection et la complétude, et **ne dit rien** de :
+> l'accord entre assesseurs (asymétrie par porte — q1 porte un seuil structurel, q2/q3 une
+> ventilation), la **table de réparation** qui rend cet accord falsifiable, la
+> **réconciliation** qui sépare « le guide manque » de « la divergence est légitime », le
+> **créneau d'adjudication** et son plancher permanent (`max` à `n = 2`, vote majoritaire à
+> `n ≥ 3`), la **règle d'allocation** des jugements redondants, et les **deux régimes
+> temporels** (déclarer sans purger, puis évaluation non-résiduelle à `n ≥ 5`).
+> Rédaction en **ADR-038**.
+
 **Échelle 0–3, dérivée d'une cascade de trois tests binaires** (ADR-005) — on
 ne saisit jamais un grade directement.
 

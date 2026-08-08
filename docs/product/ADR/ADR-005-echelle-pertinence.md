@@ -81,9 +81,21 @@ pertinence graduée est un **invariant** (ADR-016), non par préférence.
 - ⛔ **« Citations minées à grade 2 par défaut » est périmé** — ADR-029 a retiré
   les citations minées de la source de qrels ; la strate 2 est un diagnostic de
   précision, sans grade.
+- ⚠️ **Les trois portes ne sont pas symétriques quant à l'accord** (8 août 2026,
+  [#19](https://github.com/left-eyebr0w/murphy/issues/19)). **La cascade est
+  inchangée** — c'est son *régime d'accord* qui se différencie : **q1** (« même
+  question de droit ? ») est une **identité topique**, où un désaccord entre
+  deux lecteurs **n'est pas légitime** et désigne un cas mal écrit ; **q2/q3**
+  sont du **jugement professionnel**, où deux assesseurs peuvent diverger **en
+  ayant tous deux raison** (TREC Legal Track 2008 : *« highly subjective
+  judgment calls […] at a particular point in time »*). Conséquence pour cet
+  ADR : la localisabilité promise ci-dessus **ne suffit pas** — localiser un
+  désaccord sur q2/q3 ne dit pas encore s'il faut réparer quelque chose.
+  Régime complet en **ADR-038**.
 
 ## Références
 
 ADR-007 ([RBP + résidu](ADR-007-metrique-rbp-residu.md)) · ADR-008 (format) ·
 ADR-010 (composant de jugement) · ADR-016 (pertinence graduée, invariant) ·
-ADR-029 (strate 2 rétrogradée)
+ADR-029 (strate 2 rétrogradée) · **ADR-038** (protocole d'assessment — régime
+d'accord par porte)

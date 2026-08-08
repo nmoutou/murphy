@@ -121,6 +121,16 @@ approximative.
 | Juger des documents supplémentaires sur une question existante | Non | **Oui** |
 | **Ajouter une question** | **Oui** | Non, sauf à rejouer les configs |
 
+> ⚠️ **Précision du 8 août 2026** ([#19](https://github.com/left-eyebr0w/murphy/issues/19)) —
+> la première ligne est **confirmée, pas contredite**, mais « re-notation seule » s'y lit trop
+> largement pour la **révision du guide**. Réviser le guide **ne déplace aucun hash** : le
+> guide n'est **pas un composant haché** (les trois hashes portent le corpus, les cas et les
+> qrels), sa version voyage sur **chaque jugement** via `guide_version` (ADR-008). Et le
+> re-jugement qu'une révision déclenche est **ciblé** — seuls les items dont le désaccord a
+> provoqué l'amendement —, jamais la collection entière. Motif : un amendement qui coûterait
+> une re-notation générale rendrait le guide **inamendable en pratique**, ce qui annulerait la
+> falsifiabilité qu'il a acquise.
+
 Seule la troisième coûte : un run ancien ne contient aucun résultat pour une
 question qui n'existait pas à sa production, et la collection Qdrant
 correspondante peut avoir été supprimée (`nuke_all` entre deux `W`, ADR-027).
