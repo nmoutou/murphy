@@ -75,36 +75,32 @@ Une question permet de distinguer deux groupes : **le droit est-il l'objet direc
 
 ### Ce que Murphy restitue
 
-**Des documents publics, des sources, et rien d'autre.** Aucune réponse rédigée, aucun résumé, aucune synthèse : le système ne restitue pas un mot de texte qui ne soit déjà dans le corpus. Ce que l'usager formule en langue naturelle n'est donc pas seulement qu'une question dont il attendrait la réponse. C'est aussi une "équation de recherche" : elle constitue un ensemble de documents, puis l'élargit, le concentre, ou le déplace.
+**Des documents publics, des sources, et rien d'autre.** Aucune réponse rédigée, aucun résumé, aucune synthèse : le système ne restitue pas un mot de texte qui ne soit déjà dans le corpus. Ce que l'usager formule en langue naturelle n'est donc pas une question dont il attendrait la réponse, mais une **équation de recherche** : elle constitue un ensemble de documents, puis l'élargit, le concentre ou le déplace.
 
 ### Le cadre : recherche documentaire, non question-réponse
 
-Le déplacement n'est pas de vocabulaire. Il fixe trois choses, et toute la suite en dépend.
-
-- **Le rôle de l'usager.** Il n'est pas destinataire d'un résultat, il est **opérateur** de sa recherche. C'est ce qui rend D-01 tenable : on ne suppose pas qu'il connaisse le vocabulaire du droit, seulement qu'il sache juger si un document le concerne.
-- **Les modes d'échec.** Non pas « juste » et « faux », mais **bruit** et **silence** — deux défauts opposés, appelant deux gestes opposés.
-- **L'unité de valeur.** Non pas l'ensemble *restitué*, mais l'ensemble **atteignable** : lequel, et en combien de gestes.
+**Le déplacement n'est pas de vocabulaire : il fixe trois choses, et toute la suite en dépend.** L'usager n'est pas destinataire d'un résultat, il est **opérateur** de sa recherche — c'est ce qui rend D-01 tenable, puisqu'on ne suppose pas qu'il connaisse le vocabulaire du droit, seulement qu'il sache juger si un document le concerne. Les modes d'échec ne sont plus « juste » et « faux » mais **bruit** et **silence**, deux défauts opposés appelant deux gestes opposés. Et l'unité de valeur n'est plus l'ensemble *restitué* mais l'ensemble **atteignable** : lequel, et en combien de gestes.
 
 > **D-07 — L'utilisateur contrôle et dirige sa recherche : il en est l'opérateur, non le destinataire d'un résultat.**
 > *Écarté : le système qui devine l'intention et livre l'ensemble juste du premier coup. Quand il se trompe, l'usager n'a aucun geste — il ne peut ni voir ce qui a été écarté, ni le récupérer, ni même savoir qu'un écart a eu lieu.*
 
-**Le service reste sans état, et c'est cohérent.** La seconde équation est une équation **neuve** : l'usager la réécrit avec ce qu'il a appris de l'ensemble précédent, il ne poursuit pas une conversation. Chaque tour porte donc son équation entière. D-06 n'est pas une privation qu'on s'impose — c'est la forme propre de l'objet.
+**Le sans-état est la forme propre de l'objet.** La seconde équation est une équation **neuve** : l'usager la réécrit avec ce qu'il a appris de l'ensemble précédent, il ne poursuit pas une conversation. Chaque tour porte donc son équation entière — D-06 n'est pas une privation qu'on s'impose.
 
 **Le détail est différé.** Quels gestes de pilotage, sur quoi ils portent, ce qu'ils garantissent : c'est le premier objet du **cahier des charges fonctionnel**, livrable de phase 1. Cette note en pose le cadre, pas le contenu.
 
 ### Deux mesures, de rang égal
 
-**La récupération a changé de statut.** Tant que Murphy produisait une réponse, la qualité de récupération était la métrique d'un **composant** — un étage du pipeline, pas le produit. Ce n'est plus le cas. Quand la sortie n'est rien d'autre que l'ensemble récupéré, la qualité de la récupération **est** la qualité du produit. Elle cesse d'être une mesure interne.
+**La récupération a changé de statut.** Tant que Murphy produisait une réponse, elle mesurait un **composant** — un étage du pipeline, pas le produit. Quand la sortie n'est rien d'autre que l'ensemble récupéré, la qualité de la récupération **est** la qualité du produit ; elle cesse d'être une mesure interne.
 
-**Elle ne devient pas pour autant la mesure de la valeur.** Un écart demeure, mais il s'est déplacé : il ne sépare plus le composant du produit, il sépare **le jugement fabriqué du besoin réel**. Une collection de test confronte le système à des jugements de pertinence que le programme produit lui-même ; elle ne dit rien de ce qu'un usager, sur une tâche qui l'engage, aurait fait sans Murphy. Ce second plan ne se mesure pas contre un idéal mais contre un **contrefactuel** : ce que la cible fait aujourd'hui, faute de mieux. Pour le cœur de cible, ce n'est pas la base éditoriale payante — il n'y a pas accès. C'est le moteur public, ou un modèle généraliste.
+**Elle ne devient pas pour autant la mesure de la valeur.** L'écart demeure, mais déplacé : il ne sépare plus le composant du produit, il sépare **le jugement fabriqué du besoin réel**. Une collection de test confronte le système à des jugements de pertinence que le programme produit lui-même ; elle ne dit rien de ce qu'un usager, sur une tâche qui l'engage, aurait fait sans Murphy. Ce second plan ne se mesure pas contre un idéal mais contre un **contrefactuel** — ce que la cible fait aujourd'hui, faute de mieux : pour le cœur de cible, le moteur public ou un modèle généraliste, jamais la base éditoriale payante, à laquelle elle n'a pas accès.
 
 > **D-02 — La valeur se mesure sur deux plans de rang égal.**
 > **(a) La qualité de la récupération**, sur collection de test. Mesurable dès qu'une collection existe.
 > **(b) La substituabilité au contrefactuel**, sur une tâche de recherche réelle : **taux de tâches abouties** et **temps jusqu'à la première source pertinente**, en comparaison appariée — même tâche, deux outils. Mesurable seulement quand des utilisateurs existent.
 >
-> *Écarté : subordonner l'un des deux plans à l'autre.* Faire de (a) un simple indicateur avancé de (b) rendrait invérifiable tout gain que (b) ne confirme pas — donc aveugle, par définition, toute la phase de construction, puisque (b) n'est pas mesurable avant longtemps. Faire de (b) le contrôle de (a) reviendrait, le jour où un usager ne trouve rien alors que la métrique est excellente, à donner tort à l'usager.
+> *Écarté : subordonner l'un des deux plans à l'autre.* Faire de (a) un indicateur avancé de (b) rendrait invérifiable tout gain que (b) ne confirme pas, donc aveugle toute la phase de construction, puisque (b) n'est pas mesurable avant longtemps. Faire de (b) le contrôle de (a) reviendrait à donner tort à l'usager, le jour où il ne trouve rien alors que la métrique est excellente.
 
-**L'ordre d'arrivée n'est pas une hiérarchie.** (a) se mesure d'abord parce qu'elle est constructible d'abord, non parce qu'elle compte davantage. Le « pour l'instant » qualifie le calendrier de l'instrument, jamais le rang de la mesure.
+**L'ordre d'arrivée n'est pas une hiérarchie.** (a) se mesure d'abord parce qu'elle est constructible d'abord, non parce qu'elle compte davantage : le « pour l'instant » qualifie le calendrier de l'instrument, jamais le rang de la mesure.
 
 **Règle opératoire.** Une version doit **déplacer au moins un des deux plans sans dégrader l'autre**. C'est ce que consomme la règle de découpe (§9) : un jalon se ferme sur l'un des deux plans, jamais sur un lot livré.
 
@@ -112,15 +108,13 @@ Le déplacement n'est pas de vocabulaire. Il fixe trois choses, et toute la suit
 
 ### Ce que la mesure doit sanctionner en priorité
 
-Le paradigme documentaire donne un ordre de priorité qu'un choix de métrique standard ne donnerait pas : **sanctionner d'abord le défaut qu'un geste ne répare pas.**
-
-Un silence que l'usager lève en élargissant coûte un tour. Un bruit qu'il ne peut pas distinguer d'une source pertinente coûte la confiance, et aucun geste ne le rattrape. C'est aussi ce qui rend le refus explicite (§4) défendable : préférer le silence au bruit n'est tenable **que parce que l'élargissement existe**. Sans geste correctif, un refus n'est pas une prudence — c'est une impasse.
+**Sanctionner d'abord le défaut qu'un geste ne répare pas** — un ordre de priorité qu'un choix de métrique standard ne donnerait pas. Un silence que l'usager lève en élargissant coûte un tour ; un bruit qu'il ne peut pas distinguer d'une source pertinente coûte la confiance, et aucun geste ne le rattrape. C'est aussi ce qui rend le refus explicite (§4) défendable : préférer le silence au bruit n'est tenable **que parce que l'élargissement existe**. Sans geste correctif, un refus n'est pas une prudence — c'est une impasse.
 
 ### Ce qu'aucune des deux mesures ne porte
 
-Une collection de test mesure **un tour**. C'est le postulat de sa construction, non un défaut d'exécution, et aucun raffinement ne le comble. La substituabilité mesure **une tâche, aboutie ou non**. Entre les deux, la **trajectoire** — la suite de gestes par laquelle l'ensemble converge — n'est mesurée par personne. Or c'est précisément là que D-07 place la valeur.
+**La trajectoire.** Une collection de test mesure **un tour** — postulat de sa construction, non défaut d'exécution, et aucun raffinement ne le comble ; la substituabilité mesure **une tâche, aboutie ou non**. Entre les deux, la suite de gestes par laquelle l'ensemble converge n'est mesurée par personne, or c'est précisément là que D-07 place la valeur.
 
-L'écart est porté en hypothèse **H-07** ; son instrumentation relève de la phase 3, une fois le pilotage spécifié en phase 1. C'est la raison de trancher D-02 et D-07 maintenant plutôt que le jour où ils seront mesurables : une définition de la valeur écrite après coup se règle sur ce qu'on sait déjà mesurer.
+L'écart est porté en hypothèse **H-07** ; son instrumentation relève de la phase 3, une fois le pilotage spécifié en phase 1. D'où l'intérêt de trancher D-02 et D-07 maintenant plutôt que le jour où ils seront mesurables : une définition de la valeur écrite après coup se règle sur ce qu'on sait déjà mesurer.
 
 ---
 
