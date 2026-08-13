@@ -12,7 +12,7 @@
 | **D-02** | La valeur se mesure sur **deux plans de rang égal** : la qualité de la récupération et la substituabilité au contrefactuel. |
 | **D-03** | Murphy **restitue des sources et n'interprète pas**. | 
 | **D-04** | La génération de texte borderline interdite et est destiné au retrait. |
-| **D-05** | Le périmètre est fixé **par fonctionnalité, capacité, performance, ou par source**, jamais par matière. |
+| **D-05** | Le périmètre est fixé **par fonctionnalité, capacité, ou par source**, jamais par matière. |
 | **D-06** | Le service est **sans état** : ni historique, ni profil, ni personnalisation. |
 | **D-07** | L'utilisateur **contrôle et dirige** sa recherche : il en est l'**opérateur**, non le destinataire d'un résultat. |
 ---
@@ -125,19 +125,23 @@ L'écart est porté en hypothèse **H-07** ; son instrumentation relève de la p
 
 ## 4. Périmètre
 
-**Dedans.**
+### Dedans
 
-- La récupération de sources juridiques françaises publiées, **toutes matières** (**D-05**). *Écarté : le découpage thématique — il se défend par la profondeur éditoriale, terrain perdu d'avance ici, et rend le refus inqualifiable : hors sujet, ou lacune ?*
-- **L'identité canonique et vérifiable** de chaque source, portée par les identifiants du producteur. *Écarté : un identifiant interne, invérifiable hors du système.*
-- **Le refus explicite** : ne rien restituer plutôt que du bruit — c'est ce qui tient le plancher de non-fabrication.
-- **Un service sans état** : ni historique, ni profil, ni personnalisation (**D-06**). *Écarté : la personnalisation — elle suppose d'observer l'usager, quand le seul jugement utile est celui de l'utilisateur sur la source.*
+| Dedans | Borne | Motif |
+|---|---|---|
+| La récupération de sources juridiques françaises publiées, **toutes matières** (**D-05**) | Fonctionnalité | C'est le problème posé en §1. Un découpage thématique se défendrait par la profondeur éditoriale, terrain perdu d'avance ici, et rendrait le refus inqualifiable : hors sujet, ou lacune ? |
+| **L'identité canonique et vérifiable** de chaque source, portée par les identifiants du producteur | Capacité | Un identifiant interne serait invérifiable hors du système ; sans identité opposable, l'usager ne peut pas exercer le jugement que **D-07** lui confie. |
+| **Le refus explicite** : ne rien restituer plutôt que du bruit | Capacité | Tient le plancher de non-fabrication. Tenable seulement parce que l'élargissement existe (§3) : sans geste correctif, un refus est une impasse. |
+| **Un service sans état** : ni historique, ni profil, ni personnalisation (**D-06**) | Capacité | Chaque équation est neuve (§3). La personnalisation supposerait d'observer l'usager, quand le seul jugement utile est le sien sur la source. |
 
-**Dehors.**
+### Dehors
 
-- **L'interprétation, la qualification, le conseil** (**D-03**) : l'écart d'interprétation n'est pas le problème traité (§1), et aucun dispositif ne mesure la justesse d'une interprétation.
-- **La rédaction d'actes** et tout livrable textuel destiné à être produit tel quel.
-- **La génération de texte comme fonction pérenne** (**D-04**) : présente aujourd'hui, elle est un échafaudage ; son retrait est un objectif, pas une régression.
-- **Le droit non publié par le producteur retenu** — doctrine, droit étranger, sources privées. *Exclusion par source, vérifiable, et non par matière, qui ne l'est pas.*
+| Dehors | Borne | Motif |
+|---|---|---|
+| **L'interprétation, la qualification, le conseil** (**D-03**) | Fonctionnalité | L'écart d'interprétation n'est pas le problème traité (§1), et aucun dispositif ne mesure la justesse d'une interprétation. |
+| **La rédaction d'actes** et tout livrable textuel destiné à être produit tel quel | Fonctionnalité | Un texte produit tel quel n'est pas une source : il sort du plancher de non-fabrication. |
+| **La génération de texte comme fonction pérenne** (**D-04**) | Fonctionnalité | Présente aujourd'hui, elle est un échafaudage ; son retrait est un objectif, pas une régression. |
+| **Le droit non publié par le producteur retenu** — doctrine, droit étranger, sources privées | Source | Exclusion par source, vérifiable ; une exclusion par matière ne le serait pas. |
 
 ---
 
