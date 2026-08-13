@@ -122,17 +122,17 @@ L'écart est porté en hypothèse **H-07** ; son instrumentation relève de la p
 
 **Dedans.**
 
-- La récupération de sources juridiques françaises publiées, **sur l'ensemble des matières** — le périmètre se fixe par capacité et par source, jamais par matière (**D-07**). *Écarté : le découpage thématique. Un périmètre thématique se défend par la profondeur éditoriale, terrain sur lequel ce programme ne peut pas gagner ; et il rend le refus inqualifiable — hors sujet, ou lacune ?*
-- **L'identité canonique et vérifiable** de chaque source restituée, portée par les identifiants du producteur (**D-08**). *Écarté : un identifiant interne, qui rend la vérification impossible hors du système.*
-- **Le refus explicite** : dire qu'on n'a rien trouvé plutôt que restituer du bruit. C'est ce qui rend D-04 atteignable.
-- **Un service sans état** — ni historique, ni profil, ni personnalisation (**D-09**). *Écarté : la personnalisation. Elle suppose d'observer l'usager, et le seul jugement dont on ait besoin est celui de l'utilisateur sur la source.*
+- La récupération de sources juridiques françaises publiées, **toutes matières** (**D-05**). *Écarté : le découpage thématique — il se défend par la profondeur éditoriale, terrain perdu d'avance ici, et rend le refus inqualifiable : hors sujet, ou lacune ?*
+- **L'identité canonique et vérifiable** de chaque source, portée par les identifiants du producteur. *Écarté : un identifiant interne, invérifiable hors du système.*
+- **Le refus explicite** : ne rien restituer plutôt que du bruit — c'est ce qui tient le plancher de non-fabrication.
+- **Un service sans état** : ni historique, ni profil, ni personnalisation (**D-06**). *Écarté : la personnalisation — elle suppose d'observer l'usager, quand le seul jugement utile est celui de l'utilisateur sur la source.*
 
 **Dehors.**
 
-- **L'interprétation, la qualification, le conseil** (**D-05**). *Écarté parce que l'écart d'interprétation n'est pas le problème traité (§1), et qu'aucun dispositif ne saurait mesurer la justesse d'une interprétation.*
-- **La rédaction d'actes**, et tout livrable textuel destiné à être produit tel quel.
-- **La génération de texte comme fonction pérenne** (**D-06**). Elle est présente aujourd'hui ; elle est un échafaudage, et son retrait est un objectif, pas une régression.
-- **Le droit non publié par le producteur retenu** — doctrine, droit étranger, sources privées. *Exclusion par source, ce qui est vérifiable, et non par matière, ce qui ne l'est pas.*
+- **L'interprétation, la qualification, le conseil** (**D-03**) : l'écart d'interprétation n'est pas le problème traité (§1), et aucun dispositif ne mesure la justesse d'une interprétation.
+- **La rédaction d'actes** et tout livrable textuel destiné à être produit tel quel.
+- **La génération de texte comme fonction pérenne** (**D-04**) : présente aujourd'hui, elle est un échafaudage ; son retrait est un objectif, pas une régression.
+- **Le droit non publié par le producteur retenu** — doctrine, droit étranger, sources privées. *Exclusion par source, vérifiable, et non par matière, qui ne l'est pas.*
 
 ---
 
@@ -147,7 +147,7 @@ L'écart est porté en hypothèse **H-07** ; son instrumentation relève de la p
 | **H-03** | Le dispositif de mesure du plan (b) sera constructible quand des utilisateurs existeront. | Le plan (b) de D-02 reste indisponible. La valeur ne se démontre plus que contre des jugements que le programme produit lui-même : le juge et partie (§7) devient structurel, sans contrepoids. |
 | **H-04** | Les deux plans de D-02 sont corrélés : ce qui progresse sur collection de test progresse sur tâche réelle. | Les deux plans peuvent diverger, et rien ne dit lequel suivre. Leur arbitrage redevient un jugement, alors que D-02 le voulait mesuré. |
 | **H-05** | Le producteur public continue de publier ces corpus sous une licence permettant l'usage projeté. | Le périmètre de §4 se réduit aux sources qui restent, sans recours. |
-| **H-06** | La non-fabrication est atteignable **par construction**, l'identité étant portée par le corpus et non produite par le système. | D-04 cesse d'être un plancher binaire et redevient un objectif de qualité gradué — donc négociable. |
+| **H-06** | La non-fabrication est atteignable **par construction**, l'identité étant portée par le corpus et non produite par le système. | La non-fabrication cesse d'être un plancher binaire et redevient un objectif de qualité gradué — donc négociable. |
 | **H-07** | La **trajectoire** — la suite de gestes par laquelle l'ensemble converge — sera instrumentable une fois le pilotage spécifié (phase 1) et l'évaluation conçue (phase 3). | La valeur que D-07 place dans le pilotage reste hors mesure : on saura noter un tour et constater une tâche aboutie, jamais ce qui mène de l'un à l'autre. Le pilotage devient une promesse invérifiable. |
 
 ---
@@ -162,7 +162,7 @@ L'écart est porté en hypothèse **H-07** ; son instrumentation relève de la p
 | **C-02** | Aucun financement. | L'achat de jugements ; l'accès aux bases payantes à fin de comparaison ; l'infrastructure louée en continu. |
 | **C-03** | Le calcul dépend d'une machine locale. | Traiter la disponibilité comme acquise ; toute promesse de continuité de service. |
 | **C-04** | Le corpus est celui que le producteur publie, dans la forme où il le publie. | Supposer une métadonnée absente ; corriger la source. |
-| **C-05** | Aucun utilisateur réel à ce jour. | Toute mesure de D-03 aujourd'hui ; toute segmentation validée par l'observation. |
+| **C-05** | Aucun utilisateur réel à ce jour. | Toute mesure du plan (b) de D-02 aujourd'hui ; toute segmentation validée par l'observation. |
 
 ---
 
@@ -179,7 +179,7 @@ Le registre complet est tenu séparément → `REGISTRE-DES-RISQUES.md`. Quatre 
 
 ## 8. Gouvernance
 
-> **D-11 — La décision est solitaire et assumée ; la contradiction est instrumentée.**
+> **La décision est solitaire et assumée ; la contradiction est instrumentée.**
 
 Il n'y a qu'un décideur. Le risque n'est donc ni la lenteur ni le conflit — c'est **l'absence de contradicteur**. La gouvernance consiste ici à fabriquer de la contradiction en l'absence d'opposant :
 
@@ -195,12 +195,12 @@ La cartographie des parties prenantes et la répartition des rôles sont tenues 
 
 Cette section n'arrête ni la liste des jalons ni leurs dates : c'est une décision de pilotage. Elle fixe ce qui **fait** un jalon.
 
-> **D-10 — Un jalon est fermé par une mesure, pas par un lot de fonctionnalités.**
+> **Un jalon est fermé par une mesure, pas par un lot de fonctionnalités.**
 
 Dérivé de §3 : si la valeur est une mesure, un jalon qui se ferme sur un périmètre livré ne dit rien de l'avancement vers la valeur — il dit seulement qu'on a travaillé.
 
 Tout jalon énonce donc **à l'avance** : (a) la mesure qui le ferme ; (b) le seuil ; (c) ce qu'on fait si le seuil n'est pas atteint. **Un jalon sans (c) n'est pas un jalon** — c'est une date, et une date se déplace.
 
-**La logique de versions qui en découle.** Une version est un **palier de capacité mesurable**, non un lot. Leur ordre n'est pas commandé par la difficulté de construction mais par les **dépendances de mesure** : on ne mesure pas la substituabilité (D-03) avant qu'un tiers puisse se servir du système ; on ne mesure pas la qualité de récupération avant de disposer d'une collection de test ; on ne construit pas de collection de test avant que le corpus soit figé et identifié.
+**La logique de versions qui en découle.** Une version est un **palier de capacité mesurable**, non un lot. Leur ordre n'est pas commandé par la difficulté de construction mais par les **dépendances de mesure** : on ne mesure pas la substituabilité (**D-02**, plan b) avant qu'un tiers puisse se servir du système ; on ne mesure pas la qualité de récupération avant de disposer d'une collection de test ; on ne construit pas de collection de test avant que le corpus soit figé et identifié.
 
 **Corpus → instrument → système → valeur.** C'est un ordre de mesure, pas un ordre de développement, et c'est lui qui découpe les versions. Une version qui ne déplace aucune de ces quatre mesures n'est pas une version.
