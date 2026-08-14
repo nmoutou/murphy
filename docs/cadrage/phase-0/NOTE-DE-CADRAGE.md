@@ -1,6 +1,6 @@
-# Note de cadrage — Murphy
+# Note de cadrage - Murphy
 
-*Phase 0 — cadrage stratégique. Ce document ne cite rien : ce qu'il retient, il le décide.*
+*Phase 0 - cadrage stratégique. Ce document ne cite rien : ce qu'il retient, il le décide.*
 
 ---
 
@@ -12,9 +12,11 @@
 | **D-02** | La valeur se mesure sur **deux plans de rang égal** : la qualité de la récupération et la substituabilité au contrefactuel. |
 | **D-03** | Murphy **restitue des sources et n'interprète pas**. | 
 | **D-04** | La génération de texte borderline interdite et est destiné au retrait. |
-| **D-05** | Le périmètre est fixé **par fonctionnalité, capacité, ou par source**, jamais par matière. |
-| **D-06** | Le service est **sans état** : ni historique, ni profil, ni personnalisation. |
+| **D-05** | Le périmètre est fixé **par fonctionnalité, capacité, ou par source**, pas par matière. |
+| **D-06** | Le service est **sans état d'usager** : ni historique, ni profil, ni personnalisation. Aucun résultat ne dépend de qui demande. Ce qui est conservé l'est au strict nécessaire. |
 | **D-07** | L'utilisateur **contrôle et dirige** sa recherche : il en est l'**opérateur**, non le destinataire d'un résultat. |
+| **D-08** | **Rien de ce qui est conservé hors de l'IAM n'est jamais joint à une identité.** |
+| **D-09** | **L'anonymisation a lieu à l'entrée du système**, avant tout autre traitement. Aucun composant en aval ne reçoit jamais autre chose que des données anonymisées ou pseudonymisées. Le module est *fail-closed* : une anonymisation qui échoue produit une erreur, et rien n'est conservé. |
 ---
 
 ## 1. Le problème
@@ -23,48 +25,48 @@
 
 Le droit est publié, gratuit et complet. L'accès formel est un problème résolu depuis longtemps. Ce qui ne l'est pas, c'est l'accès effectif : **le moteur public exige le vocabulaire de la réponse comme clé d'accès à la réponse.** On y cherche par référence ou par mots du texte. Qui sait déjà comment la règle se nomme la trouve en quelques secondes ; qui ne le sait pas ne la trouve pas du tout, et n'a aucun moyen de distinguer « cette règle n'existe pas » de « je n'ai pas su la nommer ».
 
-La couche qui comble cet écart — plans de classement, mots-clés, notes, jurisprudence rattachée — existe. Elle est éditoriale, privée et payante. Elle n'est pas illégitime : elle est simplement hors de portée d'une partie de ceux qui en ont besoin, et c'est précisément cette partie-là qui n'a pas d'alternative.
+La couche qui comble cet écart - plans de classement, mots-clés, notes, jurisprudence rattachée - existe. Elle est éditoriale, privée et payante. Elle n'est pas illégitime : elle est simplement hors de portée d'une partie de ceux qui en ont besoin, et c'est précisément cette partie-là qui n'a pas d'alternative.
 
 ---
 
 ## 2. Les utilisateurs cibles
 
-> **D-01 — Est cible quiconque a besoin d'une source juridique française. Personne n'est écarté par avance.**
+> **D-01 - Est cible quiconque a besoin d'une source juridique française. Personne n'est écarté par avance.**
 
-Une question permet de distinguer deux groupes : **le droit est-il l'objet direct de l'activité ?**. S'il est, groupe **A**, groupe **B**, s'il ne l'est pas. 
+Une question permet de distinguer deux groupes : **le droit est-il l'objet direct de l'activité ?** S'il est, groupe **A**, groupe **B**, s'il ne l'est pas. 
 
-### Groupe A  
+### Groupe A
 
 | Utilisateur | Rapport à la source |
 |---|---|
 | **Avocat en cabinet individuel ou de petite structure** | Lit le texte et l'arrêt pour en tirer une conduite ; toutes matières, tous les jours. La source fonde le conseil, puis l'écriture. |
 | **Juriste unique en entreprise** | Lit couramment, mais sur des matières qui débordent sa spécialité ; le texte arrête une décision avant qu'elle soit prise. |
-| **Juriste d'association, de permanence d'accès au droit** | Un socle étroit — droit social, séjour, aide sociale — mobilisé en volume, sur des dossiers courts. |
+| **Juriste d'association, de permanence d'accès au droit** | Un socle étroit - droit social, séjour, aide sociale - mobilisé en volume, sur des dossiers courts. |
 | **Défenseur syndical** | Cite pour opposer ; code du travail et convention collective sont l'autorité qu'il produit face à une partie outillée. |
-| **Juriste de collectivité territoriale** | Fonde des actes relus par un tiers — commande publique, urbanisme, fonction publique ; le texte doit tenir devant le contrôle de légalité. |
+| **Juriste de collectivité territoriale** | Fonde des actes relus par un tiers - commande publique, urbanisme, fonction publique ; le texte doit tenir devant le contrôle de légalité. |
 | **Agent public instructeur** | Applique le même corps de textes à des dossiers en série ; le texte est une règle de décision, pas un objet d'étude. |
 | **Étudiant en droit** | Apprend à lire le texte et à en dériver un raisonnement ; en acquiert le vocabulaire, ne l'a pas encore. |
 | **Doctorant en droit** | Prend le texte pour objet : exhaustivité, versions successives, état du droit à une date. |
 | **Enseignant en droit** | Expose la source plus qu'il ne l'applique ; doit pouvoir la montrer entière et exacte. |
 | **Expert-comptable** | Applique le texte fiscal en routine ; en connaît la matière, rarement la référence. |
-| **Gestionnaire de paie** | Articule deux étages de norme — code du travail et convention de branche ; jamais un texte isolé. |
-| **Conseil en gestion de patrimoine** | Le texte décide d'un montage — fiscalité, régimes matrimoniaux, successions — et il répond de la lecture qu'il en fait. |
+| **Gestionnaire de paie** | Articule deux étages de norme - code du travail et convention de branche ; jamais un texte isolé. |
+| **Conseil en gestion de patrimoine** | Le texte décide d'un montage - fiscalité, régimes matrimoniaux, successions - et il répond de la lecture qu'il en fait. |
 | **Juriste abonné, en vérification** | Atteint le texte par sa couche éditoriale ; ne revient à la source brute que pour confirmer. |
 
-### Groupe B 
+### Groupe B
 
 | Utilisateur | Rapport à la source |
 |---|---|
 | **Justiciable en litige** | Le texte le concerne sans qu'il sache le nommer ; la règle de fond ne lui dit pas la procédure. |
-| **Salarié sur ses propres droits** | Part des faits — « mon employeur a… » — et n'a pas les mots du texte qui les régit. |
+| **Salarié sur ses propres droits** | Part des faits - « mon employeur a… » - et n'a pas les mots du texte qui les régit. |
 | **Locataire** | Attend du texte une réponse fermée et courte : congé, charges, dépôt de garantie. |
 | **Bailleur particulier** | Doit connaître l'obligation avant de l'enfreindre ; le texte est une contrainte à respecter, pas un argument à opposer. |
 | **Consommateur** | Demande au texte l'existence d'un droit avant d'en demander l'exercice. |
-| **Dirigeant de TPE** | Rencontre le droit à chaque décision engageante — embaucher, rompre, contracter — puis le quitte. |
+| **Dirigeant de TPE** | Rencontre le droit à chaque décision engageante - embaucher, rompre, contracter - puis le quitte. |
 | **Travailleur indépendant, artisan** | Statut, cotisations, obligations déclaratives ; ne lit le texte qu'après l'incident qu'il aurait prévenu. |
 | **Responsable associatif bénévole** | Statuts, obligations déclaratives, responsabilité des dirigeants : des textes qui l'obligent et qu'il n'a jamais lus. |
 | **Travailleur social** | Connaît le dispositif, pas le texte qui le fonde ; en manie le vocabulaire administratif, jamais les références. |
-| **Aidant familial** | Vient au texte par un événement — protection d'un majeur, aide sociale, succession — jamais par une question de droit. |
+| **Aidant familial** | Vient au texte par un événement - protection d'un majeur, aide sociale, succession - jamais par une question de droit. |
 | **Élu local** | Le texte fait preuve en séance ; il lui en faut la lettre, pas une lecture. |
 | **Journaliste** | Cite le texte sans l'appliquer ; l'exactitude de la citation est l'enjeu, pas la conséquence juridique. |
 | **Chercheur non juriste** | Sociologue, économiste, historien : le texte est un matériau, voulu en série et daté. |
@@ -77,14 +79,9 @@ Une question permet de distinguer deux groupes : **le droit est-il l'objet direc
 
 **Murphy est un service de recherche documentaire, pas de questions-réponses.** L'usager n'est pas seulement le destinataire du résultat, il est **opérateur et garant** de sa propre recherche. C'est ce qui rend D-01 tenable, puisqu'on suppose que l'utilisateur sait (et, en fait, doit) juger, seul, si un document le concerne. L'ensemble d'un résultat ne s'évalue pas en "juste" et "faux" mais en **"bruit"** et **"silence"**. L'unité de valeur n'est pas seulement l'ensemble *restitué* mais surtout l'ensemble **atteignable** : lequel, et en combien de gestes.
 
-> **D-07 — L'utilisateur contrôle et dirige sa recherche : il en est l'opérateur, non le destinataire d'un résultat.**
+> **D-07 - L'utilisateur contrôle et dirige sa recherche : il en est l'opérateur, non le destinataire d'un résultat.**
 
-**Le sans-état est la forme propre de l'objet.** Une seconde requête est une nouvelle équation de recherche, **neuve** ; Chaque tour doit porter son contexte, en entier.  
-
-> Note, à déplacer : Les états sont autorisés, seulement aux conditions suivantes : 
-> - temporairement seulement
-> - toujours sauvegardés du côté client, JAMAIS du côté serveur
-> - anonymisé en régime opérationnel, et pseudonymisé en régime d'évaluation
+**Le sans-état est la forme propre de l'objet.** Une seconde requête est une nouvelle équation de recherche, **neuve** ; Chaque tour doit porter son contexte, en entier. Une équation de recherche se juge sur ce qu'elle demande, jamais sur qui la pose.  
 
 ### Mesures de la valeur
 
@@ -92,7 +89,7 @@ La sortie de Murphy n'est rien d'autre que l'ensemble récupéré, la qualité d
 
 Une collection de test doit confronter le système à des jugements de pertinence. La collection ne permet pas de dire ce qu'un usager aurait fait sans Murphy, sur une tâche qui l'engage. Cette valeur ne se mesure pas contre un idéal mais contre un **scénario contrefactuel** : ce que la cible fait aujourd'hui, faute de mieux.
 
-> **D-02 — La valeur se mesure sur deux plans de rang égal.**
+> **D-02 - La valeur se mesure sur deux plans de rang égal.**
 > **(a) La qualité de la récupération**, sur collection de test. Mesurable dès qu'une collection existe.
 > **(b) La substituabilité au contrefactuel**, sur une tâche de recherche réelle : **taux de tâches abouties** et **temps jusqu'à la première source pertinente**.
 
@@ -106,87 +103,64 @@ Une collection de test doit confronter le système à des jugements de pertinenc
 
 | Dedans | Borne | Motif |
 |---|---|---|
-| La récupération de sources juridiques françaises publiées, **toutes matières** (**D-05**) | Fonctionnalité | C'est le problème posé en §1. Un découpage thématique se défendrait par la profondeur éditoriale, terrain perdu d'avance ici, et rendrait le refus inqualifiable : hors sujet, ou lacune ? |
+| La récupération de sources juridiques françaises publiées, **toutes matières** (**D-05**) | Fonctionnalité | Le problème posé en §1. |
 | **L'identité canonique et vérifiable** de chaque source, portée par les identifiants du producteur | Capacité | Un identifiant interne serait invérifiable hors du système ; sans identité opposable, l'usager ne peut pas exercer le jugement que **D-07** lui confie. |
-| **Le refus explicite** : ne rien restituer plutôt que du bruit | Capacité | Tient le plancher de non-fabrication. Tenable seulement parce que l'élargissement existe (§3) : sans geste correctif, un refus est une impasse. |
-| **Un service sans état** : ni historique, ni profil, ni personnalisation (**D-06**) | Capacité | Chaque équation est neuve (§3). La personnalisation supposerait d'observer l'usager, quand le seul jugement utile est le sien sur la source. |
+| **Le refus explicite** : ne rien restituer plutôt que du bruit | Capacité | Tient le plancher de non-fabrication. Tenable seulement parce que l'élargissement existe (§3) : sans geste correctif, un refus est une impasse. Vaut aussi pour le refus d'anonymisation (**D-09**), qui doit donc dire quoi reformuler. |
+| **L'invariance du résultat à l'usager** (**D-06**) : à corpus et configuration donnés, la même requête rend le même ensemble, quel que soit le demandeur | Capacité | Chaque équation est neuve (§3). La personnalisation supposerait d'observer l'usager, quand le seul jugement utile est le sien sur la source. C'est aussi la condition de **D-02(a)** : une collection de test ne mesure rien si le résultat dépend de qui interroge. Il suit qu'**aucun classement ne s'apprend de l'usage** — un tel classement renforcerait les chemins déjà empruntés, donc servirait le mieux ceux qui savaient déjà chercher (§1). |
+| **L'injointabilité** (**D-08**) : aucune donnée conservée hors de l'IAM ne porte d'identifiant de compte, et aucune jointure vers l'IAM n'existe — ni en base, ni en journal, ni en code | Capacité | Fait de la minimisation une propriété d'architecture plutôt qu'une promesse (§5) : elle se lit dans un schéma, se cherche en revue de code, s'oppose en AIPD. |
+| **L'anonymisation à l'entrée** (**D-09**) : le contenu des requêtes est anonymisé avant tout autre traitement ; l'échec produit une erreur et rien n'est conservé | Capacité | Supprime le besoin de faire confiance aux composants en aval : aucun ne peut divulguer ce qu'il n'a jamais reçu. Le corpus étant du droit général et non des dossiers, ce qui identifie une personne n'a pas de valeur de récupération. |
+
+**Bornes d'exécution.** La clé de session est tirée au hasard, jamais dérivée du compte, de l'IP ou d'une empreinte d'appareil, et n'est pas réutilisée d'une session à l'autre. **Le couple compte↔clé de session n'est jamais écrit** : il n'existe qu'en mémoire, le temps de l'échange. Une seule trace de ce couple — table de sessions, journal d'authentification, trace de débogage — rendrait nominatif, par une seule jointure, tout ce qui est en aval. Les journaux techniques ne contiennent aucun contenu de requête.
 
 ### Dehors
 
 | Dehors | Borne | Motif |
 |---|---|---|
 | **L'interprétation, la qualification, le conseil** (**D-03**) | Fonctionnalité | L'écart d'interprétation n'est pas le problème traité (§1), et aucun dispositif ne mesure la justesse d'une interprétation. |
-| **La rédaction d'actes** et tout livrable textuel destiné à être produit tel quel | Fonctionnalité | Un texte produit tel quel n'est pas une source : il sort du plancher de non-fabrication. |
-| **La génération de texte comme fonction pérenne** (**D-04**) | Fonctionnalité | Présente aujourd'hui, elle est un échafaudage ; son retrait est un objectif, pas une régression. |
-| **Le droit non publié par le producteur retenu** — doctrine, droit étranger, sources privées | Source | Exclusion par source, vérifiable ; une exclusion par matière ne le serait pas. |
+| **La rédaction d'actes** et tout livrable textuel destiné à être produit tel quel | Fonctionnalité | Un texte produit tel quel n'est pas une source. |
+| **La génération de texte comme fonction pérenne** (**D-04**) | Fonctionnalité | Le conseil et la qualification juridique sont monopolisés par l'ordre des avocats. |
+| **Le droit non publié par le producteur** : doctrine, droit étranger, sources privées | Source | Trop ambiteux pour la v1. |
 
 ---
 
-## 5. Hypothèses
+## 5. Principaux jalons
 
-*Tenues pour vraies, susceptibles d'être fausses. Chacune porte la décision qui tombe avec elle.*
+**Trois régimes se succèdent, séparés par ce qui peut atteindre le système.** Les jalons ne sont pas définis par des dates.
 
-| N° | Hypothèse | Si fausse |
+| Phase | Ce qui la définit | Seuil de sortie |
 |---|---|---|
-| **H-01** | Il existe un volume significatif de besoins juridiques où **une source suffit pour agir** — propriété du besoin, non de qui le porte. | D-02 n'a pas de tâche à mesurer, et ce qui manquerait est précisément ce que §4 met dehors. Le cadrage entier tombe. |
-| **H-02** | Le cœur de cible n'a pas accès à la couche éditoriale payante, et cet accès ne se démocratise pas pendant la durée du programme. | Le contrefactuel du plan (b) de D-02 change ; la substituabilité s'évapore sans que la récupération ait démérité — les deux plans divergent sans faute du système. |
-| **H-03** | Le dispositif de mesure du plan (b) sera constructible quand des utilisateurs existeront. | Le plan (b) de D-02 reste indisponible. La valeur ne se démontre plus que contre des jugements que le programme produit lui-même : le juge et partie (§7) devient structurel, sans contrepoids. |
-| **H-04** | Les deux plans de D-02 sont corrélés : ce qui progresse sur collection de test progresse sur tâche réelle. | Les deux plans peuvent diverger, et rien ne dit lequel suivre. Leur arbitrage redevient un jugement, alors que D-02 le voulait mesuré. |
-| **H-05** | Le producteur public continue de publier ces corpus sous une licence permettant l'usage projeté. | Le périmètre de §4 se réduit aux sources qui restent, sans recours. |
-| **H-06** | La non-fabrication est atteignable **par construction**, l'identité étant portée par le corpus et non produite par le système. | La non-fabrication cesse d'être un plancher binaire et redevient un objectif de qualité gradué — donc négociable. |
-| **H-07** | La **trajectoire** — la suite de gestes par laquelle l'ensemble converge — sera instrumentable une fois le pilotage spécifié (phase 1) et l'évaluation conçue (phase 3). | La valeur que D-07 place dans le pilotage reste hors mesure : on saura noter un tour et constater une tâche aboutie, jamais ce qui mène de l'un à l'autre. Le pilotage devient une promesse invérifiable. |
+| **T0** | Le système n'a qu'un utilisateur, son auteur. Rien n'est atteignable de l'extérieur. Aucune donnée personnelle de tiers n'existe. | Le service est **presque publiable** et ce qui l'en sépare est surtout : de l'argent, une personnalité juridique, et des tiers. AIPD obligatoire. |
+| **T1** | Des utilisateurs invités, sur un système hébergé. L'accès est restreint, nominatif et révocable. | L'appareil de conformité a été **exercé** et non plus seulement écrit. La structure qui portera le service existe et est financée. La CNIL a été notifiée. |
+| **T2** | L'accès est ouvert. | Aucun. Ce qui suit la publication n'est pas encore nommé. |
 
----
+### T0 - La construction
 
-## 6. Contraintes
+Un critère unique trie ce qui relève de T0 : **le service serait-il publiable si publier était gratuit et ne demandait aucune structure ?** Tout ce qu'un travail solitaire et sans argent peut produire doit être produit ici. 
 
-*Subies, non décidées. Chacune porte ce qu'elle interdit.*
+**Ce socle doit être autant juridique que technique**
 
-| N° | Contrainte | Interdit |
-|---|---|---|
-| **C-01** | Un seul contributeur. | Tout dispositif supposant une équipe : revue croisée native, annotation collective, continuité en cas d'absence. |
-| **C-02** | Aucun financement. | L'achat de jugements ; l'accès aux bases payantes à fin de comparaison ; l'infrastructure louée en continu. |
-| **C-03** | Le calcul dépend d'une machine locale. | Traiter la disponibilité comme acquise ; toute promesse de continuité de service. |
-| **C-04** | Le corpus est celui que le producteur publie, dans la forme où il le publie. | Supposer une métadonnée absente ; corriger la source. |
-| **C-05** | Aucun utilisateur réel à ce jour. | Toute mesure du plan (b) de D-02 aujourd'hui ; toute segmentation validée par l'observation. |
+Le cadrage en est le premier segment. T0 porte la **quasi-totalité de l'architecture définitive** : elle est construite pour les deux régimes, d'évaluation et opérationnel, alors que seul le premier tournera en T1 ; Le régime opérationnel n'y est pas disponible. On y construit déjà ce qui sert à observer et à exploiter le système. Rattraper une architecture au moment où les utilisateurs arrivent est précisément ce que T1 ne peut pas et ne doit pas faire.
 
----
+Toutefois, certaines pièces ne peuvent-être **exercées** seulement en T1 : demandes d'accès réellement traitées, durées de conservation réellement appliquées, violations réellement notifiées. 
 
-## 7. Risques majeurs
+Rien de tout cela ne passe devant un guichet, toutefois, c'est la phase où l'on s'y prépare ; "Montrer patte blanche", c'est **pouvoir produire le dossier sur demande**, à tout moment.
 
-Le registre complet est tenu séparément → `REGISTRE-DES-RISQUES.md`. Quatre risques commandent ce cadrage :
+**La minimisation des risques PII est et doit rester une propriété d'architecture, même initialement.**
 
-- **La disparition du contributeur unique** (C-01) — le seul risque dont la réalisation arrête tout, et le seul contre lequel la documentation est la parade.
-- **Le juge et partie** — celui qui construit le système construit aussi le jeu qui l'évalue. Le risque n'est pas la malhonnêteté, c'est l'angle mort partagé entre les deux ouvrages.
-- **L'absence de mesure de valeur** (H-03) — un programme qui mesure son instrument avec précision et sa valeur pas du tout.
-- **L'outillage de pilotage** — le temps consacré à documenter la construction cesse à un moment d'être investi dans la construction, et rien ne signale le franchissement.
+Il en résulte une liste **close et courte** des données personnelles de T1 : les identifiants d'accès, les retours du régime d'évaluation et les journaux techniques de sécurité. 
 
----
+### T1 - L'exposition restreinte
 
-## 8. Gouvernance
+Plusieurs itérations, avec deux profils d'utilisateurs différents : les groupes A et B définis en §2.
 
-> **La décision est solitaire et assumée ; la contradiction est instrumentée.**
+**T1 n'élargit pas le périmètre fonctionnel.** La totalité du travail de developpement est : d'amélioration, de mise en conformité, de correction et/ou d'optimisation de ce qui existe déjà.
 
-Il n'y a qu'un décideur. Le risque n'est donc ni la lenteur ni le conflit — c'est **l'absence de contradicteur**. La gouvernance consiste ici à fabriquer de la contradiction en l'absence d'opposant :
+**Le versionnement des briques est une condition d'entrée.** Toutes les observations viennent désormais d'un système déployé, et **plusieurs choses y varient à la fois** : corpus, configuration d'ingestion, graphe, runtime, jugements de référence, utilisateurs. Une notation, un retour ou une mesure qu'on ne peut pas rattacher à l'état exact qui l'a produite est une donnée perdue en silence. Chaque artefact déployé doit être identifiable au même titre que ce qui l'a fabriqué.
 
-- toute décision est écrite avec l'alternative qu'elle écarte et le motif de l'écart — c'est le régime de cette note, et il vaut au-delà d'elle ;
-- tout instrument de mesure est conçu pour pouvoir **infirmer**, jamais seulement pour confirmer ;
-- toute hypothèse porte sa condition de chute (§5), ce qui la rend réfutable par quelqu'un d'autre que son auteur.
+Enfin, **T1 est la phase où la structure porteuse est montée** : statut, financements, conseils. La conformité, elle, n'y est pas construite mais **éprouvée** : T0 en a constitué l'appareil, T1 est le premier régime où des tiers l'exercent réellement. Ces conditions sont toutes bloquantes pour l'ouverture de T2.
 
-La cartographie des parties prenantes et la répartition des rôles sont tenues séparément → `PARTIES-PRENANTES.md`. Un point s'y anticipe : le producteur des données est une partie prenante **subie**, non consultée — on ne négocie ni son format, ni son calendrier, ni sa licence.
+### T2 - L'accès ouvert
 
----
+Rien ne s'y décide aujourd'hui. Ce que T2 contient se tranchera au seuil de sortie de T1, avec ce que T1 aura mesuré : en décider maintenant serait décider sans ce qu'il faut savoir. 
 
-## 9. Jalons — la règle de découpe
-
-Cette section n'arrête ni la liste des jalons ni leurs dates : c'est une décision de pilotage. Elle fixe ce qui **fait** un jalon.
-
-> **Un jalon est fermé par une mesure, pas par un lot de fonctionnalités.**
-
-Dérivé de §3 : si la valeur est une mesure, un jalon qui se ferme sur un périmètre livré ne dit rien de l'avancement vers la valeur — il dit seulement qu'on a travaillé.
-
-Tout jalon énonce donc **à l'avance** : (a) la mesure qui le ferme ; (b) le seuil ; (c) ce qu'on fait si le seuil n'est pas atteint. **Un jalon sans (c) n'est pas un jalon** — c'est une date, et une date se déplace.
-
-**La logique de versions qui en découle.** Une version est un **palier de capacité mesurable**, non un lot. Leur ordre n'est pas commandé par la difficulté de construction mais par les **dépendances de mesure** : on ne mesure pas la substituabilité (**D-02**, plan b) avant qu'un tiers puisse se servir du système ; on ne mesure pas la qualité de récupération avant de disposer d'une collection de test ; on ne construit pas de collection de test avant que le corpus soit figé et identifié.
-
-**Corpus → instrument → système → valeur.** C'est un ordre de mesure, pas un ordre de développement, et c'est lui qui découpe les versions. Une version qui ne déplace aucune de ces quatre mesures n'est pas une version.
+Au-delà, aucun jalon n'est fixé, et les noms de cette section n'y survivront pas ; Ce qui suit la publication demande une précision que rien ne fonde encore.
