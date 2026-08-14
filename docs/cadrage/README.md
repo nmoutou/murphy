@@ -23,6 +23,17 @@
 **Transverse à toutes les phases** : responsabilité juridique, disclaimers,
 human-in-the-loop, classification AI Act, traçabilité des réponses.
 
+### Deux règles de conduite
+
+**Une seule phase est ouverte à la fois.** Rien des phases suivantes n'y est
+décidé par avance — mais ce qu'on voit venir sans savoir encore qu'en faire est
+**anticipé sans être tranché**, et c'est la fonction du registre des risques.
+
+**Le registre des risques est repris à chaque seuil de jalon.** Aucun seuil de
+sortie (T0 → T1 → T2) n'est prononcé avant que le registre ait été révisé avec
+ce que la phase écoulée a appris. Le premier jet vise l'exhaustivité sans
+l'atteindre : chaque revue comble ce qu'il a manqué.
+
 ### Note — le cahier des charges fonctionnel (phase 1)
 
 La note de cadrage (§3) établit que Murphy relève de la **recherche
@@ -36,13 +47,12 @@ Le cadrage s'arrête au **cadre** : le rôle d'opérateur, les modes d'échec
 le système restitue à chaque tour — est le premier objet du cahier des charges
 fonctionnel. Sa **mesure** relève de la phase 3 (hypothèse H-07).
 
-**Une seule phase est ouverte à la fois.** Les phases suivantes ne sont pas
-esquissées par avance : une esquisse non tranchée devient une contrainte qu'on
-n'a pas décidé de se donner.
-
 ## État
 
 **Phase 0 en cours.** Ordre de travail retenu, par dépendance :
 
 1. problème → 2. utilisateurs cibles → 3. valeur mesurable → 4. périmètre in/out
-→ 5. hypothèses et contraintes → 6. risques → 7. gouvernance → 8. jalons macro.
+→ 5. hypothèses, contraintes et risques → 6. gouvernance → 7. jalons macro.
+
+Les hypothèses et les contraintes n'ont pas de livrable propre : elles ouvrent
+le registre des risques, dont elles sont le matériau.
