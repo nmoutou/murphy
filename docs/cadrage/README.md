@@ -47,6 +47,51 @@ Le cadrage s'arrête au **cadre** : le rôle d'opérateur, les modes d'échec
 le système restitue à chaque tour — est le premier objet du cahier des charges
 fonctionnel. Sa **mesure** relève de la phase 3 (hypothèse H-12).
 
+## Ce que le cadrage ne contient pas
+
+Le cadrage produit les livrables des six phases, et rien d'autre. N'en font pas
+partie et ne se décident pas ici : le **backlog**, l'**emploi du temps**, tout
+dispositif de suivi (Kanban, Gantt), les **KPI**, et la définition des
+**portefeuilles de projet**. Ces objets relèvent du pilotage, dont l'appareil se
+constitue à part.
+
+Un seul cas est mitoyen : **lister les ressources nécessaires** est bien un
+travail de cadrage, mais anticipé d'un régime — on liste en T0 ce dont T1 aura
+besoin, en T1 ce dont T2 aura besoin. Plus tôt, la liste n'a pas d'objet.
+
+## La structuration du pilotage
+
+**À faire en fin de cadrage, et pas avant** : le cadrage doit d'abord dire ce
+qu'il y a à piloter. Cette étape ne porte pas sur le projet mais sur la façon de
+conduire les six phases, et son produit sert ensuite tout le reste. Elle a trois
+objets.
+
+**Le choix d'une méthodologie.** L'objectif est une conduite fortement
+structurée, de façon à pouvoir *optimiser* les processus plutôt que les subir —
+au premier chef les **processus légaux**, dont le registre des risques montre
+qu'ils pèsent la moitié de la charge (§5.6, §5.7). Le choix n'est pas fait, et
+il ne se réduit pas à un cadre unique : **gouverner** des processus, **gérer** le
+risque et **produire** des livrables de projet sont trois questions distinctes,
+qu'aucun cadre ne traite toutes les trois. Un cadre de gouvernance, en
+particulier, ne fournit pas de gabarit de livrable.
+
+**Le format des livrables de seuil.** Aucun seuil (T0 → T1 → T2) ne devrait se
+prononcer sans qu'il soit écrit *ce qui doit être produit, sous quelle forme, et
+qui constate*. Le registre des risques est repris à chaque seuil (voir les règles
+de conduite), mais ni la forme de cette reprise, ni celle des autres pièces
+attendues, ne sont aujourd'hui définies.
+
+**L'archivage des revues.** Les revues de risques successives doivent se ranger
+quelque part et rester relisables : une révision qu'on ne peut pas rouvrir ne
+prouve rien, et le régime haut-risque en demande précisément la preuve
+(registre des risques, **R-16** — système de gestion des risques continu, à
+réexamen périodique). Un dépôt dédié est la piste envisagée.
+
+Deux manques connus du registre des risques attendent cette étape et n'ont pas à
+être comblés avant elle : la **vraisemblance** de chaque risque, et l'**échéance
+de décision** qui en porte l'urgence. Ce sont des attributs de pilotage, pas de
+cadrage.
+
 ## État
 
 **Phase 0 en cours.** Ordre de travail retenu, par dépendance :
