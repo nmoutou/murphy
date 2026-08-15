@@ -13,8 +13,8 @@
 
 | Phase | Objet | Livrables | État |
 |---|---|---|---|
-| **0** | Cadrage stratégique — le « pourquoi ». *Objectif : pouvoir dire non à des choses.* | note de cadrage (3–5 p.) · cartographie des parties prenantes (RACI) · registre de risques | 🔶 **en cours** |
-| **1** | Discovery métier | taxonomie des requêtes · personas · parcours · **cahier des charges fonctionnel** · critères d'acceptabilité métier | ⬜ |
+| **0** | Cadrage stratégique — le « pourquoi ». *Objectif : pouvoir dire non à des choses.* | note de cadrage (3–5 p.) · cartographie des parties prenantes (RACI) · registre de risques | ✅ **close** |
+| **1** | Discovery métier | taxonomie des requêtes · personas · parcours · **cahier des charges fonctionnel** · critères d'acceptabilité métier | 🔶 **en cours** |
 | **2** | Cadrage du corpus | inventaire des données · schéma de métadonnées · politique de fraîcheur/versionnage · note licences + RGPD · stratégie de parsing/chunking | ⬜ |
 | **3** | Conception de l'évaluation | plan d'évaluation · golden set v1 · grille + guide annotateur · harness · dashboard · seuils go/no-go | ⬜ |
 | **4** | Architecture | dossier d'architecture · ADR · matrice build/buy · modèle de coûts · note sécurité/hébergement | ⬜ |
@@ -87,17 +87,40 @@ prouve rien, et le régime haut-risque en demande précisément la preuve
 (registre des risques, **R-16** — système de gestion des risques continu, à
 réexamen périodique). Un dépôt dédié est la piste envisagée.
 
-Deux manques connus du registre des risques attendent cette étape et n'ont pas à
-être comblés avant elle : la **vraisemblance** de chaque risque, et l'**échéance
-de décision** qui en porte l'urgence. Ce sont des attributs de pilotage, pas de
-cadrage.
+Deux attributs manquent au registre des risques, et un seul est un manque. La
+**vraisemblance** n'en est pas un : le test d'admission (registre, §3) exige une
+cause *déjà vraie* et un événement *incertain*, donc tout ce qui figure au
+registre est vraisemblable par construction. Une colonne qui vaudrait la même
+chose partout ne trierait rien. Reste l'**échéance de décision**, qui porte
+l'urgence : elle est un attribut de pilotage et se fixe ici, avec le reste du
+calendrier, en fin de cadrage.
 
 ## État
 
-**Phase 0 en cours.** Ordre de travail retenu, par dépendance :
+**Phase 0 close.** Ordre de travail suivi, par dépendance : 1. problème →
+2. utilisateurs cibles → 3. valeur mesurable → 4. périmètre in/out →
+5. hypothèses, contraintes et risques → 6. gouvernance → 7. jalons macro.
+Les hypothèses et les contraintes n'ont pas eu de livrable propre : elles
+ouvrent le registre des risques, dont elles sont le matériau.
 
-1. problème → 2. utilisateurs cibles → 3. valeur mesurable → 4. périmètre in/out
-→ 5. hypothèses, contraintes et risques → 6. gouvernance → 7. jalons macro.
+**Phase 1 en cours.** Ordre de travail retenu, par dépendance :
 
-Les hypothèses et les contraintes n'ont pas de livrable propre : elles ouvrent
-le registre des risques, dont elles sont le matériau.
+1. taxonomie des requêtes → 2. personas → 3. parcours → 4. cahier des charges
+fonctionnel → 5. critères d'acceptabilité métier.
+
+La taxonomie ouvre parce qu'elle est le seul livrable de la phase qui ne dépende
+que de la phase 0, et que les quatre autres en dépendent. Les critères ferment
+parce qu'ils qualifient tout ce qui précède — leur **mesure** relevant de la
+phase 3 (H-12).
+
+**La taxonomie est écrite** : trois axes, douze classes, et un §4 qui rassemble
+ce qu'elle lègue à la phase 2 (corpus), à la phase 3 (mesure) et au cahier des
+charges fonctionnel. Les personas suivent.
+
+**Note — le statut des personas.** L'invariance du résultat à l'usager (**D-06**)
+interdit qu'un persona pilote quoi que ce soit dans le système : aucun résultat
+ne dépend de qui demande. Un persona ne peut donc pas servir de levier de
+conception, ni d'axe de segmentation du service. Il ne sert qu'à **produire** de
+la matière — des requêtes réalistes, des situations d'accès — et à **juger** de
+l'acceptabilité. Ce que le système voit d'un usager, il ne le voit que dans sa
+requête.

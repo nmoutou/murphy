@@ -1,9 +1,5 @@
 # Note de cadrage - Murphy
 
-*Phase 0 - cadrage stratégique. Ce document ne cite rien : ce qu'il retient, il le décide.*
-
----
-
 ## 0. Décisions
 
 | N° | Décision | 
@@ -78,7 +74,7 @@ Une question permet de distinguer deux groupes : **le droit est-il l'objet direc
 
 **Murphy restitue des documents publics, des sources, et rien d'autre.** Aucune réponse rédigée, aucun résumé, aucune synthèse : le système ne restitue pas un mot de texte qui ne soit déjà dans le corpus. Ce que l'usager formule en langue naturelle n'est donc pas seulement une question dont il attendrait la réponse, mais aussi une **équation de recherche**. La requête permet de constituer un ensemble de documents, puis de l'élargir, de le concentrer ou de le déplacer.
 
-**Murphy est un service de recherche documentaire, pas de questions-réponses.** L'usager n'est pas seulement le destinataire du résultat, il est **opérateur et garant** de sa propre recherche. C'est ce qui rend D-01 tenable, puisqu'on suppose que l'utilisateur sait (et, en fait, doit) juger, seul, si un document le concerne. L'ensemble d'un résultat ne s'évalue pas en "juste" et "faux" mais en **"bruit"** et **"silence"**. L'unité de valeur n'est pas seulement l'ensemble *restitué* mais surtout l'ensemble **atteignable** : lequel, et en combien de gestes.
+**Murphy est un service de recherche documentaire, pas de questions-réponses.** L'usager n'est pas seulement le destinataire du résultat, il est **opérateur et garant** de sa propre recherche. C'est ce qui rend D-01 tenable, puisqu'on suppose que l'utilisateur sait (et, en fait, doit) juger, seul, si un document le concerne. L'ensemble d'un résultat ne s'évalue pas en "juste" et "faux" mais en **"bruit"** et **"silence"** - un couple qui ne couvre pas tout : une réponse **bien formée et fausse**, la version en vigueur restituée quand une version passée était demandée, n'est ni l'un ni l'autre, et aucun signal ne la distingue d'une bonne réponse. L'unité de valeur n'est pas seulement l'ensemble *restitué* mais surtout l'ensemble **atteignable** : lequel, et en combien de gestes.
 
 > **D-07 - L'utilisateur contrôle et dirige sa recherche : il en est l'opérateur, non le destinataire d'un résultat.**
 
@@ -112,6 +108,8 @@ Une collection de test doit confronter le système à des jugements de pertinenc
 | **La journalisation de sécurité et de conformité** (**D-08**, **D-10**), seule exception à l'injointabilité : pseudonymisée, réduite aux métadonnées, joignable à une identité sur fondement légal | Capacité | Le régime haut-risque impose d'enregistrer les événements et de les conserver ; ce que l'injointabilité interdisait partout devient obligatoire ici. L'exception est donc **énumérée et close** — c'est ce qui la distingue d'un renoncement. Ce qu'elle ne couvre pas reste sous la règle. |
 | **L'absence de contenu dans les journaux** (**D-10**) : un journal enregistre qu'un événement a eu lieu, jamais ce qu'il disait | Capacité | Plancher qui rend l'exception ci-dessus tenable : une trace joignable à une identité n'est acceptable que si elle ne dit rien de ce qui a été cherché ni de ce qui a été lu. Sans ce plancher, l'exception rouvre exactement ce que **D-06** ferme. |
 | **L'anonymisation à l'entrée** (**D-09**) : le contenu des requêtes est anonymisé avant tout autre traitement ; l'échec produit une erreur et rien n'est conservé | Capacité | Supprime le besoin de faire confiance aux composants en aval : aucun ne peut divulguer ce qu'il n'a jamais reçu. Le corpus étant du droit général et non des dossiers, ce qui identifie une personne n'a pas de valeur de récupération. |
+
+**Le périmètre n'est pas l'état du corpus.** Ce qui est dedans l'est par sa nature de source - toute source juridique française publiée par son producteur - et non par le fait d'avoir déjà été ingéré. Une base publiée que l'ingestion n'a pas encore reprise n'est pas dehors : elle est en attente, et le manque se déclare à l'usager plutôt qu'il ne le découvre. La distinction opère dans les deux sens : elle interdit qu'une capacité s'active parce qu'elle est là (**R-45**), et symétriquement qu'un périmètre se rétrécisse en silence jusqu'à ce qui se trouve chargé - **R-37** posant déjà, pour la base perdue, qu'elle doit être *un périmètre en moins, jamais un service arrêté*.
 
 **Bornes d'exécution.** La clé de session est tirée au hasard, jamais dérivée du compte, de l'IP ou d'une empreinte d'appareil, et n'est pas réutilisée d'une session à l'autre. **Hors des journaux de sécurité et de conformité, le couple compte↔clé de session n'est jamais écrit** : partout ailleurs, il n'existe qu'en mémoire, le temps de l'échange. Une seule trace de ce couple **en dehors du périmètre énuméré** — table de sessions, cache, trace de débogage, sauvegarde — rendrait nominatif, par une seule jointure, tout ce qui est en aval.
 
