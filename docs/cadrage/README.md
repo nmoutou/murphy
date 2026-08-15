@@ -45,7 +45,7 @@ Le cadrage s'arrête au **cadre** : le rôle d'opérateur, les modes d'échec
 (bruit / silence), l'ensemble atteignable comme unité de valeur. Le **contenu**
 — quels gestes de pilotage, sur quoi ils portent, ce qu'ils garantissent, ce que
 le système restitue à chaque tour — est le premier objet du cahier des charges
-fonctionnel. Sa **mesure** relève de la phase 3 (hypothèse H-07).
+fonctionnel. Sa **mesure** relève de la phase 3 (hypothèse H-12).
 
 ## État
 

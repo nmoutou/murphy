@@ -1,0 +1,11 @@
+La phase de cadrage n'inclue pas de construction du backlog, ni de l'emploi du temps, ni d'un Kanban ou d'un Gantt général.
+Pas non plus de KPIs, et les portefeuilles de projet ne sont pas définis.
+Lister les ressources nécessaires est pertinent en T0 pour la phase T1 et en T1 pour T2.
+Lister les livrables légaux est également de gravité extrême
+J'aimerais mettre en place le cadre COBIT, pour essayer d'optimiser, d'emblée, les processus légaux de mon projet.
+
+La DILA met à disposition un serveur accessible en FTPS, sur demande auprès du service "Administration des données"  (donnees-dila@dila.gouv.fr).
+Il est pertinent d'avoir accès à ce serveur : ça simplifie beaucoup la méthode par laquelle on peut vérifier le besoin d'une mise à jour et les effectuer.
+En revanche, j'aimerais minimiser mes échanges avec l'administration, et attendre d'avoir une structure pour envoyer le mail.
+Une migration du pipeline d'ingestion peut être envisageable en T1. C'est une petite exception à documenter (dans un backlog, PAR EXEMPLE)
+
