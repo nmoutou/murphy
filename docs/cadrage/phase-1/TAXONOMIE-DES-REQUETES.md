@@ -30,7 +30,7 @@
 
 > **Cette nuance n'est pas une prudence de rédaction, c'est la limite de ce que le système sait.**
 
-Le cas grave n'est pas le Cerfa mais la **convention collective**. La question *"Que dit ma convention collective sur le préavis ?"* est une requête de groupe B banale, et lui rendre le code du travail seul, c'est rendre le principe sans sa dérogation : le pire échec du projet selon (§1.2 et Q-05). **Ce manque-là n'est pas dans le graphe mais dans l'état du corpus : on le connaît, donc on *doit* l'annoncer**.
+Le cas grave n'est pas le Cerfa mais la **convention collective**. La question *"Que dit ma convention collective sur le préavis ?"* est une requête de groupe B banale, et lui rendre le code du travail seul, c'est rendre le principe sans sa dérogation : le pire échec du projet selon (§1.2). **Ce manque-là n'est pas dans le graphe mais dans l'état du corpus : on le connaît, donc on *doit* l'annoncer**.
 
 ---
 
@@ -112,8 +112,8 @@ Cet axe mesure ce que l'utilisateur demande au système de **faire** : **l'opér
 
 | Valeur | Discriminant | Exemples | Comportement cible | Mode d'échec |
 |---|---|---|---|---|
-| **A - Constituer** | aucune inflexion, ou une relaxation explicite : "y compris", "et aussi", "tous les cas de" | "le préavis de démission", "le préavis de démission, y compris en période d'essai" | privilégier le **rappel**, au prix de la précision | aucun spécifique : il hérite de celui de la classe visée |
-| **B - Resserrer** | une restriction explicite : "uniquement", "seulement lorsque", une condition ajoutée | "le préavis de démission uniquement en CDD" | filtrer, sur un ensemble | ne pas retirer un sous-ensemble que l'usager avait explicitement demandé d'écarter |
+| **α - Constituer** | aucune inflexion, ou une relaxation explicite : "y compris", "et aussi", "tous les cas de" | "le préavis de démission", "le préavis de démission, y compris en période d'essai" | privilégier le **rappel**, au prix de la précision | aucun spécifique : il hérite de celui de la classe visée |
+| **β - Resserrer** | une restriction explicite : "uniquement", "seulement lorsque", une condition ajoutée | "le préavis de démission uniquement en CDD" | filtrer, sur un ensemble | ne pas retirer un sous-ensemble que l'usager avait explicitement demandé d'écarter |
 
 ---
 
@@ -125,7 +125,9 @@ Cet axe mesure ce que l'utilisateur demande au système de **faire** : **l'opér
 
 ---
 
-### 2.2. Les six cellules qui ne sont pas classes
+### 2.2. Les retraits
+
+#### 2.2.1 Les six cellules qui ne sont pas classes
 
 **Une cellule n'est pas automatiquement une classe.** Le critère d'admission (**§0.1**) est un test de fusion : une cellule qui hérite intégralement du comportement cible **et** du mode d'échec de sa voisine n'est pas une classe distincte, c'est la même. Six cellules tombent par ce test, et il reste **18 classes**.
 
@@ -133,9 +135,9 @@ Cet axe mesure ce que l'utilisateur demande au système de **faire** : **l'opér
 
 | Fusion | Cellule(s) | Absorbée(s) par |
 |---|---|---|
-| **F1** - la cible est déjà résolue | **1-A-b** | **1-A-a** |
-| **F2** - le resserrement d'une série redéfinit sa dimension | **1-C-b · 2-C-b · 3-C-b · 4-C-b** | **-C-a** |
-| **F3** - héritage d'une classe non servie | **4-A-b** | **4-A-a** |
+| **F1** - la cible est déjà résolue | **1-A-β** | **1-A-α** |
+| **F2** - le resserrement d'une série redéfinit sa dimension | **1-C-β · 2-C-β · 3-C-β · 4-C-β** | **-C-α** |
+| **F3** - héritage d'une classe non servie | **4-A-β** | **4-A-α** |
 
 #### Justifications
 
@@ -149,7 +151,13 @@ Une série est déjà bornée par la dimension que l'usager a nommée (**§1.2**
 
 ##### F3 - héritage d'une classe non servie
 
-4-A-a n'est pas servie (**§2.7**) ; le resserrement n'y ajoute rien qui soit servi.
+4-A-α n'est pas servie (**§2.2.2**) ; le resserrement n'y ajoute rien qui soit servi.
+
+#### 2.2.2 Classes non servies
+
+| Classe(s) | Motif de non-service | Énoncé dû à l'usager | Mode d'échec propre |
+|---|---|---|---|
+| **4-A-α**<br>*Pièce extra-textuelle*<br>(et **4-A-β**, absorbée par **F3**) | La requête vise une pièce singulière sans porter aucun terme qui la désigne : ni identifiant à résoudre, ni formule du corpus, ni nom d'emprunt à faire correspondre. Il n'y a rien sur quoi opérer, et la visée singulière interdit de rendre l'ensemble à la place. Le motif est **dans la requête** : aucune ressource ajoutée au système ne le lèverait | déclarer l'impossibilité de résoudre, et l'**imputer à la requête**, non au corpus : la pièce visée existe peut-être, elle n'est simplement pas atteignable par ce qui est fourni (**§0.3** — *sans résultats*, jamais *inexistant*) | rendre une pièce **plausible** à la place de la pièce visée : l'usager ne tient aucun identifiant qui lui permette de la démentir, donc l'erreur est indétectable de son côté |
 
 ---
 
@@ -157,10 +165,10 @@ Une série est déjà bornée par la dimension que l'usager a nommée (**§1.2**
 
 | Classe | Discriminant conjoint | Spécimens | Comportement cible | Mode d'échec |
 |---|---|---|---|---|
-| **1-A-a**<br>*Résolution* | identifiant **×** visée singulière **×** aucune inflexion | "article L1234-5 du code du travail", "Cass. soc. 25 nov. 2015, n° 14-24.444" | résoudre et non chercher : rendre la pièce désignée, aucun écart à franchir | **le bruit :** la pièce voisine (L1234-6) rendue pour la bonne, et jamais revérifiée |
-| **1-B-a**<br>*Référence étendue* | identifiant **×** demande de ce qui borde le texte | "l'article L1234-5 et ce qui le borne" **×** "que dit la jurisprudence sur l'article 1240 du code civil" | résoudre, **puis** rendre l'entourage normatif : la dérogation, l'exception, l'application | **le silence :** il manque l'exception, et rien ne signale qu'elle manque |
-| **1-B-b**<br>*Référence étendue resserrée* | identifiant **×** entourage **×** restriction explicite | "l'article L1234-5, uniquement pour les CDD", "ce qui borne L1234-5, seulement en cassation" | filtrer l'entourage sur la restriction, et **imputer au filtre** le vide qu'il produit | **double :** le silence hérité de 1-B-a, et le filtre non appliqué ou sur-appliqué sans déclaration |
-| **1-C-a**<br>*Série référencée* | identifiant **×** dimension nommée | "toutes les versions de l'article L1234-5 depuis 2008" | énumérer exhaustivement sur la dimension, l'exhaustivité y est **calculable** | **le trou :** localisable sur la dimension : 95 % est un échec |
+| **1-A-α**<br>*Résolution* | identifiant **×** visée singulière **×** aucune inflexion | "article L1234-5 du code du travail", "Cass. soc. 25 nov. 2015, n° 14-24.444" | résoudre et non chercher : rendre la pièce désignée, aucun écart à franchir | **le bruit :** la pièce voisine (L1234-6) rendue pour la bonne, et jamais revérifiée |
+| **1-B-α**<br>*Référence étendue* | identifiant **×** demande de ce qui borde le texte | "l'article L1234-5 et ce qui le borne" **×** "que dit la jurisprudence sur l'article 1240 du code civil" | résoudre, **puis** rendre l'entourage normatif : la dérogation, l'exception, l'application | **le silence :** il manque l'exception, et rien ne signale qu'elle manque |
+| **1-B-β**<br>*Référence étendue resserrée* | identifiant **×** entourage **×** restriction explicite | "l'article L1234-5, uniquement pour les CDD", "ce qui borne L1234-5, seulement en cassation" | filtrer l'entourage sur la restriction, et **imputer au filtre** le vide qu'il produit | **double :** le silence hérité de 1-B-α, et le filtre non appliqué ou sur-appliqué sans déclaration |
+| **1-C-α**<br>*Série référencée* | identifiant **×** dimension nommée | "toutes les versions de l'article L1234-5 depuis 2008" | énumérer exhaustivement sur la dimension, l'exhaustivité y est **calculable** | **le trou :** localisable sur la dimension : 95 % est un échec |
 
 ---
 
@@ -168,11 +176,11 @@ Une série est déjà bornée par la dimension que l'usager a nommée (**§1.2**
 
 | Classe | Discriminant conjoint | Spécimens | Comportement cible | Mode d'échec |
 |---|---|---|---|---|
-| **2-A-a**<br>*Pièce décrite* | terme du corpus **×** visée singulière **×** aucune inflexion | "l'arrêt qui a posé que le silence ne vaut pas acceptation" | aller de la formule à son support unique, et rendre large autour | **on ne l'a pas**, constatable immédiatement : le bruit y est presque gratuit |
-| **2-A-b**<br>*Pièce décrite resserrée* | idem **×** restriction portant sur l'espace candidat | "l'arrêt qui pose que le silence ne vaut pas acceptation, uniquement en chambre sociale" | filtrer l'espace candidat **avant** de désigner ; un résultat vide s'impute à la restriction, jamais au corpus | la bonne pièce écartée par le filtre, et le vide lu comme une absence |
-| **2-B-a**<br>*Ensemble notionnel*<br>**(pivot)** | terme du corpus **×** ni pièce ni dimension **×** aucune inflexion | "le préavis de démission", "le vice caché", "la rupture conventionnelle" | rendre la norme **et** ce qui la borne ; privilégier le rappel ; donner l'ensemble à voir comme ensemble | **le pire échec du projet :** une règle vraie et incomplète, un usager plus confiant qu'avant |
-| **2-B-b**<br>*Ensemble notionnel resserré* | idem **×** restriction explicite | "le préavis de démission uniquement en CDD" | constituer l'ensemble, **puis** filtrer ; imputer au filtre le vide qu'il produit | le sous-ensemble pas écarté / le **sur-filtrage silencieux** |
-| **2-C-a**<br>*Série notionnelle* | terme du corpus **×** dimension nommée | "toutes les décisions de la Cour de cassation depuis 2020 sur le vice caché" | énumérer exhaustivement sur la dimension, **et déclarer la notion retenue** : l'exhaustivité est calculable sur la dimension, pas sur la notion | **le trou :** et l'ambiguïté sur son origine : la dimension ou l'assiette notionnelle |
+| **2-A-α**<br>*Pièce décrite* | terme du corpus **×** visée singulière **×** aucune inflexion | "l'arrêt qui a posé que le silence ne vaut pas acceptation" | aller de la formule à son support unique, et rendre large autour | **on ne l'a pas**, constatable immédiatement : le bruit y est presque gratuit |
+| **2-A-β**<br>*Pièce décrite resserrée* | idem **×** restriction portant sur l'espace candidat | "l'arrêt qui pose que le silence ne vaut pas acceptation, uniquement en chambre sociale" | filtrer l'espace candidat **avant** de désigner ; un résultat vide s'impute à la restriction, jamais au corpus | la bonne pièce écartée par le filtre, et le vide lu comme une absence |
+| **2-B-α**<br>*Ensemble notionnel*<br>**(pivot)** | terme du corpus **×** ni pièce ni dimension **×** aucune inflexion | "le préavis de démission", "le vice caché", "la rupture conventionnelle" | rendre la norme **et** ce qui la borne ; privilégier le rappel ; donner l'ensemble à voir comme ensemble | **le pire échec du projet :** une règle vraie et incomplète, un usager plus confiant qu'avant |
+| **2-B-β**<br>*Ensemble notionnel resserré* | idem **×** restriction explicite | "le préavis de démission uniquement en CDD" | constituer l'ensemble, **puis** filtrer ; imputer au filtre le vide qu'il produit | le sous-ensemble pas écarté / le **sur-filtrage silencieux** |
+| **2-C-α**<br>*Série notionnelle* | terme du corpus **×** dimension nommée | "toutes les décisions de la Cour de cassation depuis 2020 sur le vice caché" | énumérer exhaustivement sur la dimension, **et déclarer la notion retenue** : l'exhaustivité est calculable sur la dimension, pas sur la notion | **le trou :** et l'ambiguïté sur son origine : la dimension ou l'assiette notionnelle |
 
 ---
 
@@ -182,11 +190,11 @@ Les cinq classes de ce cran passent toutes par **l'étape de correspondance** (*
 
 | Classe | Discriminant conjoint | Spécimens | Comportement cible | Mode d'échec |
 |---|---|---|---|---|
-| **3-A-a**<br>*Pièce sous nom d'emprunt* | nom absent du texte **×** visée singulière **×** aucune inflexion | "la loi Badinter", "l'arrêt Perruche" | établir la correspondance, l'exposer, puis résoudre | **la correspondance fausse :** bien formée, plausible, et fausse |
-| **3-A-b**<br>*Correspondance désambiguïsée* | idem **×** restriction portant sur les candidats du nom | "la prime Macron, uniquement celle de 2022" | traiter la restriction **d'abord** comme un départage entre candidats du nom, **ensuite** seulement comme un filtre | la **restriction appliquée à la mauvaise correspondance** : le filtre **confirme** l'erreur au lieu de la révéler |
-| **3-B-a**<br>*Dispositif sous nom d'emprunt* | nom absent du texte **×** ni pièce ni dimension | "la prime Macron", "la loi anti-cadeaux" | correspondre, puis rendre le dispositif et ses conditions | **cumul :** correspondance fausse, et silence sur les conditions |
-| **3-B-b**<br>*Dispositif sous nom d'emprunt resserré* | idem **×** restriction explicite | "la prime Macron, seulement pour les entreprises de moins de 50 salariés" | correspondre, constituer, puis filtrer ; imputer au filtre son propre vide | **cumul, pire :** correspondance fausse, silence sur les conditions, et le sous-ensemble écarté non retiré |
-| **3-C-a**<br>*Série sous nom d'emprunt* | nom absent du texte **×** dimension nommée | "toutes les versions de la prime Macron depuis 2019" | énumérer exhaustivement sur la dimension, l'assiette étant fixée par une correspondance exposée | **le plus composite du tableau :** un trou dont on ne sait pas s'il vient de la dimension ou de la correspondance |
+| **3-A-α**<br>*Pièce sous nom d'emprunt* | nom absent du texte **×** visée singulière **×** aucune inflexion | "la loi Badinter", "l'arrêt Perruche" | établir la correspondance, l'exposer, puis résoudre | **la correspondance fausse :** bien formée, plausible, et fausse |
+| **3-A-β**<br>*Correspondance désambiguïsée* | idem **×** restriction portant sur les candidats du nom | "la prime Macron, uniquement celle de 2022" | traiter la restriction **d'abord** comme un départage entre candidats du nom, **ensuite** seulement comme un filtre | la **restriction appliquée à la mauvaise correspondance** : le filtre **confirme** l'erreur au lieu de la révéler |
+| **3-B-α**<br>*Dispositif sous nom d'emprunt* | nom absent du texte **×** ni pièce ni dimension | "la prime Macron", "la loi anti-cadeaux" | correspondre, puis rendre le dispositif et ses conditions | **cumul :** correspondance fausse, et silence sur les conditions |
+| **3-B-β**<br>*Dispositif sous nom d'emprunt resserré* | idem **×** restriction explicite | "la prime Macron, seulement pour les entreprises de moins de 50 salariés" | correspondre, constituer, puis filtrer ; imputer au filtre son propre vide | **cumul, pire :** correspondance fausse, silence sur les conditions, et le sous-ensemble écarté non retiré |
+| **3-C-α**<br>*Série sous nom d'emprunt* | nom absent du texte **×** dimension nommée | "toutes les versions de la prime Macron depuis 2019" | énumérer exhaustivement sur la dimension, l'assiette étant fixée par une correspondance exposée | **le plus composite du tableau :** un trou dont on ne sait pas s'il vient de la dimension ou de la correspondance |
 
 ---
 
@@ -194,7 +202,10 @@ Les cinq classes de ce cran passent toutes par **l'étape de correspondance** (*
 
 | Classe | Discriminant conjoint | Spécimens | Comportement cible | Mode d'échec |
 |---|---|---|---|---|
-| **4-A-a**<br>*Pièce extra-textuelle*<br>**(non servie, §2.7)** | aucun terme du corpus **×** visée singulière | "la décision que ma voisine a obtenue contre son propriétaire" | déclarer l'impossibilité de résoudre | rendre une pièce **plausible** à la place de celle qui est visée |
-| **4-B-a**<br>*Situation racontée*<br>**(pivot)** | aucun terme du corpus ni du dispositif **×** ni pièce ni dimension **×** aucune inflexion | "mon patron me fait travailler plus que prévu et ne me paie pas plus", "mon père est décédé et il y a une maison" | rendre large, donner l'ensemble à voir dans sa dispersion, ne pas délimiter l'objet à la place de l'usager (**D-03**), rendre possible le passage au cran 3 | **le silence :** indistinguable de l'absence de règle |
-| **4-B-b**<br>*Situation racontée resserrée*<br>**(la plus dure)** | idem **×** restriction elle aussi en mots d'usager | "mon patron ne me paie pas mes heures en plus, uniquement ce qui vaut pendant la période d'essai" | constituer l'ensemble **avant** d'appliquer la restriction : le filtre porte sur un ensemble qui n'existe pas encore au moment où il est énoncé | **le silence fabriqué par le filtre :** une restriction non qualifiée appliquée littéralement coupe l'ensemble avant qu'il soit constitué |
-| **4-C-a**<br>*Série sur situation racontée*<br>**(statut à trancher, §2.8)** | aucun terme du corpus **×** dimension nommée | "toutes les décisions depuis 2020 où un patron n'a pas payé les heures en plus" | l'exhaustivité porte sur une qualification que le système doit lui-même produire : elle n'est pas décidable | **l'exhaustivité affirmée sur une assiette non qualifiée :** une complétude annoncée qui ne peut pas être vraie |
+| **4-A-α**<br>*Pièce extra-textuelle*<br>**(non servie, §2.2.2)** | aucun terme du corpus **×** visée singulière | "la décision que ma voisine a obtenue contre son propriétaire" | déclarer l'impossibilité de résoudre | rendre une pièce **plausible** à la place de celle qui est visée |
+| **4-B-α**<br>*Situation racontée*<br>**(pivot)** | aucun terme du corpus ni du dispositif **×** ni pièce ni dimension **×** aucune inflexion | "mon patron me fait travailler plus que prévu et ne me paie pas plus", "mon père est décédé et il y a une maison" | rendre large, donner l'ensemble à voir dans sa dispersion, ne pas délimiter l'objet à la place de l'usager (**D-03**), rendre possible le passage au cran 3 | **le silence :** indistinguable de l'absence de règle |
+| **4-B-β**<br>*Situation racontée resserrée*<br>**(la plus dure)** | idem **×** restriction elle aussi en mots d'usager | "mon patron ne me paie pas mes heures en plus, uniquement ce qui vaut pendant la période d'essai" | constituer l'ensemble **avant** d'appliquer la restriction : le filtre porte sur un ensemble qui n'existe pas encore au moment où il est énoncé | **le silence fabriqué par le filtre :** une restriction non qualifiée appliquée littéralement coupe l'ensemble avant qu'il soit constitué |
+| **4-C-α**<br>*Série sur situation racontée*<br>**(statut à trancher, §2.8)** | aucun terme du corpus **×** dimension nommée | "toutes les décisions depuis 2020 où un patron n'a pas payé les heures en plus" | l'exhaustivité porte sur une qualification que le système doit lui-même produire : elle n'est pas décidable | **l'exhaustivité affirmée sur une assiette non qualifiée :** une complétude annoncée qui ne peut pas être vraie |
+
+## 3. Legs
+

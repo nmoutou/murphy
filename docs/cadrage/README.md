@@ -1,4 +1,4 @@
-# CADRAGE — Murphy
+# CADRAGE - Murphy
 
 > Reprise du cadrage stratégique à partir du plan en six phases de `note.md`.
 >
@@ -13,7 +13,7 @@
 
 | Phase | Objet | Livrables | État |
 |---|---|---|---|
-| **0** | Cadrage stratégique — le « pourquoi ». *Objectif : pouvoir dire non à des choses.* | note de cadrage (3–5 p.) · cartographie des parties prenantes (RACI) · registre de risques | ✅ **close** |
+| **0** | Cadrage stratégique - le « pourquoi ». *Objectif : pouvoir dire non à des choses.* | note de cadrage (3–5 p.) · cartographie des parties prenantes (RACI) · registre de risques | ✅ **close** |
 | **1** | Discovery métier | taxonomie des requêtes · personas · parcours · **cahier des charges fonctionnel** · critères d'acceptabilité métier | 🔶 **en cours** |
 | **2** | Cadrage du corpus | inventaire des données · schéma de métadonnées · politique de fraîcheur/versionnage · note licences + RGPD · stratégie de parsing/chunking | ⬜ |
 | **3** | Conception de l'évaluation | plan d'évaluation · golden set v1 · grille + guide annotateur · harness · dashboard · seuils go/no-go | ⬜ |
@@ -26,7 +26,7 @@ human-in-the-loop, classification AI Act, traçabilité des réponses.
 ### Deux règles de conduite
 
 **Une seule phase est ouverte à la fois.** Rien des phases suivantes n'y est
-décidé par avance — mais ce qu'on voit venir sans savoir encore qu'en faire est
+décidé par avance - mais ce qu'on voit venir sans savoir encore qu'en faire est
 **anticipé sans être tranché**, et c'est la fonction du registre des risques.
 
 **Le registre des risques est repris à chaque seuil de jalon.** Aucun seuil de
@@ -34,17 +34,17 @@ sortie (T0 → T1 → T2) n'est prononcé avant que le registre ait été révis
 ce que la phase écoulée a appris. Le premier jet vise l'exhaustivité sans
 l'atteindre : chaque revue comble ce qu'il a manqué.
 
-### Note — le cahier des charges fonctionnel (phase 1)
+### Note - le cahier des charges fonctionnel (phase 1)
 
 La note de cadrage (§3) établit que Murphy relève de la **recherche
 documentaire**, non de la question-réponse : la sortie est un ensemble de
-documents-sources et rien d'autre, et l'usager en est l'**opérateur** (D-07) —
+documents-sources et rien d'autre, et l'usager en est l'**opérateur** (D-07) -
 il constitue un ensemble, puis l'élargit, le concentre, ou le déplace.
 
 Le cadrage s'arrête au **cadre** : le rôle d'opérateur, les modes d'échec
 (bruit / silence), l'ensemble atteignable comme unité de valeur. Le **contenu**
-— quels gestes de pilotage, sur quoi ils portent, ce qu'ils garantissent, ce que
-le système restitue à chaque tour — est le premier objet du cahier des charges
+- quels gestes de pilotage, sur quoi ils portent, ce qu'ils garantissent, ce que
+le système restitue à chaque tour - est le premier objet du cahier des charges
 fonctionnel. Sa **mesure** relève de la phase 3 (hypothèse H-12).
 
 ## Ce que le cadrage ne contient pas
@@ -56,7 +56,7 @@ dispositif de suivi (Kanban, Gantt), les **KPI**, et la définition des
 constitue à part.
 
 Un seul cas est mitoyen : **lister les ressources nécessaires** est bien un
-travail de cadrage, mais anticipé d'un régime — on liste en T0 ce dont T1 aura
+travail de cadrage, mais anticipé d'un régime - on liste en T0 ce dont T1 aura
 besoin, en T1 ce dont T2 aura besoin. Plus tôt, la liste n'a pas d'objet.
 
 ## La structuration du pilotage
@@ -67,7 +67,7 @@ conduire les six phases, et son produit sert ensuite tout le reste. Elle a trois
 objets.
 
 **Le choix d'une méthodologie.** L'objectif est une conduite fortement
-structurée, de façon à pouvoir *optimiser* les processus plutôt que les subir —
+structurée, de façon à pouvoir *optimiser* les processus plutôt que les subir -
 au premier chef les **processus légaux**, dont le registre des risques montre
 qu'ils pèsent la moitié de la charge (§5.6, §5.7). Le choix n'est pas fait, et
 il ne se réduit pas à un cadre unique : **gouverner** des processus, **gérer** le
@@ -84,7 +84,7 @@ attendues, ne sont aujourd'hui définies.
 **L'archivage des revues.** Les revues de risques successives doivent se ranger
 quelque part et rester relisables : une révision qu'on ne peut pas rouvrir ne
 prouve rien, et le régime haut-risque en demande précisément la preuve
-(registre des risques, **R-16** — système de gestion des risques continu, à
+(registre des risques, **R-16** - système de gestion des risques continu, à
 réexamen périodique). Un dépôt dédié est la piste envisagée.
 
 Deux attributs manquent au registre des risques, et un seul est un manque. La
@@ -100,27 +100,8 @@ calendrier, en fin de cadrage.
 **Phase 0 close.** Ordre de travail suivi, par dépendance : 1. problème →
 2. utilisateurs cibles → 3. valeur mesurable → 4. périmètre in/out →
 5. hypothèses, contraintes et risques → 6. gouvernance → 7. jalons macro.
-Les hypothèses et les contraintes n'ont pas eu de livrable propre : elles
-ouvrent le registre des risques, dont elles sont le matériau.
 
 **Phase 1 en cours.** Ordre de travail retenu, par dépendance :
 
 1. taxonomie des requêtes → 2. personas → 3. parcours → 4. cahier des charges
 fonctionnel → 5. critères d'acceptabilité métier.
-
-La taxonomie ouvre parce qu'elle est le seul livrable de la phase qui ne dépende
-que de la phase 0, et que les quatre autres en dépendent. Les critères ferment
-parce qu'ils qualifient tout ce qui précède — leur **mesure** relevant de la
-phase 3 (H-12).
-
-**La taxonomie est écrite** : trois axes, douze classes, et un §4 qui rassemble
-ce qu'elle lègue à la phase 2 (corpus), à la phase 3 (mesure) et au cahier des
-charges fonctionnel. Les personas suivent.
-
-**Note — le statut des personas.** L'invariance du résultat à l'usager (**D-06**)
-interdit qu'un persona pilote quoi que ce soit dans le système : aucun résultat
-ne dépend de qui demande. Un persona ne peut donc pas servir de levier de
-conception, ni d'axe de segmentation du service. Il ne sert qu'à **produire** de
-la matière — des requêtes réalistes, des situations d'accès — et à **juger** de
-l'acceptabilité. Ce que le système voit d'un usager, il ne le voit que dans sa
-requête.
