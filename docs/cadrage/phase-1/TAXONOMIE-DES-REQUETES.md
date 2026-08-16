@@ -2,59 +2,27 @@
 
 ## 0. Objet
 
-**La taxonomie classe des requêtes, pas des utilisateurs.** La règle de non-personalisation (**D-06**) l'impose : le système ne voit d'un usager que ce que sa requête porte. Toute propriété qui ne se lit pas dans la requête est inopérante ici : le profil, le métier, le dossier. Ce qui ressemblerait à un niveau d'expertise n'est légitime qu'à la condition d'être inclus dans la
-formulation elle-même, en temps que propriété de la requête.
+**La taxonomie classe des requêtes, pas des utilisateurs.** La règle de non-personalisation (**D-06**) l'impose : le système ne voit d'un usager que ce que sa requête inclut. Toute propriété qui ne se lit pas dans la requête est illégitime ici. Ce qui s'apparenterait à un niveau d'expertise n'est permis qu'à la condition d'être inclus dans la formulation elle-même, en temps que propriété de la requête.
 
-**Critère d'admission d'une classe :** Deux requêtes appartiennent à des classes différentes si, et seulement si, **le système doit se comporter différemment, ou
-échouer différemment**. 
+**Critère d'admission d'une classe :** Deux requêtes appartiennent à des classes différentes si, et seulement si, **le système doit se comporter différemment, ou échouer différemment**. 
 
-**Deux espèces de discriminant :** Presque tous se lisent dans la requête seule -
-forme d'identifiant, dimension nommée, singularité de la visée, marqueur
-d'inflexion. Un seul de tout le document fait exception : la frontière des crans
-2 et 3 (§1.1) lit la requête **et** le corpus. Elle est admise, parce qu'elle
-reste décidable - savoir si une chaîne figure dans un texte ne demande ni
-l'intention de l'usager, ni ce qu'on aurait dû trouver.
+**L'instrument** responsable de mesurer la qualité de la récupération est proscrit d'utiliser un **discriminant circulaire** : exiger de
+connaître la réponse pour **classer** la question. 
 
-Ce qui reste interdit est le discriminant **circulaire** : celui qui exige de
-connaître la réponse pour classer la question, soit le travers de §1 reproduit à
-l'intérieur de notre propre instrument. C'est lui qui a fait tomber la
-distinction des crans 4 et 5, et lui seul. La règle générale se lit donc ainsi :
-un discriminant doit être décidable **avant** que la requête soit servie, non
-qu'il doive tenir dans la requête.
+La règle générale de choix du discriminant est donc la suivante : un discriminant doit être décidable **avant** que la requête soit
+servie, non qu'il doive tenir dans la requête.
 
-**Le discriminant est donc daté.** « Décidable » se lit *contre un état daté du
-corpus*. Une requête change de cran sans changer d'un mot quand le corpus
-s'étend : le terme qui n'y figurait pas s'y trouve désormais, la recherche
-l'atteint, la table devient inutile. Ce n'est pas un défaut - la population du
-cran 3 **décroît** à mesure que le corpus s'élargit, ce qui en fait une mesure de
-progrès plutôt qu'une instabilité. Mais il suit qu'un jeu d'annotations constitué
-en T0 porte des étiquettes de cran **fausses en T1**, sans que rien ne le
-signale. Soit la phase 3 date ses annotations, soit elle recalcule le cran au
-moment de noter ; ne rien faire est la seule option qui perde la donnée en
-silence.
+**Cette règle porte sur l'instrument, jamais sur le périmètre**, et la confusion
+est assez facile pour valoir d'être fermée ici. Elle dit comment on **range** une
+requête, pas à laquelle on **répond**.
 
-**L'anonymisation est en amont de la taxonomie.** Le refus d'anonymisation
-(**D-09**) n'est pas une classe de requête : c'est une propriété du contenu, et
-D-09 place le module *à l'entrée du système, avant tout autre traitement*. Il
-s'applique donc à toutes les classes sans en distinguer aucune, et n'apparaît sur
-aucun axe.
+Qu'un usager tienne déjà l'identifiant de ce
+qu'il veut lire n'est pas un cas gênant : une grande part du groupe A, et les citoyens
+les plus cultivés du groupe B, sont tous justiciables.
 
-**Ce que le corpus ne porte pas.** L'usager peut nommer un objet qui n'est pas
-dans le corpus. Comme l'anonymisation, cela vaut pour toutes les classes, ne
-fonde aucune frontière et n'apparaît sur aucun axe - mais rien ailleurs ne le
-dit, et le silence sur ce point est plus dangereux que le manque lui-même.
+**L'anonymisation est en amont de la taxonomie.** Ainsi, le refus d'anonymisation (**D-09**) n'est pas une classe de requête : il s'applique à toutes les classes sans en distinguer aucune, donc n'apparaît sur aucun axe.
 
-Deux espèces de trou, et une seule en est un.
-
-- **Provisoire** - les bases publiées par le producteur que l'ingestion n'a pas
-  encore reprises, **KALI** en tête. Ce n'est pas un hors-périmètre : la note de
-  cadrage (§4) met dedans *la récupération de sources juridiques françaises
-  publiées, toutes matières*, et ne met dehors que le droit **non publié par le
-  producteur**. C'est un pas-encore, et ça lègue une échéance, pas une limite de
-  conception.
-- **Définitif** - ce qui n'est pas un texte normatif et n'entrera dans aucune
-  base : le formulaire Cerfa, la notice, l'imprimé. La substitution y est
-  permanente.
+**L'usager peut nommer un objet qui n'est pas dans le corpus**
 
 **La règle est la même dans les deux cas : le système peut rendre l'entourage
 juridique de l'objet nommé plutôt que l'objet, et doit alors déclarer qu'il l'a
@@ -105,16 +73,28 @@ moteur public, il le déguise.
 **Le cran 1 exige une capacité que la recherche sémantique ne fournit pas.** Une
 référence est un identifiant, pas un sens : la similarité vectorielle ne la
 retrouve pas de façon fiable. Or c'est le cas où l'usager sait exactement ce
-qu'il veut et constatera l'échec immédiatement. Le cran où Murphy n'apporte rien
-de plus que le moteur public est donc aussi celui qu'il lui est techniquement le
-plus facile de rater. Il est retenu à ce titre : non pour la valeur qu'il ajoute,
-mais parce qu'un système qui rate le plus facile n'est pas crédible sur le reste.
+qu'il veut et constatera l'échec immédiatement. Le cran le moins coûteux à servir
+est donc aussi celui qu'il est techniquement le plus facile de rater.
 
-**C'est le seul axe qui mesure la valeur du projet.** Le cran 1 est résolu depuis
-longtemps ; le cran 4 ne l'est par personne, à aucun prix. La valeur de Murphy
-croît avec le cran. L'axe n'est donc pas seulement un instrument de classement :
-c'est l'échelle sur laquelle le projet se juge - et celle sur laquelle la phase 3
-devra échantillonner sans se concentrer là où c'est facile.
+**Il est dans le périmètre de plein droit** (**D-01**), et non par tolérance :
+qui tient la référence a un besoin aussi légitime que qui n'a que ses mots. Deux
+raisons s'y ajoutent, sans le fonder - un système qui rate le plus facile n'est
+pas crédible sur le reste ; et le cran 1 n'est pas que Q-01, il porte aussi
+**Q-02** et **Q-03**, où l'ancre exacte sert de point de départ à un suivi de
+liens et à une énumération de versions que le moteur public ne fait pas.
+
+**C'est l'axe qui mesure ce que Murphy ajoute au contrefactuel.** La résolution
+d'identifiant est résolue depuis longtemps ; le cran 4 ne l'est par personne, à
+aucun prix. L'écart au moteur public s'élargit donc à mesure qu'on descend le
+gradient - sans que ce soit un ordre strict, puisque Q-02 et Q-03 tiennent une
+référence et n'ont pourtant pas d'équivalent public.
+
+**Cet écart ne commande aucune règle d'échantillonnage.** C'est une propriété du
+contrefactuel, pas une hiérarchie entre les usagers, et rien n'autorise à en
+déduire où la phase 3 doit chercher ses spécimens. Elle échantillonne sous
+**R-53** et **R-17**, qui exigent l'un et l'autre les **deux registres de
+formulation** dès la v1 de la collection : sous-représenter le haut du gradient
+rendrait invisible la moitié d'un risque déjà enregistré.
 
 **Quatre crans, et non cinq.** Les faits et l'événement seul ont d'abord été
 distingués, puis fondus, pour deux raisons dont la seconde est la vraie. La
@@ -164,9 +144,11 @@ diffus.
 la correspondance peut être une étape de rattrapage, tentée après la recherche
 plutôt qu'avant elle - quand et comment la déclencher est une question de phase 4.
 La taxonomie n'a besoin de la frontière que pour nommer deux comportements et deux
-échecs, et c'est la **phase 3** qui s'en sert, corpus sous les yeux. L'entorse à
-l'observabilité (§0) est donc confinée au travail d'annotation et ne coûte rien à
-l'exécution.
+échecs, et c'est la **phase 3** qui s'en sert, corpus sous les yeux. Ce
+discriminant lit la requête **et** le corpus, et c'est le seul du document dans
+ce cas ; §0 l'admet, puisque savoir si une chaîne figure dans un texte ne demande
+ni l'intention de l'usager, ni ce qu'on aurait dû trouver. Il reste donc décidable
+avant que la requête soit servie, et ne coûte rien à l'exécution.
 
 #### Le cran 4 est dans le périmètre
 
@@ -184,7 +166,7 @@ faite par le système et non par l'usager.
 **L'ensemble restitué doit être lisible comme ensemble.** Ce qui n'est pas exclu,
 en revanche, c'est que l'ensemble donne à voir sa propre dispersion : l'usager ne
 répond à rien, il constate l'étendue de ce qu'il tient et pose une équation plus
-étroite. Sans cela, le cran 5 est une impasse - quarante pièces en liste plate ne
+étroite. Sans cela, le cran 4 est une impasse - quarante pièces en liste plate ne
 se jugent ni ne se concentrent, et **D-07** confie les deux à l'usager.
 Récupération large et liste plate sont incompatibles. **C'est la première
 exigence que la taxonomie lègue au cahier des charges fonctionnel.**
@@ -358,9 +340,9 @@ produit de vraies classes.
 (cran 3) :
 privilégier le rappel. Ce qui distingue ces deux classes est en **amont** de
 l'inflexion - l'étape de correspondance du cran 3 - et l'inflexion s'y compose
-sans interagir. Multiplier affirmerait trente-trois comportements distincts quand
-on n'en observe que treize ; les vingt autres seraient de la redondance
-littérale. Une taxonomie qui revendique des distinctions qu'elle ne peut pas
+sans interagir. Multiplier affirmerait trente-trois comportements distincts là où
+le croisement 1 × 2 n'en observe que onze ; les vingt-deux autres seraient de la
+redondance littérale. Une taxonomie qui revendique des distinctions qu'elle ne peut pas
 soutenir est **moins** rigoureuse, pas plus - c'est le défaut du classement par
 matière, en plus discret.
 
@@ -487,9 +469,13 @@ ce qu'il voulait. Rendre une pièce **voisine** en la présentant comme la bonne
 l'est pas : celui qui tient déjà l'identifiant a par là même accordé sa confiance
 à la résolution, et ne revérifie pas.
 
-**Statut au périmètre.** Dedans - non pour la valeur ajoutée, qui est nulle, mais
-parce qu'un système qui rate le plus facile n'est pas crédible sur le reste
-(§1.1).
+**Statut au périmètre.** Dedans de plein droit (**D-01**, §1.1). L'usager qui
+tient la référence est cible au même titre que les autres, et lui rendre
+exactement la pièce demandée **est** le service. Que Murphy n'ajoute rien au
+moteur public sur ce cran est une propriété du contrefactuel, non un moindre
+droit d'accès - et cela ne dispense de rien : c'est aussi la classe qu'il est le
+plus facile de rater, et un système qui rate le plus facile n'est pas crédible
+sur le reste.
 
 ---
 
@@ -1024,6 +1010,13 @@ porté, puis rien. N'engager d'annotateurs que sur le **mixte** - Q-06 et Q-11, 
 l'appartenance combine une dimension et un critère de fond. **R-05** étant à 🟥 en
 T0, cet ordre n'est pas une commodité : c'est ce qui permet de commencer.
 
+**Aucun cran ne se sous-échantillonne au motif qu'il serait déjà servi ailleurs**
+(§1.1). L'axe 1 mesure l'écart au contrefactuel, pas l'importance des usagers, et
+la taxonomie n'en tire aucune consigne de tirage. Le sens est même inverse :
+**R-53** et **R-17** exigent les deux registres de formulation dès la v1 de la
+collection, faute de quoi l'écart de qualité entre groupe A et groupe B - qui est
+la moitié de R-53 - ne s'observe pas.
+
 **Q-02 est le banc d'essai du suivi de liens.** L'ancre y étant exacte, un manque
 s'impute au graphe et non à la récupération. Si le suivi échoue là, il échouera
 partout, et nulle part ailleurs le diagnostic ne sera aussi net.
@@ -1036,7 +1029,14 @@ le seul mode d'échec du document qui échappe au couple bruit/silence.
 complétude est la moins garantissable du document.
 
 **Les annotations de cran doivent être datées**, ou le cran recalculé au moment
-de noter (§0).
+de noter. Le cran se lit contre un **état daté du corpus** : une requête change
+de cran sans changer d'un mot quand le terme qui n'y figurait pas s'y trouve
+désormais, que la recherche l'atteint et que la table devient inutile. Ce n'est
+pas un défaut - la population du cran 3 **décroît** à mesure que le corpus
+s'élargit, ce qui en fait une mesure de progrès. Mais il suit qu'un jeu
+d'annotations constitué en T0 porte des étiquettes de cran **fausses en T1**,
+sans que rien ne le signale ; ne rien faire est la seule option qui perde la
+donnée en silence.
 
 **L'axe 3 est déjà enregistré comme attribut de chaque spécimen** (§2.1) : la
 phase 3 pourra trancher ses mesures par inflexion si elle en a besoin, sans qu'on
