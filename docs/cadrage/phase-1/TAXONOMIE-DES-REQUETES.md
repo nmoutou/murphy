@@ -52,10 +52,10 @@ L'axe peut se lire comme un gradient *ordonné et nommé* : l'identifiant du pro
 
 | Cran | Discriminant | Exemples | Comportement cible | Mode d'échec |
 |---|---|---|---|---|
-| **1 - La référence** | un identifiant de forme reconnaissable - article et code, numéro de pourvoi, numéro de décret | "article L1234-5 du code du travail" · "Cass. soc. 25 nov. 2015, n° 14-24.444" | résoudre, non chercher : aucun écart à franchir | **le bruit** - la pièce voisine rendue pour la bonne, et jamais revérifiée |
-| **2 - Les mots du corpus** | un terme que les textes visés portent | "préavis de démission" · "vice caché" · "rupture conventionnelle" | aller de la notion à ses supports | **le bruit** - on trouve, et autre chose, en trop, avec |
-| **3 - Le nom d'emprunt** | un nom absent du texte qu'il désigne - éponyme, surnom, étiquette | "la prime Macron" · "la loi Badinter" | une correspondance vers le nom légal : elle existe et se tabule | **la correspondance fausse** - une réponse bien formée et fausse |
-| **4 - Les mots de l'usager** | aucun terme repris du corpus ni du dispositif | "mon patron me fait travailler plus que prévu et ne me paie pas plus" · "mon père est décédé et il y a une maison" | une qualification qu'aucune correspondance ne fournit ; l'objet juridique lui-même n'est parfois pas délimité | **le silence**, indistinguable de l'absence de règle |
+| **1 - La référence** | un identifiant de forme reconnaissable - article et code, numéro de pourvoi, numéro de décret | "article L1234-5 du code du travail", "Cass. soc. 25 nov. 2015, n° 14-24.444" | résoudre, non chercher : aucun écart à franchir | **le bruit** - la pièce voisine rendue pour la bonne, et jamais revérifiée |
+| **2 - Les mots du corpus** | un terme que les textes visés portent | "préavis de démission", "vice caché", "rupture conventionnelle" | aller de la notion à ses supports | **le bruit** - on trouve, et autre chose, en trop, avec |
+| **3 - Le nom d'emprunt** | un nom absent du texte qu'il désigne - éponyme, surnom, étiquette | "la prime Macron", "la loi Badinter" | une correspondance vers le nom légal : elle existe et se tabule | **la correspondance fausse** - une réponse bien formée et fausse |
+| **4 - Les mots de l'usager** | aucun terme repris du corpus ni du dispositif | "mon patron me fait travailler plus que prévu et ne me paie pas plus", "mon père est décédé et il y a une maison" | une qualification qu'aucune correspondance ne fournit ; l'objet juridique lui-même n'est parfois pas délimité | **le silence**, indistinguable de l'absence de règle |
 
 **Le mode d'échec bascule le long du gradient :** 
 - En haut (1–2), l'échec est du **bruit** : on trouve, et autre chose, en trop,  avec.
@@ -90,7 +90,7 @@ Cet axe décrit la **sortie** : la forme de l'ensemble visé et quel ensemble le
 | Valeur | Discriminant | Exemples | Comportement cible | Mode d'échec |
 |---|---|---|---|---|
 | **A - La pièce** | une visée singulière : un arrêt, une loi, une décision | "l'arrêt qui a posé que le silence ne vaut pas acceptation" | rendre une pièce identifiée, **connue de l'usager** | on ne l'a pas, constatable immédiatement |
-| **B - L'ensemble** | ni pièce singulière, ni dimension nommée | "le préavis de démission" · "l'article L1234-5 et ce qui le borne" | rendre la norme et ce qui la borne (le principe et sa dérogation/l'article et ses exceptions), **inconnu de l'usager** | il manque l'exception, et rien ne signale qu'elle manque |
+| **B - L'ensemble** | ni pièce singulière, ni dimension nommée | "le préavis de démission", "l'article L1234-5 et ce qui le borne" | rendre la norme et ce qui la borne (le principe et sa dérogation/l'article et ses exceptions), **inconnu de l'usager** | il manque l'exception, et rien ne signale qu'elle manque |
 | **C - La série** | une dimension du corpus explicitement nommée | "toutes les versions de l'article L1234-5 depuis 2008" | énumérer exhaustivement sur la dimension, **calculable** | un trou dans l'exhaustivité, localisable **sur la dimension** |
 
 **Cet axe rend "bruit / silence" opérable.** 
@@ -112,10 +112,89 @@ Cet axe mesure ce que l'utilisateur demande au système de **faire** : **l'opér
 
 | Valeur | Discriminant | Exemples | Comportement cible | Mode d'échec |
 |---|---|---|---|---|
-| **A - Constituer** | aucune inflexion, ou une relaxation explicite : "y compris", "et aussi", "tous les cas de" | "le préavis de démission" · "le préavis de démission, y compris en période d'essai" | privilégier le **rappel**, au prix de la précision | aucun spécifique : il hérite de celui de la classe visée |
+| **A - Constituer** | aucune inflexion, ou une relaxation explicite : "y compris", "et aussi", "tous les cas de" | "le préavis de démission", "le préavis de démission, y compris en période d'essai" | privilégier le **rappel**, au prix de la précision | aucun spécifique : il hérite de celui de la classe visée |
 | **B - Resserrer** | une restriction explicite : "uniquement", "seulement lorsque", une condition ajoutée | "le préavis de démission uniquement en CDD" | filtrer, sur un ensemble | ne pas retirer un sous-ensemble que l'usager avait explicitement demandé d'écarter |
 
 ---
 
-## 2. Les classes
+## 2. Classes
 
+### 2.1. Composition et notation
+
+**Une classe est un triplet complet :** un cran de l'axe primaire, une valeur de l'axe secondaire, une valeur de l'axe tertiaire. L'espace nominal compte donc 4 × 3 × 2 = **24 cellules**.
+
+---
+
+### 2.2. Les six cellules qui ne sont pas classes
+
+**Une cellule n'est pas automatiquement une classe.** Le critère d'admission (**§0.1**) est un test de fusion : une cellule qui hérite intégralement du comportement cible **et** du mode d'échec de sa voisine n'est pas une classe distincte, c'est la même. Six cellules tombent par ce test, et il reste **18 classes**.
+
+**Règle générale : le *resserrement* fait une classe, partout où il existe un ensemble candidat à réduire.** En effet, il y ajoute un comportement cible qui lui est propre : **imputer au filtre le vide qu'il produit**. Un resserrement qui vide l'ensemble et laisse lire le vide comme une absence de règle produit exactement la fausse déclaration d'absence que **R-57** proscrit. 
+
+| Fusion | Cellule(s) | Absorbée(s) par |
+|---|---|---|
+| **F1** - la cible est déjà résolue | **1-A-b** | **1-A-a** |
+| **F2** - le resserrement d'une série redéfinit sa dimension | **1-C-b · 2-C-b · 3-C-b · 4-C-b** | **-C-a** |
+| **F3** - héritage d'une classe non servie | **4-A-b** | **4-A-a** |
+
+#### Justifications
+
+##### F1 - la cible est déjà résolue
+
+Au cran 1 sur la pièce, il n'y a aucun ensemble candidat : l'identifiant désigne. Le resserrement y porte sur l'*intérieur* d'une pièce déjà tenue ("l'article L1234-5, uniquement l'alinéa 2"), c'est-à-dire sur la résolution d'un identifiant/contexte plus fin. 
+
+##### F2 - le resserrement d'une série redéfinit sa dimension
+
+Une série est déjà bornée par la dimension que l'usager a nommée (**§1.2**). Y ajouter une restriction ("toutes les versions depuis 2008, seulement celles issues d'une loi") ne fait que resserrer l'assiette : l'énumération exhaustive reste une énumération exhaustive, et son mode d'échec reste le trou localisable sur la dimension.
+
+##### F3 - héritage d'une classe non servie
+
+4-A-a n'est pas servie (**§2.7**) ; le resserrement n'y ajoute rien qui soit servi.
+
+---
+
+### 2.3. Cran 1 - La référence
+
+| Classe | Discriminant conjoint | Spécimens | Comportement cible | Mode d'échec |
+|---|---|---|---|---|
+| **1-A-a**<br>*Résolution* | identifiant **×** visée singulière **×** aucune inflexion | "article L1234-5 du code du travail", "Cass. soc. 25 nov. 2015, n° 14-24.444" | résoudre et non chercher : rendre la pièce désignée, aucun écart à franchir | **le bruit :** la pièce voisine (L1234-6) rendue pour la bonne, et jamais revérifiée |
+| **1-B-a**<br>*Référence étendue* | identifiant **×** demande de ce qui borde le texte | "l'article L1234-5 et ce qui le borne" **×** "que dit la jurisprudence sur l'article 1240 du code civil" | résoudre, **puis** rendre l'entourage normatif : la dérogation, l'exception, l'application | **le silence :** il manque l'exception, et rien ne signale qu'elle manque |
+| **1-B-b**<br>*Référence étendue resserrée* | identifiant **×** entourage **×** restriction explicite | "l'article L1234-5, uniquement pour les CDD", "ce qui borne L1234-5, seulement en cassation" | filtrer l'entourage sur la restriction, et **imputer au filtre** le vide qu'il produit | **double :** le silence hérité de 1-B-a, et le filtre non appliqué ou sur-appliqué sans déclaration |
+| **1-C-a**<br>*Série référencée* | identifiant **×** dimension nommée | "toutes les versions de l'article L1234-5 depuis 2008" | énumérer exhaustivement sur la dimension, l'exhaustivité y est **calculable** | **le trou :** localisable sur la dimension : 95 % est un échec |
+
+---
+
+### 2.4. Cran 2 - Les mots du corpus
+
+| Classe | Discriminant conjoint | Spécimens | Comportement cible | Mode d'échec |
+|---|---|---|---|---|
+| **2-A-a**<br>*Pièce décrite* | terme du corpus **×** visée singulière **×** aucune inflexion | "l'arrêt qui a posé que le silence ne vaut pas acceptation" | aller de la formule à son support unique, et rendre large autour | **on ne l'a pas**, constatable immédiatement : le bruit y est presque gratuit |
+| **2-A-b**<br>*Pièce décrite resserrée* | idem **×** restriction portant sur l'espace candidat | "l'arrêt qui pose que le silence ne vaut pas acceptation, uniquement en chambre sociale" | filtrer l'espace candidat **avant** de désigner ; un résultat vide s'impute à la restriction, jamais au corpus | la bonne pièce écartée par le filtre, et le vide lu comme une absence |
+| **2-B-a**<br>*Ensemble notionnel*<br>**(pivot)** | terme du corpus **×** ni pièce ni dimension **×** aucune inflexion | "le préavis de démission", "le vice caché", "la rupture conventionnelle" | rendre la norme **et** ce qui la borne ; privilégier le rappel ; donner l'ensemble à voir comme ensemble | **le pire échec du projet :** une règle vraie et incomplète, un usager plus confiant qu'avant |
+| **2-B-b**<br>*Ensemble notionnel resserré* | idem **×** restriction explicite | "le préavis de démission uniquement en CDD" | constituer l'ensemble, **puis** filtrer ; imputer au filtre le vide qu'il produit | le sous-ensemble pas écarté / le **sur-filtrage silencieux** |
+| **2-C-a**<br>*Série notionnelle* | terme du corpus **×** dimension nommée | "toutes les décisions de la Cour de cassation depuis 2020 sur le vice caché" | énumérer exhaustivement sur la dimension, **et déclarer la notion retenue** : l'exhaustivité est calculable sur la dimension, pas sur la notion | **le trou :** et l'ambiguïté sur son origine : la dimension ou l'assiette notionnelle |
+
+---
+
+### 2.5. Cran 3 - Le nom d'emprunt
+
+Les cinq classes de ce cran passent toutes par **l'étape de correspondance** (**§1.1**), qui leur donne leur mode d'échec commun : une réponse bien formée et fausse. **La correspondance doit être rendue visible comme correspondance** - l'usager doit voir sous quel nom légal on a traduit le sien, sans quoi il n'a aucun moyen de constater l'erreur.
+
+| Classe | Discriminant conjoint | Spécimens | Comportement cible | Mode d'échec |
+|---|---|---|---|---|
+| **3-A-a**<br>*Pièce sous nom d'emprunt* | nom absent du texte **×** visée singulière **×** aucune inflexion | "la loi Badinter", "l'arrêt Perruche" | établir la correspondance, l'exposer, puis résoudre | **la correspondance fausse :** bien formée, plausible, et fausse |
+| **3-A-b**<br>*Correspondance désambiguïsée* | idem **×** restriction portant sur les candidats du nom | "la prime Macron, uniquement celle de 2022" | traiter la restriction **d'abord** comme un départage entre candidats du nom, **ensuite** seulement comme un filtre | la **restriction appliquée à la mauvaise correspondance** : le filtre **confirme** l'erreur au lieu de la révéler |
+| **3-B-a**<br>*Dispositif sous nom d'emprunt* | nom absent du texte **×** ni pièce ni dimension | "la prime Macron", "la loi anti-cadeaux" | correspondre, puis rendre le dispositif et ses conditions | **cumul :** correspondance fausse, et silence sur les conditions |
+| **3-B-b**<br>*Dispositif sous nom d'emprunt resserré* | idem **×** restriction explicite | "la prime Macron, seulement pour les entreprises de moins de 50 salariés" | correspondre, constituer, puis filtrer ; imputer au filtre son propre vide | **cumul, pire :** correspondance fausse, silence sur les conditions, et le sous-ensemble écarté non retiré |
+| **3-C-a**<br>*Série sous nom d'emprunt* | nom absent du texte **×** dimension nommée | "toutes les versions de la prime Macron depuis 2019" | énumérer exhaustivement sur la dimension, l'assiette étant fixée par une correspondance exposée | **le plus composite du tableau :** un trou dont on ne sait pas s'il vient de la dimension ou de la correspondance |
+
+---
+
+### 2.6. Cran 4 - Les mots de l'usager
+
+| Classe | Discriminant conjoint | Spécimens | Comportement cible | Mode d'échec |
+|---|---|---|---|---|
+| **4-A-a**<br>*Pièce extra-textuelle*<br>**(non servie, §2.7)** | aucun terme du corpus **×** visée singulière | "la décision que ma voisine a obtenue contre son propriétaire" | déclarer l'impossibilité de résoudre | rendre une pièce **plausible** à la place de celle qui est visée |
+| **4-B-a**<br>*Situation racontée*<br>**(pivot)** | aucun terme du corpus ni du dispositif **×** ni pièce ni dimension **×** aucune inflexion | "mon patron me fait travailler plus que prévu et ne me paie pas plus", "mon père est décédé et il y a une maison" | rendre large, donner l'ensemble à voir dans sa dispersion, ne pas délimiter l'objet à la place de l'usager (**D-03**), rendre possible le passage au cran 3 | **le silence :** indistinguable de l'absence de règle |
+| **4-B-b**<br>*Situation racontée resserrée*<br>**(la plus dure)** | idem **×** restriction elle aussi en mots d'usager | "mon patron ne me paie pas mes heures en plus, uniquement ce qui vaut pendant la période d'essai" | constituer l'ensemble **avant** d'appliquer la restriction : le filtre porte sur un ensemble qui n'existe pas encore au moment où il est énoncé | **le silence fabriqué par le filtre :** une restriction non qualifiée appliquée littéralement coupe l'ensemble avant qu'il soit constitué |
+| **4-C-a**<br>*Série sur situation racontée*<br>**(statut à trancher, §2.8)** | aucun terme du corpus **×** dimension nommée | "toutes les décisions depuis 2020 où un patron n'a pas payé les heures en plus" | l'exhaustivité porte sur une qualification que le système doit lui-même produire : elle n'est pas décidable | **l'exhaustivité affirmée sur une assiette non qualifiée :** une complétude annoncée qui ne peut pas être vraie |
