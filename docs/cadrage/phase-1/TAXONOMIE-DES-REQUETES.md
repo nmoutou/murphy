@@ -36,8 +36,7 @@ Le cas grave n'est pas le Cerfa mais la **convention collective**. La question *
 
 ### 0.4. Limite de validité 
 
-Les spécimens sont produits par une seule tête. Le risque est que la taxonomie pourrait classer
-des usagers **imaginés**, plutôt que des usagers réels (**R-05**).
+Les spécimens sont produits par une seule tête. Le risque est que la taxonomie pourrait classer des usagers **imaginés**, plutôt que des usagers réels (**R-05**).
 
 ---
 
@@ -47,8 +46,7 @@ des usagers **imaginés**, plutôt que des usagers réels (**R-05**).
 
 Ce dont l'utilisateur dispose d'emblée, à priori. La méthodologie l'évalue par rapport à la phrase qui "porte" le problème : *le moteur "exige" le vocabulaire de la réponse comme "clé d'accès" à la réponse.* L'axe prpopsé mesure la distance entre **ce que l'usager a déjà** et **les mots que le corpus contient**. 
 
-L'axe peut se lire comme un gradient *ordonné et nommé* : l'identifiant du producteur, puis les mots des textes eux-mêmes, puis le nom
-qu'un tiers leur a donné, puis ceux de l'usager.
+L'axe peut se lire comme un gradient *ordonné et nommé* : l'identifiant du producteur, puis les mots des textes eux-mêmes, puis le nom qu'un tiers leur a donné, puis ceux de l'usager.
 
 => À chaque cran, on s'éloigne de la réponse canonique, pour se rapprocher des mots de l'utilisateur.
 
@@ -60,11 +58,10 @@ qu'un tiers leur a donné, puis ceux de l'usager.
 | **4 - Les mots de l'usager** | aucun terme repris du corpus ni du dispositif | "mon patron me fait travailler plus que prévu et ne me paie pas plus" · "mon père est décédé et il y a une maison" | une qualification qu'aucune correspondance ne fournit ; l'objet juridique lui-même n'est parfois pas délimité | **le silence**, indistinguable de l'absence de règle |
 
 **Le mode d'échec bascule le long du gradient :** 
-- En haut (1–2), l'échec est du
-**bruit** : on trouve, et autre chose, en trop,  avec.
+- En haut (1–2), l'échec est du **bruit** : on trouve, et autre chose, en trop,  avec.
 - En bas (3–4), l'échec est du silence : **un système qui échoue silencieusement en bas du gradient n'améliore pas le moteur public, il en déguise la médiocrité**.
 
-**C'est l'axe qui mesure ce que Murphy ajoute au contrefactuel :** La résolution d'identifiant est résolue depuis longtemps, le cran 4 ne l'est par personne. 
+**C'est l'axe qui mesure ce que Murphy ajoute, par rapport aux solutions déjà existantes :** La résolution d'identifiant est résolue depuis longtemps, le cran 4 ne l'est par personne. 
 
 ---
 
@@ -76,26 +73,17 @@ Aux crans 3 et 4, le nom utilisé dans la requête est absent du texte qu'il dé
 
 #### Récupération large : trop de résultats, jamais trop peu
 
-**Quand le système doit se tromper, il doit se tromper par excès.** Un ensemble trop large se réduit, un ensemble trop étroit ne se remarque même pas nécessairement ; Rien ne dit ce qui a été laissé en dehors des résultats. C'est l'asymétrie du gradient : le bruit se juge comme tel, mais le silence peut se déguiser en absence de norme. La récupération large est donc une **décision**, non un défaut
-toléré. 
+**Quand le système doit se tromper, il doit se tromper par excès.** Un ensemble trop large se réduit, un ensemble trop étroit ne se remarque même pas nécessairement ; Rien ne dit ce qui a été laissé en dehors des résultats. C'est l'asymétrie du gradient : le bruit se juge comme tel, mais le silence peut se déguiser en absence de norme. La récupération large est donc une **décision** : on doit prioriser le **Recall**, au prix de la **Precision**. 
 
-**L'usager est l'opérateur de sa requête.** La qualification juridique lui revient
-(**D-03**) : c'est à lui de décider de quoi sa situation relève et d'orienter ce
-qu'il cherche ; le système ne délimite pas l'objet à sa place. **D-07** lui confie
-du même geste le jugement sur ce qui est rendu, donc le resserrement.
+**L'ensemble restitué doit être lisible comme ensemble.**  Il doit donner à voir sa propre dispersion : l'usager ne répond à aucune question, il doit pouvoir constater de l'étendue de ce qu'il tient et poser une équation plus étroite. Sans cela, impossible de passer du cran 4 au cran 3.
 
-**Il resserre en reposant une équation.** Le geste correctif peut est une nouvelle requête : le système étant sans état (**D-06**), poser une nouvelle équation plus étroite permet de concentrer les résultats. Des **filtres**
-lui seront également mis à disposition, un autre moyen de modifier l'équation ainsi que l'ensemble du résultat de la recherche.
+**L'utilisateur est l'opérateur de sa recherche.** En effet, la qualification juridique lui revient (**D-03**) : c'est à lui de décider de quoi sa situation relève et d'orienter ce qu'il cherche. Le système ne délimite pas l'objet à sa place. **D-07** lui confie du même geste le jugement sur ce qui est rendu, donc le resserrement.
+
+**L'utilisateur peut affiner sa recherche avec plusieurs requêtes.** Le geste correctif peut est une nouvelle requête. Des **filtres** seront également à sa disposition, pour garantir un autre moyen de modifier l'ensemble du résultat de la recherche.
 
 **La question de clarification n'est pas tranchée ici.** Qu'un système puisse demander "voulez-vous dire X ou Y ?" pour orienter le tour suivant est une possibilité qui engage un tour de dialogue que ce document ne décide pas.
 
-**L'ensemble restitué doit être lisible comme ensemble.**  Il doit donner à voir sa propre dispersion : l'usager ne répond à aucune question, il doit pouvoir constater de
-l'étendue de ce qu'il tient et poser une équation plus étroite. Sans cela, impossible de passer du cran 4 au cran 3.
-
-**C'est une exigence que la taxonomie lègue au cahier des charges fonctionnel.**
-
-**Aucun refus explicite.** Il est réservé au hors-périmètre : une demande
-d'interprétation (**D-03**). Une requête jugée trop vague est une requête légitime dont l'ensemble en réponse est, lui-aussi, jugé trop large.
+**Aucun refus explicite.** Il est réservé au hors-périmètre : une demande d'interprétation (**D-03**). Une requête jugée trop vague est une requête légitime dont l'ensemble en réponse est, lui-aussi, jugé trop large.
 
 ---
 
@@ -109,47 +97,12 @@ Cet axe décrit la **sortie** : la forme de l'ensemble visé et quel ensemble le
 | **B - L'ensemble** | ni pièce singulière, ni dimension nommée | "le préavis de démission" · "l'article L1234-5 et ce qui le borne" | rendre la règle et ce qui la borne - le principe et sa dérogation, l'article et ses exceptions ; cardinalité déterminée par le droit et **inconnue de l'usager**, jamais par un `top-K` | il manque l'exception, et rien ne signale qu'elle manque |
 | **C - La série** | une dimension du corpus explicitement nommée | "toutes les versions de l'article L1234-5 depuis 2008" | énumérer exhaustivement sur la dimension ; cardinalité déterminée par le corpus, donc **calculable** | un trou dans l'exhaustivité, localisable **sur la dimension** |
 
-**Cet axe rend "bruit / silence" opérable.** La note de cadrage pose le couple
-(§3) sans dire ce qu'il signifie ; c'est ici qu'il le devient, et les
-significations ne se ressemblent pas. Sur **la pièce**, le bruit est presque
-gratuit : la bonne pièce est là, le reste s'ignore. Sur **l'ensemble**, le
-silence est le pire échec du projet - l'usager repart avec une règle vraie et
-incomplète, plus confiant qu'avant, et c'est la seule configuration où Murphy
-peut nuire à quelqu'un qui n'aurait rien trouvé sans lui. Sur **la série**, un
-résultat à 95 % n'est pas une approximation, c'est un échec.
+**Cet axe rend "bruit / silence" opérable.** 
+- Sur **la pièce**, le bruit est presque gratuit : la bonne pièce est là, le reste s'ignore. 
+- Sur **l'ensemble**, le silence est le pire échec du projet : l'usager repart avec une règle vraie et incomplète, plus confiant qu'avant, et c'est la seule configuration où Murphy peut nuire à quelqu'un qui n'aurait rien trouvé sans lui. 
+- Sur **la série**, un résultat complet à 95 % est un résultat incomplet : c'est un échec.
 
-**Il décide de ce qu'un `top-K` peut vouloir dire.** Un K fixe tronque la série
-par construction, et sur l'ensemble il n'a aucune raison de tomber juste : la
-cardinalité y est fixée par le droit, pas par une constante de configuration.
-
-#### L'ensemble ouvert n'est pas une valeur de cet axe
-
-Une quatrième valeur a été envisagée puis écartée : l'**ensemble ouvert**, "tout
-ce qui s'applique à…", sans cardinalité correcte, où l'usager s'arrête quand il
-a assez. Elle est écartée sur le critère d'admission (§0), et sur son second
-membre : elle n'a **pas de mode d'échec propre** - on ne manque pas ce qui n'a
-pas de borne. Une classe qui ne peut pas rater est une classe que la phase 3 ne
-peut pas noter.
-
-**Ce qui est écarté est la forme, pas le besoin.** Le besoin exploratoire existe,
-et la décision prise au cran 4 engage déjà le système à produire de grands
-ensembles. Ceux-ci ne disparaissent pas ; ils cessent d'être une forme
-**garantie** : le système n'en promet ni la cardinalité ni la complétude, et n'y
-reconnaît aucun échec distinct. **Ce cas ne se note pas sur collection de test.**
-Il ne sort pas de l'évaluation pour autant - il bascule sur l'autre plan,
-**D-02(b)** : taux de tâches abouties et temps jusqu'à la première source
-pertinente, que la note de cadrage tient de rang égal. La limite est un
-aiguillage, pas un renoncement.
-
-**Le système se comporte alors toujours comme s'il était sur l'ensemble** : il ne
-rompt jamais un principe de sa dérogation. Cette exigence ne demande pas de
-savoir ce que l'usager voulait - inaccessible - mais ce que **le droit lie**,
-qui est une propriété des documents : renvois, textes pris pour l'application,
-place dans le plan, chaînes d'abrogation. Elle se déplace donc du côté connaissable, au prix d'une charge
-léguée à la **phase 2** (schéma de métadonnées, stratégie de parsing) et d'une
-exposition à **R-08** : si le corpus ne porte pas la liaison, elle ne se fabrique
-pas. Son incomplétude, au moins, se mesure - ce que deviner une intention ne
-permet jamais.
+---
 
 #### Règle de frontière : sans dimension nommée, pas de série
 
@@ -183,6 +136,8 @@ La porte de sortie existe donc, mais elle est étroite : grande ouverte sur Q-03
 entrouverte sur Q-09, fermée sur Q-06 et Q-11. C'est assez pour que la phase 3
 **commence** par ce qui se constate et n'engage d'annotateurs qu'ensuite - ce qui
 est déjà un ordre de travail.
+
+---
 
 #### Les deux axes sont indépendants
 
