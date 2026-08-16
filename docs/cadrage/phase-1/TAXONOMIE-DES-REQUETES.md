@@ -2,197 +2,114 @@
 
 ## 0. Objet
 
+### 0.1. Spécifications générales
+
 **La taxonomie classe des requêtes, pas des utilisateurs.** La règle de non-personalisation (**D-06**) l'impose : le système ne voit d'un usager que ce que sa requête inclut. Toute propriété qui ne se lit pas dans la requête est illégitime ici. Ce qui s'apparenterait à un niveau d'expertise n'est permis qu'à la condition d'être inclus dans la formulation elle-même, en temps que propriété de la requête.
 
 **Critère d'admission d'une classe :** Deux requêtes appartiennent à des classes différentes si, et seulement si, **le système doit se comporter différemment, ou échouer différemment**. 
 
-**L'instrument** responsable de mesurer la qualité de la récupération est proscrit d'utiliser un **discriminant circulaire** : exiger de
-connaître la réponse pour **classer** la question. 
+**L'instrument** responsable de mesurer la qualité de la récupération est proscrit d'utiliser un **discriminant circulaire** : exiger de connaître la réponse pour **classer** la question. La règle générale de choix du discriminant est donc la suivante : un discriminant doit être décidable **avant** que la requête soit servie, non qu'il doive tenir dans la requête. **Cette règle porte sur l'instrument, jamais sur le périmètre**, et la confusion est assez facile pour valoir d'être fermée ici. Elle dit comment on **range** une requête, pas à laquelle on **répond**. Qu'un usager tienne déjà l'identifiant de ce qu'il veut lire n'est pas un cas gênant : une grande part du groupe A, et les citoyens les plus cultivés du groupe B, sont tous justiciables.
 
-La règle générale de choix du discriminant est donc la suivante : un discriminant doit être décidable **avant** que la requête soit
-servie, non qu'il doive tenir dans la requête.
+---
 
-**Cette règle porte sur l'instrument, jamais sur le périmètre**, et la confusion
-est assez facile pour valoir d'être fermée ici. Elle dit comment on **range** une
-requête, pas à laquelle on **répond**.
-
-Qu'un usager tienne déjà l'identifiant de ce
-qu'il veut lire n'est pas un cas gênant : une grande part du groupe A, et les citoyens
-les plus cultivés du groupe B, sont tous justiciables.
+### 0.2. Anonymisation
 
 **L'anonymisation est en amont de la taxonomie.** Ainsi, le refus d'anonymisation (**D-09**) n'est pas une classe de requête : il s'applique à toutes les classes sans en distinguer aucune, donc n'apparaît sur aucun axe.
 
-**L'usager peut nommer un objet qui n'est pas dans le corpus**
+---
 
-**La règle est la même dans les deux cas : le système peut rendre l'entourage
-juridique de l'objet nommé plutôt que l'objet, et doit alors déclarer qu'il l'a
-fait.** Sans cette déclaration, l'usager croit que ce qu'il cherchait est dans le
-lot. Le registre des risques porte déjà la doctrine, en **R-37** - *« la perte
-d'une base doit être un périmètre en moins, jamais un service arrêté »* : le trou
-provisoire en est le cas symétrique, à ceci près qu'il est connu d'avance, donc
-déclarable d'avance.
+### 0.3. Absences
 
-Le cas grave n'est pas le Cerfa mais la **convention collective**. « Ce que dit
-ma convention collective sur le préavis » est une requête de groupe B banale, et
-lui rendre le code du travail seul, c'est rendre le principe sans sa dérogation -
-le pire échec du projet selon §1.2 et Q-05. La différence avec les autres
-silences est que ce manque-là n'est pas dans le graphe mais dans l'état du
-corpus : on le connaît, donc on l'annonce.
+**L'usager peut nommer un objet qui n'est pas dans le corpus ; L'absence doit être déclarée, explicitement et au premier plan.** Quand la requête nomme un objet que le corpus ne porte pas, le système le dit. Il peut ensuite rendre l'entourage juridique de l'objet, il doit alors le donner pour ce qu'il est, l'entourage et non l'objet. Cela dit, **la substitution est facultative**. Elle l'est même lorsqu'il n'y a rien à mettre à la place : c'est là qu'elle vaut le plus. En effet, un résultat vide non déclaré pourrait se lire *"cette règle n'existe pas"* (le problème en §1). 
 
-**Limite de validité.** Les spécimens sont produits par une seule tête. Le risque
-n'est pas que leur provenance soit mal documentée, il est que la taxonomie classe
-des usagers **imaginés** plutôt que des usagers réels (**R-05**).
+> Dire *je n'ai pas trouvé* et dire *je ne peux pas trouver* n'engagent pas la même chose : le premier porte sur le résultat de la requête, le second porte sur l'état du corpus. Dans l'optique de déclarer ce que le corpus ne contient pas, ce document doit aussi expliciter les cas des classes qui existent et ne sont pas (et/ou ne doivent pas être) servies
+
+**L'absence ne se déduit pas d'un résultat vide :** Elle doit s'établir par la résolution d'un identifiant et par rien d'autre. Déclarer absent ce qui est présent mais mal cherché produit une **fausse déclaration d'absence** : une réponse bien formée et fausse. C'est pire que le silence qu'elle remplace, puisqu'elle fait dire au système que "la règle n'existe pas" (voir **R-57**).
+
+**Ce que l'inventaire sait, et ce qu'il ne sait pas.** L'absence d'une **base entière** se connaît. En revanche, l'absence d'une **pièce dans une base présente** ne se connaît que relativement à ce qui a été téléchargé et traité, jamais à ce qui a été publié : le producteur des données reste maître de ce qu'il diffuse (**C-06**). À cette granularité, la déclaration doit donc dire **"sans résultats"**, jamais **"inexistant"**. 
+
+> **Cette nuance n'est pas une prudence de rédaction, c'est la limite de ce que le système sait.**
+
+Le cas grave n'est pas le Cerfa mais la **convention collective**. La question *"Que dit ma convention collective sur le préavis ?"* est une requête de groupe B banale, et lui rendre le code du travail seul, c'est rendre le principe sans sa dérogation : le pire échec du projet selon (§1.2 et Q-05). **Ce manque-là n'est pas dans le graphe mais dans l'état du corpus : on le connaît, donc on *doit* l'annoncer**.
+
+---
+
+### 0.4. Limite de validité 
+
+Les spécimens sont produits par une seule tête. Le risque est que la taxonomie pourrait classer
+des usagers **imaginés**, plutôt que des usagers réels (**R-05**).
 
 ---
 
 ## 1. Axes
 
-### 1.1 La clé d'accès dont l'usager dispose
+### 1.1 L'axe primaire
 
-L'axe primaire. Il met en gradient la phrase qui porte le problème : *le moteur public exige le vocabulaire de la réponse comme clé
-d'accès à la réponse.* L'axe mesure la distance entre **ce que l'usager a déjà**
-et **les mots que le corpus porte**. Il se lit comme un gradient de *qui nomme* :
-l'identifiant du producteur, puis les mots des textes eux-mêmes, puis le nom
-qu'un tiers leur a donné, puis ceux de l'usager - on s'éloigne du texte par
-cercles concentriques jusqu'à celui qui cherche.
+Ce dont l'utilisateur dispose d'emblée, à priori. La méthodologie l'évalue par rapport à la phrase qui "porte" le problème : *le moteur "exige" le vocabulaire de la réponse comme "clé d'accès" à la réponse.* L'axe prpopsé mesure la distance entre **ce que l'usager a déjà** et **les mots que le corpus contient**. 
 
-| Cran | Registre | Spécimen | Écart à franchir |
-|---|---|---|---|
-| **1** | **La référence** - l'identifiant canonique | « article L1234-5 du code du travail » · « Cass. soc. 25 nov. 2015, n° 14-24.444 » | aucun : l'usager ne cherche pas, il récupère |
-| **2** | **Les mots du corpus** - un terme que les textes visés portent | « préavis de démission » · « vice caché » · « rupture conventionnelle » | de la notion à ses supports |
-| **3** | **Le nom que d'autres lui donnent** - éponyme, surnom, étiquette absente du texte | « la prime Macron » · « la loi Badinter » | une correspondance vers le nom légal : elle existe et se tabule |
-| **4** | **Les mots de l'usager** - aucun terme repris | « mon patron me fait travailler plus que prévu et ne me paie pas plus » · « mon père est décédé et il y a une maison » | une qualification, qu'aucune correspondance ne fournit - et parfois l'objet juridique lui-même n'est pas délimité |
+L'axe peut se lire comme un gradient *ordonné et nommé* : l'identifiant du producteur, puis les mots des textes eux-mêmes, puis le nom
+qu'un tiers leur a donné, puis ceux de l'usager.
 
-**Le mode d'échec bascule le long du gradient.** En haut (1–2), l'échec est du
-**bruit** : on trouve, et autre chose avec. En bas (3–4), l'échec est du
-**silence** - et le silence reproduit exactement le problème de §1 : l'usager
-« n'a aucun moyen de distinguer *cette règle n'existe pas* de *je n'ai pas su la
-nommer* ». Un système qui échoue en silence en bas du gradient n'améliore pas le
-moteur public, il le déguise.
+=> À chaque cran, on s'éloigne de la réponse canonique, pour se rapprocher des mots de l'utilisateur.
 
-**Le cran 1 exige une capacité que la recherche sémantique ne fournit pas.** Une
-référence est un identifiant, pas un sens : la similarité vectorielle ne la
-retrouve pas de façon fiable. Or c'est le cas où l'usager sait exactement ce
-qu'il veut et constatera l'échec immédiatement. Le cran le moins coûteux à servir
-est donc aussi celui qu'il est techniquement le plus facile de rater.
+| Cran | Discriminant | Exemples | Comportement cible | Mode d'échec |
+|---|---|---|---|---|
+| **1 - La référence** | un identifiant de forme reconnaissable - article et code, numéro de pourvoi, numéro de décret | "article L1234-5 du code du travail" · "Cass. soc. 25 nov. 2015, n° 14-24.444" | résoudre, non chercher : aucun écart à franchir | **le bruit** - la pièce voisine rendue pour la bonne, et jamais revérifiée |
+| **2 - Les mots du corpus** | un terme que les textes visés portent | "préavis de démission" · "vice caché" · "rupture conventionnelle" | aller de la notion à ses supports | **le bruit** - on trouve, et autre chose, en trop, avec |
+| **3 - Le nom d'emprunt** | un nom absent du texte qu'il désigne - éponyme, surnom, étiquette | "la prime Macron" · "la loi Badinter" | une correspondance vers le nom légal : elle existe et se tabule | **la correspondance fausse** - une réponse bien formée et fausse |
+| **4 - Les mots de l'usager** | aucun terme repris du corpus ni du dispositif | "mon patron me fait travailler plus que prévu et ne me paie pas plus" · "mon père est décédé et il y a une maison" | une qualification qu'aucune correspondance ne fournit ; l'objet juridique lui-même n'est parfois pas délimité | **le silence**, indistinguable de l'absence de règle |
 
-**Il est dans le périmètre de plein droit** (**D-01**), et non par tolérance :
-qui tient la référence a un besoin aussi légitime que qui n'a que ses mots. Deux
-raisons s'y ajoutent, sans le fonder - un système qui rate le plus facile n'est
-pas crédible sur le reste ; et le cran 1 n'est pas que Q-01, il porte aussi
-**Q-02** et **Q-03**, où l'ancre exacte sert de point de départ à un suivi de
-liens et à une énumération de versions que le moteur public ne fait pas.
+**Le mode d'échec bascule le long du gradient :** 
+- En haut (1–2), l'échec est du
+**bruit** : on trouve, et autre chose, en trop,  avec.
+- En bas (3–4), l'échec est du silence : **un système qui échoue silencieusement en bas du gradient n'améliore pas le moteur public, il en déguise la médiocrité**.
 
-**C'est l'axe qui mesure ce que Murphy ajoute au contrefactuel.** La résolution
-d'identifiant est résolue depuis longtemps ; le cran 4 ne l'est par personne, à
-aucun prix. L'écart au moteur public s'élargit donc à mesure qu'on descend le
-gradient - sans que ce soit un ordre strict, puisque Q-02 et Q-03 tiennent une
-référence et n'ont pourtant pas d'équivalent public.
+**C'est l'axe qui mesure ce que Murphy ajoute au contrefactuel :** La résolution d'identifiant est résolue depuis longtemps, le cran 4 ne l'est par personne. 
 
-**Cet écart ne commande aucune règle d'échantillonnage.** C'est une propriété du
-contrefactuel, pas une hiérarchie entre les usagers, et rien n'autorise à en
-déduire où la phase 3 doit chercher ses spécimens. Elle échantillonne sous
-**R-53** et **R-17**, qui exigent l'un et l'autre les **deux registres de
-formulation** dès la v1 de la collection : sous-représenter le haut du gradient
-rendrait invisible la moitié d'un risque déjà enregistré.
+---
 
-**Quatre crans, et non cinq.** Les faits et l'événement seul ont d'abord été
-distingués, puis fondus, pour deux raisons dont la seconde est la vraie. La
-première : la décision ci-dessous les traite à l'identique - même récupération
-large, aucune qualification, aucune désambiguïsation, même échec en silence. Le
-critère d'admission (§0) tranche alors tout seul. La seconde : le discriminant
-proposé n'était **pas observable**. Séparer la situation *qualifiable* de
-l'événement *non délimité* suppose de savoir ce qu'on aurait trouvé - c'est
-exiger le vocabulaire de la réponse pour classer la question, soit le travers de
-§1 reproduit à l'intérieur de notre propre instrument. Une classe dont on ne peut
-pas dire à l'entrée si une requête y appartient n'est pas une classe.
+#### Règle de frontière : le nom figure-t-il dans le texte ?
 
-**Règle de frontière, crans 2 et 3.** Le discriminant n'est pas la façon dont le
-texte se nomme, mais **la présence du terme dans les textes qu'il désigne**.
+Aux crans 3 et 4, le nom utilisé dans la requête est absent du texte qu'il désigne, ce qui impose au système de test **une étape de correspondance**. C'est cette étape qui donne à l'instrument d'évaluation son mode d'échec propre aux deux derniers crans :  une réponse bien formée et fausse.
 
-- **Il y figure** → **cran 2**. Chercher suffit ; aucune ressource extérieure au
-  corpus. « Rupture conventionnelle » est un mot d'usage courant *et* le terme du
-  code du travail (art. L1237-11) : cran 2, quel que soit l'usage qu'en fait le
-  locuteur. De même le sigle que le texte définit lui-même - le CASF écrit
-  « l'allocation aux adultes handicapés (AAH) » - et l'étiquette héritée d'une
-  partie à l'instance, « l'arrêt Baby-Loup ».
-- **Il n'y figure pas** → **cran 3**. Il faut d'abord établir de quel texte on
-  parle, par une correspondance que le corpus ne porte pas. C'est l'éponyme
-  politique - « la loi Badinter », « la loi Toubon » - et le surnom médiatique :
-  les textes disent « prime exceptionnelle de pouvoir d'achat », « Macron » n'y
-  est nulle part.
+---
 
-**Le test porte sur la machine**, comme le §0 l'exige. Le cran 3 est le seul cran
-de l'axe qui **ajoute une étape**, et c'est cette étape qui lui donne son mode
-d'échec propre : la correspondance fausse, qui n'est ni du bruit ni du silence
-mais une réponse bien formée et fausse. Le cran 2 n'en demande aucune, le cran 4
-n'en admet pas. Qu'une recherche vectorielle retrouve mal un sigle de trois
-lettres est vrai et sans effet ici : c'est une faiblesse d'implémentation, donc
-une question de phase 4, et la taxonomie n'a pas à porter les défauts d'une
-architecture qu'elle ne connaît pas encore.
+#### Récupération large : trop de résultats, jamais trop peu
 
-**Le cran 3 est étroit, et il est retenu quand même.** La règle le réduit aux
-noms propres collés à un texte qui ne les porte pas. La population est petite ;
-ce n'est pas un critère - dimensionner un cran sur son effectif serait l'erreur
-que le §2.1 écarte pour le nombre de classes. Il est retenu sur trois raisons qui
-ne dépendent pas de sa taille : un mode d'échec qu'aucun autre cran ne porte ; le
-vocabulaire du **groupe B**, qui apprend les dispositifs par la presse et non par
-le Journal officiel ; une ressource identifiée, ce qui vaut mieux qu'un besoin
-diffus.
+**Quand le système doit se tromper, il doit se tromper par excès.** Un ensemble trop large se réduit, un ensemble trop étroit ne se remarque même pas nécessairement ; Rien ne dit ce qui a été laissé en dehors des résultats. C'est l'asymétrie du gradient : le bruit se juge comme tel, mais le silence peut se déguiser en absence de norme. La récupération large est donc une **décision**, non un défaut
+toléré. 
 
-**La frontière ne se tranche pas à l'entrée.** Elle ne commande aucun aiguillage :
-la correspondance peut être une étape de rattrapage, tentée après la recherche
-plutôt qu'avant elle - quand et comment la déclencher est une question de phase 4.
-La taxonomie n'a besoin de la frontière que pour nommer deux comportements et deux
-échecs, et c'est la **phase 3** qui s'en sert, corpus sous les yeux. Ce
-discriminant lit la requête **et** le corpus, et c'est le seul du document dans
-ce cas ; §0 l'admet, puisque savoir si une chaîne figure dans un texte ne demande
-ni l'intention de l'usager, ni ce qu'on aurait dû trouver. Il reste donc décidable
-avant que la requête soit servie, et ne coûte rien à l'exécution.
+**L'usager est l'opérateur de sa requête.** La qualification juridique lui revient
+(**D-03**) : c'est à lui de décider de quoi sa situation relève et d'orienter ce
+qu'il cherche ; le système ne délimite pas l'objet à sa place. **D-07** lui confie
+du même geste le jugement sur ce qui est rendu, donc le resserrement.
 
-#### Le cran 4 est dans le périmètre
+**Il resserre en reposant une équation.** Le geste correctif peut est une nouvelle requête : le système étant sans état (**D-06**), poser une nouvelle équation plus étroite permet de concentrer les résultats. Des **filtres**
+lui seront également mis à disposition, un autre moyen de modifier l'équation ainsi que l'ensemble du résultat de la recherche.
 
-Il est traité comme une **récupération large**. Le système ne délimite pas
-l'objet à la place de l'usager : il restitue, et l'usager qualifie seul
-(**D-07**). Deux conséquences suivent, et elles ne sont pas facultatives.
+**La question de clarification n'est pas tranchée ici.** Qu'un système puisse demander "voulez-vous dire X ou Y ?" pour orienter le tour suivant est une possibilité qui engage un tour de dialogue que ce document ne décide pas.
 
-**Aucune désambiguïsation n'est possible.** Ce qui est exclu est la question de
-clarification - le système demande, l'usager répond, le système récupère alors.
-Elle l'est deux fois : par **D-06**, parce qu'un tel échange suppose de retenir
-le tour précédent alors que chaque équation est neuve ; et par **D-03**, parce
-que proposer « voulez-vous dire X ou Y ? » est déjà une première qualification,
-faite par le système et non par l'usager.
+**L'ensemble restitué doit être lisible comme ensemble.**  Il doit donner à voir sa propre dispersion : l'usager ne répond à aucune question, il doit pouvoir constater de
+l'étendue de ce qu'il tient et poser une équation plus étroite. Sans cela, impossible de passer du cran 4 au cran 3.
 
-**L'ensemble restitué doit être lisible comme ensemble.** Ce qui n'est pas exclu,
-en revanche, c'est que l'ensemble donne à voir sa propre dispersion : l'usager ne
-répond à rien, il constate l'étendue de ce qu'il tient et pose une équation plus
-étroite. Sans cela, le cran 4 est une impasse - quarante pièces en liste plate ne
-se jugent ni ne se concentrent, et **D-07** confie les deux à l'usager.
-Récupération large et liste plate sont incompatibles. **C'est la première
-exigence que la taxonomie lègue au cahier des charges fonctionnel.**
+**C'est une exigence que la taxonomie lègue au cahier des charges fonctionnel.**
 
-**Le refus explicite n'est pas disponible ici.** Il est réservé au hors-périmètre
-- une demande d'interprétation (**D-03**) - jamais à une requête jugée trop
-vague. Une requête vague est une requête légitime dont l'ensemble est large.
+**Aucun refus explicite.** Il est réservé au hors-périmètre : une demande
+d'interprétation (**D-03**). Une requête jugée trop vague est une requête légitime dont l'ensemble en réponse est, lui-aussi, jugé trop large.
 
-**Le geste correctif est une requête entière.** Chaque tour est neuf et porte son
-contexte (**D-06**) : concentrer n'est pas envoyer un delta à un état conservé,
-c'est reposer une équation.
+---
 
-### 1.2 La forme de l'ensemble visé
+### 1.2 L'axe secondaire
 
-L'axe 1 décrit l'**entrée** : ce que l'usager tient. Celui-ci décrit la
-**sortie** : quel ensemble le satisferait. C'est lui qui donne son contenu à la
-note de cadrage, §3 - *l'unité de valeur n'est pas seulement l'ensemble restitué
-mais surtout l'ensemble atteignable : lequel, et en combien de gestes.*
+Cet axe décrit la **sortie** : la forme de l'ensemble visé et quel ensemble le satisferait. Son unité de valeur n'est pas seulement l'ensemble restitué mais l'ensemble atteignable.
 
-| Valeur | Ce qui satisferait la requête | Cardinalité | Mode d'échec propre |
-|---|---|---|---|
-| **La pièce** | une pièce identifiée | 1, connue de l'usager | on ne l'a pas - total, et constaté immédiatement |
-| **L'ensemble** | la règle et ce qui la borne : le principe et sa dérogation, l'article et ses exceptions | déterminée par le droit, **inconnue de l'usager** | il manque l'exception, et rien ne signale qu'elle manque |
-| **La série** | une extension exhaustive sur une dimension nommée du corpus | déterminée par le corpus, **calculable** | un trou dans l'exhaustivité, localisable **sur la dimension** |
+| Valeur | Discriminant | Exemples | Comportement cible | Mode d'échec |
+|---|---|---|---|---|
+| **A - La pièce** | une visée singulière - un arrêt, une loi, une décision | "l'arrêt qui a posé que le silence ne vaut pas acceptation" | rendre une pièce identifiée, **connue de l'usager** | on ne l'a pas, constatable immédiatement |
+| **B - L'ensemble** | ni pièce singulière, ni dimension nommée | "le préavis de démission" · "l'article L1234-5 et ce qui le borne" | rendre la règle et ce qui la borne - le principe et sa dérogation, l'article et ses exceptions ; cardinalité déterminée par le droit et **inconnue de l'usager**, jamais par un `top-K` | il manque l'exception, et rien ne signale qu'elle manque |
+| **C - La série** | une dimension du corpus explicitement nommée | "toutes les versions de l'article L1234-5 depuis 2008" | énumérer exhaustivement sur la dimension ; cardinalité déterminée par le corpus, donc **calculable** | un trou dans l'exhaustivité, localisable **sur la dimension** |
 
-**Cet axe rend « bruit / silence » opérable.** La note de cadrage pose le couple
+**Cet axe rend "bruit / silence" opérable.** La note de cadrage pose le couple
 (§3) sans dire ce qu'il signifie ; c'est ici qu'il le devient, et les
 significations ne se ressemblent pas. Sur **la pièce**, le bruit est presque
 gratuit : la bonne pièce est là, le reste s'ignore. Sur **l'ensemble**, le
@@ -207,8 +124,8 @@ cardinalité y est fixée par le droit, pas par une constante de configuration.
 
 #### L'ensemble ouvert n'est pas une valeur de cet axe
 
-Une quatrième valeur a été envisagée puis écartée : l'**ensemble ouvert**, « tout
-ce qui s'applique à… », sans cardinalité correcte, où l'usager s'arrête quand il
+Une quatrième valeur a été envisagée puis écartée : l'**ensemble ouvert**, "tout
+ce qui s'applique à…", sans cardinalité correcte, où l'usager s'arrête quand il
 a assez. Elle est écartée sur le critère d'admission (§0), et sur son second
 membre : elle n'a **pas de mode d'échec propre** - on ne manque pas ce qui n'a
 pas de borne. Une classe qui ne peut pas rater est une classe que la phase 3 ne
@@ -237,8 +154,8 @@ permet jamais.
 #### Règle de frontière : sans dimension nommée, pas de série
 
 Une série n'existe que si l'usager **nomme la dimension** sur laquelle elle
-s'étend - une période, une juridiction, une nature de texte, « toutes les
-versions ». « Toutes les règles sur le préavis » porte le mot *toutes* mais ne
+s'étend - une période, une juridiction, une nature de texte, "toutes les
+versions". "Toutes les règles sur le préavis" porte le mot *toutes* mais ne
 nomme aucune dimension : c'est un ensemble. Le discriminant reste observable
 dans la seule requête, puisque la dimension doit y être énoncée pour que la
 requête soit une série.
@@ -260,7 +177,7 @@ Ce qui tranche est le **critère d'appartenance**, et il se lit sur trois degré
 |---|---|---|---|
 | **Mécanique** | la dimension la détermine entièrement, depuis une ancre donnée | nul : soit les onze versions y sont, soit il en manque une, et un comptage tranche | **Q-03** |
 | **Ancrée** | mécanique une fois les ancres établies, mais chacune demande un jugement - quels textes ce nom désigne-t-il ? | un jugement par **nom porté**, puis rien | **Q-09** |
-| **Mixte** | la dimension, **plus** un critère de fond - « sur le harcèlement moral » | un jugement par document candidat, comme partout ailleurs | **Q-06**, **Q-11** |
+| **Mixte** | la dimension, **plus** un critère de fond - "sur le harcèlement moral" | un jugement par document candidat, comme partout ailleurs | **Q-06**, **Q-11** |
 
 La porte de sortie existe donc, mais elle est étroite : grande ouverte sur Q-03,
 entrouverte sur Q-09, fermée sur Q-06 et Q-11. C'est assez pour que la phase 3
@@ -270,9 +187,9 @@ est déjà un ordre de travail.
 #### Les deux axes sont indépendants
 
 **La pièce** n'est pas le cran 1 déguisé. On peut viser une pièce sans tenir de
-référence - « l'arrêt qui a posé que le silence ne vaut pas acceptation » est un
+référence - "l'arrêt qui a posé que le silence ne vaut pas acceptation" est un
 cran 2 qui vise une pièce unique - et tenir une référence en visant un ensemble
-- « l'article L1234-5 et ce qui le borne ». Le croisement a donc des cases
+- "l'article L1234-5 et ce qui le borne". Le croisement a donc des cases
 peuplées, ce qui est la condition pour qu'il produise des classes.
 
 ### 1.3 L'opération demandée
@@ -284,27 +201,27 @@ Il ne porte pas sur le **geste**, qui n'est pas observable : le système est san
 état, il ne voit jamais l'ensemble précédent, donc jamais qu'on l'élargit. Ce
 qu'il voit est l'**inflexion que la requête porte en elle-même**.
 
-| Valeur | Ce que la requête porte | Ce que le système doit privilégier |
-|---|---|---|
-| **Constituer** | aucune inflexion ; l'équation est posée à plat | l'équilibre |
-| **Élargir** | une relaxation explicite - « y compris », « et aussi », « tous les cas de » | le **rappel**, au prix de la précision |
-| **Resserrer** | une restriction explicite - « uniquement », « seulement lorsque », une condition ajoutée | la **précision**, au prix du rappel |
-| **Qualifier** | aucune visée d'ensemble : une conclusion est demandée | rien - refus explicite (**D-03**) |
+| Valeur | Discriminant | Exemples | Comportement cible | Mode d'échec |
+|---|---|---|---|---|
+| **A - Constituer** | aucune inflexion ; l'équation est posée à plat | "le préavis de démission" | l'équilibre | aucun en propre - il hérite de celui de la classe visée |
+| **B - Élargir** | une relaxation explicite - "y compris", "et aussi", "tous les cas de" | "le préavis de démission, y compris en période d'essai" | privilégier le **rappel**, au prix de la précision | ne pas élargir - un silence que l'usager avait explicitement demandé d'éviter |
+| **C - Resserrer** | une restriction explicite - "uniquement", "seulement lorsque", une condition ajoutée | "le préavis de démission uniquement en CDD" | privilégier la **précision**, au prix du rappel | ne pas resserrer - un bruit que l'usager avait explicitement demandé d'écarter |
+| **D - Qualifier** | la valeur vide sur l'axe 2 : ni pièce, ni ensemble, ni série | "ai-je le droit de licencier pour absences répétées ?" | rien - le refus explicite (**D-03**) | deux, symétriques : le faux négatif fait qualifier le système (**R-04**), le faux positif ferme le service au groupe B |
 
-**« Déplacer » n'est pas une valeur.** La note de cadrage (§3) en fait un geste à
+**"Déplacer" n'est pas une valeur.** La note de cadrage (§3) en fait un geste à
 part, aux côtés d'élargir et de concentrer. Mais pour un système sans état, une
 requête qui corrige le tir est indiscernable d'une constitution neuve : ôtez le
-« non, plutôt… », il reste une équation posée à plat. Le critère du §0 le fond
+"non, plutôt…", il reste une équation posée à plat. Le critère du §0 le fond
 dans *constituer*, comme il a fondu l'événement seul dans les mots de l'usager.
 
 **La demande de qualification se reconnaît à sa valeur vide sur l'axe 2.** C'est
 la seule requête qui ne décrit aucun ensemble de documents : elle demande une
-conclusion. « Ai-je le droit de licencier pour absences répétées » porte bien un
+conclusion. "Ai-je le droit de licencier pour absences répétées" porte bien un
 registre de vocabulaire (cran 4), mais ne vise ni pièce, ni ensemble, ni série.
 La signature est donc positive et lisible dans la formulation seule - il n'y a
 pas d'intention à deviner. Le refus qui s'ensuit porte **sur la phrase, jamais
-sur le besoin** : il ne dit pas « vous n'avez pas le droit de vouloir ça », il
-dit « ainsi formulée, cette requête me ferait qualifier ». Le remède est la
+sur le besoin** : il ne dit pas "vous n'avez pas le droit de vouloir ça", il
+dit "ainsi formulée, cette requête me ferait qualifier". Le remède est la
 reformulation, et la porte est franchissable par là - volontairement. Qui veut
 une qualification l'obtiendra en posant une requête de récupération puis en
 tirant lui-même la conclusion : c'est exactement ce que **D-03** organise, le
@@ -314,7 +231,7 @@ système ne qualifie pas, l'usager qualifie.
 lui fixe pour premier objet les gestes de pilotage, et cet axe en est la face
 observable. Il lui lègue une contrainte : si l'inflexion doit se lire dans la
 phrase, l'interface doit rendre ces inflexions **formulables**. Un usager qui ne
-sait pas qu'il peut écrire « uniquement » ne pilote rien.
+sait pas qu'il peut écrire "uniquement" ne pilote rien.
 
 **Réserve assumée.** Ces marqueurs sont lexicaux, donc fragiles. La taxonomie n'a
 pas à dire comment on les détecte - c'est une question d'architecture, phase 4 -
@@ -336,7 +253,7 @@ franchit un écart de vocabulaire puis suit des liens juridiques. Le croisement 
 produit de vraies classes.
 
 **L'axe 3 ne multiplie pas les classes.** *Élargir* veut dire la même chose sur
-« le préavis de démission » (cran 2) et sur « les règles de la loi Badinter »
+"le préavis de démission" (cran 2) et sur "les règles de la loi Badinter"
 (cran 3) :
 privilégier le rappel. Ce qui distingue ces deux classes est en **amont** de
 l'inflexion - l'étape de correspondance du cran 3 - et l'inflexion s'y compose
@@ -361,6 +278,11 @@ C'est l'asymétrie décisive : l'attribut rend le bénéfice de la multiplicatio
 moment où l'on peut s'en servir**, là où la multiplication demande de trancher
 maintenant, avec moins d'information qu'on n'en aura alors.
 
+**L'absence de l'objet nommé est le second attribut**, et pour les mêmes raisons
+(§0) : elle s'ajoute au comportement de la classe sans le changer, et elle est
+**datée** - ce que l'axe 3 n'est pas. Elle se porte donc avec la date de
+l'inventaire qui l'a établie.
+
 ### 2.2 La grille
 
 |  | **La pièce** | **L'ensemble** | **La série** |
@@ -380,18 +302,18 @@ viser. Le vide est une propriété du gradient, et il le confirme.
 
 | Code | Croisement | Nom | Spécimen |
 |---|---|---|---|
-| **Q-01** | référence × pièce | la résolution d'identifiant | « article L1234-5 du code du travail » |
-| **Q-02** | référence × ensemble | l'identifiant et ses liens | « l'article L1234-5 et ce qui le borne » |
-| **Q-03** | référence × série | l'identifiant dans le temps | « toutes les versions de l'article L1234-5 depuis 2008 » |
-| **Q-04** | mots du corpus × pièce | la pièce nommée sans référence | « l'arrêt qui a posé que le silence ne vaut pas acceptation » |
-| **Q-05** | mots du corpus × ensemble | la règle et ses bornes | « le préavis de démission » |
-| **Q-06** | mots du corpus × série | la série juridiquement nommée | « les arrêts sur le harcèlement moral depuis 2015 » |
-| **Q-07** | nom d'emprunt × pièce | le texte derrière le nom | « la loi Badinter » |
-| **Q-08** | nom d'emprunt × ensemble | le régime derrière le nom | « les règles de la loi Badinter » |
-| **Q-09** | nom d'emprunt × série | le nom dans le temps | « les versions successives de la prime Macron » |
-| **Q-10** | mots de l'usager × ensemble | la situation décrite | « mon patron me fait travailler plus que prévu et ne me paie pas plus » |
-| **Q-11** | mots de l'usager × série | le matériau sériel sans vocabulaire | « les jugements depuis 2020 où le patron n'a pas payé tout ce qu'il devait » |
-| **Q-12** | *aucune forme visée* | la demande de conclusion | « ai-je le droit de licencier pour absences répétées ? » |
+| **Q-01** | référence × pièce | la résolution d'identifiant | "article L1234-5 du code du travail" |
+| **Q-02** | référence × ensemble | l'identifiant et ses liens | "l'article L1234-5 et ce qui le borne" |
+| **Q-03** | référence × série | l'identifiant dans le temps | "toutes les versions de l'article L1234-5 depuis 2008" |
+| **Q-04** | mots du corpus × pièce | la pièce nommée sans référence | "l'arrêt qui a posé que le silence ne vaut pas acceptation" |
+| **Q-05** | mots du corpus × ensemble | la règle et ses bornes | "le préavis de démission" |
+| **Q-06** | mots du corpus × série | la série juridiquement nommée | "les arrêts sur le harcèlement moral depuis 2015" |
+| **Q-07** | nom d'emprunt × pièce | le texte derrière le nom | "la loi Badinter" |
+| **Q-08** | nom d'emprunt × ensemble | le régime derrière le nom | "les règles de la loi Badinter" |
+| **Q-09** | nom d'emprunt × série | le nom dans le temps | "les versions successives de la prime Macron" |
+| **Q-10** | mots de l'usager × ensemble | la situation décrite | "mon patron me fait travailler plus que prévu et ne me paie pas plus" |
+| **Q-11** | mots de l'usager × série | le matériau sériel sans vocabulaire | "les jugements depuis 2020 où le patron n'a pas payé tout ce qu'il devait" |
+| **Q-12** | *aucune forme visée* | la demande de conclusion | "ai-je le droit de licencier pour absences répétées ?" |
 
 **Q-05 et Q-10 sont les deux classes centrales**, et elles ne servent pas les
 mêmes gens : Q-05 est le cas courant du groupe A, Q-10 celui du groupe B (note de
@@ -414,7 +336,7 @@ l'axe 3 entretienne, et elle est avec l'axe 2, jamais avec l'axe 1.
 | **L'ensemble** | relâcher la contrainte sémantique - rappel au prix de la précision | ajouter une condition - précision au prix du rappel |
 | **La série** | **étendre la dimension** - plus d'années, plus de juridictions : un changement de filtre, pas un curseur | **restreindre la dimension** - de même |
 
-La ligne « série » est celle qui justifie ce tableau : l'inflexion n'y est pas un
+La ligne "série" est celle qui justifie ce tableau : l'inflexion n'y est pas un
 arbitrage rappel/précision mais une redéfinition du critère d'appartenance. Sur
 une série, élargir ne rend pas la recherche plus tolérante ; il change la série
 demandée.
@@ -446,15 +368,18 @@ ne demande rien autour de la pièce (sinon Q-02) et ne nomme aucune dimension
 (sinon Q-03).
 
 **Spécimens.**
-- « article L1234-5 du code du travail »
-- « Cass. soc. 25 nov. 2015, n° 14-24.444 »
-- « décret n° 2020-1310 »
-- « L. 1234-5 » - forme abrégée, sans le code : l'identifiant reste reconnaissable
+- "article L1234-5 du code du travail"
+- "Cass. soc. 25 nov. 2015, n° 14-24.444"
+- "décret n° 2020-1310"
+- "L. 1234-5" - forme abrégée, sans le code : l'identifiant reste reconnaissable
+- "article 23 de la convention collective Syntec" - identifiant reconnaissable,
+  base absente du corpus : ce qui est servi ici est une **déclaration d'absence**
+  (**§0**), et elle est exacte
 
 **Frontières.**
-- « l'article L1234-5 et ce qui le borne » → **Q-02**
-- « toutes les versions de L1234-5 » → **Q-03**
-- « l'article sur le préavis de démission » → aucun identifiant : **Q-04** ou
+- "l'article L1234-5 et ce qui le borne" → **Q-02**
+- "toutes les versions de L1234-5" → **Q-03**
+- "l'article sur le préavis de démission" → aucun identifiant : **Q-04** ou
   **Q-05** selon la forme visée
 
 **Comportement attendu.** Résoudre, et non chercher. Un identifiant est une
@@ -462,6 +387,12 @@ chaîne, pas un sens : la similarité vectorielle ne le retrouve pas de façon
 fiable, et rendre l'article voisin n'est pas une approximation acceptable mais
 une erreur. En l'absence de date, le défaut est la **version en vigueur** ; toute
 autre demande nomme une date et devient Q-03.
+
+**C'est le cran où l'absence se constate exactement.** Un identifiant est une
+chaîne : le corpus répond sans ambiguïté qu'il le porte ou non, et la
+déclaration du §0 y est donc disponible au prix le plus bas du document. Il en
+suit que la pièce voisine rendue en silence n'y a aucune excuse - la bonne
+sortie existe, elle est bon marché, et elle est de dire qu'on ne l'a pas.
 
 **Mode d'échec dominant : le bruit**, et c'est la seule classe où il est plus
 grave que le silence. Ne rien rendre est constaté immédiatement - l'usager sait
@@ -487,17 +418,17 @@ sur le reste.
 borne**. Il sait où commencer, pas où la règle s'arrête.
 
 **Critère discriminant.** Un identifiant, plus une demande d'extension juridique
-non dimensionnée - « et ce qui le borne », « avec les exceptions », « et les
-dérogations ». Aucune dimension nommée, sinon Q-03.
+non dimensionnée - "et ce qui le borne", "avec les exceptions", "et les
+dérogations". Aucune dimension nommée, sinon Q-03.
 
 **Spécimens.**
-- « l'article L1234-5 et ce qui le borne »
-- « L1237-11 avec ses exceptions »
-- « l'article 1112-1 du code civil et les dérogations »
+- "l'article L1234-5 et ce qui le borne"
+- "L1237-11 avec ses exceptions"
+- "l'article 1112-1 du code civil et les dérogations"
 
 **Frontières.**
-- « article L1234-5 » seul → **Q-01**
-- « tous les décrets pris en application de L3121-1 » → une dimension est nommée,
+- "article L1234-5" seul → **Q-01**
+- "tous les décrets pris en application de L3121-1" → une dimension est nommée,
   la nature du texte : **Q-03**
 
 **Comportement attendu.** Résolution exacte, **puis** parcours des liens
@@ -527,13 +458,13 @@ application.
 nommée. Sans dimension, c'est Q-01 ou Q-02.
 
 **Spécimens.**
-- « toutes les versions de l'article L1234-5 depuis 2008 »
-- « l'article L1234-5 dans sa version applicable au 3 mars 2014 »
-- « tous les décrets pris en application de l'article L3121-1 »
+- "toutes les versions de l'article L1234-5 depuis 2008"
+- "l'article L1234-5 dans sa version applicable au 3 mars 2014"
+- "tous les décrets pris en application de l'article L3121-1"
 
 **Frontières.**
-- « l'article L1234-5 » → version en vigueur par défaut : **Q-01**
-- « L1234-5 et ce qui le borne » → extension juridique, non dimensionnée :
+- "l'article L1234-5" → version en vigueur par défaut : **Q-01**
+- "L1234-5 et ce qui le borne" → extension juridique, non dimensionnée :
   **Q-02**
 
 **Comportement attendu.** Résolution exacte, puis énumération **complète** sur la
@@ -550,7 +481,8 @@ juger. Aucun annotateur n'est requis, ce qui la rend disponible même sous **R-0
 
 **Statut au périmètre.** Dedans, sous réserve que le corpus porte les versions.
 S'il ne les porte pas, la classe existe et n'est pas servie - ce qui se déclare
-plutôt que se cache.
+plutôt que se cache (**§0**), l'absence portant ici sur une **dimension** et non
+sur une pièce.
 
 ---
 
@@ -568,16 +500,16 @@ singularité doit être dans la formulation : un pluriel ou une catégorie fait
 basculer en Q-05.
 
 **Spécimens.**
-- « l'arrêt Baby-Loup »
-- « l'arrêt qui a posé que le silence ne vaut pas acceptation »
-- « la loi de 1978 sur l'informatique et les libertés »
-- « la décision du Conseil constitutionnel sur la loi Hadopi »
+- "l'arrêt Baby-Loup"
+- "l'arrêt qui a posé que le silence ne vaut pas acceptation"
+- "la loi de 1978 sur l'informatique et les libertés"
+- "la décision du Conseil constitutionnel sur la loi Hadopi"
 
 **Frontières.**
-- « les arrêts sur le port du voile en entreprise » → aucune singularité :
+- "les arrêts sur le port du voile en entreprise" → aucune singularité :
   **Q-05**
-- « Cass. ass. plén. 25 juin 2014, n° 13-28.369 » → identifiant : **Q-01**
-- « l'arrêt qui dit qu'on n'est pas obligé quand on n'a rien répondu » → la même
+- "Cass. ass. plén. 25 juin 2014, n° 13-28.369" → identifiant : **Q-01**
+- "l'arrêt qui dit qu'on n'est pas obligé quand on n'a rien répondu" → la même
   visée, mais dans les mots de l'usager : **Q-10**. La frontière tient au
   spécimen ci-dessus - *le silence ne vaut pas acceptation* est la formule du
   corpus (art. 1120 du code civil), et c'est elle qui met la requête au cran 2.
@@ -615,18 +547,22 @@ requête. La requête emploie un terme qui figure dans les textes qu'il désigne
 Q-06. Elle ne désigne pas une pièce unique identifiable - sinon c'est Q-04.
 
 **Spécimens.**
-- « le préavis de démission »
-- « la garantie des vices cachés »
-- « la prescription de l'action en paiement du salaire »
-- « les règles de la rupture conventionnelle » - le terme est d'usage courant,
+- "le préavis de démission"
+- "la garantie des vices cachés"
+- "la prescription de l'action en paiement du salaire"
+- "les règles de la rupture conventionnelle" - le terme est d'usage courant,
   mais c'est celui du code du travail (art. L1237-11) : cran 2, donc Q-05 et non
   Q-08
+- "ce que dit ma convention collective sur le préavis" - le vocabulaire est
+  celui du code du travail, mais la base ne figure pas au corpus : rendre le code
+  seul sans le dire est le pire échec du projet, et la **déclaration d'absence**
+  (**§0**) est la seule part servable aujourd'hui
 
 **Frontières.**
-- « l'arrêt Baby-Loup » → une pièce unique nommée : **Q-04**
-- « le préavis de démission, toutes les versions depuis 2008 » → une dimension
+- "l'arrêt Baby-Loup" → une pièce unique nommée : **Q-04**
+- "le préavis de démission, toutes les versions depuis 2008" → une dimension
   est nommée : **Q-06**
-- « puis-je démissionner sans préavis dans mon cas ? » → aucune forme visée, une
+- "puis-je démissionner sans préavis dans mon cas ?" → aucune forme visée, une
   conclusion demandée : **Q-12**
 
 **Comportement attendu.** Restituer la règle et ce qui la borne, sans jamais
@@ -643,6 +579,11 @@ où Murphy peut nuire à quelqu'un qui n'aurait rien trouvé sans lui. Le bruit,
 l'inverse, y est presque gratuit - une pièce en trop se juge et s'écarte, et
 **D-07** confie ce jugement à l'usager.
 
+**Ce silence a deux sources qu'il faut séparer.** L'exception qui manque au
+**graphe** ne se voit pas et ne se déclare pas ; la **base** qui manque au
+corpus se connaît d'avance et se déclare (§0). C'est la seule part de ce silence
+qui se traite aujourd'hui, et la classe la porte par la convention collective.
+
 **Statut au périmètre.** Dedans.
 
 ---
@@ -658,14 +599,14 @@ exhaustive sur une dimension nommée.
 dimension explicitement énoncée - période, juridiction, nature de texte.
 
 **Spécimens.**
-- « les arrêts sur le harcèlement moral depuis 2015 »
-- « toutes les décisions de la chambre sociale sur la clause de non-concurrence
-  entre 2018 et 2022 »
-- « l'état du droit sur le préavis de démission au 1er janvier 2020 »
+- "les arrêts sur le harcèlement moral depuis 2015"
+- "toutes les décisions de la chambre sociale sur la clause de non-concurrence
+  entre 2018 et 2022"
+- "l'état du droit sur le préavis de démission au 1er janvier 2020"
 
 **Frontières.**
-- « les arrêts sur le harcèlement moral » → aucune dimension : **Q-05**
-- « toutes les versions de L1152-1 depuis 2015 » → identifiant : **Q-03**
+- "les arrêts sur le harcèlement moral" → aucune dimension : **Q-05**
+- "toutes les versions de L1152-1 depuis 2015" → identifiant : **Q-03**
 
 **Comportement attendu.** Filtrer sur les métadonnées **et** franchir l'écart
 sémantique du cran 2. C'est la classe qui compose les deux opérations les plus
@@ -673,7 +614,7 @@ dissemblables du document : un filtre exact et une recherche approchée.
 
 **L'appartenance y est mixte, et c'est ce qui la sépare de Q-03.** En Q-03,
 l'appartenance est entièrement mécanique. Ici, elle combine un critère mécanique
-- la période - et un critère de **fond** - « sur le harcèlement moral » - qui
+- la période - et un critère de **fond** - "sur le harcèlement moral" - qui
 demande un jugement. **Q-06 n'est donc pas notable sans annotateur**, à la
 différence de Q-03 : la porte de sortie ouverte au §1.2 ne vaut que pour les
 séries à appartenance mécanique.
@@ -696,14 +637,14 @@ nom recouvre - celle qu'il pourra citer.
 de frontière 2/3), plus une visée singulière.
 
 **Spécimens.**
-- « la loi Badinter »
-- « le texte qui fonde la prime Macron »
-- « quel décret a créé la prime de Noël »
-- « la loi Toubon »
+- "la loi Badinter"
+- "le texte qui fonde la prime Macron"
+- "quel décret a créé la prime de Noël"
+- "la loi Toubon"
 
 **Frontières.**
-- « les règles de la loi Badinter » → le régime entier : **Q-08**
-- « la loi du 5 juillet 1985 sur les accidents de la circulation » → le même
+- "les règles de la loi Badinter" → le régime entier : **Q-08**
+- "la loi du 5 juillet 1985 sur les accidents de la circulation" → le même
   texte, désigné cette fois par son intitulé, qui est dans le corpus : cran 2,
   donc **Q-04**
 
@@ -713,7 +654,7 @@ se tabule, donc elle se construit et se vérifie. Comme en Q-04, la sortie utile
 est l'identité canonique.
 
 **La correspondance est plurielle.** Un nom d'emprunt peut désigner plusieurs
-textes sans rapport entre eux : « la loi Pinel » est la loi du 18 juin 2014 sur
+textes sans rapport entre eux : "la loi Pinel" est la loi du 18 juin 2014 sur
 l'artisanat et le commerce **et** le dispositif fiscal d'investissement locatif de
 la loi de finances pour 2015 - deux textes, une ministre en commun. Le système
 rend alors les deux, et l'usager restreint au tour suivant (**D-07**). La forme
@@ -726,6 +667,13 @@ rend la classe notable.
 objet voisin. Le silence y est trompeur : l'usager n'a aucun moyen de
 distinguer un nom qui ne recouvre aucun texte unique - ce qui arrive
 - d'une correspondance qui a manqué.
+
+**La table lève une part de cette confusion.** Quand elle porte le nom et que le
+corpus n'a pas le texte, l'absence se constate et se déclare (**§0**) ; quand
+elle ne porte pas le nom, rien ne se distingue. C'est une raison de la produire
+qui s'ajoute à celles de **R-56**, et elle est d'un autre ordre : la table ne
+sert pas seulement à servir le cran 3, elle est ce qui y rend l'absence
+déclarable.
 
 **Statut au périmètre.** Dedans.
 
@@ -742,24 +690,25 @@ montants, procédure, voies de recours.
 dimension nommée.
 
 **Spécimens.**
-- « les règles de la loi Badinter »
-- « les conditions du chèque inflation »
-- « ce que prévoit la loi Toubon »
-- « à quoi sert le Cerfa 14952 » - un numéro Cerfa est un nom donné par
+- "les règles de la loi Badinter"
+- "les conditions du chèque inflation"
+- "ce que prévoit la loi Toubon"
+- "à quoi sert le Cerfa 14952" - un numéro Cerfa est un nom donné par
   l'administration à une procédure, donc un nom d'emprunt. Le formulaire lui-même
-  n'est pas dans le corpus : c'est le régime qu'il sert qui est rendu, et la
-  substitution se déclare (**§0**)
+  n'est pas dans le corpus : le système **le dit d'abord**, puis rend le régime
+  qu'il sert en le donnant pour ce qu'il est - l'entourage, non l'objet demandé
+  (**§0**)
 
 **Frontières.**
-- « les règles de la rupture conventionnelle » → cran 2 : **Q-05**
-- « le texte qui fonde la prime Macron » → une pièce : **Q-07**
+- "les règles de la rupture conventionnelle" → cran 2 : **Q-05**
+- "le texte qui fonde la prime Macron" → une pièce : **Q-07**
 
 **Comportement attendu.** La correspondance du cran 3, puis l'opération de Q-05.
 La complétude de l'ensemble (§1.2) y prend une forme fréquente et reconnaissable :
 **certains objets répartissent leur régime sur deux étages** - la loi ou le code
 d'un côté, le décret ou l'arrêté de l'autre, où se trouvent barèmes et montants.
-C'est le gestionnaire de paie du §2, qui « articule deux étages de norme, jamais
-un texte isolé ».
+C'est le gestionnaire de paie du §2, qui "articule deux étages de norme, jamais
+un texte isolé".
 
 **C'est une propriété de l'objet, non du cran.** Les prestations et les
 dispositifs à barème ont deux étages ; la loi Toubon n'en a qu'un. Le cran ne
@@ -769,7 +718,7 @@ varie avec ce que le nom recouvre. C'est aussi pourquoi elle ne réintroduit pas
 classement par matière (**D-05**) : elle ne fonde aucune frontière de classe, elle
 décrit une charge inégalement répartie à l'intérieur d'une classe.
 
-**L'homonymie vaut ici aussi** (Q-07) : « les règles de la loi Pinel » vise deux
+**L'homonymie vaut ici aussi** (Q-07) : "les règles de la loi Pinel" vise deux
 régimes sans rapport, et les deux sont rendus. Avec une exigence que la forme
 *ensemble* ajoute - ils doivent rester **séparés à la lecture**. Deux régimes
 fondus en une liste plate sont pires qu'un seul choisi au hasard : l'usager y
@@ -795,14 +744,14 @@ dimension : versions successives, montant à une date, textes annuels.
 **Critère discriminant.** Un nom d'emprunt, plus une dimension nommée.
 
 **Spécimens.**
-- « les versions successives de la prime Macron »
-- « le montant de la prime de Noël en 2019 »
-- « la loi Badinter dans sa version applicable en 1995 »
+- "les versions successives de la prime Macron"
+- "le montant de la prime de Noël en 2019"
+- "la loi Badinter dans sa version applicable en 1995"
 
 **Frontières.**
-- « le montant de la prime Macron » → sans date, le défaut est la version en
+- "le montant de la prime Macron" → sans date, le défaut est la version en
   vigueur : **Q-08**
-- « toutes les versions de l'article L845-1 » → identifiant : **Q-03**
+- "toutes les versions de l'article L845-1" → identifiant : **Q-03**
 
 **Comportement attendu.** Correspondance, puis énumération datée. C'est la classe
 de l'agent instructeur et du gestionnaire de paie, qui doivent appliquer le droit
@@ -827,7 +776,8 @@ c'est une réponse bien formée et fausse, qu'aucun signal ne distingue d'une bo
 C'est le seul mode d'échec du document qui échappe au couple bruit/silence, et
 c'est le plus dangereux de tous - un barème périmé est faux sans en avoir l'air.
 
-**Statut au périmètre.** Dedans, sous la même réserve de versionnage que Q-03.
+**Statut au périmètre.** Dedans, sous la même réserve de versionnage que Q-03 -
+et sous la même déclaration (**§0**).
 
 ---
 
@@ -843,22 +793,22 @@ appliquent.
 aucune dimension nommée, et une visée d'ensemble - des règles, non une
 conclusion, sinon c'est Q-12. La condition porte sur les termes d'art, non sur
 le lexique : toute phrase française emploie des mots que le corpus contient, et
-« j'ai acheté une voiture qui tombe en panne » reste au cran 4 parce qu'elle ne
+"j'ai acheté une voiture qui tombe en panne" reste au cran 4 parce qu'elle ne
 nomme ni le vice caché ni la garantie de conformité.
 
 **Spécimens.**
-- « mon patron me fait travailler plus que prévu et ne me paie pas plus »
-- « le propriétaire ne me rend pas l'argent que j'avais versé en entrant »
-- « mon père est décédé et il y a une maison »
-- « j'ai acheté une voiture qui tombe en panne au bout d'une semaine »
+- "mon patron me fait travailler plus que prévu et ne me paie pas plus"
+- "le propriétaire ne me rend pas l'argent que j'avais versé en entrant"
+- "mon père est décédé et il y a une maison"
+- "j'ai acheté une voiture qui tombe en panne au bout d'une semaine"
 
 **Frontières.**
-- « ai-je le droit de refuser ? » → une conclusion est demandée : **Q-12**
-- « le dépôt de garantie » → un terme du texte : **Q-05**
+- "ai-je le droit de refuser ?" → une conclusion est demandée : **Q-12**
+- "le dépôt de garantie" → un terme du texte : **Q-05**
 
 **Comportement attendu.** C'est ici que s'applique la décision de **récupération
-large** (§1.1) : le système ne délimite pas l'objet à la place de l'usager, ne
-désambiguïse pas, ne qualifie pas. Il restitue - et l'ensemble doit être
+large** (§1.1) : le système ne délimite pas l'objet à la place de l'usager et ne
+qualifie pas à sa place. Il restitue - et l'ensemble doit être
 **lisible comme ensemble**, sa dispersion perceptible, faute de quoi l'usager ne
 peut pas exercer le jugement que **D-07** lui confie.
 
@@ -866,6 +816,19 @@ peut pas exercer le jugement que **D-07** lui confie.
 l'absence de règle** : exactement le problème de §1, reconduit. C'est la classe
 sur laquelle Murphy est jugé, parce que c'est celle que le moteur public ne sert
 pas du tout.
+
+**C'est la limite exacte du premier énoncé de la règle** (§0). L'usager n'ayant
+nommé aucun objet, il n'y a rien dont on puisse constater l'absence : ni
+inventaire à consulter, ni identifiant à résoudre, donc rien à dire sur ce qu'on
+*n'a pas trouvé*. La classe qui aurait le plus besoin de la déclaration est la
+seule à qui cette forme-là soit inaccessible.
+
+**Le second énoncé l'atteint, mais de biais.** Ce que le corpus **ne peut pas**
+rendre se déclare debout, sans résolution : Q-10 reçoit donc l'état des trous,
+jamais le fait que sa requête en ait heurté un. Si la situation décrite relève
+d'une **base** absente, la catégorie est parfois reconnaissable là où l'objet ne
+l'est pas, et le manque se déclare à ce titre. Ce qui reste après cela est le
+résidu que **R-48** garde accepté.
 
 **Statut au périmètre.** Dedans.
 
@@ -883,15 +846,15 @@ et le journaliste du §2 : le texte est un matériau, voulu en série et daté.
 mais une dimension explicitement énoncée.
 
 **Spécimens.**
-- « les jugements depuis 2020 où le patron n'a pas payé tout ce qu'il devait »
-- « toutes les décisions de 2019 à 2023 où des gens ont été mis dehors de chez
-  eux »
-- « combien de procès par an depuis 2015 entre voisins d'un même immeuble »
+- "les jugements depuis 2020 où le patron n'a pas payé tout ce qu'il devait"
+- "toutes les décisions de 2019 à 2023 où des gens ont été mis dehors de chez
+  eux"
+- "combien de procès par an depuis 2015 entre voisins d'un même immeuble"
 
 **Frontières.**
-- « les jugements où le patron n'a pas payé tout ce qu'il devait » → aucune
+- "les jugements où le patron n'a pas payé tout ce qu'il devait" → aucune
   dimension : **Q-10**
-- « les arrêts sur le harcèlement moral depuis 2015 » → cran 2 : **Q-06**
+- "les arrêts sur le harcèlement moral depuis 2015" → cran 2 : **Q-06**
 
 **Comportement attendu.** Un filtre exact sur la dimension, et l'écart de
 vocabulaire maximal sur le fond. **C'est la classe la plus dure du document** :
@@ -924,14 +887,14 @@ pièce, ni ensemble, ni série. La signature est positive et lisible dans la
 formulation seule : il n'y a aucune intention à deviner.
 
 **Spécimens.**
-- « ai-je le droit de licencier pour absences répétées ? »
-- « est-ce que mon licenciement est abusif ? »
-- « dois-je payer ces charges ? »
-- « que dois-je faire ? »
+- "ai-je le droit de licencier pour absences répétées ?"
+- "est-ce que mon licenciement est abusif ?"
+- "dois-je payer ces charges ?"
+- "que dois-je faire ?"
 
 **Frontières.**
-- « les règles du licenciement pour absences répétées » → **Q-05**
-- « mon patron me met dehors parce que j'ai été malade » → une situation décrite,
+- "les règles du licenciement pour absences répétées" → **Q-05**
+- "mon patron me met dehors parce que j'ai été malade" → une situation décrite,
   pas une conclusion demandée : **Q-10**. C'est la frontière la plus délicate du document,
   et le §0 la tranche : on classe la formulation, jamais le besoin qu'on lui
   suppose.
@@ -979,9 +942,12 @@ améliorations. Sans versions, les deux classes existent et ne sont pas servies 
 ce qui se déclare plutôt que se cache.
 
 **La table des noms d'emprunt.** Elle va d'un nom vers un **ensemble énuméré**,
-jamais vers un texte unique : l'homonymie (Q-07, « la loi Pinel ») et le
+jamais vers un texte unique : l'homonymie (Q-07, "la loi Pinel") et le
 renommage (Q-09, la prime Macron) l'exigent l'un et l'autre. C'est elle qui fait
 exister le cran 3 ; sans elle, Q-07, Q-08 et Q-09 se traitent comme du cran 4.
+C'est aussi elle qui y rend l'absence **déclarable** (§0) : sans entrée pour un
+nom, on ne distingue pas un nom qui ne recouvre aucun texte d'un texte que le
+corpus n'a pas.
 
 **La décision d'identité entre noms successifs.** Dire que la *prime de partage
 de la valeur* est la même prime que la *prime exceptionnelle de pouvoir d'achat*
@@ -990,7 +956,14 @@ une par nom porté, non une par document - mais faillible, et sa fausseté ne se
 constate pas.
 
 **L'inventaire des trous** (§0), provisoires et définitifs, avec une échéance
-pour les premiers.
+pour les premiers. La règle de déclaration en fait une **dépendance
+d'exécution** et non une pièce de documentation : le système le consulte pour
+répondre. Il doit donc être lisible par la machine, daté, et tenu au rythme de
+l'ingestion - un inventaire faux ne produit pas une lacune de documentation mais
+une **fausse déclaration d'absence** (**R-57**). Il porte les deux granularités
+que la règle distingue : la **base** manquante, et dans une base présente, ce
+qui n'en a pas été repris - la seconde bornée à ce qui a été moissonné, ce qui
+décide de ce que la déclaration a le droit de dire (§0).
 
 **Une charge à déclarer plutôt qu'à glisser.** La table et la décision d'identité
 sont de la **matière éditoriale** - la couche que la note de cadrage (§1) décrit
@@ -1042,6 +1015,25 @@ donnée en silence.
 phase 3 pourra trancher ses mesures par inflexion si elle en a besoin, sans qu'on
 ait figé aujourd'hui des distinctions qu'on ne sait pas encore réelles.
 
+**La déclaration d'absence se note sans annotateur.** Elle rejoint Q-03 du côté
+de ce qui se **constate** : un spécimen qui nomme un objet inventorié comme
+absent a une vérité de référence mécanique - la déclaration est émise ou elle ne
+l'est pas. C'est une troisième famille bon marché, disponible sous **R-05**, et
+qui traverse les classes au lieu d'en occuper une. La **fausse déclaration
+d'absence** se note au même prix, et dans l'autre sens.
+
+**Ces annotations expirent, comme celles de cran** - et pour la même raison, le
+corpus qui s'élargit sous elles. Un spécimen dont l'objet est absent en T0
+devient un spécimen ordinaire dès que l'ingestion le reprend, sans que rien ne
+le signale. La date d'annotation et la **date de l'inventaire** qui l'a établie
+se portent donc ensemble.
+
+**La collection de test est l'un des deux endroits où le porteur lit ce qui
+manque** (§0), l'autre étant l'inventaire - et les deux sont hors du chemin de
+la requête, ce qui n'est pas une commodité mais la condition posée par **D-10**
+et **D-06**. En **T2**, la déclaration cesse d'énumérer un reste à faire pour
+signaler un défaut ; c'est la même mesure, lue contre un périmètre censé tenu.
+
 ### 4.3 Au cahier des charges fonctionnel
 
 **L'ensemble doit être lisible comme ensemble.** C'est la première exigence
@@ -1053,8 +1045,13 @@ Q-08, deux objets sans rapport peuvent revenir ensemble, et ils doivent rester
 
 **Les inflexions doivent être formulables.** Si l'élargissement et le
 resserrement se lisent dans la phrase (§1.3), l'interface doit rendre ces gestes
-disponibles : un usager qui ne sait pas qu'il peut écrire « uniquement » ne
+disponibles : un usager qui ne sait pas qu'il peut écrire "uniquement" ne
 pilote rien.
+
+**Des filtres doivent être mis à disposition** (§1.1). La récupération large fait
+du resserrement le geste ordinaire et non l'exception ; l'usager le fait par une
+équation plus étroite ou par un filtre, et l'interface doit porter les deux
+moyens.
 
 **Le refus doit dire quoi reformuler** (Q-12). Il porte sur la phrase, jamais sur
 le besoin, et la porte reste franchissable par reformulation - volontairement.
@@ -1063,5 +1060,19 @@ le besoin, et la porte reste franchissable par reformulation - volontairement.
 constante de configuration : un `top-K` fixe tronque la série par construction et
 n'a aucune raison de tomber juste sur l'ensemble.
 
-**La substitution doit se déclarer** (§0) : quand le système rend l'entourage
-juridique d'un objet qu'il n'a pas, il doit dire qu'il l'a fait.
+**L'absence doit se déclarer, et bruyamment** (§0). Deux exigences, dont la
+première ne dépend pas de la seconde : le système dit que l'objet nommé n'est pas
+dans le corpus - **même quand il n'a rien à mettre à la place** -, et il
+étiquette comme entourage ce qu'il rend à sa place. La déclaration ne peut pas
+être une mention de bas de page : c'est la même exigence que *l'ensemble doit
+être lisible comme ensemble*, appliquée à ce qui manque plutôt qu'à ce qui est
+là. Elle ne se confond pas avec le refus explicite, qui porte sur le périmètre et
+non sur l'état du corpus.
+
+**Deux énoncés à ne pas fondre en un seul** (§0) : *je n'ai pas trouvé* et *je ne
+peux pas trouver*. Le second se déclare hors de toute requête - il dit l'état du
+corpus, non le sort d'une recherche - et l'interface doit donc lui ménager une
+place qui ne soit pas la réponse : c'est aussi là que la notice de l'art. 13
+(**R-42**) trouve sa substance. Les fondre reviendrait à faire porter à une
+recherche l'aveu d'une lacune structurelle, ou l'inverse, et **R-57** est le prix
+de la confusion.
