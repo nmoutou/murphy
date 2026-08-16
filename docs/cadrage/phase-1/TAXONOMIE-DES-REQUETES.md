@@ -34,7 +34,7 @@ Le cas grave n'est pas le Cerfa mais la **convention collective**. La question *
 
 ---
 
-### 0.4. Limite de validité 
+### 0.4. Limite de validité
 
 Les spécimens sont produits par une seule tête. Le risque est que la taxonomie pourrait classer des usagers **imaginés**, plutôt que des usagers réels (**R-05**).
 
@@ -63,17 +63,13 @@ L'axe peut se lire comme un gradient *ordonné et nommé* : l'identifiant du pro
 
 **C'est l'axe qui mesure ce que Murphy ajoute, par rapport aux solutions déjà existantes :** La résolution d'identifiant est résolue depuis longtemps, le cran 4 ne l'est par personne. 
 
----
-
 #### Règle de frontière : le nom figure-t-il dans le texte ?
 
 Aux crans 3 et 4, le nom utilisé dans la requête est absent du texte qu'il désigne, ce qui impose au système de test **une étape de correspondance**. C'est cette étape qui donne à l'instrument d'évaluation son mode d'échec propre aux deux derniers crans :  une réponse bien formée et fausse.
 
----
-
 #### Récupération large : trop de résultats, jamais trop peu
 
-**Quand le système doit se tromper, il doit se tromper par excès.** Un ensemble trop large se réduit, un ensemble trop étroit ne se remarque même pas nécessairement ; Rien ne dit ce qui a été laissé en dehors des résultats. C'est l'asymétrie du gradient : le bruit se juge comme tel, mais le silence peut se déguiser en absence de norme. La récupération large est donc une **décision** : on doit prioriser le **Recall**, au prix de la **Precision**. 
+Quand le système doit se tromper, **il doit se tromper par/en excès.** Un ensemble trop large se réduit, un ensemble trop étroit ne se remarque même pas nécessairement ; Rien ne dit ce qui a été laissé en dehors des résultats. C'est l'asymétrie du gradient : le bruit se juge comme tel, mais le silence peut se déguiser en absence de norme. La récupération large est donc une **décision** : on doit prioriser le **Recall**, au prix de la **Precision**. 
 
 **L'ensemble restitué doit être lisible comme ensemble.**  Il doit donner à voir sa propre dispersion : l'usager ne répond à aucune question, il doit pouvoir constater de l'étendue de ce qu'il tient et poser une équation plus étroite. Sans cela, impossible de passer du cran 4 au cran 3.
 
@@ -93,9 +89,9 @@ Cet axe décrit la **sortie** : la forme de l'ensemble visé et quel ensemble le
 
 | Valeur | Discriminant | Exemples | Comportement cible | Mode d'échec |
 |---|---|---|---|---|
-| **A - La pièce** | une visée singulière - un arrêt, une loi, une décision | "l'arrêt qui a posé que le silence ne vaut pas acceptation" | rendre une pièce identifiée, **connue de l'usager** | on ne l'a pas, constatable immédiatement |
-| **B - L'ensemble** | ni pièce singulière, ni dimension nommée | "le préavis de démission" · "l'article L1234-5 et ce qui le borne" | rendre la règle et ce qui la borne - le principe et sa dérogation, l'article et ses exceptions ; cardinalité déterminée par le droit et **inconnue de l'usager**, jamais par un `top-K` | il manque l'exception, et rien ne signale qu'elle manque |
-| **C - La série** | une dimension du corpus explicitement nommée | "toutes les versions de l'article L1234-5 depuis 2008" | énumérer exhaustivement sur la dimension ; cardinalité déterminée par le corpus, donc **calculable** | un trou dans l'exhaustivité, localisable **sur la dimension** |
+| **A - La pièce** | une visée singulière : un arrêt, une loi, une décision | "l'arrêt qui a posé que le silence ne vaut pas acceptation" | rendre une pièce identifiée, **connue de l'usager** | on ne l'a pas, constatable immédiatement |
+| **B - L'ensemble** | ni pièce singulière, ni dimension nommée | "le préavis de démission" · "l'article L1234-5 et ce qui le borne" | rendre la norme et ce qui la borne (le principe et sa dérogation/l'article et ses exceptions), **inconnu de l'usager** | il manque l'exception, et rien ne signale qu'elle manque |
+| **C - La série** | une dimension du corpus explicitement nommée | "toutes les versions de l'article L1234-5 depuis 2008" | énumérer exhaustivement sur la dimension, **calculable** | un trou dans l'exhaustivité, localisable **sur la dimension** |
 
 **Cet axe rend "bruit / silence" opérable.** 
 - Sur **la pièce**, le bruit est presque gratuit : la bonne pièce est là, le reste s'ignore. 
@@ -106,92 +102,20 @@ Cet axe décrit la **sortie** : la forme de l'ensemble visé et quel ensemble le
 
 #### Règle de frontière : sans dimension nommée, pas de série
 
-Une série n'existe que si l'usager **nomme la dimension** sur laquelle elle
-s'étend - une période, une juridiction, une nature de texte, "toutes les
-versions". "Toutes les règles sur le préavis" porte le mot *toutes* mais ne
-nomme aucune dimension : c'est un ensemble. Le discriminant reste observable
-dans la seule requête, puisque la dimension doit y être énoncée pour que la
-requête soit une série.
+Une série n'existe que si l'usager **nomme la dimension** sur laquelle elle s'étend : une période, une juridiction, une nature de texte, "toutes les versions". 
 
-Ce qui sépare la série de l'ensemble n'est pas la taille. Dans l'ensemble,
-l'appartenance est décidée par le droit et se **découvre** ; dans la série, elle
-est décidée par le critère de l'usager et s'**énumère**. Il suit que la
-pertinence n'y est pas individuelle : une version que personne n'invoquerait fait
-partie de la série *parce qu'elle est une version*.
-
-**Certaines séries ont une vérité de référence qui se constate au lieu de se
-juger** - pas toutes, et la distinction décide de ce que la phase 3 peut se
-payer. Partout ailleurs, dire ce qui aurait dû être restitué demande un jugement
-de pertinence, donc un annotateur, et **R-05** est à 🟥 en T0.
-
-Ce qui tranche est le **critère d'appartenance**, et il se lit sur trois degrés :
-
-| Degré | L'appartenance | Coût de la vérité de référence | Classes |
-|---|---|---|---|
-| **Mécanique** | la dimension la détermine entièrement, depuis une ancre donnée | nul : soit les onze versions y sont, soit il en manque une, et un comptage tranche | **Q-03** |
-| **Ancrée** | mécanique une fois les ancres établies, mais chacune demande un jugement - quels textes ce nom désigne-t-il ? | un jugement par **nom porté**, puis rien | **Q-09** |
-| **Mixte** | la dimension, **plus** un critère de fond - "sur le harcèlement moral" | un jugement par document candidat, comme partout ailleurs | **Q-06**, **Q-11** |
-
-La porte de sortie existe donc, mais elle est étroite : grande ouverte sur Q-03,
-entrouverte sur Q-09, fermée sur Q-06 et Q-11. C'est assez pour que la phase 3
-**commence** par ce qui se constate et n'engage d'annotateurs qu'ensuite - ce qui
-est déjà un ordre de travail.
+<u>**Cas limite :**</u> "Toutes les règles sur le préavis" porte le mot *toutes* mais ne nomme aucune dimension : c'est un ensemble. Le discriminant reste observable seulement dans requête, puisque la dimension doit y être énoncée pour que la requête soit une série.
 
 ---
 
-#### Les deux axes sont indépendants
+### 1.3 L'axe tertiaire 
 
-**La pièce** n'est pas le cran 1 déguisé. On peut viser une pièce sans tenir de
-référence - "l'arrêt qui a posé que le silence ne vaut pas acceptation" est un
-cran 2 qui vise une pièce unique - et tenir une référence en visant un ensemble
-- "l'article L1234-5 et ce qui le borne". Le croisement a donc des cases
-peuplées, ce qui est la condition pour qu'il produise des classes.
-
-### 1.3 L'opération demandée
-
-Les deux premiers axes disent ce que l'usager tient et ce qu'il vise. Celui-ci
-dit ce qu'il demande au système de **faire**.
-
-Il ne porte pas sur le **geste**, qui n'est pas observable : le système est sans
-état, il ne voit jamais l'ensemble précédent, donc jamais qu'on l'élargit. Ce
-qu'il voit est l'**inflexion que la requête porte en elle-même**.
+Cet axe mesure ce que l'utilisateur demande au système de **faire** : **l'opération demandée**. Il porte sur l'**inflexion que la requête porte en elle-même**.
 
 | Valeur | Discriminant | Exemples | Comportement cible | Mode d'échec |
 |---|---|---|---|---|
-| **A - Constituer** | aucune inflexion ; l'équation est posée à plat | "le préavis de démission" | l'équilibre | aucun en propre - il hérite de celui de la classe visée |
-| **B - Élargir** | une relaxation explicite - "y compris", "et aussi", "tous les cas de" | "le préavis de démission, y compris en période d'essai" | privilégier le **rappel**, au prix de la précision | ne pas élargir - un silence que l'usager avait explicitement demandé d'éviter |
-| **C - Resserrer** | une restriction explicite - "uniquement", "seulement lorsque", une condition ajoutée | "le préavis de démission uniquement en CDD" | privilégier la **précision**, au prix du rappel | ne pas resserrer - un bruit que l'usager avait explicitement demandé d'écarter |
-| **D - Qualifier** | la valeur vide sur l'axe 2 : ni pièce, ni ensemble, ni série | "ai-je le droit de licencier pour absences répétées ?" | rien - le refus explicite (**D-03**) | deux, symétriques : le faux négatif fait qualifier le système (**R-04**), le faux positif ferme le service au groupe B |
-
-**"Déplacer" n'est pas une valeur.** La note de cadrage (§3) en fait un geste à
-part, aux côtés d'élargir et de concentrer. Mais pour un système sans état, une
-requête qui corrige le tir est indiscernable d'une constitution neuve : ôtez le
-"non, plutôt…", il reste une équation posée à plat. Le critère du §0 le fond
-dans *constituer*, comme il a fondu l'événement seul dans les mots de l'usager.
-
-**La demande de qualification se reconnaît à sa valeur vide sur l'axe 2.** C'est
-la seule requête qui ne décrit aucun ensemble de documents : elle demande une
-conclusion. "Ai-je le droit de licencier pour absences répétées" porte bien un
-registre de vocabulaire (cran 4), mais ne vise ni pièce, ni ensemble, ni série.
-La signature est donc positive et lisible dans la formulation seule - il n'y a
-pas d'intention à deviner. Le refus qui s'ensuit porte **sur la phrase, jamais
-sur le besoin** : il ne dit pas "vous n'avez pas le droit de vouloir ça", il
-dit "ainsi formulée, cette requête me ferait qualifier". Le remède est la
-reformulation, et la porte est franchissable par là - volontairement. Qui veut
-une qualification l'obtiendra en posant une requête de récupération puis en
-tirant lui-même la conclusion : c'est exactement ce que **D-03** organise, le
-système ne qualifie pas, l'usager qualifie.
-
-**C'est l'axe dont le cahier des charges hérite le plus directement** - le README
-lui fixe pour premier objet les gestes de pilotage, et cet axe en est la face
-observable. Il lui lègue une contrainte : si l'inflexion doit se lire dans la
-phrase, l'interface doit rendre ces inflexions **formulables**. Un usager qui ne
-sait pas qu'il peut écrire "uniquement" ne pilote rien.
-
-**Réserve assumée.** Ces marqueurs sont lexicaux, donc fragiles. La taxonomie n'a
-pas à dire comment on les détecte - c'est une question d'architecture, phase 4 -
-mais elle établit que la classe existe et que le système s'y comporte
-différemment.
+| **A - Constituer** | aucune inflexion, ou une relaxation explicite : "y compris", "et aussi", "tous les cas de" | "le préavis de démission" · "le préavis de démission, y compris en période d'essai" | privilégier le **rappel**, au prix de la précision | aucun spécifique : il hérite de celui de la classe visée |
+| **B - Resserrer** | une restriction explicite : "uniquement", "seulement lorsque", une condition ajoutée | "le préavis de démission uniquement en CDD" | filtrer, sur un ensemble | ne pas retirer un sous-ensemble que l'usager avait explicitement demandé d'écarter |
 
 ---
 
@@ -199,7 +123,7 @@ différemment.
 
 ### 2.1 Ce qui se croise et ce qui ne se croise pas
 
-Trois axes donneraient quarante-huit cases. Ils n'interagissent pas de la même
+Trois axes donneraient trente-six cases. Ils n'interagissent pas de la même
 façon, et le critère du §0 impose de le constater plutôt que de multiplier.
 
 **Les axes 1 et 2 interagissent.** *Référence × pièce* et *mots de l'usager ×
@@ -207,13 +131,13 @@ ensemble* ne sont pas le même travail : l'un résout un identifiant, l'autre
 franchit un écart de vocabulaire puis suit des liens juridiques. Le croisement y
 produit de vraies classes.
 
-**L'axe 3 ne multiplie pas les classes.** *Élargir* veut dire la même chose sur
+**L'axe 3 ne multiplie pas les classes.** *Resserrer* veut dire la même chose sur
 "le préavis de démission" (cran 2) et sur "les règles de la loi Badinter"
 (cran 3) :
-privilégier le rappel. Ce qui distingue ces deux classes est en **amont** de
+privilégier la précision. Ce qui distingue ces deux classes est en **amont** de
 l'inflexion - l'étape de correspondance du cran 3 - et l'inflexion s'y compose
-sans interagir. Multiplier affirmerait trente-trois comportements distincts là où
-le croisement 1 × 2 n'en observe que onze ; les vingt-deux autres seraient de la
+sans interagir. Multiplier affirmerait vingt-deux comportements distincts là où
+le croisement 1 × 2 n'en observe que onze ; les onze autres seraient de la
 redondance littérale. Une taxonomie qui revendique des distinctions qu'elle ne peut pas
 soutenir est **moins** rigoureuse, pas plus - c'est le défaut du classement par
 matière, en plus discret.
@@ -226,7 +150,9 @@ mesure.
 
 **L'axe 3 est enregistré comme attribut de chaque spécimen.** Rien n'oblige une
 valeur à être une frontière de classe pour être notée. Les fiches restent au
-niveau du croisement 1 × 2 ; chaque spécimen, lui, porte ses trois valeurs. La
+niveau du croisement 1 × 2 ; chaque spécimen, lui, porte ses trois valeurs - et,
+sous *constituer*, le marqueur de relaxation s'il en porte un, avec le membre
+qu'il nomme (§1.3). La
 phase 3 pourra donc trancher ses mesures par inflexion si elle en a besoin, sans
 qu'on ait figé aujourd'hui des distinctions qu'on ne sait pas encore réelles.
 C'est l'asymétrie décisive : l'attribut rend le bénéfice de la multiplication **au
@@ -279,22 +205,30 @@ sépare. C'est sur leur écart que se lit ce que Murphy ajoute au moteur public.
 retenue comme classe parce qu'elle doit être **reconnue**, et un périmètre qu'on
 ne sait pas reconnaître à l'entrée n'est pas un périmètre.
 
-### 2.4 L'axe 3 par forme d'ensemble
+### 2.4 Le resserrement par forme d'ensemble
 
-*Constituer* est la valeur neutre et vaut partout. Les deux inflexions, elles,
-n'ont pas le même sens selon la forme visée - c'est la seule interaction que
-l'axe 3 entretienne, et elle est avec l'axe 2, jamais avec l'axe 1.
+*Constituer* est la valeur neutre et vaut partout. Le resserrement, lui, n'a pas
+le même sens selon la forme visée - c'est la seule interaction que l'axe 3
+entretienne, et elle est avec l'axe 2, jamais avec l'axe 1.
 
-| Forme | **Élargir** | **Resserrer** |
-|---|---|---|
-| **La pièce** | dégénéré : sortir de la pièce, c'est changer de forme visée | dégénéré : on tient la pièce ou on ne la tient pas |
-| **L'ensemble** | relâcher la contrainte sémantique - rappel au prix de la précision | ajouter une condition - précision au prix du rappel |
-| **La série** | **étendre la dimension** - plus d'années, plus de juridictions : un changement de filtre, pas un curseur | **restreindre la dimension** - de même |
+| Forme | **Resserrer** |
+|---|---|
+| **La pièce** | dégénéré : on tient la pièce ou on ne la tient pas |
+| **L'ensemble** | ajouter une condition - précision au prix du rappel |
+| **La série** | **restreindre la dimension** - un changement de filtre, pas un curseur |
 
 La ligne "série" est celle qui justifie ce tableau : l'inflexion n'y est pas un
 arbitrage rappel/précision mais une redéfinition du critère d'appartenance. Sur
-une série, élargir ne rend pas la recherche plus tolérante ; il change la série
+une série, resserrer ne rend pas la recherche plus sévère ; il change la série
 demandée.
+
+**Réserve.** L'argument qui a fondu *élargir* dans *constituer* (§1.3) vaut
+littéralement pour cette ligne-là : restreindre la dimension constitue une autre
+série tout autant qu'y étendre. Si la ligne est maintenue, c'est que la
+restriction inverse **ailleurs** - sur l'ensemble - la posture par défaut de la
+§1.1, ce que l'extension ne fait nulle part. L'asymétrie est faible et elle est
+notée comme telle : la ligne "série" est le prochain endroit où ce tableau
+cédera, s'il doit céder.
 
 ---
 
@@ -968,7 +902,11 @@ donnée en silence.
 
 **L'axe 3 est déjà enregistré comme attribut de chaque spécimen** (§2.1) : la
 phase 3 pourra trancher ses mesures par inflexion si elle en a besoin, sans qu'on
-ait figé aujourd'hui des distinctions qu'on ne sait pas encore réelles.
+ait figé aujourd'hui des distinctions qu'on ne sait pas encore réelles. Le
+marqueur de relaxation y est la part la moins chère : le membre qu'il nomme est
+une vérité de référence **donnée par la requête** (§1.3), donc un silence
+localisable sans annotateur. Il rejoint à ce titre Q-03 et la déclaration
+d'absence du côté de ce qui se **constate**.
 
 **La déclaration d'absence se note sans annotateur.** Elle rejoint Q-03 du côté
 de ce qui se **constate** : un spécimen qui nomme un objet inventorié comme
@@ -998,10 +936,11 @@ qu'une liste plate lui interdit d'exercer. L'homonymie l'a redoublée : en Q-07 
 Q-08, deux objets sans rapport peuvent revenir ensemble, et ils doivent rester
 **séparés à la lecture**.
 
-**Les inflexions doivent être formulables.** Si l'élargissement et le
-resserrement se lisent dans la phrase (§1.3), l'interface doit rendre ces gestes
-disponibles : un usager qui ne sait pas qu'il peut écrire "uniquement" ne
-pilote rien.
+**Les marqueurs doivent être formulables.** Si le resserrement se lit dans la
+phrase (§1.3), l'interface doit rendre ce geste disponible : un usager qui ne
+sait pas qu'il peut écrire "uniquement" ne pilote rien. Le marqueur de
+relaxation - "y compris" - est à rendre disponible au même titre, pour une autre
+raison : il ne change pas la réponse, il nomme ce qui doit y figurer.
 
 **Des filtres doivent être mis à disposition** (§1.1). La récupération large fait
 du resserrement le geste ordinaire et non l'exception ; l'usager le fait par une
