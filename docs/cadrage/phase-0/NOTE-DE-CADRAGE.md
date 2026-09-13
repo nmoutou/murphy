@@ -9,7 +9,7 @@
 | **D-03** | Murphy **restitue des sources et n'interprète pas**. | 
 | **D-04** | La génération de texte est interdite et destinée au retrait. |
 | **D-05** | Le périmètre est fixé **par fonctionnalité, capacité, ou par source**, pas par matière. |
-| **D-06** | Le service est **sans état d'usager** : ni historique, ni profil, ni personnalisation. Aucun résultat ne dépend de qui demande. Le sans-état porte sur **l'implémentation de la recherche**, non sur l'exploitation du service : il n'interdit pas les journaux de sécurité et de conformité (**D-08**, **D-10**). Ce qui est conservé l'est au strict nécessaire. |
+| **D-06** | Le service est **sans état d'usager** : ni historique, ni profil, ni personnalisation. Aucun résultat ne dépend de qui demande. Le sans-état porte sur **le moteur de recherche**, non sur l'exploitation du service : il n'interdit pas les journaux de sécurité et de conformité (**D-08**, **D-10**). Ce qui est conservé l'est au strict nécessaire. |
 | **D-07** | L'utilisateur **contrôle et dirige** sa recherche : il en est l'**opérateur**, non le destinataire d'un résultat. |
 | **D-08** | **Rien de ce qui est conservé hors de l'IAM n'est joint à une identité**, à la seule exception des **journaux de sécurité et de conformité** : pseudonymisés, réduits aux métadonnées, joignables à une identité sur **fondement légal** seulement. L'exception est **énumérée** — ce qui n'y figure pas relève de la règle. |
 | **D-09** | **L'anonymisation a lieu à l'entrée du système**, avant tout autre traitement. Aucun composant en aval ne reçoit jamais autre chose que des données anonymisées ou pseudonymisées. Le module est *fail-closed* : une anonymisation qui échoue produit une erreur, et rien n'est conservé. |
