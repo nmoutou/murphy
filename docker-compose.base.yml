@@ -1,25 +1,3 @@
-# ──────────────────────────────────────────────────────────────────────────────
-# Two profiles, one substrate.
-#
-#   --profile ingest   mongo + qdrant + neo4j + embedding-service
-#                      What `data/` needs to run `kedro run`. No backend, no frontend.
-#   --profile serve    all of the above, plus backend + frontend.
-#
-# The three databases carry NO profile: a service without one always starts. They are
-# the shared substrate, and they are declared exactly ONCE — two declarations would
-# mean two Mongos, and nothing would guarantee the backend reads the database the
-# pipeline wrote.
-#
-# ⚠️ `docker compose down` WITHOUT a profile flag does not stop profiled services. It
-# reports success and leaves them running. The npm scripts name both profiles; do the
-# same if you call compose by hand.
-#
-# On the literal `mongo:27017` / `qdrant:6333` values in `backend.environment` below:
-# the pipeline runs on the HOST, so `.env.dev` holds host-facing URLs (localhost) —
-# the host is the party compose cannot override. Compose overrides the containers.
-# See the header of `.env.example`.
-# ──────────────────────────────────────────────────────────────────────────────
-
 services:
   qdrant:
     container_name: qdrant
@@ -49,8 +27,6 @@ services:
       NEO4J_apoc_import_file_enabled: ${NEO4J_apoc_import_file_enabled}
       NEO4J_apoc_import_file_use__neo4j__config: ${NEO4J_apoc_import_file_use__neo4j__config}
       NEO4J_PLUGINS: ${NEO4J_PLUGINS}
-      # NEO4J_dbms_mode: CORE
-      # NEO4J_server_config_strict_validation_enabled: false
     networks:
       - backend
     volumes:
@@ -73,26 +49,15 @@ services:
       - RATE_LIMIT_MAX=${RATE_LIMIT_MAX}
       - STREAM_RATE_LIMIT_WINDOW_MS=${STREAM_RATE_LIMIT_WINDOW_MS}
       - STREAM_RATE_LIMIT_MAX=${STREAM_RATE_LIMIT_MAX}
-
-      # ── Container-internal hostnames. LITERAL, not ${…} pass-throughs. ──────
-      # `.env.dev` holds the HOST's view (localhost) because the pipeline runs on the
-      # host and cannot be overridden. Compose can be — so compose is.
       - MONGODB_URI=mongodb://${MONGO_INITDB_ROOT_USERNAME}:${MONGO_INITDB_ROOT_PASSWORD}@mongo:27017/?authSource=admin
       - QDRANT_URL=http://qdrant:6333
-      # A BARE ORIGIN: the backend appends `/v1/embeddings` and `/health` itself.
-      # ragcore wants a `/v1`-suffixed base instead (it appends `/embeddings`), which
-      # is what `.env.dev` carries. Same name, two shapes — hence the override.
       - EMBEDDING_SERVICE_URL=http://embedding-service:80
-
-      # ── Derived, never hand-typed: one source of truth, two consumer names. ──
       - MONGODB_DATABASE=${MONGODB_DATA_DB_NAME}
       - EMBEDDING_MODEL_NAME=${EMBEDDING_MODEL}
-
       - MONGODB_COLLECTION=${MONGODB_COLLECTION}
+      - MONGODB_META_DB_NAME=${MONGODB_META_DB_NAME}
       - MONGODB_TIMEOUT=${MONGODB_TIMEOUT}
       - EMBEDDING_SERVICE_TIMEOUT=${EMBEDDING_SERVICE_TIMEOUT}
-      # ⚠️ The pipeline does NOT write here — it derives its collection from the
-      # workflow-config hash. See the note in `.env.example`.
       - QDRANT_COLLECTION=${QDRANT_COLLECTION}
       - RETRIEVAL_MIN_SCORE=${RETRIEVAL_MIN_SCORE}
       - RETRIEVAL_TOP_K=${RETRIEVAL_TOP_K}
@@ -128,24 +93,15 @@ services:
 
   embedding-service:
     container_name: embedding-service
-    # Both profiles: the pipeline embeds with it, and so does the backend.
     profiles: ["ingest", "serve"]
     image: ghcr.io/huggingface/text-embeddings-inference:cuda-1.8.1
-    # ⚠️ `--model-id` is the ONLY model this service will ever serve. It ignores the
-    # `model` field of incoming requests. The pipeline therefore checks GET /info
-    # before writing anything — see assert_service_serves_model.
     command: ["--model-id", "${EMBEDDING_MODEL}", "--pooling", "mean", "--dtype", "float16"]
     networks:
       - backend
     volumes:
       - hf_cache:/data
-    # No healthcheck: the TEI image ships no `curl`, so the stock check would report
-    # `unhealthy` forever — and a future `condition: service_healthy` would deadlock on
-    # it. Probe it from the host instead: `curl localhost:5001/health`.
     environment:
-      - HUGGING_FACE_HUB_TOKEN=${HUGGING_FACE_HUB_TOKEN:-}
       - CUDA_VISIBLE_DEVICES=0
-      - EMBEDDING_MODEL=${EMBEDDING_MODEL}
 
 networks:
   backend:

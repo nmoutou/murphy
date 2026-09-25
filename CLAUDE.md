@@ -192,7 +192,7 @@ This is the most important rule: **Do not mimic the style and patterns of existi
 
 ## Output Requirements
 
-- Always respond in English
+- Always respond in French
 - Get straight to the point; no pleasantries or preamble
 - Only output information directly relevant to the current task; do not repeat what the user has already said
 
