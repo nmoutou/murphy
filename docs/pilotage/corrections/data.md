@@ -3,72 +3,98 @@
 > Périmètre : `data/` (sous-module `murphy-data`). Chemins relatifs à
 > `data/`. Index et ordre d'exécution : [`README.md`](README.md).
 >
-> Le paquet `ragcore` est en bon état : `mypy --strict` passe, 296 tests
-> unitaires et golden sont verts, avec 86 % de couverture, et
-> `ruff check src/ragcore` est propre. Les points ci-dessous portent
-> surtout sur la **coquille Kedro** `src/data/` et sur la taille de
-> quelques fichiers.
+> **Lot exécuté le 25 septembre 2026** (DA-01 → DA-04, DA-06), non
+> commité : le sous-module reste en HEAD détachée sur `8892b6b`. Il ne
+> reste que DA-05, un chantier dédié.
 
 ## 1. Tableau
 
 | ID | Point | Sévérité | Statut |
 |---|---|---|---|
-| DA-01 | Vestiges `src/data/{datasets,models,utils}` : environ 480 lignes mortes, porteuses des 95 erreurs ruff | Bloquant (lint rouge) | ⬜ |
-| DA-02 | `src/data/settings.py` : modèle Kedro commenté et résolveur `oc.env` inutile | Dette | ⬜ |
-| DA-03 | `ruff format --check` : fichiers non formatés | Dette | ⬜ |
-| DA-04 | `uv.lock` non suivi | Dette | ⏸ confirmer |
+| DA-01 | Vestiges `src/data/{datasets,models,utils,pipelines}` : 584 lignes supprimées, qui portaient les 95 erreurs ruff | Bloquant (lint rouge) | ✅ |
+| DA-02 | `src/data/settings.py` : modèle Kedro commenté et résolveur `oc.env` inutile | Dette | ✅ |
+| DA-03 | `ruff format --check` : fichiers non formatés | Dette | ✅ |
+| DA-04 | `uv.lock` non suivi | Dette | ✅ commité par le porteur (`8892b6b`) |
 | DA-05 | 4 modules de plus de 300 lignes, dont `hooks.py` à 915 | Dette | ⏸ chantier dédié |
-| DA-06 | Code mort marginal dans `ragcore` | Confort | ⬜ |
+| DA-06 | Code mort marginal dans `ragcore` | Confort | ✅ |
 
-## 2. Détail
+## 2. Résultat
+
+| Contrôle | Avant | Après |
+|---|---|---|
+| `ruff check src` | 95 erreurs | ✅ 0 |
+| `ruff format --check src` | 12 fichiers | ✅ tout formaté |
+| `mypy src/ragcore` (strict) | ✅ | ✅ |
+| `pytest` (unitaires + golden) | 296 passés, 86 % | 294 passés (les 2 tests de `from_raw_document` sont retirés), 86 % |
+| `kedro registry list` | `__default__`, `ingestion` | identique |
+| paramètres chargés par `KedroSession` | — | identiques, octet pour octet |
+
+Les tests d'intégration (`-m integration`, testcontainers) n'ont pas été
+relancés. Aucun ne touche au code modifié : les tests Neo4j n'appelaient
+pas `initialize()`.
+
+## 3. Ce qui a été fait
 
 ### DA-01 — vestiges de `src/data/`
 
-`CLAUDE.md` les déclare déjà « unused vestiges ». Vérifié : aucune
-référence dans `conf/`, `src/`, `pyproject.toml` ni la documentation.
+Supprimés :
+- `datasets/` : datasets Kedro remplacés par les adapters `ragcore` ;
+- `models/` : l'**ancien modèle de chunk à `chunkId`**, dernier témoin du
+  contrat que lit encore le backend (TR-01) ;
+- `utils/` ;
+- `pipelines/` : un `__init__.py` vide.
 
-| Dossier | Contenu |
-|---|---|
-| `src/data/datasets/` | `mongodb_dataset.py`, `neo4j_dataset.py`, `qdrant_dataset.py`, `xml_source_dataset.py` : datasets Kedro remplacés par les adapters `ragcore` |
-| `src/data/models/` | `data.py` : l'**ancien modèle de chunk** avec `chunkId`, dernier témoin du contrat que lit encore le backend (TR-01) |
-| `src/data/utils/` | `partitioning.py`, `validation.py` |
-
-- Supprimer les trois dossiers. Les 95 erreurs ruff du dépôt partent avec
-  eux.
-- `src/data/pipelines/` ne contient qu'un `__init__.py` vide :
-  `pipeline_registry.py` délègue à `ragcore`. Le supprimer aussi, après
-  avoir vérifié que `kedro run` et `kedro viz` démarrent sans lui.
+Aucune référence ne subsistait dans `conf/`, `src/`, `pyproject.toml` ni
+la documentation. `__init__.py` (qui porte `__version__`), `__main__.py`,
+`settings.py` et `pipeline_registry.py` restent.
 
 ### DA-02 — `settings.py`
 
-- Supprimer les blocs commentés du modèle Kedro (l. 41-47, 49-50,
-  64-66, 68-70) : ils redisent les valeurs par défaut de Kedro.
-- Supprimer `CONFIG_LOADER_ARGS["custom_resolvers"]` et l'import
-  `from omegaconf.resolvers import oc` (l. 32, 59-61). **Aucun YAML de
-  `conf/` n'utilise `${oc.env:…}`** : vérifié, `conf/` ne contient aucune
-  interpolation `${`. Le commentaire des l. 7-13 le constate déjà.
-- Restent deux `# noqa: E402` (`TelemetryHooks`, `OmegaConfigLoader`),
-  importés après `structlog.configure`. Si cet ordre n'est pas voulu, les
-  remonter en tête de fichier. S'il l'est (configurer structlog avant que
-  les hooks ne créent leurs loggers), l'écrire dans un commentaire au-dessus
-  des imports.
+- Supprimés :
+  - les blocs commentés du modèle Kedro ;
+  - `custom_resolvers` (`oc.env`) et son import : aucun `${…}` dans
+    `conf/` ;
+  - `CONFIG_LOADER_CLASS = OmegaConfigLoader`, déjà la valeur par défaut
+    de Kedro 1.1.
+- **`CONFIG_LOADER_ARGS = {"base_env": "base"}` est conservé**, avec un
+  commentaire. Ce n'est pas une redite : il *remplace* les arguments par
+  défaut de Kedro (`base_env: "base"`, `default_run_env: "local"`). Le
+  projet tourne donc aujourd'hui **sans** environnement d'exécution
+  superposé. Le supprimer réactiverait `local` : c'est un changement de
+  comportement, pas du nettoyage. Il n'existe pas de `conf/local/`.
+- L'import tardif de `TelemetryHooks` après `structlog.configure` est
+  conservé ; son `noqa: E402` est maintenant justifié en commentaire.
 
 ### DA-03 — formatage
 
-`ruff format --check src` signale 12 fichiers. Après DA-01, il en reste
-3 :
-- `src/data/settings.py` ;
-- `src/ragcore/adapters/storage/mongo/document_repository.py` ;
-- `src/ragcore/tests/golden/test_fingerprint.py`.
+`ruff format src` a reformaté 5 fichiers :
+- `settings.py`, `__init__.py`, `__main__.py` ;
+- `adapters/storage/mongo/document_repository.py` ;
+- `tests/golden/test_fingerprint.py`.
 
-Les formater dans un **commit dédié** au formatage.
+Ce ne sont que des changements de mise en page : un appel replié sur une
+ligne, des lignes vides, des guillemets.
 
-### DA-04 — `uv.lock`
+### DA-06 — code mort marginal
 
-`data/uv.lock` existe mais n'est pas suivi par git. `CLAUDE.md` prescrit
-`uv`, et l'ingestion doit être reproductible : le fingerprint de
-collection en dépend indirectement, à travers les versions du parseur et
-du chunker. **Le commiter**, sauf raison contraire du porteur.
+| Élément | Décision | Fait |
+|---|---|---|
+| `GraphRepository.initialize()` | **supprimée** (décision du porteur) | retirée du port, de l'adapter Neo4j et du fake |
+| `ELI.from_raw_document()` | supprimée | retirée, avec l'import `TYPE_CHECKING` orphelin, ses 2 tests et leur helper `_raw` |
+| `count_for_owner`, `existing_node_ids`, `delete_relations_from`, `delete_relations_by_run` | **conservés** : ils font partie du contrat de compensation de la saga, et le port les documente | — |
+
+> ⚠️ **Constat à garder pour les travaux de performance** : le graphe
+> Neo4j n'a **aucun index sur `identifier`**, et n'en a jamais eu,
+> puisque `initialize()` n'était appelée nulle part. Chaque
+> `MERGE (… {identifier: X})` de la saga, ainsi que la ré-hydratation des
+> `Pending`, parcourt donc tous les nœuds du label. Le code supprimé
+> faisait
+> `CREATE INDEX IF NOT EXISTS FOR (n:<label>) ON (n.identifier)` pour
+> `Document`, `Article`, `Texte`, `Section` et `Pending`. Si l'ingestion
+> du corpus complet ralentit avec la taille du graphe, c'est la première
+> piste.
+
+## 4. Reste à faire
 
 ### DA-05 — modules de plus de 300 lignes
 
@@ -80,7 +106,7 @@ dépassent :
 | `src/ragcore/orchestration/kedro/hooks.py` | 915 |
 | `src/ragcore/core/links/extraction.py` | 541 |
 | `src/ragcore/sources/generic/parser.py` | 540 |
-| `src/ragcore/adapters/storage/neo4j/graph_repository.py` | 362 |
+| `src/ragcore/adapters/storage/neo4j/graph_repository.py` | 352 |
 
 Ce code est critique (télémétrie, statut de run, graphe) et bien
 couvert. Le découper est un **chantier dédié**, avec lecture préalable et
@@ -91,17 +117,7 @@ Six fichiers de test dépassent aussi 300 lignes (jusqu'à 501 pour
 `tests/integration/test_neo4j_graph_repository.py`). Ce n'est pas une
 priorité.
 
-Pour mesurer aussi la règle des 30 lignes par fonction, activer
-`PLR0915` (`too-many-statements`) dans `[tool.ruff.lint]`.
-
-### DA-06 — code mort marginal
-
-Candidats remontés par `vulture` et vérifiés un par un. La plupart des
-signalements de `vulture` sont des faux positifs : champs pydantic,
-`model_config`, validateurs.
-
-| Élément | Constat | Proposition |
-|---|---|---|
-| `GraphRepository.initialize()` | déclarée sur le port (`core/ports/graph_repository.py:32`), l'adapter et le fake, **jamais appelée** | supprimer des trois, ou l'appeler dans `connect` si elle pose des contraintes Neo4j utiles |
-| `ELI.from_raw_document()` | `core/models/identifiers.py:55` : seuls ses propres tests l'appellent | supprimer avec ses tests |
-| `count_for_owner`, `existing_node_ids`, `delete_relations_from`, `delete_relations_by_run` | seuls les tests d'intégration les appellent | **conserver** : ils font partie du contrat de compensation de la saga, et le port les documente |
+Pour la règle des 30 lignes par fonction : `PLR0915`
+(`too-many-statements`) est déjà actif via la famille `PL`, mais avec le
+seuil par défaut de Pylint, 50 instructions. Le baisser se fait avec
+`[tool.ruff.lint.pylint] max-statements`.
