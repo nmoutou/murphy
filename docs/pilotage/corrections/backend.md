@@ -3,32 +3,60 @@
 > Périmètre : `backend/` (sous-module `murphy-backend`). Chemins relatifs
 > à `backend/`. Index et ordre d'exécution : [`README.md`](README.md).
 >
-> **Modifications locales non commitées, à conserver** :
-> - `infra/collectionPointer.ts:24` lit `MONGODB_META_DB_NAME`, le nom que
->   compose fournit réellement (`docker-compose.base.yml:58`) ;
-> - `routes/health.ts:53` sonde `/healthz`, l'endpoint de santé de Qdrant.
+> Les deux correctifs locaux relevés par l'audit sont commités par le
+> porteur (`3b5d811`) :
+> - `infra/collectionPointer.ts:24` lit `MONGODB_META_DB_NAME` ;
+> - `routes/health.ts:53` sonde `/healthz`.
 >
-> Ce sont deux correctifs justes, à commiter tels quels.
+> **Premier lot exécuté le 25 septembre 2026** (BE-01, BE-02, BE-04,
+> BE-05), non commité : le sous-module reste en HEAD détachée sur
+> `3b5d811`. Les numéros de ligne des items restants renvoient au code
+> **d'avant** ce lot.
 
 ## 1. Tableau
 
 | ID | Point | Sévérité | Statut |
 |---|---|---|---|
-| BE-01 | 2 suites de tests sur 3 ne compilent plus | Bloquant | ⬜ |
-| BE-02 | 29 erreurs eslint | Bloquant | ⬜ |
+| BE-01 | 2 suites de tests sur 3 ne compilent plus | Bloquant | ✅ |
+| BE-02 | 29 erreurs eslint | Bloquant | ✅ |
 | BE-03 | Le rate-limiter de stream fait confiance à `X-Forwarded-For` — **décidé** | Dette (sécurité) | ⬜ mini-ADR |
-| BE-04 | Route `GET /documents/:eli` morte et fausse — **décidé : suppression** | Dette | ⬜ mini-ADR |
-| BE-05 | Code mort (liste §2.5) | Dette | ⬜ |
-| BE-06 | Barrel `infra/index.ts` + singletons `Proxy` typés `any` | Dette | ⬜ cascade |
-| BE-07 | `llm.stream` : décodage et parsing sur-complexes, erreurs avalées | Dette | ⬜ |
+| BE-04 | Route `GET /documents/:eli` morte et fausse — **décidé : suppression** | Dette | ✅ sans ADR (hygiène) |
+| BE-05 | Code mort (liste §2.5) | Dette | ✅ |
+| BE-06 | Barrel `infra/index.ts` + singletons `Proxy` typés `any` | Dette | 🔶 cascade |
+| BE-07 | `llm.stream` : décodage et parsing sur-complexes, erreurs avalées | Dette | 🔶 |
 | BE-08 | Le même bloc `try/catch/log/RagError` est copié dans 4 clients | Dette | ⬜ cascade |
 | BE-09 | Configuration dispersée : `process.env` lu dans 15 fichiers, nombres magiques | Dette | ⬜ cascade |
-| BE-10 | Commentaires et métadonnées qui mentent | Dette | ⬜ |
-| BE-11 | Typage : `any`, casts, nom qui masque un global | Dette | ⬜ |
+| BE-10 | Commentaires et métadonnées qui mentent | Dette | 🔶 |
+| BE-11 | Typage : `any`, casts, nom qui masque un global | Dette | 🔶 |
 | BE-12 | `dotenv` ne charge rien, `@types/ws` en dépendance runtime | Confort | ⬜ |
 | BE-13 | Le WebSocket ne valide pas son entrée | Dette | ⬜ |
 | BE-14 | `health.ts` : deux handlers identiques, un timer jamais annulé | Confort | ⬜ |
 | BE-15 | `chatService.createChatStream` : `execute` fait 49 lignes | Dette | ⬜ |
+
+🔶 : entamé dans le premier lot ; le détail dit ce qui reste.
+
+### Résultat du premier lot
+
+| Contrôle | Avant | Après |
+|---|---|---|
+| `tsc --noEmit` | ✅ | ✅ |
+| `npm run lint` | 29 erreurs | ✅ 0 |
+| `npm test` | 2 suites / 3 ne compilent plus, 4 tests | ✅ 5 suites, 31 tests |
+| `jest --coverage` | non mesurable | lignes 40 %, instructions 39 %, fonctions 36 %, branches 28 % — **sous les seuils** (65 / 65 / 60 / 40) |
+| `npm run build` | ✅ | ✅ |
+
+Les seuils de couverture n'ont été ni baissés ni contournés. Ils ne
+s'appliquent qu'avec `--coverage` : `npm test` ne les vérifie pas. Les
+modules sans aucun test sont `app.ts`, `health.ts`,
+`collectionPointer.ts`, `chatWebSocket.ts`, `configWarnings.ts`,
+`embedding.ts`, `qdrant.ts`, `mongodb.ts`, `security.ts` et
+`requestLogger.ts`. Les tester, ou recadrer `collectCoverageFrom`, se
+décide avec BE-06 et BE-09, qui réécrivent justement ces modules.
+
+**Effet visible** : `messages.*.parts` est désormais obligatoire. Une
+requête HTTP avec des messages sans `parts` reçoit un 400 au lieu d'une
+réponse ; le repli sur `content` a été retiré avec le code mort. Le
+frontend n'est pas touché, car `useChat` envoie toujours `parts`.
 
 ## 2. Détail
 
@@ -47,8 +75,23 @@ construisent des `RagError` littéraux sans `name`. Les tests qui passent
   supertest.
 - Couvrir aussi le chemin d'erreur : un stage qui lève doit produire une
   part `error` (prérequis de FE-03).
-- `tsconfig.json` : ajouter `"isolatedModules": true`, qui supprime
-  l'avertissement ts-jest TS151002 émis à chaque exécution.
+- ~~`tsconfig.json` : ajouter `"isolatedModules": true`~~ : **écarté à
+  l'exécution**. Avec cette option, ts-jest passe en transpilation seule
+  et ne vérifie plus les types des tests, que `tsc` exclut par ailleurs.
+  L'avertissement TS151002 est donc réduit au silence dans
+  `jest.config.js` (`diagnostics.ignoreCodes`) ; il concerne
+  l'interopérabilité ESM, et le paquet est en CommonJS.
+
+**Fait** :
+- `chatService.test.ts` (nouveau) ;
+- `ragService.test.ts` et `routes/chat.test.ts`, réécrits de zéro ;
+- `infra/llm.test.ts` (nouveau) ;
+- `errorHandler.test.ts`, passé à supertest.
+
+Les chemins d'erreur, prérequis de FE-03, sont couverts : un échec du
+LLM ou de l'embedding produit une part `error`. Les tests ne mockent que
+les frontières (`infra`, `infra/mongodb`, le logger) et n'ont aucun
+`any`.
 
 ### BE-02 — lint
 
@@ -58,6 +101,13 @@ par la signature Express se règlent dans `eslint.config.mjs`, avec
 `argsIgnorePattern: '^_'`. La configuration actuelle n'importe que les
 règles `recommended` sans le parser typé : passer au paquet
 `typescript-eslint` (`tseslint.configs.recommended`).
+
+**Fait** : `typescript-eslint` et `@eslint/js` remplacent
+`@typescript-eslint/eslint-plugin` et `@typescript-eslint/parser`.
+`eslint.config.mjs` combine `js.configs.recommended` et
+`tseslint.configs.recommended`, avec `argsIgnorePattern` et
+`caughtErrorsIgnorePattern` réglés sur `'^_'`. Les correctifs locaux des
+`any` sont listés sous BE-06, BE-07, BE-08 et BE-11.
 
 ### BE-03 — `X-Forwarded-For` (décidé)
 
@@ -104,6 +154,11 @@ qu'aucune ingestion n'écrit plus (`eli`, `document_type`, `titrefull`,
 sert seulement à différer la construction ; or `server.ts` initialise
 déjà Mongo et Qdrant explicitement au boot.
 
+**Fait (correctif minimal, en attendant la cible)** : les ré-exports
+sans importeur sont retirés. `infra/index.ts` ne contient plus que les
+trois singletons et `initQdrantClient`. `(x as any)[prop]` devient
+`Reflect.get(x, prop)`.
+
 **Cible** : un module `infra/clients.ts`, créé à `start()` à partir de la
 configuration de BE-09, qui expose des instances typées. Les imports
 passent directement par les fichiers sources. Cascade : `server.ts`,
@@ -123,6 +178,19 @@ passent directement par les fichiers sources. Cascade : `server.ts`,
 - La fonction fait 90 lignes : extraire le découpage SSE (`splitSseLines`)
   et l'extraction du token.
 
+**Fait** :
+- Décodage : `pipeThrough(new TextDecoderStream())`. Cela corrige un
+  **bug réel**. Chaque morceau réseau était décodé seul, donc un
+  caractère accentué coupé entre deux morceaux devenait `�`. Le test
+  `llm.test.ts` échoue sur l'ancien code et passe sur le nouveau.
+- L'extraction du token est sortie dans `extractToken`.
+- Une ligne non-JSON est journalisée au niveau `debug`.
+
+**Reste** :
+- ne garder que `delta.content` (les deux autres champs sont conservés
+  pour ne pas changer de comportement) ;
+- `stream` fait encore plus de 30 lignes.
+
 ### BE-08 — gestion d'erreur dupliquée
 
 `embedding.ts`, `qdrant.ts`, `mongodb.ts` et `llm.ts` répètent le même
@@ -137,6 +205,10 @@ ou `includes('Timeout')`).
 - Classer par `error.name === 'TimeoutError'` plutôt que par le texte.
 - Écrire une seule fonction `toRagError(stage, error)` dans `types/rag.ts`,
   utilisée par les 4 clients.
+
+Dans le premier lot, seul `(error as any)?.name` est remplacé, dans les
+4 clients, par `error instanceof Error ? error.name : undefined`. Le
+bloc dupliqué reste.
 
 ### BE-09 — configuration centralisée
 
@@ -162,10 +234,10 @@ paramètres par défaut.
 | Emplacement | Écrit | Réalité |
 |---|---|---|
 | `package.json:4` | « Backend service with Temporal workflow orchestration » | aucun Temporal |
-| `routes/chat.ts:21-33` | `POST /api/chat/stream`, corps `{ id, question, history }`, événements `start/token/end` | `POST /api/v1/chat/streams`, corps `{ messages }`, parts de l'AI SDK |
+| ~~`routes/chat.ts:21-33`~~ | ~~`POST /api/chat/stream`, corps `{ id, question, history }`…~~ | ✅ corrigé, et `/completions` est documentée |
 | `middleware/streamRateLimiter.ts:3`, l. 13 | `/api/chat/stream`, « SSE streaming endpoint » | `/api/v1/chat/streams` |
-| `infra/llm.ts:89` | « Stream completions from Mammouth API » | fournisseur OpenAI-compatible quelconque |
-| `infra/mongodb.ts:151` | paramètre `elis` | ce sont des `chunkIds` |
+| ~~`infra/llm.ts:89`~~ | ~~« Stream completions from Mammouth API »~~ | ✅ corrigé |
+| ~~`infra/mongodb.ts:151`~~ | ~~paramètre `elis`~~ | ✅ renommé `chunkIds` |
 | `infra/embedding.ts:42` | « 768-dimensional » | dépend du modèle configuré |
 
 ### BE-11 — typage
@@ -173,11 +245,13 @@ paramètres par défaut.
 - `types/rag.ts:24` : `interface Document` masque le type global DOM
   `Document`. Renommer en `ChunkDocument` (le nom définitif dépend de
   TR-01).
-- `types/rag.ts:44` : `[key: string]: any` → `unknown`.
-- `middleware/validation.ts:13` : `(err as any).path` → restreindre avec
-  `err.type === 'field'`.
-- `routes/chat.ts:69` : `value as { type; delta?; errorText? }` → `value`
-  est déjà typé `UIMessageChunk`, le cast est inutile.
+- ✅ `types/rag.ts:44` : `[key: string]: any` → `unknown`.
+- ✅ `middleware/validation.ts:13` : `(err as any).path` → restreindre
+  avec `err.type === 'field'`.
+- ✅ `routes/chat.ts:69` : le cast `value as { type; delta?; errorText? }`
+  est supprimé, puisque `value` est déjà typé `UIMessageChunk`.
+- ✅ `infra/qdrant.ts:53` : `(point: any)` → le type est inféré depuis
+  `@qdrant/js-client-rest`.
 - `routes/chat.ts:42,62`, `routes/chatWebSocket.ts:15` : `messages || []`
   laisse passer une liste vide jusqu'à `createChatStream`, qui lève alors
   « No question provided ». Rejeter en 400 à la validation.

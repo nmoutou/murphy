@@ -69,7 +69,7 @@ npx jest path/to/file.test.ts          # run one test file
 npx jest -t "name of test"             # run tests matching a name
 ```
 
-Jest enforces coverage thresholds (`jest.config.js`: lines/statements 65%, functions 60%, branches 40%). `src/server.ts` is excluded from coverage.
+Jest coverage thresholds (`jest.config.js`: lines/statements 65%, functions 60%, branches 40%) are only checked with `npx jest --coverage` — plain `npm test` does not measure coverage. `src/server.ts` is excluded from coverage.
 
 ### Frontend without Docker
 

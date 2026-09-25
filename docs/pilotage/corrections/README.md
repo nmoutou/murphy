@@ -25,30 +25,35 @@ Sévérité (même échelle que `WIP/B-07-revue-code.md`) :
 rouge) · **Dette** (viole une règle de `CLAUDE.md` ou complique la
 maintenance) · **Confort**.
 
-Statut : ⬜ à faire · ✅ fait · ⏸ attend une décision.
+Statut : ⬜ à faire · 🔶 entamé · ✅ fait · ⏸ attend une décision.
 
 ## 2. État des lieux mesuré
 
 Mesuré dans un miroir hors dépôt (voir TR-06 : les `node_modules` locaux
-sont inaccessibles).
+sont inaccessibles). Les lignes marquées « après » donnent l'état à la
+fin du lot correspondant.
 
 | Projet | Types | Lint | Tests | Format |
 |---|---|---|---|---|
 | backend | `tsc` ✅ | **29 erreurs** eslint | **2 suites / 3 ne compilent plus** — 4 tests passent, les seuils de couverture ne sont pas mesurables | — |
+| backend, après le 1er lot | `tsc` ✅ | ✅ 0 | ✅ 5 suites, 31 tests — **couverture 40 % des lignes**, sous le seuil de 65 % | — |
 | frontend | **1 erreur** `tsc` | **eslint ne démarre pas** | aucun test | — |
 | data | `mypy --strict` ✅ | **95 erreurs** ruff (toutes dans le code mort, DA-01) | 296 ✅ (86 % de couverture) | 12 fichiers à reformater |
+| data, après le lot | `mypy --strict` ✅ | ✅ 0 | 294 ✅ (86 %) | ✅ |
 
 ## 3. Décisions prises
 
 Prises en session le 25 septembre 2026. `PILOTAGE.md` §2 (b) les fait
 passer par un **mini-ADR** avant exécution, puisqu'elles changent un
-comportement visible.
+comportement visible. Exception : la suppression de la route
+`/documents/:eli` est traitée comme de l'hygiène (§2 c), sans ADR, car
+aucun client ne l'appelle (décision du porteur, 25 septembre 2026).
 
 | Décision | Items |
 |---|---|
 | Afficher dans l'interface les erreurs du pipeline (aujourd'hui avalées en silence) | FE-03 |
 | Ne plus faire confiance à `X-Forwarded-For` tel quel pour le rate-limit | BE-03 |
-| Supprimer la route `GET /api/v1/documents/:eli` | BE-04 |
+| Supprimer la route `GET /api/v1/documents/:eli` — ✅ faite, sans ADR | BE-04 |
 | **Conserver** le bouton « dossier » du `ChatBox` (placeholder « Work in progress ») | — |
 
 **TR-01 exige un ADR à part entière** : il fixe où vit le texte d'un chunk
