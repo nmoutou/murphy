@@ -30,11 +30,11 @@ export class QdrantVectorClient {
   /**
    * Search for similar vectors
    * @param vector Embedding vector (768 dimensions)
-   * @param topK Number of results to return (default: 10)
+   * @param topK Number of results to return
    * @returns Array of search results ranked by similarity
    * @throws RagError with stage='retrieval'
    */
-  async searchVectors(vector: EmbeddingVector, topK: number = 10): Promise<SearchResult[]> {
+  async searchVectors(vector: EmbeddingVector, topK: number): Promise<SearchResult[]> {
     const startTime = Date.now();
 
     try {
@@ -50,7 +50,7 @@ export class QdrantVectorClient {
         with_payload: true,
       });
 
-      const results: SearchResult[] = response.map((point: any) => ({
+      const results: SearchResult[] = response.map((point) => ({
         id: String(point.id),
         similarity: point.score,
         payload: point.payload || {},
@@ -69,7 +69,7 @@ export class QdrantVectorClient {
       const errorMessage = error instanceof Error ? error.message : String(error);
 
       logger.error(
-        { errorMessage, errorType: (error as any)?.name, durationMs: duration },
+        { errorMessage, errorType: error instanceof Error ? error.name : undefined, durationMs: duration },
         'Qdrant search failed'
       );
 
@@ -80,6 +80,4 @@ export class QdrantVectorClient {
       );
     }
   }
-
-
 }

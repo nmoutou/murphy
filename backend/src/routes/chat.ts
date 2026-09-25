@@ -1,6 +1,6 @@
 /**
  * Chat Routes
- * SSE streaming endpoint for RAG-powered chat
+ * HTTP endpoints for RAG-powered chat (the frontend uses the WebSocket, `chatWebSocket.ts`)
  */
 
 import express, { Request, Response } from 'express';
@@ -13,23 +13,17 @@ import { streamRateLimiter } from '../middleware/streamRateLimiter';
 import { buildApiResponse } from '../utils/response';
 import { AppUIMessage } from '../types/messages';
 
-export { createChatStream } from '../services/chatService';
-
 const logger = rootLogger.child({ context: 'chatRoutes' });
 const router = express.Router();
 
 /**
- * POST /api/chat/stream
+ * POST /api/v1/chat/streams
  * Stream RAG-powered chat response via SSE
  *
- * Request body:
- * {
- *   id: string (request ID for tracking)
- *   question: string (user question)
- *   history?: Array<{role, content}> (ignored in V1, for future use)
- * }
+ * Request body: { messages: AppUIMessage[] } — only the last `user` message is used
  *
- * Response: SSE stream with events (start, token, token, ..., end or error)
+ * Response: SSE stream of AI SDK UI message parts (start, data-document, text-delta,
+ * finish, or error)
  */
 router.post(
   '/streams',
@@ -52,6 +46,10 @@ router.post(
   })
 );
 
+/**
+ * POST /api/v1/chat/completions
+ * Same pipeline, drained into a single JSON response with the full answer text
+ */
 router.post(
   '/completions',
   chatValidation,
@@ -66,12 +64,11 @@ router.post(
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-        const part = value as { type: string; delta?: string; errorText?: string };
-        if (part.type === 'text-delta') {
-          text += part.delta;
+        if (value.type === 'text-delta') {
+          text += value.delta;
         }
-        if (part.type === 'error') {
-          throw new Error(part.errorText);
+        if (value.type === 'error') {
+          throw new Error(value.errorText);
         }
       }
 

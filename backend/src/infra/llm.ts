@@ -17,9 +17,44 @@ interface ChatCompletionPayload {
   temperature: number;
   max_tokens: number;
   stream: boolean;
-  top_p?: number;
-  frequency_penalty?: number;
 }
+
+/** One streamed chunk, in the shapes the accepted OpenAI-compatible APIs send. */
+interface ChatCompletionChunk {
+  choices?: Array<{
+    delta?: { content?: string; text?: string };
+    text?: { content?: string };
+  }>;
+}
+
+const SSE_DATA_PREFIX = 'data: ';
+const SSE_DONE_MARKER = '[DONE]';
+
+/**
+ * Token carried by one line of the stream (SSE `data: …` or raw JSON line).
+ * Blank lines, the end marker and non-JSON lines carry none: they yield ''.
+ */
+const extractToken = (rawLine: string): string => {
+  const line = rawLine.trim();
+  if (!line) return '';
+
+  const data = line.startsWith(SSE_DATA_PREFIX) ? line.slice(SSE_DATA_PREFIX.length) : line;
+  if (data === SSE_DONE_MARKER) {
+    logger.debug('LLM stream completed');
+    return '';
+  }
+
+  let chunk: ChatCompletionChunk | null;
+  try {
+    chunk = JSON.parse(data);
+  } catch {
+    logger.debug({ line: data }, 'Ignoring non-JSON line in LLM stream');
+    return '';
+  }
+
+  const choice = chunk?.choices?.[0];
+  return choice?.delta?.content || choice?.delta?.text || choice?.text?.content || '';
+};
 
 export class LLMProvider {
   private readonly apiUrl: string;
@@ -49,10 +84,10 @@ export class LLMProvider {
   }
 
   /**
-   * Shared HTTP request logic: builds payload, fires fetch with timeout, checks status.
-   * @throws Error (plain) on HTTP error — callers wrap into RagError
+   * Fires the streaming request with a timeout and checks the HTTP status.
+   * @throws Error (plain) on HTTP error — the caller wraps it into RagError
    */
-  private async _doRequest(messages: ChatMessage[], stream: boolean): Promise<Response> {
+  private async _doRequest(messages: ChatMessage[]): Promise<Response> {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), this.timeoutMs);
 
@@ -62,7 +97,7 @@ export class LLMProvider {
         messages,
         temperature: this.temperature,
         max_tokens: this.maxTokens,
-        stream,
+        stream: true,
       };
 
       const response = await fetch(this.apiUrl, {
@@ -86,7 +121,7 @@ export class LLMProvider {
   }
 
   /**
-   * Stream completions from Mammouth API
+   * Stream completions from the configured OpenAI-compatible API
    * @param messages Chat messages (system + user)
    * @returns Async iterator for streaming tokens
    * @throws RagError with stage='llm'
@@ -100,77 +135,36 @@ export class LLMProvider {
         'LLM stream request started'
       );
 
-      const response = await this._doRequest(messages, true);
+      const response = await this._doRequest(messages);
 
       if (!response.body) {
         throw new Error('No response body from LLM API');
       }
 
-      // Process streaming response
-      const reader = response.body as any;
+      // Streaming decoder: a multi-byte character split across two network chunks
+      // (an accented letter, say) is decoded once both halves have arrived.
+      const text = response.body.pipeThrough(new TextDecoderStream());
       let buffer = '';
 
-      for await (const chunk of reader) {
-        // Decode chunk to string correctly for Buffer / Uint8Array
-        let chunkStr: string;
-        try {
-          if (typeof chunk === 'string') {
-            chunkStr = chunk;
-          } else if (typeof Buffer !== 'undefined' && Buffer.isBuffer(chunk)) {
-            chunkStr = (chunk as Buffer).toString('utf8');
-          } else if (chunk instanceof Uint8Array) {
-            chunkStr = new TextDecoder().decode(chunk as Uint8Array);
-          } else {
-            chunkStr = String(chunk);
-          }
-        } catch (e) {
-          chunkStr = String(chunk);
-        }
-
-        buffer += chunkStr;
+      for await (const piece of text) {
+        buffer += piece;
         const lines = buffer.split('\n');
+        // The last element is an incomplete line: keep it for the next piece
+        buffer = lines.pop() ?? '';
 
-        // Process all complete lines
-        for (let i = 0; i < lines.length - 1; i++) {
-          const line = lines[i].trim();
-
-          if (!line) continue;
-
-          // Support both SSE "data: ..." and raw JSON lines
-          const data = line.startsWith('data: ') ? line.slice(6) : line;
-
-          if (data === '[DONE]') {
-            logger.debug('LLM stream completed');
-            continue;
-          }
-
-          try {
-            const json = JSON.parse(data);
-
-            // Support multiple possible streaming token fields used by different APIs
-            const delta = json.choices?.[0]?.delta ?? {};
-            const token = (delta?.content as string) || (delta?.text as string) || (json.choices?.[0]?.text?.content as string) || '';
-
-            if (token) {
-              yield token;
-            }
-          } catch (e) {
-            // Ignore invalid JSON lines
-          }
+        for (const line of lines) {
+          const token = extractToken(line);
+          if (token) yield token;
         }
-
-        // Keep incomplete line in buffer
-        buffer = lines[lines.length - 1];
       }
 
-      const duration = Date.now() - startTime;
-      logger.debug({ durationMs: duration }, 'LLM stream finished');
+      logger.debug({ durationMs: Date.now() - startTime }, 'LLM stream finished');
     } catch (error) {
       const duration = Date.now() - startTime;
       const errorMessage = error instanceof Error ? error.message : String(error);
 
       logger.error(
-        { errorMessage, errorType: (error as any)?.name, durationMs: duration },
+        { errorMessage, errorType: error instanceof Error ? error.name : undefined, durationMs: duration },
         'LLM stream failed'
       );
 
@@ -180,58 +174,5 @@ export class LLMProvider {
         `Failed to stream LLM response: ${errorMessage}`,
       );
     }
-  }
-
-  /**
-   * Non-streaming completion
-   * @param messages Chat messages
-   * @returns Full completion text
-   * @throws RagError with stage='llm'
-   */
-  async complete(messages: ChatMessage[]): Promise<string> {
-    const startTime = Date.now();
-
-    try {
-      logger.info(
-        { model: this.model, messageCount: messages.length },
-        'LLM completion request started'
-      );
-
-      const response = await this._doRequest(messages, false);
-      const data = (await response.json()) as any;
-      const content = data.choices?.[0]?.message?.content || '';
-
-      const duration = Date.now() - startTime;
-      logger.info({ durationMs: duration }, 'LLM completion finished');
-
-      return content;
-    } catch (error) {
-      const duration = Date.now() - startTime;
-      const errorMessage = error instanceof Error ? error.message : String(error);
-
-      logger.error(
-        { errorMessage, durationMs: duration },
-        'LLM completion failed'
-      );
-
-      throw new RagError(
-        'llm',
-        errorMessage.includes('abort') ? 'TIMEOUT' : 'API_ERROR',
-        `Failed to get LLM completion: ${errorMessage}`,
-      );
-    }
-  }
-
-  /**
-   * Get provider configuration (for logging/debugging)
-   */
-  getConfig() {
-    return {
-      model: this.model,
-      temperature: this.temperature,
-      maxTokens: this.maxTokens,
-      timeoutMs: this.timeoutMs,
-      apiUrl: this.apiUrl,
-    };
   }
 }

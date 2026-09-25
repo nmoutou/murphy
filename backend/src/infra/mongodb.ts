@@ -114,7 +114,7 @@ export class MongoDbClient {
       const errorMessage = error instanceof Error ? error.message : String(error);
 
       logger.error(
-        { errorMessage, errorType: (error as any)?.name, durationMs: duration },
+        { errorMessage, errorType: error instanceof Error ? error.name : undefined, durationMs: duration },
         'Failed to fetch documents from MongoDB'
       );
 
@@ -125,28 +125,16 @@ export class MongoDbClient {
       );
     }
   }
-
-  async getDocumentCount(): Promise<number> {
-    try {
-      if (!this.db) throw new Error('MongoDB not initialized');
-      const collection = this.db.collection(process.env.MONGODB_COLLECTION || 'chunks');
-      return await collection.countDocuments();
-    } catch (error) {
-      logger.warn('Failed to get document count for health check');
-      return 0;
-    }
-  }
 }
 
 // ---------------------------------------------------------------------------
 // Singleton instance — shared across the application
 // ---------------------------------------------------------------------------
-export const mongoDbClient = new MongoDbClient();
+const mongoDbClient = new MongoDbClient();
 
-// Backward-compatible function exports delegating to the singleton
+// Function exports delegating to the singleton
 export const initMongoClient  = ()      => mongoDbClient.connect();
 export const closeMongoClient = ()      => mongoDbClient.close();
 export const getMongoClient   = async () => mongoDbClient.getClient();
 export const getMongoDb       = async () => mongoDbClient.getDb();
-export const fetchDocuments   = (elis: string[]) => mongoDbClient.fetchDocuments(elis);
-export const getDocumentCount = ()      => mongoDbClient.getDocumentCount();
+export const fetchDocuments   = (chunkIds: string[]) => mongoDbClient.fetchDocuments(chunkIds);

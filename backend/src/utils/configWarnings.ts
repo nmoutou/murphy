@@ -1,4 +1,4 @@
-import logger from './logger';
+import { logger } from './logger';
 
 const CRITICAL_ENV = [
   'LLM_API_ENDPOINT',

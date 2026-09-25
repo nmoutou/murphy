@@ -6,7 +6,7 @@
 import { logger as rootLogger } from '../utils/logger';
 import { fetchDocuments } from '../infra/mongodb';
 import { embeddingClient, qdrantClient } from '../infra';
-import { RagError, Document, SearchResult } from '../types/rag';
+import { Document, SearchResult } from '../types/rag';
 
 const logger = rootLogger.child({ context: 'ragService' });
 
@@ -70,6 +70,4 @@ export function getDefaultSystemPrompt(): string {
     'Si la réponse ne se trouve pas dans les documents fournis, dites-le clairement.'
   );
 }
-
-export { RagError };
 

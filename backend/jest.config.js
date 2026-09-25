@@ -4,7 +4,10 @@ module.exports = {
   roots: ['<rootDir>/src'],
   testMatch: ['**/__tests__/**/*.ts', '**/?(*.)+(spec|test).ts'],
   transform: {
-    '^.+\\.ts$': 'ts-jest',
+    // TS151002 asks for `isolatedModules: true`, which would switch ts-jest to
+    // transpile-only and stop type-checking the tests (`tsc` excludes them).
+    // The warning targets ESM interop; this package is CommonJS.
+    '^.+\\.ts$': ['ts-jest', { diagnostics: { ignoreCodes: [151002] } }],
   },
   collectCoverageFrom: [
     'src/**/*.ts',

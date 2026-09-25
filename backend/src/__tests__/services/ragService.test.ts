@@ -1,312 +1,105 @@
 /**
  * RAG Service Tests
- * Tests for buildRagContext and pipeline orchestration
+ * Stage helpers of the pipeline: embedding, retrieval, document fetch, prompt building
  */
 
-import { buildRagContext } from '../../services/ragService';
-import * as embeddingModule from '../../infra/embedding';
-import * as qdrantModule from '../../infra/qdrant';
-import * as mongodbModule from '../../infra/mongodb';
-import { RagError } from '../../types/rag';
+import {
+  buildContextString,
+  embedQuestion,
+  fetchChunkDocuments,
+  getDefaultSystemPrompt,
+  retrieveChunks,
+} from '../../services/ragService';
+import { embeddingClient, qdrantClient } from '../../infra';
+import { fetchDocuments } from '../../infra/mongodb';
 
-// Mock modules
-jest.mock('../../infra/embedding');
-jest.mock('../../infra/qdrant');
-jest.mock('../../infra/mongodb');
-jest.mock('../../utils/logger', () => ({
-  logger: {
-    child: jest.fn(() => ({
-      info: jest.fn(),
-      debug: jest.fn(),
-      error: jest.fn(),
-      warn: jest.fn(),
-    })),
-    info: jest.fn(),
-    debug: jest.fn(),
-    error: jest.fn(),
-    warn: jest.fn(),
-  },
+jest.mock('../../infra', () => ({
+  embeddingClient: { embedText: jest.fn() },
+  qdrantClient: { searchVectors: jest.fn() },
 }));
+jest.mock('../../infra/mongodb', () => ({ fetchDocuments: jest.fn() }));
+jest.mock('../../utils/logger', () => {
+  const silentLogger = { info: jest.fn(), debug: jest.fn(), warn: jest.fn(), error: jest.fn(), child: () => silentLogger };
+  return { logger: silentLogger };
+});
 
-describe('RAG Service - buildRagContext', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
+const EMBEDDING = [0.1, 0.2, 0.3];
+
+describe('buildContextString', () => {
+  it('says so when no document was found', () => {
+    expect(buildContextString([])).toBe('No relevant documents found.');
   });
 
-  describe('Successful pipeline execution', () => {
-    it('should build RAG context successfully with documents', async () => {
-      const mockEmbedding = Array(768).fill(0.5);
-      const mockDocuments = [
-        {
-          eli: 'eli123',
-          chunk_id: 'chunk1',
-          title: 'Test Document',
-          excerpt: 'This is a test document.',
-        },
-      ];
-      const mockSearchResults = [
-        {
-          id: '1',
-          similarity: 0.95,
-          payload: { eli: 'eli123', chunk_id: 'chunk1' },
-        },
-      ];
+  it('numbers the documents and falls back on missing title or content', () => {
+    const context = buildContextString([
+      { chunkId: 'chunk-1', title: 'Code civil, art. 2224', content: 'Cinq ans.' },
+      { chunkId: 'chunk-2' },
+    ]);
 
-      // Setup mocks
-      (embeddingModule.EmbeddingClient as jest.Mock).mockImplementation(() => ({
-        embedText: jest.fn().mockResolvedValue(mockEmbedding),
-      }));
+    expect(context).toBe('[1] Code civil, art. 2224\nCinq ans.\n\n[2] Document 2\n(No content available)');
+  });
+});
 
-      (qdrantModule.QdrantVectorClient as jest.Mock).mockImplementation(() => ({
-        searchVectors: jest.fn().mockResolvedValue(mockSearchResults),
-      }));
+describe('getDefaultSystemPrompt', () => {
+  const initialPrompt = process.env.SYSTEM_PROMPT;
 
-      (mongodbModule.fetchDocuments as jest.Mock).mockResolvedValue(mockDocuments);
-
-      // Execute
-      const result = await buildRagContext('What is the labor code?');
-
-      // Assert
-      expect(result).toBeDefined();
-      expect(result.systemPrompt).toBeDefined();
-      expect(result.context).toContain('Test Document');
-      expect(result.documents).toEqual(mockDocuments);
-      expect(result.timing.embeddingMs).toBeGreaterThanOrEqual(0);
-      expect(result.timing.retrievalMs).toBeGreaterThanOrEqual(0);
-    });
-
-    it('should return default system prompt when not configured', async () => {
-      process.env.SYSTEM_PROMPT = '';
-      const mockEmbedding = Array(768).fill(0.5);
-      const mockSearchResults: any[] = [];
-      const mockDocuments: any[] = [];
-
-      (embeddingModule.EmbeddingClient as jest.Mock).mockImplementation(() => ({
-        embedText: jest.fn().mockResolvedValue(mockEmbedding),
-      }));
-
-      (qdrantModule.QdrantVectorClient as jest.Mock).mockImplementation(() => ({
-        searchVectors: jest.fn().mockResolvedValue(mockSearchResults),
-      }));
-
-      (mongodbModule.fetchDocuments as jest.Mock).mockResolvedValue(mockDocuments);
-
-      const result = await buildRagContext('Test question');
-
-      expect(result.systemPrompt).toContain('assistant juridique');
-    });
-
-    it('should handle empty search results gracefully', async () => {
-      const mockEmbedding = Array(768).fill(0.5);
-      const mockSearchResults: any[] = [];
-      const mockDocuments: Array<any> = [];
-
-      (embeddingModule.EmbeddingClient as jest.Mock).mockImplementation(() => ({
-        embedText: jest.fn().mockResolvedValue(mockEmbedding),
-      }));
-
-      (qdrantModule.QdrantVectorClient as jest.Mock).mockImplementation(() => ({
-        searchVectors: jest.fn().mockResolvedValue(mockSearchResults),
-      }));
-
-      (mongodbModule.fetchDocuments as jest.Mock).mockResolvedValue(mockDocuments);
-
-      const result = await buildRagContext('No matching documents?');
-
-      expect(result.documents).toEqual([]);
-      expect(result.context).toContain('No relevant documents');
-    });
-
-    it('should respect custom config (topK, systemPrompt)', async () => {
-      const mockEmbedding = Array(768).fill(0.5);
-      const customSystemPrompt = 'Custom prompt';
-      const mockSearchResults = [
-        {
-          id: '1',
-          similarity: 0.9,
-          payload: { eli: 'eli1' },
-        },
-      ];
-      const mockDocuments: Array<any> = [];
-
-      (embeddingModule.EmbeddingClient as jest.Mock).mockImplementation(() => ({
-        embedText: jest.fn().mockResolvedValue(mockEmbedding),
-      }));
-
-      const mockQdrantClient = {
-        searchVectors: jest.fn().mockResolvedValue(mockSearchResults),
-      };
-      (qdrantModule.QdrantVectorClient as jest.Mock).mockImplementation(() => mockQdrantClient);
-      (mongodbModule.fetchDocuments as jest.Mock).mockResolvedValue(mockDocuments);
-
-      const result = await buildRagContext('Question', {
-        topK: 3,
-        systemPrompt: customSystemPrompt,
-      });
-
-      expect(result.systemPrompt).toBe(customSystemPrompt);
-      expect(mockQdrantClient.searchVectors).toHaveBeenCalledWith(mockEmbedding, 3);
-    });
+  afterEach(() => {
+    if (initialPrompt === undefined) delete process.env.SYSTEM_PROMPT;
+    else process.env.SYSTEM_PROMPT = initialPrompt;
   });
 
-  describe('Error handling', () => {
-    it('should propagate embedding errors (RagError with stage=embedding)', async () => {
-      const embeddingError: RagError = {
-        stage: 'embedding',
-        code: 'TIMEOUT',
-        message: 'Embedding service timeout',
-      };
+  it('defaults to the French legal-assistant prompt', () => {
+    delete process.env.SYSTEM_PROMPT;
 
-      (embeddingModule.EmbeddingClient as jest.Mock).mockImplementation(() => ({
-        embedText: jest.fn().mockRejectedValue(embeddingError),
-      }));
-
-      await expect(buildRagContext('Question')).rejects.toEqual(embeddingError);
-    });
-
-    it('should propagate retrieval errors (RagError with stage=retrieval)', async () => {
-      const mockEmbedding = Array(768).fill(0.5);
-      const retrievalError: RagError = {
-        stage: 'retrieval',
-        code: 'SEARCH_FAILED',
-        message: 'Qdrant search failed',
-      };
-
-      (embeddingModule.EmbeddingClient as jest.Mock).mockImplementation(() => ({
-        embedText: jest.fn().mockResolvedValue(mockEmbedding),
-      }));
-
-      (qdrantModule.QdrantVectorClient as jest.Mock).mockImplementation(() => ({
-        searchVectors: jest.fn().mockRejectedValue(retrievalError),
-      }));
-
-      await expect(buildRagContext('Question')).rejects.toEqual(retrievalError);
-    });
-
-    it('should propagate MongoDB fetch errors (RagError with stage=retrieval)', async () => {
-      const mockEmbedding = Array(768).fill(0.5);
-      const mockSearchResults = [
-        {
-          id: '1',
-          similarity: 0.9,
-          payload: { eli: 'eli1' },
-        },
-      ];
-      const mongoError: RagError = {
-        stage: 'retrieval',
-        code: 'DB_FETCH_FAILED',
-        message: 'Failed to fetch documents',
-      };
-
-      (embeddingModule.EmbeddingClient as jest.Mock).mockImplementation(() => ({
-        embedText: jest.fn().mockResolvedValue(mockEmbedding),
-      }));
-
-      (qdrantModule.QdrantVectorClient as jest.Mock).mockImplementation(() => ({
-        searchVectors: jest.fn().mockResolvedValue(mockSearchResults),
-      }));
-
-      (mongodbModule.fetchDocuments as jest.Mock).mockRejectedValue(mongoError);
-
-      await expect(buildRagContext('Question')).rejects.toEqual(mongoError);
-    });
+    expect(getDefaultSystemPrompt()).toContain('assistant juridique');
   });
 
-  describe('Context string building', () => {
-    it('should format multiple documents correctly', async () => {
-      const mockEmbedding = Array(768).fill(0.5);
-      const mockDocuments: Array<any> = [
-        {
-          eli: 'eli1',
-          chunk_id: 'chunk1',
-          title: 'Article 1',
-          excerpt: 'First article content',
-        },
-        {
-          eli: 'eli2',
-          chunk_id: 'chunk2',
-          title: 'Article 2',
-          excerpt: 'Second article content',
-        },
-      ];
-      const mockSearchResults = [
-        { id: '1', similarity: 0.95, payload: { eli: 'eli1' } },
-        { id: '2', similarity: 0.90, payload: { eli: 'eli2' } },
-      ];
+  it('is overridden by SYSTEM_PROMPT', () => {
+    process.env.SYSTEM_PROMPT = 'Consigne de test';
 
-      (embeddingModule.EmbeddingClient as jest.Mock).mockImplementation(() => ({
-        embedText: jest.fn().mockResolvedValue(mockEmbedding),
-      }));
+    expect(getDefaultSystemPrompt()).toBe('Consigne de test');
+  });
+});
 
-      (qdrantModule.QdrantVectorClient as jest.Mock).mockImplementation(() => ({
-        searchVectors: jest.fn().mockResolvedValue(mockSearchResults),
-      }));
-
-      (mongodbModule.fetchDocuments as jest.Mock).mockResolvedValue(mockDocuments);
-
-      const result = await buildRagContext('Question');
-
-      expect(result.context).toContain('[1]');
-      expect(result.context).toContain('Article 1');
-      expect(result.context).toContain('[2]');
-      expect(result.context).toContain('Article 2');
-    });
-
-    it('should handle documents without titles or excerpts', async () => {
-      const mockEmbedding = Array(768).fill(0.5);
-      const mockDocuments: Array<any> = [
-        {
-          eli: 'eli1',
-          chunk_id: 'chunk1',
-        },
-      ];
-      const mockSearchResults = [
-        { id: '1', similarity: 0.95, payload: { eli: 'eli1' } },
-      ];
-
-      (embeddingModule.EmbeddingClient as jest.Mock).mockImplementation(() => ({
-        embedText: jest.fn().mockResolvedValue(mockEmbedding),
-      }));
-
-      (qdrantModule.QdrantVectorClient as jest.Mock).mockImplementation(() => ({
-        searchVectors: jest.fn().mockResolvedValue(mockSearchResults),
-      }));
-
-      (mongodbModule.fetchDocuments as jest.Mock).mockResolvedValue(mockDocuments);
-
-      const result = await buildRagContext('Question');
-
-      expect(result.context).toContain('Document 1');
-      expect(result.context).toContain('No content available');
-    });
+describe('fetchChunkDocuments', () => {
+  it('skips MongoDB when there is no chunk to fetch', async () => {
+    await expect(fetchChunkDocuments([])).resolves.toEqual({ documents: [], docFetchMs: 0 });
+    expect(fetchDocuments).not.toHaveBeenCalled();
   });
 
-  describe('Timing metrics', () => {
-    it('should capture timing for all stages', async () => {
-      const mockEmbedding = Array(768).fill(0.5);
-      const mockSearchResults = [
-        { id: '1', similarity: 0.95, payload: { eli: 'eli1' } },
-      ];
-      const mockDocuments = [
-        { eli: 'eli1', chunk_id: 'chunk1', title: 'Doc', excerpt: 'Content' },
-      ];
+  it('returns the fetched documents with the stage duration', async () => {
+    const documents = [{ chunkId: 'chunk-1', content: 'Cinq ans.' }];
+    jest.mocked(fetchDocuments).mockResolvedValue(documents);
 
-      (embeddingModule.EmbeddingClient as jest.Mock).mockImplementation(() => ({
-        embedText: jest.fn().mockResolvedValue(mockEmbedding),
-      }));
+    const fetched = await fetchChunkDocuments(['chunk-1']);
 
-      (qdrantModule.QdrantVectorClient as jest.Mock).mockImplementation(() => ({
-        searchVectors: jest.fn().mockResolvedValue(mockSearchResults),
-      }));
+    expect(fetchDocuments).toHaveBeenCalledWith(['chunk-1']);
+    expect(fetched.documents).toBe(documents);
+    expect(fetched.docFetchMs).toBeGreaterThanOrEqual(0);
+  });
+});
 
-      (mongodbModule.fetchDocuments as jest.Mock).mockResolvedValue(mockDocuments);
+describe('embedQuestion', () => {
+  it('returns the embedding with the stage duration', async () => {
+    jest.mocked(embeddingClient.embedText).mockResolvedValue(EMBEDDING);
 
-      const result = await buildRagContext('Question');
+    const embedded = await embedQuestion('Quel délai ?');
 
-      expect(result.timing.embeddingMs).toBeGreaterThanOrEqual(0);
-      expect(result.timing.retrievalMs).toBeGreaterThanOrEqual(0);
-      expect(typeof result.timing.embeddingMs).toBe('number');
-      expect(typeof result.timing.retrievalMs).toBe('number');
-    });
+    expect(embeddingClient.embedText).toHaveBeenCalledWith('Quel délai ?');
+    expect(embedded.embedding).toBe(EMBEDDING);
+    expect(embedded.embeddingMs).toBeGreaterThanOrEqual(0);
+  });
+});
+
+describe('retrieveChunks', () => {
+  it('searches the requested number of chunks', async () => {
+    const results = [{ id: '1', similarity: 0.9, payload: { chunkId: 'chunk-1' } }];
+    jest.mocked(qdrantClient.searchVectors).mockResolvedValue(results);
+
+    const retrieved = await retrieveChunks(EMBEDDING, 3);
+
+    expect(qdrantClient.searchVectors).toHaveBeenCalledWith(EMBEDDING, 3);
+    expect(retrieved.results).toBe(results);
+    expect(retrieved.retrievalMs).toBeGreaterThanOrEqual(0);
   });
 });

@@ -94,7 +94,7 @@ export class EmbeddingClient {
       const errorMessage = error instanceof Error ? error.message : String(error);
 
       logger.error(
-        { errorMessage, errorType: (error as any)?.name, durationMs: duration },
+        { errorMessage, errorType: error instanceof Error ? error.name : undefined, durationMs: duration },
         'Embedding failed'
       );
 
@@ -102,76 +102,6 @@ export class EmbeddingClient {
         'embedding',
         errorMessage.includes('abort') ? 'TIMEOUT' : 'NETWORK',
         `Failed to generate embeddings: ${errorMessage}`,
-      );
-    }
-  }
-
-  /**
-   * Embed multiple texts
-   * @param texts Array of texts to embed
-   * @returns Array of embedding vectors
-   * @throws RagError with stage='embedding'
-   */
-  async embedTexts(texts: string[]): Promise<EmbeddingVector[]> {
-    const startTime = Date.now();
-
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), this.timeoutMs);
-
-      try {
-        logger.info(
-          { textsCount: texts.length, modelName: this.modelName },
-          'Batch embedding request started'
-        );
-
-        const response = await fetch(`${this.serviceUrl}/v1/embeddings`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            model: this.modelName,
-            input: texts,
-          } as TEIEmbeddingRequest),
-          signal: controller.signal,
-        });
-
-        if (!response.ok) {
-          throw new Error(
-            `TEI service returned ${response.status}: ${response.statusText}`
-          );
-        }
-
-        const data = (await response.json()) as TEIEmbeddingResponse;
-
-        if (!data.data || !Array.isArray(data.data)) {
-          throw new Error('Invalid embedding response format');
-        }
-
-        const embeddings = data.data.map((item) => item.embedding);
-        const duration = Date.now() - startTime;
-
-        logger.info(
-          { count: embeddings.length, durationMs: duration },
-          'Batch embedding completed'
-        );
-
-        return embeddings;
-      } finally {
-        clearTimeout(timeoutId);
-      }
-    } catch (error) {
-      const duration = Date.now() - startTime;
-      const errorMessage = error instanceof Error ? error.message : String(error);
-
-      logger.error(
-        { errorMessage, errorType: (error as any)?.name, durationMs: duration },
-        'Batch embedding failed'
-      );
-
-      throw new RagError(
-        'embedding',
-        errorMessage.includes('abort') ? 'TIMEOUT' : 'NETWORK',
-        `Failed to generate batch embeddings: ${errorMessage}`,
       );
     }
   }

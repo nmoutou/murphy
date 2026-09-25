@@ -2,7 +2,7 @@ import dotenv from 'dotenv';
 import http from 'http';
 import { WebSocketServer } from 'ws';
 import app from './app';
-import logger from './utils/logger';
+import { logger } from './utils/logger';
 import { initMongoClient, closeMongoClient } from './infra/mongodb';
 import { resolveCollection } from './infra/collectionPointer';
 import { initQdrantClient } from './infra';

@@ -13,24 +13,13 @@ import { AppUIMessage, AppMessageMetadata } from '../types/messages';
 
 const logger = rootLogger.child({ context: 'chatService' });
 
-type MessagePart = { type: string; text?: string };
-
-function isMessageWithParts(msg: AppUIMessage): msg is AppUIMessage & { parts: MessagePart[] } {
-  return 'parts' in msg && Array.isArray(msg.parts);
-}
-
 export const extractQuestionFromMessages = (messages: AppUIMessage[]): string => {
   const lastUser = [...messages].reverse().find((msg) => msg.role === 'user');
   if (!lastUser) return '';
 
-  if (isMessageWithParts(lastUser)) {
-    return lastUser.parts
-      .filter((part) => part.type === 'text')
-      .map((part) => part.text ?? '')
-      .join('');
-  }
-
-  return (lastUser as AppUIMessage & { content?: string }).content ?? '';
+  return lastUser.parts
+    .map((part) => (part.type === 'text' ? part.text : ''))
+    .join('');
 };
 
 export async function createChatStream(uiMessages: AppUIMessage[]) {

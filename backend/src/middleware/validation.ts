@@ -10,7 +10,7 @@ export const validationErrorHandler = (req: Request, res: Response, next: NextFu
   if (!errors.isEmpty()) {
     res.status(400).json({
       ...buildApiResponse(400, 'VALIDATION_ERROR'),
-      errors: errors.array().map((err) => ({ field: (err as any).path, message: err.msg })),
+      errors: errors.array().map((err) => ({ field: err.type === 'field' ? err.path : undefined, message: err.msg })),
     });
     return;
   }
@@ -32,7 +32,6 @@ export const chatValidation: ValidationChain[] = [
     .withMessage('message role must be user, assistant, or system'),
 
   body('messages.*.parts')
-    .optional()
     .isArray()
-    .withMessage('parts must be an array when provided'),
+    .withMessage('parts must be an array'),
 ];

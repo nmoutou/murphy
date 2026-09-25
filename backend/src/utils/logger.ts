@@ -37,12 +37,3 @@ export const logger = pino({
     res: pino.stdSerializers.res,
   },
 });
-
-/**
- * Create child logger with additional context
- */
-export const createLogger = (context: Record<string, any>) => {
-  return logger.child(context);
-};
-
-export default logger;

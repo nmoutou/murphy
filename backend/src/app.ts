@@ -5,7 +5,6 @@ import { helm, limiter, originParser } from "./middleware/security"
 import { buildApiResponse } from './utils/response';
 import chatRouter from './routes/chat';
 import healthRouter from './routes/health';
-import documentsRouter from './routes/documents';
 const app: Application = express();
 
 // Request logging (before other middleware)
@@ -34,9 +33,6 @@ app.use('/api/v1/health', healthRouter);
 
 // Chat route for RAG-powered streaming
 app.use('/api/v1/chat', chatRouter);
-
-// Documents search endpoint
-app.use('/api/v1/documents', documentsRouter);
 
 // Error handling (must be last)
 app.use(notFoundHandler);

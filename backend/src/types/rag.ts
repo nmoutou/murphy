@@ -41,7 +41,7 @@ export interface SearchResult {
     chunkId?: string;
     title?: string;
     type?: string;
-    [key: string]: any;
+    [key: string]: unknown;
   };
 }
 

@@ -1,36 +1,15 @@
 import { Request, Response, NextFunction } from 'express';
-import logger from '../utils/logger';
+import { logger } from '../utils/logger';
 import { buildApiResponse } from '../utils/response';
 
-/**
- * Custom error class with HTTP status code
- */
-export class AppError extends Error {
-  public readonly statusCode: number;
-  public readonly code: string;
-  public readonly isOperational: boolean;
-
-  constructor(
-    message: string,
-    statusCode: number = 500,
-    code: string = 'INTERNAL_ERROR',
-    isOperational: boolean = true
-  ) {
-    super(message);
-    this.statusCode = statusCode;
-    this.code = code;
-    this.isOperational = isOperational;
-    
-    Object.setPrototypeOf(this, AppError.prototype);
-    Error.captureStackTrace(this, this.constructor);
-  }
-}
+const INTERNAL_ERROR_STATUS = 500;
+const INTERNAL_ERROR_CODE = 'INTERNAL_ERROR';
 
 /**
  * Async route wrapper to catch errors
  */
 export const asyncHandler = (
-  fn: (req: Request, res: Response, next: NextFunction) => Promise<any>
+  fn: (req: Request, res: Response, next: NextFunction) => Promise<void>
 ) => {
   return (req: Request, res: Response, next: NextFunction) => {
     Promise.resolve(fn(req, res, next)).catch(next);
@@ -38,29 +17,23 @@ export const asyncHandler = (
 };
 
 /**
- * Global error handler middleware
+ * Global error handler middleware: any error that reaches it is an unexpected 500
  */
 export const errorHandler = (
-  error: Error | AppError,
+  error: Error,
   req: Request,
   res: Response,
   _next: NextFunction
 ): void => {
-  const statusCode = error instanceof AppError ? error.statusCode : 500;
-  const code = error instanceof AppError ? error.code : 'INTERNAL_ERROR';
-  const isOperational = error instanceof AppError ? error.isOperational : false;
-
-  // Log error with Pino
   logger.error({
     err: error,
-    code,
-    statusCode,
+    code: INTERNAL_ERROR_CODE,
+    statusCode: INTERNAL_ERROR_STATUS,
     path: req.path,
     method: req.method,
-    isOperational,
   }, 'Request error');
 
-  res.status(statusCode).json(buildApiResponse(statusCode, code));
+  res.status(INTERNAL_ERROR_STATUS).json(buildApiResponse(INTERNAL_ERROR_STATUS, INTERNAL_ERROR_CODE));
 };
 
 /**
