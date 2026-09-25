@@ -1,0 +1,34 @@
+import { Geist, Geist_Mono } from "next/font/google";
+import { ThemeProvider } from "@/components/providers/ThemeProvider";
+import "@/styles/globals.css";
+import "@/styles/scrollbar.css";
+
+
+const geistSans = Geist({
+  variable: "--font-geist-sans",
+  subsets: ["latin"],
+});
+
+const geistMono = Geist_Mono({
+  variable: "--font-geist-mono",
+  subsets: ["latin"],
+});
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
+    <html lang="fr">
+      <head>
+        <meta charSet="utf-8"/>
+      </head>
+      <ThemeProvider>
+        <body className={`${geistSans.variable} ${geistMono.variable} antialiased flex h-screen`}>
+          {children}
+        </body>
+      </ThemeProvider>
+    </html>
+  );
+}
