@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<SECTION_TA>
+<ID>LEGISCTA000030901863</ID>
+<TITRE_TA>Section 3 : Règles applicables aux entreprises ferroviaires et aux autres candidats</TITRE_TA>
+<STRUCTURE_TA>
+<LIEN_ART debut="2010-12-01" etat="MODIFIE" fin="2015-01-01" id="LEGIARTI000023084580" num="L2122-9" origine="LEGI"/>
+<LIEN_ART debut="2015-01-01" etat="MODIFIE" fin="2015-07-17" id="LEGIARTI000029336052" num="L2122-9" origine="LEGI"/>
+<LIEN_ART debut="2015-07-17" etat="MODIFIE" fin="2019-01-01" id="LEGIARTI000030901860" num="L2122-9" origine="LEGI"/>
+<LIEN_ART debut="2019-01-01" etat="VIGUEUR" fin="2999-01-01" id="LEGIARTI000037116048" num="L2122-9" origine="LEGI"/>
+<LIEN_ART debut="2010-12-01" etat="MODIFIE" fin="2015-07-17" id="LEGIARTI000023084578" num="L2122-10" origine="LEGI"/>
+<LIEN_ART debut="2015-07-17" etat="MODIFIE" fin="2019-12-27" id="LEGIARTI000030901856" num="L2122-10" origine="LEGI"/>
+<LIEN_ART debut="2019-12-27" etat="VIGUEUR" fin="2999-01-01" id="LEGIARTI000039786652" num="L2122-10" origine="LEGI"/>
+<LIEN_ART debut="2010-12-01" etat="MODIFIE" fin="2015-07-17" id="LEGIARTI000023084576" num="L2122-11" origine="LEGI"/>
+<LIEN_ART debut="2015-07-17" etat="VIGUEUR" fin="2999-01-01" id="LEGIARTI000030901851" num="L2122-11" origine="LEGI"/>
+<LIEN_ART debut="2010-12-01" etat="MODIFIE" fin="2015-07-17" id="LEGIARTI000023084574" num="L2122-12" origine="LEGI"/>
+<LIEN_ART debut="2015-07-17" etat="VIGUEUR" fin="2999-01-01" id="LEGIARTI000030901845" num="L2122-12" origine="LEGI"/>
+<LIEN_ART debut="2010-12-01" etat="MODIFIE" fin="2015-01-01" id="LEGIARTI000023084572" num="L2122-13" origine="LEGI"/>
+<LIEN_ART debut="2015-01-01" etat="MODIFIE" fin="2015-07-17" id="LEGIARTI000029336061" num="L2122-13" origine="LEGI"/>
+<LIEN_ART debut="2015-07-17" etat="VIGUEUR" fin="2999-01-01" id="LEGIARTI000030901842" num="L2122-13" origine="LEGI"/>
+</STRUCTURE_TA>
+<CONTEXTE>
+<TEXTE autorite="" cid="LEGITEXT000023086525" date_publi="2999-01-01" date_signature="2999-01-01" ministere="" nature="CODE" nor="" num="" num_parution_jo="">
+<TITRE_TXT c_titre_court="Code des transports" debut="2010-12-01" fin="2999-01-01" id_txt="LEGITEXT000023086525">Code des transports</TITRE_TXT>
+<TM>
+<TITRE_TM debut="2010-12-01" fin="2999-01-01" id="LEGISCTA000023706480">PARTIE LÉGISLATIVE</TITRE_TM>
+<TM>
+<TITRE_TM debut="2010-12-01" fin="2999-01-01" id="LEGISCTA000023084761">DEUXIÈME PARTIE : TRANSPORT FERROVIAIRE OU GUIDÉ</TITRE_TM>
+<TM>
+<TITRE_TM debut="2010-12-01" fin="2999-01-01" id="LEGISCTA000023084756">LIVRE IER : SYSTÈME DE TRANSPORT FERROVIAIRE  OU GUIDÉ</TITRE_TM>
+<TM>
+<TITRE_TM debut="2010-12-01" fin="2999-01-01" id="LEGISCTA000023084645">TITRE II : EXPLOITATION</TITRE_TM>
+<TM>
+<TITRE_TM debut="2010-12-01" fin="2999-01-01" id="LEGISCTA000023084604">Chapitre II : Règles générales d'accès au réseau</TITRE_TM>
+</TM>
+</TM>
+</TM>
+</TM>
+</TM>
+</TEXTE>
+</CONTEXTE>
+</SECTION_TA>

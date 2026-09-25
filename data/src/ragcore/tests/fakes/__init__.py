@@ -1,0 +1,27 @@
+"""Doublures en mémoire — le lot 2 se vérifie sans Mongo, sans Neo4j, sans Qdrant.
+
+Elles vivent sous ``tests/`` et non sous ``adapters/`` : un dépôt en mémoire livré
+dans le package de production serait du code que la production n'exécute jamais.
+"""
+
+from .repositories import (
+    InMemoryDocumentRepository,
+    InMemoryGraphRepository,
+    InMemoryManifestRepository,
+    InMemoryPendingRepository,
+    InMemoryVectorRepository,
+)
+from .runtime import FakeRuntime, FakeRuntimeFactory
+from .telemetry import RecordingTelemetry, RecordingTelemetryFactory
+
+__all__ = [
+    "FakeRuntime",
+    "FakeRuntimeFactory",
+    "InMemoryDocumentRepository",
+    "InMemoryGraphRepository",
+    "InMemoryManifestRepository",
+    "InMemoryPendingRepository",
+    "InMemoryVectorRepository",
+    "RecordingTelemetry",
+    "RecordingTelemetryFactory",
+]

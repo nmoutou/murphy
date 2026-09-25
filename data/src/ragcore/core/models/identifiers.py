@@ -1,0 +1,162 @@
+import re
+from typing import Annotated, Literal, NewType
+
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import ValidationError as PydanticValidationError
+
+from ..exceptions import ValidationError
+
+DocumentId = NewType("DocumentId", str)
+RunId = NewType("RunId", str)
+OwnerId = NewType("OwnerId", str)
+
+# Public : core/services/validation.py en fait sa source de vérité.
+ELI_PATTERN = r"^[A-Z]{8}[0-9]{12}$"
+
+_DOCUMENT_TYPES = {
+    "ARTI": "article",
+    "TEXT": "texte",
+    "SCTA": "section",
+}
+
+_JURISDICTIONS = {
+    # Mesuré sur les 352 fichiers du corpus juri : trois préfixes, et pas un de plus.
+    "JURITEXT": "judiciaire",  # 94 — CAPP, CASS, INCA
+    "CETATEXT": "administratif",  # 256 — JADE (Conseil d'État & juridictions admin.)
+    "CONSTEXT": "constitutionnel",  # 2 — CONSTIT
+}
+
+
+class ELI(BaseModel):
+    """European Legislation Identifier — l'identifiant métier d'un document LEGI.
+
+    Valide son propre format à la construction (8 majuscules + 12 chiffres) : un ELI mal
+    formé n'existe pas, il lève. Les caractères 5 à 8 (``ARTI`` dans ``LEGIARTI…``, ``TEXT``
+    dans ``LEGITEXT…``) portent le type de document, que ``document_type`` en dérive.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    kind: Literal["eli"] = "eli"
+    raw: str
+
+    @field_validator("raw")
+    @classmethod
+    def validate_format(cls, v: str) -> str:
+        if not re.match(ELI_PATTERN, v):
+            raise ValueError(
+                f"Format ELI invalide : {v!r} (attendu : 8 majuscules + 12 chiffres)"
+            )
+        return v
+
+    def serialize(self) -> DocumentId:
+        """Représentation sérialisée : 'eli:LEGIARTI000006419264'.
+
+        C'est l'identifiant CANONIQUE d'un document (clé Mongo, document_id des
+        événements d'audit) : on le typé `DocumentId` pour que le contrat remonte
+        jusqu'aux sites d'émission, sans changer la valeur produite.
+        """
+        return DocumentId(f"{self.kind}:{self.raw}")
+
+    @property
+    def document_type(self) -> str:
+        """Déduit le type (article, texte, ...) depuis le préfixe ELI."""
+        prefix = self.raw[4:8]
+        return _DOCUMENT_TYPES.get(prefix, "inconnu")
+
+
+class JorfId(BaseModel):
+    """Identifiant JORF — squelette pour usage futur."""
+
+    model_config = ConfigDict(frozen=True)
+
+    kind: Literal["jorf"] = "jorf"
+    raw: str
+
+    def serialize(self) -> DocumentId:
+        return DocumentId(f"{self.kind}:{self.raw}")
+
+
+class DecisionId(BaseModel):
+    """L'identifiant d'une décision de justice — ``JURITEXT…``, ``CETATEXT…``, ``CONSTEXT…``.
+
+    **Pourquoi un type à part, alors que le motif est le même que l'ELI.** Justement :
+    ``JURITEXT000019333891`` **satisfait** ``^[A-Z]{8}[0-9]{12}$``. Un ``ELI(raw=…)``
+    l'accepterait sans broncher, et la décision serait sérialisée ``eli:JURITEXT…`` — un
+    identifiant qui prétend désigner un texte de loi.
+
+    C'est exactement le piège que le routage JORF documente déjà : **le motif ne regarde
+    pas le préfixe**. Une jurisprudence rangée sous ``eli:`` ne lèverait aucune exception,
+    ne casserait aucun test de format, et polluerait durablement le graphe — jusqu'au jour
+    où quelqu'un chercherait pourquoi un « article de loi » a une formation de jugement.
+
+    Un arrêt n'est pas un texte de loi. Le type le dit ; le préfixe seul ne suffisait pas.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    kind: Literal["decision"] = "decision"
+    raw: str
+
+    @field_validator("raw")
+    @classmethod
+    def validate_format(cls, v: str) -> str:
+        if not re.match(ELI_PATTERN, v):
+            raise ValueError(
+                f"Format d'identifiant de décision invalide : {v!r} "
+                "(attendu : 8 majuscules + 12 chiffres)"
+            )
+        return v
+
+    def serialize(self) -> DocumentId:
+        return DocumentId(f"{self.kind}:{self.raw}")
+
+    @property
+    def jurisdiction(self) -> str:
+        """L'ordre de juridiction, déduit du préfixe — mesuré sur les 352 fichiers."""
+        return _JURISDICTIONS.get(self.raw[:8], "inconnu")
+
+
+class UploadId(BaseModel):
+    """Identifiant pour documents uploadés — SHA-256 de contenu."""
+
+    model_config = ConfigDict(frozen=True)
+
+    kind: Literal["upload"] = "upload"
+    raw: str
+
+    def serialize(self) -> DocumentId:
+        return DocumentId(f"{self.kind}:{self.raw}")
+
+
+# Union discriminée — Pydantic route automatiquement via le champ 'kind'
+SourceIdentifier = Annotated[
+    ELI | JorfId | DecisionId | UploadId,
+    Field(discriminator="kind"),
+]
+
+_IDENTIFIER_KINDS: dict[
+    str,
+    type[ELI] | type[JorfId] | type[DecisionId] | type[UploadId],
+] = {
+    "eli": ELI,
+    "jorf": JorfId,
+    "decision": DecisionId,
+    "upload": UploadId,
+}
+
+
+def deserialize_identifier(value: str) -> "SourceIdentifier":
+    """Inverse de ``serialize()`` : ``'eli:LEGIARTI…'`` → ``ELI(raw='LEGIARTI…')``.
+
+    Le cache des relations pendantes (§13) stocke des identifiants sérialisés.
+    Sans ce retour, il serait une voie sans issue : on saurait écrire une clé,
+    pas la relire pour rejouer la relation.
+    """
+    kind, separator, raw = value.partition(":")
+    if not separator or kind not in _IDENTIFIER_KINDS:
+        raise ValidationError(f"Identifiant sérialisé inconnu : {value!r}")
+    try:
+        return _IDENTIFIER_KINDS[kind](raw=raw)
+    except PydanticValidationError as exc:
+        raise ValidationError(f"Identifiant sérialisé invalide : {value!r}") from exc

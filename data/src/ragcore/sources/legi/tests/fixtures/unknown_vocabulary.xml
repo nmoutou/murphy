@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  FIXTURE SYNTHÉTIQUE — la seule preuve exécutable que `unknowns` fonctionne.
+
+  Le corpus réel ne contient AUCUN vocabulaire inconnu : les 16 typelien mesurés sont
+  tous dans la table. C'est le résultat attendu, et c'est justement pourquoi le corpus
+  ne peut pas prouver l'instrument. Un test qui n'observe jamais d'inconnu ne
+  démontre pas qu'on saurait en déclarer un.
+
+  Ce document en fabrique trois, chacun d'une catégorie différente :
+    - typelien="ZORGLUB"   -> catégorie `typelien`
+    - sens="lateral"       -> catégorie `sens`  (l'arête ne peut pas être orientée)
+    - <ZORG>               -> catégorie `balise`
+
+  Chacun doit RESSORTIR dans ExtractionResult.unknowns / ParsedDocument.unknowns,
+  et l'arête correspondante ne doit PAS être écrite. Déclaré, pas jeté.
+-->
+<ARTICLE>
+<META>
+<META_COMMUN>
+<ID>LEGIARTI000099999999</ID>
+<ORIGINE>LEGI</ORIGINE>
+<NATURE>Article</NATURE>
+</META_COMMUN>
+<META_SPEC>
+<META_ARTICLE>
+<NUM>Z-1</NUM>
+<ETAT>VIGUEUR</ETAT>
+<DATE_DEBUT>2020-01-01</DATE_DEBUT>
+<DATE_FIN>2999-01-01</DATE_FIN>
+</META_ARTICLE>
+</META_SPEC>
+</META>
+<ZORG attribut_inconnu="peu importe">Une balise que le parser ne connaît pas.</ZORG>
+<BLOC_TEXTUEL>
+<CONTENU>
+<p>Le contenu de cet article est du texte parfaitement ordinaire.</p>
+</CONTENU>
+</BLOC_TEXTUEL>
+<LIENS>
+<LIEN cidtexte="LEGITEXT000000000001" id="LEGIARTI000000000001" naturetexte="LOI" num="" numtexte="" sens="cible" typelien="ZORGLUB">Un verbe hors de la table.</LIEN>
+<LIEN cidtexte="LEGITEXT000000000002" id="LEGIARTI000000000002" naturetexte="LOI" num="" numtexte="" sens="lateral" typelien="CITATION">Un sens qui n'oriente rien.</LIEN>
+<LIEN cidtexte="LEGITEXT000000000003" id="LEGIARTI000000000003" naturetexte="LOI" num="" numtexte="" sens="cible" typelien="CITATION">Un lien parfaitement valide, lui.</LIEN>
+</LIENS>
+</ARTICLE>

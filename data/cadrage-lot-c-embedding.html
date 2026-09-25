@@ -1,0 +1,666 @@
+<title>Lot C — Maîtriser l'embedding</title>
+<style>
+  :root {
+    /* Neutres biaisés cyan-ardoise (pas de gris pur) */
+    --ground: #f4f7f8;
+    --surface: #ffffff;
+    --surface-sunk: #eaf0f1;
+    --ink: #141d22;
+    --ink-soft: #43535b;
+    --ink-faint: #6f8088;
+    --rule: #d3dee1;
+    --rule-strong: #b9c9cd;
+    /* Accent unique : cyan-ardoise = l'embedding, les vecteurs */
+    --accent: #1f6f82;
+    --accent-bright: #2b8ba1;
+    --accent-wash: #e2eef1;
+    /* Réservé aux contraintes / pièges */
+    --warn: #a8433a;
+    --warn-wash: #f6e7e4;
+    /* Vert sobre = tranché / acquis */
+    --ok: #3d7a53;
+    --ok-wash: #e4efe8;
+
+    --maxw: 70ch;
+    --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+    --sans: "Söhne", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    --mono: "SFMono-Regular", "SF Mono", "JetBrains Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ground: #0e1519;
+      --surface: #131d22;
+      --surface-sunk: #0a1013;
+      --ink: #e6eef1;
+      --ink-soft: #a9bac1;
+      --ink-faint: #77898f;
+      --rule: #26343a;
+      --rule-strong: #38494f;
+      --accent: #4fb3c9;
+      --accent-bright: #6ccadf;
+      --accent-wash: #14282f;
+      --warn: #e08478;
+      --warn-wash: #2c1a17;
+      --ok: #7fc397;
+      --ok-wash: #16241b;
+    }
+  }
+  :root[data-theme="light"] {
+    --ground: #f4f7f8; --surface: #ffffff; --surface-sunk: #eaf0f1;
+    --ink: #141d22; --ink-soft: #43535b; --ink-faint: #6f8088;
+    --rule: #d3dee1; --rule-strong: #b9c9cd;
+    --accent: #1f6f82; --accent-bright: #2b8ba1; --accent-wash: #e2eef1;
+    --warn: #a8433a; --warn-wash: #f6e7e4; --ok: #3d7a53; --ok-wash: #e4efe8;
+  }
+  :root[data-theme="dark"] {
+    --ground: #0e1519; --surface: #131d22; --surface-sunk: #0a1013;
+    --ink: #e6eef1; --ink-soft: #a9bac1; --ink-faint: #77898f;
+    --rule: #26343a; --rule-strong: #38494f;
+    --accent: #4fb3c9; --accent-bright: #6ccadf; --accent-wash: #14282f;
+    --warn: #e08478; --warn-wash: #2c1a17; --ok: #7fc397; --ok-wash: #16241b;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--serif);
+    font-size: 18px;
+    line-height: 1.62;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: var(--maxw); margin: 0 auto; padding: 0 24px; }
+
+  /* ---- Masthead ---- */
+  header.mast {
+    border-bottom: 1px solid var(--rule);
+    background: var(--surface);
+  }
+  .mast-inner { max-width: var(--maxw); margin: 0 auto; padding: 56px 24px 40px; }
+  .kicker {
+    font-family: var(--sans);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 18px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .kicker::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, var(--rule-strong), transparent);
+  }
+  h1 {
+    font-family: var(--sans);
+    font-weight: 680;
+    font-size: clamp(2rem, 5.5vw, 3.1rem);
+    line-height: 1.04;
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+    margin: 0 0 20px;
+    color: var(--ink);
+  }
+  h1 .accent { color: var(--accent); }
+  .standfirst {
+    font-size: 1.16rem;
+    color: var(--ink-soft);
+    margin: 0;
+    max-width: 62ch;
+  }
+  .meta-row {
+    font-family: var(--sans);
+    font-size: 12.5px;
+    color: var(--ink-faint);
+    letter-spacing: 0.02em;
+    margin-top: 28px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 20px;
+    border-top: 1px solid var(--rule);
+    padding-top: 18px;
+  }
+  .meta-row b { color: var(--ink-soft); font-weight: 600; }
+
+  /* ---- Sections ---- */
+  main { padding: 8px 0 80px; }
+  section.fam { padding: 44px 0 8px; }
+  .fam-head {
+    display: flex;
+    gap: 16px;
+    align-items: baseline;
+    margin-bottom: 8px;
+  }
+  .fam-num {
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--accent);
+    background: var(--accent-wash);
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    padding: 2px 9px;
+    white-space: nowrap;
+    position: relative;
+    top: -2px;
+  }
+  h2 {
+    font-family: var(--sans);
+    font-weight: 640;
+    font-size: 1.5rem;
+    letter-spacing: -0.015em;
+    line-height: 1.15;
+    text-wrap: balance;
+    margin: 0;
+    color: var(--ink);
+  }
+  .tag {
+    font-family: var(--sans);
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 2px 8px;
+    border-radius: 100px;
+    border: 1px solid currentColor;
+    white-space: nowrap;
+  }
+  .tag.archi { color: var(--accent); }
+  .tag.metier { color: var(--ink-faint); }
+  p { margin: 1em 0; }
+  .lede { color: var(--ink-soft); }
+  strong { font-weight: 600; color: var(--ink); font-family: inherit; }
+  em { font-style: italic; }
+  a { color: var(--accent); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+  code {
+    font-family: var(--mono);
+    font-size: 0.86em;
+    background: var(--surface-sunk);
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    padding: 0.1em 0.4em;
+    color: var(--ink);
+  }
+
+  /* ---- Verdict blocks ---- */
+  .block {
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    padding: 20px 22px;
+    margin: 22px 0;
+    background: var(--surface);
+  }
+  .block-label {
+    font-family: var(--sans);
+    font-size: 11.5px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    margin: 0 0 12px;
+  }
+  .block-label::before {
+    content: "";
+    width: 9px; height: 9px;
+    border-radius: 2px;
+    background: currentColor;
+    flex: none;
+  }
+  .block.tranche { border-left: 3px solid var(--ok); }
+  .block.tranche .block-label { color: var(--ok); }
+  .block.ouvert { border-left: 3px solid var(--accent); background: var(--surface); }
+  .block.ouvert .block-label { color: var(--accent); }
+  .block.piege { border-left: 3px solid var(--warn); background: var(--warn-wash); }
+  .block.piege .block-label { color: var(--warn); }
+  .block p:first-of-type { margin-top: 0; }
+  .block p:last-child { margin-bottom: 0; }
+  .block ul { margin: 0.6em 0; padding-left: 1.2em; }
+  .block li { margin: 0.4em 0; }
+
+  /* ---- Comparison table ---- */
+  .tablewrap { overflow-x: auto; margin: 24px 0; border: 1px solid var(--rule); border-radius: 6px; }
+  table { border-collapse: collapse; width: 100%; font-family: var(--sans); font-size: 14.5px; }
+  caption {
+    font-family: var(--sans);
+    text-align: left;
+    caption-side: top;
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    font-weight: 600;
+    padding: 14px 18px 6px;
+  }
+  th, td { text-align: left; padding: 12px 18px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  thead th {
+    font-size: 11.5px; letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--ink-faint); font-weight: 600; background: var(--surface-sunk);
+  }
+  tbody th { font-weight: 600; color: var(--ink); font-size: 14px; }
+  tbody tr:last-child td, tbody tr:last-child th { border-bottom: none; }
+  td.warn { color: var(--warn); }
+  td.ok { color: var(--ok); }
+  .num { font-variant-numeric: tabular-nums; }
+
+  /* ---- Callout / doctrine pull ---- */
+  .pull {
+    border-left: 3px solid var(--accent);
+    padding: 4px 0 4px 22px;
+    margin: 26px 0;
+    font-size: 1.12rem;
+    color: var(--ink);
+    line-height: 1.5;
+  }
+  .pull .src { display: block; font-family: var(--sans); font-size: 12.5px; color: var(--ink-faint); margin-top: 8px; letter-spacing: 0.02em; }
+
+  /* ---- Deliverables list ---- */
+  ol.deliv { list-style: none; counter-reset: d; padding: 0; margin: 20px 0; }
+  ol.deliv > li {
+    counter-increment: d;
+    position: relative;
+    padding: 16px 0 16px 52px;
+    border-top: 1px solid var(--rule);
+  }
+  ol.deliv > li:last-child { border-bottom: 1px solid var(--rule); }
+  ol.deliv > li::before {
+    content: counter(d);
+    position: absolute; left: 0; top: 15px;
+    font-family: var(--mono); font-size: 14px; font-weight: 600;
+    color: var(--accent);
+    width: 30px; height: 30px;
+    display: grid; place-items: center;
+    border: 1px solid var(--rule-strong); border-radius: 50%;
+  }
+  ol.deliv .d-title { font-family: var(--sans); font-weight: 640; color: var(--ink); }
+  ol.deliv .d-body { color: var(--ink-soft); font-size: 0.96em; }
+
+  hr.rule { border: none; border-top: 1px solid var(--rule); margin: 40px 0; }
+
+  footer {
+    border-top: 1px solid var(--rule);
+    background: var(--surface);
+    font-family: var(--sans);
+    font-size: 13px;
+    color: var(--ink-faint);
+  }
+  footer .wrap { padding-top: 28px; padding-bottom: 44px; }
+  footer b { color: var(--ink-soft); }
+
+  @media (max-width: 640px) {
+    body { font-size: 16.5px; }
+    .fam-head { flex-wrap: wrap; gap: 10px; }
+  }
+</style>
+
+<header class="mast">
+  <div class="mast-inner">
+    <p class="kicker">Cadrage · Lot C · ragcore</p>
+    <h1>Maîtriser <span class="accent">l'embedding</span>, de bout en bout</h1>
+    <p class="standfirst">
+      Ce cadrage reposait sur une prémisse&nbsp;: <em>TEI détient le tokenizer qui devrait
+      faire autorité pour le chunker, et il est hors de portée</em>. Un <code>curl</code> l'a
+      démentie le 16 juillet — <strong>TEI expose déjà <code>/tokenize</code>, avec des
+      offsets littéraux, en 7,9 ms</strong>. Le lot ne disparaît pas&nbsp;: il se
+      <strong>scinde</strong>. Ce qui avait une valeur mesurée (le chunker en tokens) se fait
+      maintenant, contre TEI. Ce qui reposait sur un principe (remplacer le service) attend
+      un fait.
+    </p>
+    <div class="meta-row">
+      <span><b>Statut</b> — <span class="accent">scindé</span> : C1 à faire · C2 gelé</span>
+      <span><b>Prérequis produit</b> — aucun (le pointeur de collection reste devant)</span>
+      <span><b>Le point 3</b> — se décroche du socle, devient C1</span>
+      <span><b>Rév.</b> 2 · 16 juillet 2026</span>
+    </div>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+
+    <!-- Pourquoi -->
+    <section class="fam" id="pourquoi">
+      <div class="fam-head">
+        <span class="fam-num">§C.0</span>
+        <h2>La prémisse était fausse — ce que la mesure a défait</h2>
+        <span class="tag archi">archi</span>
+      </div>
+      <p class="lede">
+        La rév. 1 tenait que le chunker et le service d'embedding étaient <em>la même
+        question par deux bouts</em>&nbsp;: le tokenizer d'autorité étant celui qui embed, il
+        resterait hors de portée tant que l'embedding vivrait dans un service tiers. Tout le
+        lot découlait de là. <strong>C'était faux.</strong>
+      </p>
+      <div class="block piege">
+        <p class="block-label">Mesuré le 16 juillet — contre le service qui tournait</p>
+        <ul>
+          <li><strong><code>POST /tokenize</code> répond <span class="num">200</span></strong>,
+            et accepte les listes comme <code>/embeddings</code>.</li>
+          <li><strong>Les offsets sont littéraux</strong>, vérifiés&nbsp;:
+            <code>texte[start:stop] == token.text</code> est vrai sur tous les tokens
+            non-spéciaux. C'est exactement l'invariant que le §C.3 exigeait.</li>
+          <li><strong><span class="num">7,9 ms</span> par appel</strong> — contre ~800 ms de
+            frais fixes pour <code>/embeddings</code>. Négligeable.</li>
+          <li><strong>C'est le tokenizer <em>du modèle qui embed</em></strong> — l'autorité est
+            bonne par construction, sans qu'on ait rien à posséder.</li>
+        </ul>
+      </div>
+      <p>
+        La prémisse était <em>raisonnable</em> — rien dans le code n'appelait
+        <code>/tokenize</code>, et ni <code>tokenizers</code> ni <code>transformers</code> ne
+        sont installés dans l'environnement d'ingestion. Elle n'a simplement jamais été
+        testée. <strong>Les deux questions n'en font donc plus qu'une seule&nbsp;: elles se
+        séparent.</strong> Le chunker en tokens ne dépend plus du choix de socle — il est
+        faisable aujourd'hui, contre TEI, sans rien remplacer.
+      </p>
+      <div class="pull">
+        Une prémisse plausible et jamais mesurée a porté un lot entier pendant un jour.
+        Le <code>curl</code> qui l'a défaite a coûté trente secondes.
+        <span class="src">16 juillet 2026 — « mesurer avant de planifier », troisième fois.</span>
+      </div>
+    </section>
+
+    <!-- L'acquis -->
+    <section class="fam" id="acquis">
+      <div class="fam-head">
+        <span class="fam-num">§C.1</span>
+        <h2>Ce dont on part — l'acquis, mesuré</h2>
+        <span class="tag archi">archi</span>
+      </div>
+      <p>
+        Le port <code>BaseEmbedder</code> a été écrit dès l'origine pour «&nbsp;un service
+        distant <em>ou</em> un modèle local&nbsp;». Trois implémentations le respectent
+        déjà, et le hook choisit entre elles. Le fingerprint (§6) dérive de
+        <code>model_name</code> + <code>dimension</code> — <strong>un changement de modèle
+        produit déjà une collection distincte</strong>. Rien de tout cela n'est à inventer.
+      </p>
+      <div class="block tranche">
+        <p class="block-label">Acquis — ne rien réécrire</p>
+        <ul>
+          <li><strong>La frontière est bonne.</strong> <code>BaseEmbedder.embed()</code> est
+            asynchrone, par lots, et ignore <em>où</em> le calcul se fait. Le reste du
+            pipeline ne verra pas la bascule.</li>
+          <li><strong>Le fingerprint couvre déjà le modèle.</strong> Deux modèles ⇒ deux
+            empreintes ⇒ deux collections. L'A/B entre modèles est gratuit.</li>
+          <li><strong>Le garde-fou d'alignement existe.</strong>
+            <code>assert_service_serves_model</code> refuse d'écrire si le service ne sert
+            pas le modèle dont le nom baptise la collection. Ce contrat survivra au
+            changement de service — il change juste d'interlocuteur.</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- La décision de cible -->
+    <section class="fam" id="cible">
+      <div class="fam-head">
+        <span class="fam-num">§C.2</span>
+        <h2>La cible d'exécution — C2, gelé faute de fait déclencheur</h2>
+        <span class="tag archi">archi</span>
+      </div>
+      <p>
+        La forme reste juste&nbsp;: <strong>si</strong> on remplace TEI un jour, ce sera par un
+        <em>service</em> et jamais en in-process — la lourdeur (<code>torch</code>, les poids)
+        doit rester isolée derrière l'URL, pour que l'ingestion ne gagne aucune dépendance
+        (elle parle déjà <code>httpx</code>). Ce qui change en rév. 2, c'est le
+        <strong>quand</strong>, et il ne dépend plus de nous&nbsp;: le seul motif restant est
+        <em>une gêne de principe, sans modèle bloquant identifié</em>.
+      </p>
+      <div class="block piege">
+        <p class="block-label">Les deux faits qui gèlent C2 — mesurés le 16 juillet</p>
+        <ul>
+          <li><strong><span class="num">4 Go</span> de VRAM au total</strong> (RTX 3050 Laptop,
+            3,4 Go libres). <em>C'est le matériel qui borne la liberté de modèle, pas TEI.</em>
+            Le catalogue TEI (BERT, RoBERTa, XLM-R, NomicBert, Qwen2, Mistral) couvre déjà à peu
+            près tout ce qui tient dans 4 Go — on paierait une liberté que le GPU ne laisse pas
+            exercer.</li>
+          <li><strong>TEI est du Rust à batching dynamique.</strong> Un FastAPI +
+            <code>sentence-transformers</code> maison serait vraisemblablement
+            <em>plus lent</em> — une régression au seul endroit qui coûte&nbsp;: l'embedding est
+            99,9 % du run, sur un GPU déjà saturé à 25 W.</li>
+        </ul>
+      </div>
+      <div class="block tranche">
+        <p class="block-label">Tranché — C2 attend un fait, pas un principe</p>
+        <p>
+          Le déclencheur de C2 est nommé&nbsp;: <strong>le jour où un modèle qu'on veut
+          essayer n'est pas au catalogue TEI <em>et</em> tient dans 4 Go.</strong> Ce jour-là,
+          son architecture décidera du socle. Choisir aujourd'hui, c'est choisir un socle pour
+          un besoin qu'on ne connaît pas encore — et donc probablement mal.
+        </p>
+      </div>
+      <div class="tablewrap">
+        <table>
+          <caption>Ce que la bascule changerait — le tableau de la rév. 1, corrigé par la mesure</caption>
+          <thead>
+            <tr><th scope="col">Contrainte</th><th scope="col">Avec TEI (mesuré, 16 juil.)</th><th scope="col">Service maison (C2)</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row">Choix des modèles</th>
+              <td>limité au catalogue TEI — <em>mais le GPU borne avant lui</em></td>
+              <td>libre <em>en théorie</em> ; toujours ≤ 4 Go de VRAM</td>
+            </tr>
+            <tr>
+              <th scope="row">Tokenizer d'autorité</th>
+              <td class="ok"><code>/tokenize</code> + offsets littéraux, 7,9 ms — <strong>déjà là</strong></td>
+              <td>identique — <em>rien à gagner</em></td>
+            </tr>
+            <tr>
+              <th scope="row">Fenêtre du modèle</th>
+              <td class="ok"><code>/info</code> l'annonce (<code>max_input_length: 384</code>)</td>
+              <td>identique — <em>rien à gagner</em></td>
+            </tr>
+            <tr>
+              <th scope="row">Débit</th>
+              <td class="ok">Rust, batching dynamique — la référence</td>
+              <td class="warn">probable régression (Python)</td>
+            </tr>
+            <tr>
+              <th scope="row">Dépendances du pipeline</th>
+              <td><code>httpx</code></td>
+              <td><code>httpx</code> — inchangé</td>
+            </tr>
+            <tr>
+              <th scope="row">Maîtrise du déploiement</th>
+              <td class="warn">image tierce</td>
+              <td class="ok">de bout en bout</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="block ouvert">
+        <p class="block-label">Reste ouvert — mais sans objet tant que C2 dort</p>
+        <p>
+          Le socle (serveur <code>sentence-transformers</code> maison&nbsp;? runtime ONNX pour
+          se passer de torch&nbsp;?) et le contrat d'API restent non figés — <strong>et c'est
+          très bien ainsi</strong>. Le modèle déclencheur dictera la réponse&nbsp;: son
+          architecture dit si ONNX est exportable, sa taille si les 4 Go suffisent. Trancher
+          maintenant serait répondre avant d'avoir la question.
+        </p>
+      </div>
+    </section>
+
+    <!-- Le tokenizer -->
+    <section class="fam" id="tokenizer">
+      <div class="fam-head">
+        <span class="fam-num">§C.3</span>
+        <h2>C1 — le chunker en tokens, la seule partie vivante</h2>
+        <span class="tag archi">archi</span>
+      </div>
+      <p>
+        C'est ici que le lot rembourse sa dette — et la mesure ne l'a pas affaibli, elle l'a
+        <strong>libéré</strong>. Il n'y a plus d'endpoint à écrire&nbsp;: <code>/tokenize</code>
+        rend déjà, pour chaque token, ses bornes en caractères. Le chunker consomme ces
+        offsets — il découpe <em>en tokens</em> mais lit <code>char_start</code> /
+        <code>char_end</code> dans les positions littérales du contenu. <strong>Faisable
+        aujourd'hui, contre TEI, sans rien remplacer.</strong>
+      </p>
+      <div class="pull">
+        Le tokenizer qui compte les tokens du chunk <strong>est</strong>, par construction,
+        celui qui embed le chunk. C'était vrai — mais ça l'était <em>déjà</em>, sans qu'on ait
+        rien à posséder.
+      </div>
+      <div class="block tranche">
+        <p class="block-label">Tranché — décisions héritées de la discussion du 15 juillet</p>
+        <ul>
+          <li><strong>Tokeniser avec offsets</strong>, jamais re-décoder. Le texte
+            re-décodé peut différer de l'original (espaces, normalisation)&nbsp;; les offsets
+            redeviendraient faux, et l'invariant durement acquis du chunker
+            (<em>chaque section est un morceau littéral du contenu</em>) tomberait.</li>
+          <li><strong>Un port <code>TokenCounter</code> injecté.</strong> Le chunker reste
+            pur et synchrone, testable avec un <em>fake</em> trivial&nbsp;; l'adapter concret
+            interroge le service. Cohérent avec l'hexagonal du reste de <code>ragcore</code>.</li>
+        </ul>
+      </div>
+      <div class="block piege">
+        <p class="block-label">Le piège qu'on ferme — et qui coûte, aujourd'hui, en silence</p>
+        <p>
+          Le chunker compte en <strong>caractères</strong>, la fenêtre du modèle en
+          <strong>tokens</strong>&nbsp;; le ratio va de <span class="num">3,08</span>
+          car/token en moyenne à <span class="num">0,33</span> au pire (sigles, ponctuation).
+          <strong>Aucune valeur en caractères n'est sûre par construction.</strong>
+          <code>_embed_oversized</code> rattrape le débordement par dichotomie sur des 413 — il
+          ne le <em>supprime</em> pas&nbsp;: du texte est tronqué, et seul un
+          <code>warning</code> le dit.
+        </p>
+        <p>
+          Or <code>GET /info</code> <strong>annonce la fenêtre</strong> —
+          <code>max_input_length: 384</code>, <code>auto_truncate: false</code>. La dichotomie
+          <em>découvre</em> par tâtonnement une limite qu'il suffit de lire. Compter en tokens
+          rend la troncature impossible <strong>par construction</strong>&nbsp;:
+          <code>_embed_oversized</code> ne devient pas une ceinture, il devient
+          <strong>supprimable</strong>.
+        </p>
+      </div>
+    </section>
+
+    <!-- Le fingerprint -->
+    <section class="fam" id="fingerprint">
+      <div class="fam-head">
+        <span class="fam-num">§C.4</span>
+        <h2>Le fingerprint — le tokenizer suit le modèle</h2>
+        <span class="tag archi">archi</span>
+      </div>
+      <p>
+        Faut-il ajouter le tokenizer au hash de workflow, pour qu'un changement force une
+        nouvelle collection&nbsp;? La question, brûlante avec TEI, <strong>s'éteint
+        d'elle-même ici</strong>&nbsp;: le service sert un modèle, et le tokenizer <em>est</em>
+        celui de ce modèle. Ils ne peuvent pas diverger. Le fingerprint dérive déjà de
+        <code>model_name</code> — il couvre donc déjà le tokenizer, sans champ nouveau.
+      </p>
+      <div class="block ouvert">
+        <p class="block-label">Reste ouvert — à trancher à l'implémentation</p>
+        <p>
+          Le seul cas résiduel&nbsp;: deux <em>révisions</em> du même nom de modèle qui
+          tokenizeraient différemment. Le garde-fou <code>/info</code> peut être étendu pour
+          exposer une révision, et le fingerprint la lire — décision à prendre <em>si et
+          quand</em> ce cas se présente, pas avant.
+        </p>
+      </div>
+    </section>
+
+    <hr class="rule">
+
+    <!-- Livrables -->
+    <section class="fam" id="livrables">
+      <div class="fam-head">
+        <span class="fam-num">§C.5</span>
+        <h2>Les livrables du lot</h2>
+      </div>
+      <p class="lede">
+        La rév. 1 mettait le service en tête, « chacun débloque le suivant ». Il ne débloquait
+        rien&nbsp;: les trois autres livrables tiennent sans lui.
+      </p>
+      <p class="lede"><strong>C1 — à faire, contre TEI.</strong></p>
+      <ol class="deliv">
+        <li>
+          <span class="d-title">Le port <code>TokenCounter</code> + son adapter</span> —
+          <span class="d-body">abstraction pure côté chunker (sync, testable avec un
+          <em>fake</em> trivial), client HTTP vers <code>/tokenize</code> côté adapter.</span>
+        </li>
+        <li>
+          <span class="d-title">Le chunker compte en tokens</span> —
+          <span class="d-body">« l'ex-point 3 »&nbsp;: fenêtrage sur les tokens, bornes lues
+          dans les offsets rendus par le service, fenêtre lue dans <code>/info</code>. La cause
+          du débordement disparaît.</span>
+        </li>
+        <li>
+          <span class="d-title">Retrait de <code>_embed_oversized</code></span> —
+          <span class="d-body">la dichotomie sur les 413 n'a plus d'objet une fois la
+          troncature impossible par construction. <em>Après</em> un run réel qui confirme zéro
+          troncature — pas avant.</span>
+        </li>
+      </ol>
+      <p class="lede" style="margin-top:1.4em"><strong>C2 — gelé.</strong> Réveillé par un modèle hors catalogue TEI qui tient dans 4 Go.</p>
+      <ol class="deliv" start="4">
+        <li>
+          <span class="d-title">Le service d'embedding maison</span> —
+          <span class="d-body">socle décidé par le modèle déclencheur. Expose
+          <code>/embeddings</code>, <code>/tokenize</code>, <code>/info</code> — le contrat que
+          TEI honore déjà, ce qui rend la bascule mécanique le jour venu.</span>
+        </li>
+        <li>
+          <span class="d-title">Bascule du hook</span> —
+          <span class="d-body"><code>OpenAIEmbedder</code> pointe sur la nouvelle URL&nbsp;;
+          <code>assert_service_serves_model</code> valide contre le nouveau <code>/info</code>.
+          Aucun nœud du DAG ne bouge.</span>
+        </li>
+      </ol>
+    </section>
+
+    <!-- Frontières -->
+    <section class="fam" id="frontieres">
+      <div class="fam-head">
+        <span class="fam-num">§C.6</span>
+        <h2>Ce que le lot ne fait pas</h2>
+      </div>
+      <div class="block piege">
+        <p class="block-label">Hors périmètre — pour ne pas gonfler le lot</p>
+        <ul>
+          <li><strong>Ce n'est pas devant le produit.</strong> Le point qui bloque le
+            serving reste le <em>pointeur de collection</em> côté backend — indépendant de
+            l'embedding. Le Lot C ne le remplace pas dans la file.</li>
+          <li><strong>Ce n'est pas la mesure de pertinence.</strong> Choisir un modèle
+            d'embedding « meilleur » suppose un jeu de questions de référence qui n'existe
+            pas encore. Le lot rend ce choix <em>possible</em> (n'importe quel modèle) ;
+            il ne tranche pas <em>lequel</em>.</li>
+          <li><strong>Ce n'est pas le lot B.</strong> Registre d'alias, MLflow, backends
+            typés — dette de doctrine distincte, intacte.</li>
+        </ul>
+      </div>
+    </section>
+
+  </div>
+</main>
+
+<footer>
+  <div class="wrap">
+    <p>
+      <b>Lot C — Maîtriser l'embedding.</b> Cadrage vivant, à redéployer sur cette même URL
+      au fil des décisions. Convention héritée des cadrages précédents&nbsp;: familles §,
+      « tranché » / « reste ouvert », tags <span style="color:var(--accent)">archi</span> /
+      métier.
+    </p>
+    <p>
+      <b>Rév. 2 — 16 juillet.</b> Le lot est <b>scindé</b> par la mesure&nbsp;: TEI expose déjà
+      <code>/tokenize</code> avec offsets littéraux (7,9 ms) et annonce sa fenêtre dans
+      <code>/info</code> — la prémisse de la rév. 1 était fausse.
+      <b>C1</b> (chunker en tokens, contre TEI) est à faire&nbsp;; <b>C2</b> (remplacer TEI) est
+      gelé, faute de modèle bloquant — et parce que 4 Go de VRAM bornent la liberté avant le
+      catalogue, tandis que le Rust de TEI borne la perf d'un remplaçant Python.
+    </p>
+    <p>
+      <b>Tient toujours de la rév. 1</b> — service et jamais in-process · tokeniser avec offsets,
+      jamais re-décoder · <code>TokenCounter</code> injecté · fingerprint inchangé (il dérive de
+      <code>model_name</code>). <b>Reste ouvert</b> — le socle de C2, décidé par le modèle qui
+      le réveillera.
+    </p>
+  </div>
+</footer>

@@ -1,0 +1,98 @@
+# ============================================================
+# PARAMÈTRE GÉNÉRAUX
+# ============================================================
+
+nlp:
+  spacy_model: "fr_core_news_sm"
+
+
+# ============================================================
+# Phase 1: Importation
+# ============================================================
+
+importation:
+  extraction:
+    content_tag: "CONTENU"
+
+  validation:
+    validation_rules:
+      require_eli: true
+      format_regex: "^[A-Z]{8}[0-9]{12}$"
+    log_invalidated: false
+
+  normalization:
+    title_mapping:
+      enabled: true
+      sources:
+        Article:
+          - "article_meta_meta_spec_meta_article_num"
+        Texte:
+          - "texte_version_meta_meta_spec_meta_texte_version_titre"
+        TexteAdmin:
+          - "section_ta_titre_ta"
+
+# ============================================================
+# Phase 3: Formatage
+# ============================================================
+
+formatting:
+  tokenizing:
+    tokenizing_model: ${nlp.spacy_model}
+    batch_size: 50
+
+  relations:
+    filtering: []
+    invert:
+      - txt_source
+      - lien_art
+      - lien_section_ta
+    mappings:
+      titre_tm: titre
+      titre_txt: titre
+      texte: titre
+      lien_art: titre
+      lien_section_ta: titre
+      txt_source: source
+    reduction:
+      enabled: true
+      types:
+        - titre
+
+# ============================================================
+# Phase 4: Export - embedding
+# ============================================================
+
+embedding_runtime:
+  embedding_service_timeout: 30
+  batch_size: 32
+  enabled: true
+
+exportation:
+  unconfigured: ingest
+
+  neo4j:
+    include_path: true
+    include_content: true
+
+  mongodb:
+    database: "LEGIFRANCE"
+    collection: "chunks"
+
+  qdrant:
+    distance: "Cosine"
+    batch_size: 100
+
+
+# ============================================================
+# Phase 5: Maintenance
+# ============================================================
+
+maintenance:
+  cleanup_enabled: true
+  cache_paths:
+    - "data/cache"
+    - "data/meta/events"
+
+  # Efface TOUTES les données de TOUTES les bases (sauf la base méta)
+  # À NE PAS activer en prod.
+  nuke_all: true

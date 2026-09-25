@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ARTICLE>
+<META>
+<META_COMMUN>
+<ID>LEGIARTI000019839772</ID>
+<ANCIEN_ID/>
+<ORIGINE>LEGI</ORIGINE>
+<URL>article/LEGI/ARTI/00/00/19/83/97/LEGIARTI000019839772.xml</URL>
+<NATURE>Article</NATURE>
+</META_COMMUN>
+<META_SPEC>
+<META_ARTICLE>
+
+<NUM>R3416-10</NUM>
+
+<ETAT>VIGUEUR</ETAT>
+
+<DATE_DEBUT>2008-11-28</DATE_DEBUT>
+<DATE_FIN>2999-01-01</DATE_FIN>
+
+
+
+<TYPE>AUTONOME</TYPE>
+</META_ARTICLE>
+</META_SPEC>
+</META>
+<CONTEXTE>
+<TEXTE autorite="" cid="LEGITEXT000006071307" date_publi="2999-01-01" date_signature="2999-01-01" ministere="" nature="CODE" nor="" num="" num_parution_jo="">
+<TITRE_TXT c_titre_court="Code de la défense." debut="2004-12-21" fin="2999-01-01" id_txt="LEGITEXT000006071307">Code de la défense</TITRE_TXT>
+<TM>
+<TITRE_TM debut="2007-04-24" fin="2999-01-01" id="LEGISCTA000006098226">Partie réglementaire</TITRE_TM>
+<TM>
+<TITRE_TM debut="2008-11-28" fin="2999-01-01" id="LEGISCTA000019839383">PARTIE 3 : LE MINISTÈRE DE LA DÉFENSE ET LES ORGANISMES SOUS TUTELLE</TITRE_TM>
+<TM>
+<TITRE_TM debut="2008-11-28" fin="2999-01-01" id="LEGISCTA000019840437">LIVRE IV : ÉTABLISSEMENTS PUBLICS</TITRE_TM>
+<TM>
+<TITRE_TM debut="2008-11-28" fin="2999-01-01" id="LEGISCTA000019840435">TITRE Ier : ÉTABLISSEMENTS PUBLICS  À CARACTÈRE ADMINISTRATIF</TITRE_TM>
+<TM>
+<TITRE_TM debut="2008-11-28" fin="2999-01-01" id="LEGISCTA000019839796">Chapitre VI : L'établissement public administratif Service hydrographique et océanographique de la marine (SHOM)</TITRE_TM>
+<TM>
+<TITRE_TM debut="2008-11-28" fin="2999-01-01" id="LEGISCTA000019839778">Section 2 : Organisation et fonctionnement</TITRE_TM>
+</TM>
+</TM>
+</TM>
+</TM>
+</TM>
+</TM>
+</TEXTE>
+</CONTEXTE>
+
+<VERSIONS>
+<VERSION etat="VIGUEUR">
+<LIEN_ART debut="2008-11-28" etat="VIGUEUR" fin="2999-01-01" id="LEGIARTI000019839772" num="R3416-10" origine="LEGI"/>
+</VERSION>
+</VERSIONS>
+<NOTA>
+<CONTENU/>
+</NOTA>
+<BLOC_TEXTUEL>
+<CONTENU>
+<p>Le directeur général est nommé par décret pour une durée de trois ans renouvelable. Nul ne peut être nommé s'il ne possède les qualifications reconnues par l'Organisation hydrographique internationale pour l'exercice de ses responsabilités en matière de sécurité de la navigation.<br/>
+</p>
+</CONTENU>
+</BLOC_TEXTUEL>
+<LIENS>
+<LIEN cidtexte="JORFTEXT000019811455" datesignatexte="2008-11-25" id="LEGIARTI000019833194" naturetexte="DECRET" nortexte="DEFD0814147D" num="" numtexte="2008-1219" sens="cible" typelien="CREE">Décret n°2008-1219 du 25 novembre 2008 - art. (V)</LIEN>
+
+</LIENS>
+</ARTICLE>

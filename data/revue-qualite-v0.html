@@ -1,0 +1,625 @@
+<title>Revue de qualité ragcore — la porte de fin de v0</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #f4f5f7;
+    --surface: #ffffff;
+    --surface-2: #eceef2;
+    --ink: #1c1f26;
+    --ink-soft: #4a5060;
+    --ink-faint: #7a8194;
+    --rule: #d8dce3;
+    --accent: #3b5b8c;        /* bleu ardoise — hérité de la série */
+    --accent-soft: #e5ebf4;
+    --amber: #a06a12;         /* ouvert / à corriger */
+    --amber-soft: #f6ecd8;
+    --green: #3f7a53;         /* acquis / corrigé */
+    --green-soft: #e2efe6;
+    --rust: #8c4a3b;          /* bug / perte */
+    --rust-soft: #f4e5e2;
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+    --serif: Georgia, "Iowan Old Style", "Times New Roman", serif;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --measure: 72ch;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14161a; --surface: #1c1f26; --surface-2: #22262e;
+      --ink: #e6e9ef; --ink-soft: #aab2c2; --ink-faint: #757e91; --rule: #2d323c;
+      --accent: #7ea3d8; --accent-soft: #223146;
+      --amber: #d6a95a; --amber-soft: #33290f;
+      --green: #6bb185; --green-soft: #16281c;
+      --rust: #d18a78; --rust-soft: #35201b;
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #f4f5f7; --surface: #ffffff; --surface-2: #eceef2;
+    --ink: #1c1f26; --ink-soft: #4a5060; --ink-faint: #7a8194; --rule: #d8dce3;
+    --accent: #3b5b8c; --accent-soft: #e5ebf4;
+    --amber: #a06a12; --amber-soft: #f6ecd8;
+    --green: #3f7a53; --green-soft: #e2efe6;
+    --rust: #8c4a3b; --rust-soft: #f4e5e2;
+  }
+  :root[data-theme="dark"] {
+    --bg: #14161a; --surface: #1c1f26; --surface-2: #22262e;
+    --ink: #e6e9ef; --ink-soft: #aab2c2; --ink-faint: #757e91; --rule: #2d323c;
+    --accent: #7ea3d8; --accent-soft: #223146;
+    --amber: #d6a95a; --amber-soft: #33290f;
+    --green: #6bb185; --green-soft: #16281c;
+    --rust: #d18a78; --rust-soft: #35201b;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg); color: var(--ink);
+    font-family: var(--sans); font-size: 17px; line-height: 1.6;
+    margin: 0; -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 860px; margin: 0 auto; padding: 0 24px 120px; }
+
+  header.masthead { padding: 72px 0 40px; border-bottom: 2px solid var(--ink); margin-bottom: 8px; }
+  .eyebrow {
+    font-family: var(--mono); font-size: 12px; letter-spacing: 0.12em;
+    text-transform: uppercase; color: var(--accent); margin: 0 0 18px;
+    display: flex; flex-wrap: wrap; gap: 10px; align-items: baseline;
+  }
+  .eyebrow .rev { color: var(--ink-faint); }
+  h1 {
+    font-family: var(--serif); font-size: clamp(34px, 5.2vw, 48px);
+    line-height: 1.12; letter-spacing: -0.015em; margin: 0 0 20px;
+    text-wrap: balance; font-weight: 400;
+  }
+  .standfirst { font-size: 19px; color: var(--ink-soft); max-width: var(--measure); margin: 0; }
+  .standfirst strong { color: var(--ink); font-weight: 600; }
+
+  .revband {
+    border-left: 3px solid var(--accent); background: var(--accent-soft);
+    padding: 14px 18px; margin: 28px 0 0; font-size: 15px;
+    color: var(--ink-soft); max-width: var(--measure);
+  }
+  .revband strong { color: var(--ink); }
+
+  section { margin-top: 64px; }
+  h2 {
+    font-family: var(--serif); font-size: 28px; font-weight: 400;
+    letter-spacing: -0.01em; margin: 0 0 6px; text-wrap: balance;
+    padding-bottom: 10px; border-bottom: 1px solid var(--rule);
+  }
+  .h2-note { font-size: 15px; color: var(--ink-faint); margin: 6px 0 24px; max-width: var(--measure); }
+  h2 .count { font-family: var(--mono); font-size: 15px; color: var(--ink-faint); }
+  p { max-width: var(--measure); }
+  code {
+    font-family: var(--mono); font-size: 0.86em;
+    background: var(--surface-2); padding: 1px 5px; border-radius: 3px;
+  }
+  a { color: var(--accent); }
+
+  /* ---- tableau de bord ---- */
+  .board {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1px; background: var(--rule); border: 1px solid var(--rule);
+    margin: 28px 0 0;
+  }
+  .cell { background: var(--surface); padding: 14px 16px; }
+  .cell .k { font-family: var(--mono); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-faint); }
+  .cell .v { font-size: 22px; font-variant-numeric: tabular-nums; margin-top: 2px; }
+  .cell .v small { font-size: 13px; color: var(--ink-soft); }
+  .cell.bad .v { color: var(--rust); }
+  .cell.good .v { color: var(--green); }
+
+  /* ---- constats ---- */
+  .finding {
+    background: var(--surface); border: 1px solid var(--rule);
+    border-left-width: 4px; margin: 0 0 10px;
+  }
+  .finding.p1 { border-left-color: var(--rust); }
+  .finding.p2 { border-left-color: var(--amber); }
+  .finding.p3 { border-left-color: var(--ink-faint); }
+  .finding > summary {
+    list-style: none; cursor: pointer; padding: 12px 16px;
+    display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap;
+  }
+  .finding > summary::-webkit-details-marker { display: none; }
+  .finding > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+  .fid { font-family: var(--mono); font-size: 13px; color: var(--ink-faint); flex: 0 0 auto; }
+  .ftitle { flex: 1 1 320px; font-weight: 600; font-size: 16px; }
+  .ftitle .loc { font-family: var(--mono); font-size: 12.5px; font-weight: 400; color: var(--ink-faint); display: block; margin-top: 2px; }
+  .chip {
+    flex: 0 0 auto; font-family: var(--mono); font-size: 11px;
+    letter-spacing: 0.08em; text-transform: uppercase;
+    padding: 3px 9px; border-radius: 999px; white-space: nowrap;
+  }
+  .chip.todo { background: var(--amber-soft); color: var(--amber); }
+  .chip.done { background: var(--green-soft); color: var(--green); }
+  .chip.doc  { background: var(--accent-soft); color: var(--accent); }
+  .fbody { padding: 2px 18px 16px; border-top: 1px dashed var(--rule); color: var(--ink-soft); font-size: 15.5px; }
+  .fbody p { margin: 12px 0 0; }
+  .fbody .fix { color: var(--ink); }
+  .fbody .fix::before { content: "Correctif — "; font-weight: 600; color: var(--green); }
+  .fbody .proof::before { content: "Preuve exigée — "; font-weight: 600; color: var(--accent); }
+
+  /* ---- à préserver ---- */
+  ul.keep { max-width: var(--measure); padding-left: 22px; }
+  ul.keep li { margin-bottom: 8px; }
+
+  /* ---- porte de v0 ---- */
+  .gate { border: 1px solid var(--rule); background: var(--surface); margin: 0 0 14px; }
+  .gate-head { display: flex; gap: 12px; align-items: baseline; padding: 14px 18px 0; flex-wrap: wrap; }
+  .gate-head .gid { font-family: var(--mono); font-size: 14px; color: var(--accent); font-weight: 600; }
+  .gate-head .gtitle { font-family: var(--serif); font-size: 20px; }
+  .gate-body { padding: 6px 18px 16px; color: var(--ink-soft); font-size: 15.5px; }
+  .gate-body p { margin: 8px 0 0; }
+  .crit {
+    margin: 12px 0 0; padding: 10px 14px; background: var(--surface-2);
+    font-size: 14.5px; color: var(--ink);
+  }
+  .crit::before {
+    content: "CRITÈRE BINAIRE"; display: block; font-family: var(--mono);
+    font-size: 10.5px; letter-spacing: 0.12em; color: var(--ink-faint); margin-bottom: 4px;
+  }
+  .gate-refs { font-family: var(--mono); font-size: 12.5px; color: var(--ink-faint); margin-top: 10px; }
+
+  .outside {
+    border-left: 3px solid var(--amber); background: var(--amber-soft);
+    padding: 14px 18px; margin-top: 24px; font-size: 15px; color: var(--ink-soft);
+    max-width: var(--measure);
+  }
+  .outside strong { color: var(--ink); }
+
+  /* ---- journal ---- */
+  table.journal { border-collapse: collapse; width: 100%; font-size: 15px; }
+  table.journal th, table.journal td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  table.journal th { font-family: var(--mono); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-faint); }
+  table.journal td.d { font-family: var(--mono); font-size: 13px; white-space: nowrap; color: var(--ink-soft); }
+
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; margin: 0 0 20px; font-size: 13px; color: var(--ink-soft); }
+  .legend .sw { display: inline-block; width: 10px; height: 10px; margin-right: 5px; }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .finding > summary { transition: background 0.15s ease; }
+    .finding > summary:hover { background: var(--surface-2); }
+  }
+</style>
+
+<div class="wrap">
+
+<header class="masthead">
+  <p class="eyebrow">murphy / data / ragcore <span class="rev">· rév. 1 · 16 juillet 2026 · mesuré sur fd8a4c5</span></p>
+  <h1>Revue de qualité — la porte de fin de v0</h1>
+  <p class="standfirst">Lecture intégrale des <strong>10 105 lignes</strong> de <code>src/ragcore/</code> (126 fichiers, hors tests).
+  Le verdict tient en une phrase : <strong>l'architecture est saine et la doctrine est tenue — les défauts sont presque tous
+  des endroits où la doctrine n'a pas encore été appliquée à elle-même.</strong> Ce document est la liste close de ces endroits,
+  et la définition vérifiable de « v0 terminée ».</p>
+  <div class="revband"><strong>Document vivant.</strong> Chaque constat porte un ID stable (F1…) et une pastille d'état ;
+  chaque chantier de la porte (G0…) un critère binaire. On coche, on ajoute, on ne réécrit pas — et toute révision
+  s'inscrit au journal, en bas.</div>
+</header>
+
+<!-- ================================================================ -->
+<section id="etat">
+  <h2>L'état, mesuré</h2>
+  <p class="h2-note">Relevé du 16 juillet 2026, dépôt propre sur <code>fd8a4c5</code> (« Lot B »). À re-mesurer à chaque révision — jamais recopier.</p>
+  <div class="board">
+    <div class="cell"><div class="k">source</div><div class="v">10 105 <small>lignes</small></div></div>
+    <div class="cell"><div class="k">tests</div><div class="v">6 486 <small>lignes</small></div></div>
+    <div class="cell good"><div class="k">unitaires</div><div class="v">265 <small>verts · 5,7 s</small></div></div>
+    <div class="cell good"><div class="k">couverture</div><div class="v">84 %</div></div>
+    <div class="cell good"><div class="k">layering</div><div class="v">0 <small>violation</small></div></div>
+    <div class="cell bad"><div class="k">ruff</div><div class="v">11 <small>erreurs</small></div></div>
+    <div class="cell bad"><div class="k">format</div><div class="v">39 <small>fichiers</small></div></div>
+    <div class="cell bad"><div class="k">type-checker</div><div class="v">— <small>absent</small></div></div>
+  </div>
+</section>
+
+<!-- ================================================================ -->
+<section id="constats">
+  <h2>Les constats <span class="count">· 19</span></h2>
+  <p class="h2-note">Cliquer un constat pour le détail. P1 = perte ou bug réel · P2 = code mort · P3 = hygiène et cohérence.
+  Chaque conclusion « zéro appelant » a été re-vérifiée par grep non filtré (leçon apprise : un premier grep excluait
+  <code>compute_idempotence.py</code> en croyant exclure <code>idempotence.py</code>).</p>
+
+  <div class="legend">
+    <span><span class="sw" style="background:var(--rust)"></span>P1 — perte / bug</span>
+    <span><span class="sw" style="background:var(--amber)"></span>P2 — code mort</span>
+    <span><span class="sw" style="background:var(--ink-faint)"></span>P3 — hygiène</span>
+  </div>
+
+  <details class="finding p1" id="F1">
+    <summary><span class="fid">F1</span>
+      <span class="ftitle">Une compensation de saga qui échoue est logguée, jamais comptée
+        <span class="loc">application/saga.py:57-65</span></span>
+      <span class="chip todo">à corriger</span></summary>
+    <div class="fbody">
+      <p>Le <code>except Exception</code> autour de <code>step.compensate()</code> part dans un <code>logger.error</code>
+      stdlib (seul module d'<code>application/</code> à contourner la télémétrie). Pire :
+      <code>SAGA_COMPENSATION_COMPLETED</code> est ensuite émis avec <code>success=True</code> inconditionnellement,
+      listant comme « compensées » des steps dont la compensation a levé. Un store laissé incohérent — le cas le plus
+      grave de la saga — est invisible au bilan.</p>
+      <p class="fix">compter chaque compensation ratée (nouvel event ou breakdown), émettre <code>success=False</code>
+      et la liste réelle des steps compensées ; router par la télémétrie.</p>
+      <p class="proof">un test de panne qui fait lever <code>compensate()</code> et lit le compteur dans le snapshot.</p>
+    </div>
+  </details>
+
+  <details class="finding p1" id="F2">
+    <summary><span class="fid">F2</span>
+      <span class="ftitle">Le sixième trou : l'écriture JSONL avale son <code>OSError</code>
+        <span class="loc">adapters/telemetry/jsonl_file.py:36-38</span></span>
+      <span class="chip todo">à corriger</span></summary>
+    <div class="fbody">
+      <p>Le backend Mongo a été délibérément corrigé pour <em>laisser remonter</em> vers
+      <code>RegistryAwareTelemetry._deliver</code>, qui isole ET compte en <code>audit.write.failed</code>.
+      Le backend JSONL a gardé l'ancien motif : <code>except OSError → warning</code>. Une trace JSONL trouée
+      ne dégrade pas le run — exactement le trou que la non-fuite a bouché quatre fois ailleurs.</p>
+      <p class="fix">supprimer le try/except ; <code>_deliver</code> fait déjà l'isolement et le compte.</p>
+      <p class="proof">test de panne : répertoire en lecture seule → <code>audit.write.failed</code> breakdown <code>jsonl</code>.</p>
+    </div>
+  </details>
+
+  <details class="finding p1" id="F3">
+    <summary><span class="fid">F3</span>
+      <span class="ftitle">Un XML illisible dans LEGI disparaît sans être compté
+        <span class="loc">sources/legi/file_connector.py:87-89</span></span>
+      <span class="chip todo">à corriger</span></summary>
+    <div class="fbody">
+      <p>Le connecteur juri compte <code>REASON_UNREADABLE</code> ; le connecteur LEGI fait <code>continue</code> nu
+      sur le même cas. Un fichier corrompu est écarté <em>en amont</em> de <code>document.fetched</code> : l'équation
+      de complétude ne peut structurellement pas le voir. C'est la famille de fuite que seul le compteur du
+      connecteur attrape.</p>
+      <p class="fix">appeler <code>self._skip(REASON_UNREADABLE)</code> comme le fait juri — idéalement en unifiant
+      la lecture XML des deux connecteurs (voir F17).</p>
+      <p class="proof">test : un fichier tronqué dans l'arborescence → <code>skipped["unreadable"] == 1</code>.</p>
+    </div>
+  </details>
+
+  <details class="finding p1" id="F4">
+    <summary><span class="fid">F4</span>
+      <span class="ftitle">Paramètres illisibles ⇒ défauts silencieux ⇒ mauvaise collection
+        <span class="loc">orchestration/kedro/hooks.py:164-168</span></span>
+      <span class="chip todo">à corriger</span></summary>
+    <div class="fbody">
+      <p>Si <code>catalog.load("parameters")</code> lève, le hook retombe sur <code>params = {}</code> : le run part
+      sur <code>chunk_size=128</code> (défaut de <code>_build_workflow_config</code>) là où le YAML dit 384 — donc un
+      <strong>autre fingerprint, une autre collection Qdrant</strong>, sans un log. C'est mot pour mot la « dégradation
+      silencieuse par les défauts » que <code>settings.py</code> rend fatale pour le <code>.env</code>
+      (<code>_require_env_file</code>). Même doctrine, verdict opposé.</p>
+      <p class="fix">laisser lever — des paramètres illisibles sont une précondition du run non tenue, comme un
+      <code>.env</code> absent.</p>
+    </div>
+  </details>
+
+  <details class="finding p1" id="F5">
+    <summary><span class="fid">F5</span>
+      <span class="ftitle">La ré-hydratation d'un nœud <code>:Unknown</code> est cassée par construction Cypher
+        <span class="loc">adapters/storage/neo4j/graph_repository.py:58-61</span></span>
+      <span class="chip todo">à corriger</span></summary>
+    <div class="fbody">
+      <p><code>merge_document_node</code> fait <code>MERGE (d:Article {identifier, owner_id})</code>. Or MERGE exige
+      que le motif <em>entier</em> matche, label compris : un nœud dé-hydraté en <code>:Unknown</code> par
+      <code>compensate_document_node</code> ne matche pas → la ré-ingestion crée un <strong>second nœud</strong> de
+      même identifiant, et les <code>MATCH (b {identifier})</code> sans label des relations matchent les deux. La
+      docstring (l. 239-243) affirme le contraire — et le test d'intégration couvre la dé-hydratation, jamais la
+      ré-hydratation. <em>Le chemin d'erreur que rien n'exerce est celui qui cache le bug.</em></p>
+      <p class="fix">MERGE sur l'identifiant sans label puis <code>SET d:Article REMOVE d:Unknown</code> — en gardant
+      un label commun indexé pour ne pas perdre l'index.</p>
+      <p class="proof">test d'intégration : ingérer → compenser (dé-hydrater) → ré-ingérer → <strong>un seul nœud</strong>,
+      label métier, citations entrantes intactes.</p>
+    </div>
+  </details>
+
+  <details class="finding p1" id="F6">
+    <summary><span class="fid">F6</span>
+      <span class="ftitle"><code>_identifier</code> avale toute exception sans déclarer l'inconnu
+        <span class="loc">core/links/extraction.py:306-312</span></span>
+      <span class="chip todo">à corriger</span></summary>
+    <div class="fbody">
+      <p><code>except Exception: return None</code> autour de <code>identifier_for</code> : un id de lien mal formé
+      (l'<code>ELI</code> valide strictement) fait disparaître l'arête <strong>sans entrer dans
+      <code>unknowns</code></strong>. C'est le seul endroit de <code>core/links</code> qui jette encore en silence —
+      dans le module dont la docstring dit « rien ne se perd ».</p>
+      <p class="fix">catégorie <code>CATEGORY_IDENTIFIANT</code> dans <code>unknown_categories</code>, déclarée
+      au point d'appel comme <code>typelien</code> et <code>sens</code>.</p>
+    </div>
+  </details>
+
+  <details class="finding p2" id="F7">
+    <summary><span class="fid">F7</span>
+      <span class="ftitle"><code>MongoDocumentRepository.get()</code> : mort ET cassé ; <code>exists()</code> mort
+        <span class="loc">adapters/storage/mongo/document_repository.py:51-76</span></span>
+      <span class="chip todo">à trancher</span></summary>
+    <div class="fbody">
+      <p><code>upsert</code> remplace le champ <code>identifier</code> par sa forme sérialisée ; <code>get</code> fait
+      <code>doc.pop("identifier")</code> puis valide un <code>ParsedDocument</code> <em>sans son champ requis</em> —
+      <code>ValidationError</code> garantie au premier appel. Zéro appelant, 41 % de couverture. Le commentaire décrit
+      un monde disparu. Deux issues honnêtes : réparer via <code>deserialize_identifier</code> si le port doit servir,
+      ou retirer <code>get</code>/<code>exists</code> du port — une promesse que personne ne consomme est une promesse
+      que rien ne vérifie.</p>
+    </div>
+  </details>
+
+  <details class="finding p2" id="F8">
+    <summary><span class="fid">F8</span>
+      <span class="ftitle"><code>DeleteDocumentUseCase</code> : mort, et contredit l'append-only du manifest
+        <span class="loc">application/delete_document.py</span></span>
+      <span class="chip todo">à supprimer</span></summary>
+    <div class="fbody">
+      <p>Zéro appelant hors export. Et il fait <code>manifest_repo.delete()</code> là où la doctrine du manifest est
+      « on ajoute, jamais on ne met à jour » — une suppression devrait <em>appender</em> une entrée
+      <code>Operation.DELETE</code> (membre d'enum jamais utilisé, lui aussi). Supprimer le use case, sa méthode de
+      dépôt et l'enum ; le réécrire correctement le jour où la suppression devient un besoin réel.</p>
+    </div>
+  </details>
+
+  <details class="finding p2" id="F9">
+    <summary><span class="fid">F9</span>
+      <span class="ftitle">Pierre tombale <code>telemetry/composite.py</code>
+        <span class="loc">adapters/telemetry/composite.py</span></span>
+      <span class="chip todo">à supprimer</span></summary>
+    <div class="fbody">
+      <p>Cinq lignes de docstring expliquant que le module n'est plus utilisé. Le deadcode était le chantier B1 ;
+      celui-ci a survécu.</p>
+    </div>
+  </details>
+
+  <details class="finding p2" id="F10">
+    <summary><span class="fid">F10</span>
+      <span class="ftitle">Cinq symboles sans appelant de production
+        <span class="loc">from_params · as_document_id · last_for_source_path · count_for_owner · existing_node_ids</span></span>
+      <span class="chip todo">à supprimer</span></summary>
+    <div class="fbody">
+      <p><code>TelemetryRegistry.from_params</code> (l'override YAML jamais branché),
+      <code>ELI.as_document_id</code> (« rétrocompatibilité temporaire » — elle est finie),
+      <code>ManifestRepository.last_for_source_path</code>, <code>PendingRepository.count_for_owner</code>,
+      <code>GraphRepository.existing_node_ids</code> : définitions, ports et fakes, mais aucun consommateur réel.
+      Supprimer — ou nommer l'appelant futur qui les justifie, dans une docstring datée.</p>
+    </div>
+  </details>
+
+  <details class="finding p2" id="F11">
+    <summary><span class="fid">F11</span>
+      <span class="ftitle">Quatre constantes d'événements jamais émises
+        <span class="loc">core/telemetry_events.py — DOCUMENT_CHUNKED · EMBEDDED · REPLACED · SKIPPED</span></span>
+      <span class="chip todo">à supprimer</span></summary>
+    <div class="fbody">
+      <p>Aucun site d'émission dans tout le dépôt. <code>DOCUMENT_SKIPPED</code> est gardé « pour rétrocompat JSONL » —
+      en v0, où les données sont jetables par doctrine, cette rétrocompat ne protège rien. Un catalogue qui déclare des
+      événements fantômes affaiblit sa propre autorité de source de vérité.</p>
+    </div>
+  </details>
+
+  <details class="finding p3" id="F12">
+    <summary><span class="fid">F12</span>
+      <span class="ftitle">Le lint n'est pas au vert : 11 erreurs ruff, 39 fichiers non formatés
+        <span class="loc">ruff check · ruff format --check</span></span>
+      <span class="chip todo">à corriger</span></summary>
+    <div class="fbody">
+      <p>Rien de grave individuellement (imports non triés de <code>pipeline.py</code>, <code>W293</code> dans des
+      docstrings) ; collectivement, la preuve qu'aucun gate mécanique ne tourne. C'est le préalable de tout le reste :
+      tant que le vert n'est pas l'état normal, chaque correctif peut régresser sans bruit.</p>
+    </div>
+  </details>
+
+  <details class="finding p3" id="F13">
+    <summary><span class="fid">F13</span>
+      <span class="ftitle">Pas de type-checker — les <code>type: ignore</code> ne signifient rien
+        <span class="loc">pyproject.toml · hooks.py:369 · telemetry/factory.py:56</span></span>
+      <span class="chip todo">à corriger</span></summary>
+    <div class="fbody">
+      <p>Le code est massivement typé et porte des <code># type: ignore</code> — qui n'ont de sens que sous un checker.
+      Les typages faibles s'accumulent là où mypy aurait râlé : <code>embedder: object</code>,
+      <code>audit_repo_factory: object | None</code> (au lieu de <code>Callable[[AsyncRuntime], AuditRepository]</code>),
+      <code>_persist_run_summary(status: str)</code> qui veut un <code>RunStatus</code>. Brancher mypy ou pyright en
+      strict progressif ; les <code>object</code> se résorbent en passant.</p>
+    </div>
+  </details>
+
+  <details class="finding p3" id="F14">
+    <summary><span class="fid">F14</span>
+      <span class="ftitle"><code>truncations</code> : course entre workers, comptage par moitié, absent du run failed
+        <span class="loc">adapters/embedding/openai_embedder.py:262 · hooks.py</span></span>
+      <span class="chip done">corrigé</span></summary>
+    <div class="fbody">
+      <p>L'embedder est partagé entre workers : <code>self.truncations += 1</code> est une
+      lecture-modification-écriture non atomique entre threads (incréments perdables). Il compte les <em>moitiés</em>
+      successives, pas les chunks (un chunk raccourci trois fois compte 3). Et <code>_declare_truncations</code> n'est
+      appelé que dans <code>after_pipeline_run</code> — jamais dans <code>on_pipeline_error</code>.</p>
+      <p class="fix">compteur par chunk (au point d'entrée de la dichotomie), protégé ou par-boucle puis sommé ;
+      déclarer aussi dans le chemin d'erreur.</p>
+    </div>
+  </details>
+
+  <details class="finding p3" id="F15">
+    <summary><span class="fid">F15</span>
+      <span class="ftitle">Sémantique de compteur incohérente : <code>upserted</code> par batch, <code>pending</code> par arête
+        <span class="loc">application/resolve_relations.py:97-110 · telemetry/aggregator.py:_weight_of</span></span>
+      <span class="chip done">corrigé</span></summary>
+    <div class="fbody">
+      <p><code>RELATION_PENDING</code> est émis et compté par arête ; <code>RELATION_UPSERTED</code> une fois par batch,
+      le vrai compte dans <code>payload["count"]</code> — repêché par <code>_weight_of</code> uniquement parce que la clé
+      s'appelle <code>count</code>. Le contrat est implicite et fragile : un payload renommé casserait le bilan sans un
+      test rouge. Graver le contrat dans <code>telemetry_events.py</code> (quel event est unitaire, lequel est porteur
+      de cardinalité) — ou unifier.</p>
+    </div>
+  </details>
+
+  <details class="finding p3" id="F16">
+    <summary><span class="fid">F16</span>
+      <span class="ftitle">La compensation d'un UPDATE détruit l'ancienne version
+        <span class="loc">application/ingest_document.py + adapters/storage/mongo/document_repository.py</span></span>
+      <span class="chip done">corrigé</span></summary>
+    <div class="fbody">
+      <p>Le forward Mongo faisait <code>delete</code> <em>puis</em> <code>insert</code> — une fenêtre à vide créée par
+      notre propre code, que le rollback rendait durable. <strong>Corrigé</strong> : l'<code>upsert</code> Mongo est
+      désormais un <code>replace_one(..., upsert=True)</code> <em>atomique</em> ; la branche <code>if UPDATE: delete</code>
+      et le helper <code>_mongo_delete_then_insert</code> ont disparu. Plus aucun instant à vide côté document.</p>
+      <p>Deux faits ont recadré la portée : (1) <code>nuke_all</code> efface le manifest → après un nuke, <em>tout</em> est
+      INSERT et le chemin UPDATE est inatteignable ; le trou ne concerne donc que le run <strong>incrémental</strong>, un
+      chemin <strong>v1</strong>. (2) Qdrant garde son <code>delete-then-insert</code> — <em>nécessaire</em> (un document =
+      N points ; un UPDATE plus court laisserait des points orphelins qu'un simple upsert n'enlève pas) et documenté comme
+      tel pour qu'on ne le « corrige » pas par erreur. Le résiduel saga-multi-store retombe sur l'at-least-once ; le vrai
+      rollback versionné est un choix <em>explicite</em> de v1, écrit dans la docstring de la saga.</p>
+    </div>
+  </details>
+
+  <details class="finding p3" id="F17">
+    <summary><span class="fid">F17</span>
+      <span class="ftitle">Le connecteur juri importe le privé de legi et recopie le reste
+        <span class="loc">sources/juri/file_connector.py:36</span></span>
+      <span class="chip done">corrigé</span></summary>
+    <div class="fbody">
+      <p><code>from ragcore.sources.legi.file_connector import _to_tree</code> — un import privé inter-sources — plus
+      <code>_read</code>/<code>_skip</code>/<code>_locate_id</code> recopiés. La transcription XML→arbre est générique
+      par nature : l'extraire dans <code>sources/generic/</code> (module <code>xml_tree.py</code> p. ex.), et le
+      correctif F3 en profite pour unifier le comptage des illisibles.</p>
+    </div>
+  </details>
+
+  <details class="finding p3" id="F18">
+    <summary><span class="fid">F18</span>
+      <span class="ftitle">Micro-duplications et scories
+        <span class="loc">divers — voir détail</span></span>
+      <span class="chip done">corrigé</span></summary>
+    <div class="fbody">
+      <p><code>_events_filename</code> (jsonl) ≡ <code>_stats_filename</code> (hooks) : trois fois le même format ISO ;
+      <code>_declare</code> en double (extraction.py, parser.py) ; <code>_key_tuple</code> recompose ce que
+      <code>PendingKey</code> sait déjà ; la pile de télémétrie du hook re-câble à la main ce que
+      <code>WorkerTelemetryFactory.build</code> fait ; <code>_windows</code> peut produire une fenêtre de queue
+      entièrement contenue dans la précédente (chunk redondant dans l'index) ;
+      <code>OpenAIEmbedder.aclose()</code> n'a aucun appelant.</p>
+    </div>
+  </details>
+
+  <details class="finding p3" id="F19">
+    <summary><span class="fid">F19</span>
+      <span class="ftitle">Docstrings historiques (« post-refonte », « corrige Bug 4/6 ») et typos
+        <span class="loc">models/document.py:27 · neo4j/graph_repository.py:3 · qdrant/vector_repository.py:3 · telemetry_registry.py · identifiers.py</span></span>
+      <span class="chip done">corrigé</span></summary>
+    <div class="fbody">
+      <p>Elles parlent au reviewer d'hier, plus au lecteur de demain — le critère du dépôt les condamne. Les modules les
+      plus anciens (<code>telemetry_registry.py</code>, <code>identifiers.py</code>) portent aussi les seules typos
+      (« hérittant », « convertion », « Responsibilités ») et n'ont pas le niveau de docstring du reste.</p>
+    </div>
+  </details>
+</section>
+
+<!-- ================================================================ -->
+<section id="preserver">
+  <h2>Ce qui est remarquablement bon — à ne pas « nettoyer »</h2>
+  <p class="h2-note">La revue vaut aussi comme inventaire de ce qui doit survivre à tout refactoring.</p>
+  <ul class="keep">
+    <li>La scission <code>WorkflowConfig</code> / <code>InfraSettings</code> — garantie <em>par le type</em>, pas par discipline — et le golden <code>test_fingerprint.py</code> qui la verrouille.</li>
+    <li>Le vocabulaire <strong>ouvert</strong> des verbes (<code>core/links</code>) : l'arête inconnue existe sous son nom brut, et l'aveu remonte au bilan.</li>
+    <li><code>UnknownRef</code> et <code>describes_targets</code> — la découverte qui fait exister le graphe juri.</li>
+    <li>L'équation de complétude, testée dans le bon ordre (la fiabilité des compteurs d'abord).</li>
+    <li><code>AsyncRuntime.spawn/drain</code> — le runtime qui retient ses tâches, et le port qui sépare <code>drain()</code> de <code>close()</code>.</li>
+    <li>Le monoïde <code>RunStats</code>, la partition par clé, une boucle par worker : le verrou supprimé par construction.</li>
+    <li>Tables de rôles, registre de sources, catalogue d'events : la donnée déclarative contre le branchement conditionnel, partout.</li>
+    <li>Les messages d'erreur qui contiennent leur propre remède, les <code>noqa</code> tous justifiés.</li>
+  </ul>
+</section>
+
+<!-- ================================================================ -->
+<section id="porte">
+  <h2>La porte de fin de v0</h2>
+  <p class="h2-note">v0 = préparation et ingestion naïves, <strong>évaluées automatiquement</strong> sur leur qualité
+  technique. La porte est close quand chaque critère ci-dessous est vert — dans cet ordre, chaque chantier rendant le
+  suivant vérifiable. On ne coche jamais sur parole : le critère se lit dans une commande ou dans une base.</p>
+
+  <div class="gate" id="G0">
+    <div class="gate-head"><span class="gid">G0</span><span class="gtitle">Le gate mécanique</span></div>
+    <div class="gate-body">
+      <p>Un script unique (<code>scripts/gate.sh</code> ou cible npm) qui enchaîne : <code>ruff check</code> +
+      <code>ruff format --check</code> → <code>pytest</code> → <code>pytest -m integration</code> →
+      <code>kedro run</code> nuké (6 sources) → <strong>assertion programmatique</strong> <code>status == ok</code>
+      lue dans <code>MURPHY_META.meta_run_summaries</code> — jamais dans les logs. Variante <code>--smoke</code>
+      (une petite source) pour l'itération. C'est le squelette que le benchmark v1 étendra avec des métriques métier.</p>
+      <div class="crit">une commande, verte de bout en bout, exécutée avant chaque commit. Résout F12 au passage.</div>
+      <div class="gate-refs">résout : F12</div>
+    </div>
+  </div>
+
+  <div class="gate" id="G1">
+    <div class="gate-head"><span class="gid">G1</span><span class="gtitle">Plus une perte sans compteur</span></div>
+    <div class="gate-body">
+      <p>Les cinq occurrences restantes du motif « un échec qui ne compte pas » (F1, F2, F3, F4, F6). Petites,
+      homogènes — et chacune exige son <em>test de panne</em>, pas seulement le correctif : le run vert ne prouve que
+      le câblage.</p>
+      <div class="crit">pour chacune : un test qui provoque la panne et lit le compteur ; le grep du motif
+      (<code>except … warning</code> sans compte) ne rend plus que des cas justifiés par commentaire.</div>
+      <div class="gate-refs">résout : F1 F2 F3 F4 F6</div>
+    </div>
+  </div>
+
+  <div class="gate" id="G2">
+    <div class="gate-head"><span class="gid">G2</span><span class="gtitle">Le graphe honnête</span></div>
+    <div class="gate-body">
+      <p>La ré-hydratation Neo4j (F5), prouvée contre une vraie base — le cycle complet, pas la moitié testée.</p>
+      <div class="crit">test d'intégration : ingérer → compenser → ré-ingérer ⇒ un seul nœud, label métier restauré,
+      citations entrantes intactes.</div>
+      <div class="gate-refs">résout : F5</div>
+    </div>
+  </div>
+
+  <div class="gate" id="G3">
+    <div class="gate-head"><span class="gid">G3</span><span class="gtitle">La purge</span></div>
+    <div class="gate-body">
+      <p>Le code mort (F7–F11) supprimé en <strong>un commit dédié</strong> — révocable d'un revert, lisible en une
+      diff. Ce qui est gardé délibérément (un port pour le serving futur, p. ex.) gagne une docstring datée qui nomme
+      son appelant à venir.</p>
+      <div class="crit">chaque symbole listé : supprimé, ou justifié par écrit. La couverture ne baisse pas.</div>
+      <div class="gate-refs">résout : F7 F8 F9 F10 F11 · touche F16 (docstring) F19</div>
+    </div>
+  </div>
+
+  <div class="gate" id="G4">
+    <div class="gate-head"><span class="gid">G4</span><span class="gtitle">Le typage vérifié</span></div>
+    <div class="gate-body">
+      <p>mypy ou pyright branché au gate, strict progressif (par package : <code>core/</code> d'abord). Les
+      <code>object</code> et <code>type: ignore</code> se résorbent en passant (F13), les cohérences fines (F14, F15,
+      F17, F18) se traitent dans la foulée.</p>
+      <div class="crit">le checker est dans G0 et passe sans nouveau <code>type: ignore</code> non justifié.</div>
+      <div class="gate-refs">résout : F13 F14 F15 F17 F18</div>
+    </div>
+  </div>
+
+  <div class="gate" id="G5">
+    <div class="gate-head"><span class="gid">G5</span><span class="gtitle">Le run réel qui fait foi</span></div>
+    <div class="gate-body">
+      <p>Après G1–G4 : un <code>kedro run</code> nuké sur les six sources, statut <code>ok</code> <em>dérivé</em>,
+      équation de complétude juste, <code>unknowns</code> vide, pointeur de collection publié. C'est le G0 complet,
+      exécuté comme cérémonie de clôture — le chiffre qui remplace ce document comme état de référence.</p>
+      <div class="crit"><code>status == ok</code> en base · <code>fetched == persisted + invalidated + failed</code>
+      avec <code>failed == 0</code> · <code>meta_published_collection</code> pointe l'empreinte du run.</div>
+    </div>
+  </div>
+
+  <div class="gate" id="G6">
+    <div class="gate-head"><span class="gid">G6</span><span class="gtitle">Le serving branché <span style="font-size:13px;color:var(--ink-faint)">(hors de ce dépôt)</span></span></div>
+    <div class="gate-body">
+      <p>Le backend (submodule <code>backend/</code>) lit le pointeur <code>meta_published_collection</code> au boot au
+      lieu de <code>QDRANT_COLLECTION=chunks</code>. Côté ingestion tout est prêt ; c'est le seul point qui bloque le
+      produit, et il vit dans l'autre dépôt.</p>
+      <div class="crit">une question posée au chat rend une réponse sourcée depuis la collection publiée par G5.</div>
+    </div>
+  </div>
+
+  <div class="outside"><strong>Hors porte, explicitement.</strong> Le Lot C (embedding maison + chunker en tokens),
+  la résolution juri (registre d'alias + extracteur de références), le benchmark de pertinence (jeu de questions de
+  référence) et le breakdown par source du bilan (§12) sont des chantiers <strong>v1</strong>. Les inscrire ici
+  diluerait la porte ; les oublier serait pire — ils sont nommés, datés, et attendront que la porte soit close.</div>
+</section>
+
+<!-- ================================================================ -->
+<section id="journal">
+  <h2>Journal des révisions</h2>
+  <table class="journal">
+    <thead><tr><th>rév.</th><th>date</th><th>changement</th></tr></thead>
+    <tbody>
+      <tr><td class="d">1</td><td class="d">16 juil. 2026</td>
+        <td>Création. Revue intégrale de <code>src/ragcore/</code> sur <code>fd8a4c5</code> : 19 constats (6 P1, 5 P2, 8 P3),
+        porte de fin de v0 en 7 chantiers G0–G6. Tous les constats à l'état « à corriger ».</td></tr>
+    </tbody>
+  </table>
+</section>
+
+</div>

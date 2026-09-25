@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<SECTION_TA>
+<ID>LEGISCTA000006089728</ID>
+<TITRE_TA>TITRE  II : DE L'USAGE DES PROCEDES DE TELECOMMUNICATIONS</TITRE_TA>
+<STRUCTURE_TA>
+<LIEN_ART debut="1994-08-05" etat="MODIFIE" fin="2000-08-02" id="LEGIARTI000006420260" num="20-1" origine="LEGI"/>
+<LIEN_SECTION_TA cid="LEGISCTA000006117665" debut="1986-10-01" etat="ABROGE" fin="2004-07-10" id="LEGISCTA000006117665" niv="2" url="/LEGI/SCTA/00/00/06/11/76/LEGISCTA000006117665.xml">CHAPITRE  Ier : Des services utilisant la voie hertzienne</LIEN_SECTION_TA>
+<LIEN_SECTION_TA cid="LEGISCTA000006117666" debut="1989-01-18" etat="ABROGE" fin="2000-08-02" id="LEGISCTA000006117666" niv="2" url="/LEGI/SCTA/00/00/06/11/76/LEGISCTA000006117666.xml">CHAPITRE II : Des services de radiodiffusion sonore et de télévision distribués par câble.</LIEN_SECTION_TA>
+<LIEN_SECTION_TA cid="LEGISCTA000006117667" debut="2000-08-02" etat="ABROGE" fin="2004-07-10" id="LEGISCTA000006117667" niv="2" url="/LEGI/SCTA/00/00/06/11/76/LEGISCTA000006117667.xml">CHAPITRE II : Dispositions applicables à la radiodiffusion sonore et à la télévision par câble et par satellite</LIEN_SECTION_TA>
+<LIEN_SECTION_TA cid="LEGISCTA000006117668" debut="1986-10-01" etat="ABROGE" fin="2004-07-10" id="LEGISCTA000006117668" niv="2" url="/LEGI/SCTA/00/00/06/11/76/LEGISCTA000006117668.xml">CHAPITRE III : Dispositions applicables à l'ensemble des services de communication audiovisuelle soumis à autorisation</LIEN_SECTION_TA>
+<LIEN_SECTION_TA cid="LEGISCTA000006117669" debut="1989-01-18" etat="ABROGE" fin="2004-07-10" id="LEGISCTA000006117669" niv="2" url="/LEGI/SCTA/00/00/06/11/76/LEGISCTA000006117669.xml">CHAPITRE IV : Dispositions relatives aux services de communication audiovisuelle soumis à déclaration préalable.</LIEN_SECTION_TA>
+<LIEN_SECTION_TA cid="LEGISCTA000006117670" debut="2000-08-02" etat="ABROGE" fin="2004-07-10" id="LEGISCTA000006117670" niv="2" url="/LEGI/SCTA/00/00/06/11/76/LEGISCTA000006117670.xml">CHAPITRE V : Détermination des services de télévision soumis à la présente loi</LIEN_SECTION_TA>
+<LIEN_SECTION_TA cid="LEGISCTA000006117671" debut="2000-08-02" etat="ABROGE" fin="2004-06-22" id="LEGISCTA000006117671" niv="2" url="/LEGI/SCTA/00/00/06/11/76/LEGISCTA000006117671.xml">CHAPITRE VI : Dispositions relatives aux services de communication en ligne autres que de correspondance privée</LIEN_SECTION_TA>
+</STRUCTURE_TA>
+<CONTEXTE>
+<TEXTE autorite="" cid="JORFTEXT000000512205" date_publi="1986-10-01" date_signature="1986-09-30" ministere="" nature="LOI" nor="" num="86-1067" num_parution_jo="">
+<TITRE_TXT c_titre_court="Loi n° 86-1067 du 30 septembre 1986" debut="2999-01-01" fin="2999-01-01" id_txt="JORFTEXT000000512205">Loi n° 86-1067 du 30 septembre 1986 relative à la liberté de communication</TITRE_TXT>
+<TITRE_TXT c_titre_court="Loi n° 86-1067 du 30 septembre 1986" debut="1986-10-01" fin="2999-01-01" id_txt="LEGITEXT000006068930">Loi n° 86-1067 du 30 septembre 1986 relative à la liberté de communication (Loi Léotard)</TITRE_TXT>
+</TEXTE>
+</CONTEXTE>
+</SECTION_TA>

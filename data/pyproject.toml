@@ -1,0 +1,190 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+# StrEnum (core/models/enums.py) exige 3.11.
+requires-python = ">=3.11"
+name = "data"
+readme = "README.md"
+dynamic = ["version"]
+dependencies = [
+    # Domaine — core/ ne connaît que pydantic, aucune base.
+    "pydantic~=2.13",
+    # Configuration — lue de l'environnement (config/settings.py), jamais du dépôt.
+    "pydantic-settings~=2.7",
+    # Adaptateurs de stockage — un par base.
+    "motor~=3.7",
+    "pymongo~=4.10",
+    "qdrant-client~=1.12",
+    "neo4j~=5.28",
+    # Embedding distant (service compatible OpenAI / TEI).
+    "httpx~=0.28",
+    # Réduction transitive du graphe (core/services/relation_reduction) : une règle de
+    # DOMAINE, pas un détail de source — la contenance est transitive, la citation ne
+    # l'est pas. C'est du calcul pur, comme `re` : pas de port, pas d'extra.
+    "networkx~=3.4",
+    # Orchestration.
+    "kedro~=1.1.1",
+    "omegaconf~=2.3",
+    "python-dotenv~=1.2",
+    "structlog>=25.5.0",
+    "setuptools; python_version >= '3.12'"
+]
+
+[project.scripts]
+"data" = "data.__main__:main"
+
+[project.entry-points."kedro.hooks"]
+
+[project.optional-dependencies]
+# Embedding LOCAL uniquement : tire torch (plusieurs centaines de Mo). Les modes
+# `noop` et `openai` n'en ont aucun besoin — d'où l'extra, et l'import paresseux
+# dans local_embedder.py.
+embedding-local = [
+    "sentence-transformers~=3.3"
+]
+# Tracking d'expériences (§9) : MLflow tire une lourde arborescence (scipy, pandas, un
+# serveur). Même raison que `embedding-local`/torch — un extra, et un import paresseux
+# dans `mlflow_tracker.py`. Le défaut `tracking_provider=noop` ne l'exige jamais : un
+# `kedro run` nu tourne sans lui. On l'installe pour LIRE l'A/B, pas pour ingérer.
+tracking = [
+    "mlflow~=2.19"
+]
+# spaCy et son modèle de langue ont quitté le chemin critique au lot 4.
+#
+# Ils servaient à LEMMATISER le contenu des documents : « Le directeur général est nommé
+# par décret » devenait « directeur général nommer décret ». Ce sac de lemmes était ce
+# qui partait dans Mongo — donc ce que le backend affichait à l'utilisateur comme source
+# — et ce qui était embarqué par all-mpnet-base-v2, un modèle de PHRASES entraîné sur du
+# texte naturel. Le texte original n'était stocké nulle part.
+#
+# Les retirer n'est pas un allègement de dépendances : c'est la fin d'une destruction de
+# donnée. Si des lemmes servent un jour à du BM25, ils reviendront comme champ
+# SUPPLÉMENTAIRE — jamais en écrasant le contenu, et l'extra reviendra avec eux.
+# Exploration interactive : jamais importé par ragcore.
+notebooks = [
+    "ipython>=8.10",
+    "jupyterlab>=3.0",
+    "notebook",
+    "kedro-viz>=6.7.0"
+]
+docs = [
+    "docutils<0.21",
+    "sphinx>=5.3,<7.3",
+    "sphinx_rtd_theme==2.0.0",
+    "nbsphinx==0.8.1",
+    "sphinx-autodoc-typehints==1.20.2",
+    "sphinx_copybutton==0.5.2",
+    "ipykernel>=5.3, <7.0",
+    "Jinja2<3.2.0",
+    "myst-parser>=1.0,<2.1"
+]
+dev = [
+    "pytest-cov>=3,<7",
+    "pytest-mock>=1.7.1, <2.0",
+    "pytest~=8.3",
+    "pytest-asyncio~=0.25",
+    "testcontainers[mongodb,neo4j]~=4.9",
+    "ruff~=0.12.0",
+    # Vérification statique des types. `strict` sur tout ragcore : le code est déjà
+    # fait pour (pydantic 2, annotations partout). Le plugin pydantic apprend à mypy
+    # la sémantique des BaseModel (champs, validators, defaults).
+    "mypy~=1.14"
+]
+
+[tool.setuptools.dynamic]
+version = {attr = "data.__version__"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+namespaces = false
+
+[tool.kedro]
+package_name = "data"
+project_name = "data"
+kedro_init_version = "1.1.1"
+tools = "['Linting', 'Testing', 'Custom Logging', 'Documentation', 'Data Structure']"
+example_pipeline = "False"
+source_dir = "src"
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+# Sans ce mode, tout test `async def` est SAUTÉ en silence.
+asyncio_mode = "auto"
+markers = [
+    "integration: exige des conteneurs (testcontainers) — exclu par défaut"
+]
+addopts = """
+--cov-report term-missing \
+--cov src/ragcore -ra \
+-m 'not integration'"""
+
+[tool.coverage.report]
+fail_under = 0
+show_missing = true
+exclude_lines = ["pragma: no cover", "raise NotImplementedError"]
+
+[tool.ruff.format]
+docstring-code-format = true
+
+[tool.ruff]
+line-length = 88
+show-fixes = true
+
+[tool.ruff.lint]
+select = [
+    "F",   # Pyflakes
+    "W",   # pycodestyle
+    "E",   # pycodestyle
+    "I",   # isort
+    "UP",  # pyupgrade
+    "PL",  # Pylint
+    "T201", # Print Statement
+]
+ignore = ["E501"]  # Ruff format takes care of line-too-long
+
+[tool.ruff.lint.per-file-ignores]
+# Dans un test, la valeur attendue EST le propos de l'assertion. La remplacer par
+# une constante nommée n'ajoute rien : elle éloigne l'attendu de la vérification.
+"**/tests/**" = ["PLR2004"]
+
+[tool.mypy]
+# Pas de `python_version` figée : mypy analyse avec la grammaire de l'interpréteur
+# courant (le venv). Notre plancher 3.11 est garanti par `requires-python` ; forcer
+# la grammaire 3.11 casserait l'analyse des stubs tiers écrits en 3.12+ (numpy).
+# `strict` active tout le paquet de règles fortes en un mot : no-implicit-optional,
+# disallow-untyped-defs, warn-return-any, etc. Le code est déjà écrit pour ça.
+strict = true
+plugins = ["pydantic.mypy"]
+# On type le DOMAINE et les adaptateurs, pas les tests : un test manipule
+# légitimement des mocks non typés et des internes, ce que `strict` rejette.
+# Les tests sont co-localisés (sources/tests/, legi/tests/, …), donc le motif
+# doit attraper TOUT segment `tests/`, pas un seul chemin central.
+files = ["src/ragcore"]
+exclude = ["/tests/"]
+
+[[tool.mypy.overrides]]
+# Dépendances sans stubs publiés : on ne réclame pas leurs types, sans pour autant
+# relâcher le strict sur NOTRE code.
+module = [
+    "kedro.*",
+    "omegaconf.*",
+    "qdrant_client.*",
+    "neo4j.*",
+    "networkx.*",
+    "sentence_transformers.*",
+    "mlflow.*",
+    # numpy est tiré transitivement ; ses stubs 3.12 cassent l'analyse sous 3.11.
+    "numpy.*",
+]
+ignore_missing_imports = true
+follow_imports = "silent"
+
+[tool.pydantic-mypy]
+init_forbid_extra = true
+init_typed = true
+warn_required_dynamic_aliases = true
+
+[tool.kedro_telemetry]
+project_id = "a28f45a08efc41b9a86b2737a54c5c34"

@@ -1,0 +1,48 @@
+# murphy-data
+
+Python/Kedro **ingestion** pipeline for the Murphy RAG system. Ingests LEGIFRANCE XML
+and writes chunks/embeddings into MongoDB / Qdrant / Neo4j — the same datastores the
+backend reads from.
+
+Runs **offline and out-of-band**: it is not part of the Docker serving stack and the
+backend never calls into it. The two only share databases, no code.
+
+> **Key fact:** the actual pipeline logic, Kedro hooks, and registry live in the
+> `ragcore` package, **vendored in this repo** at `src/ragcore/`. `src/data/` is a thin
+> Kedro shell that delegates to it.
+
+**Full documentation lives in [`docs/`](docs/README.md)** — architecture, node-by-node
+pipeline reference, data model, configuration, telemetry.
+
+## Run
+
+The pipeline needs Mongo, Qdrant, Neo4j and the TEI embedding service. They are declared
+**once**, in the parent repo. You do not have to leave this directory to start them:
+
+```bash
+npm run up       # mongo + qdrant + neo4j + embedding-service (GPU). Not backend/frontend.
+npm run logs     # first TEI boot downloads the model — be patient, it is not a hang.
+npm run down     # stop them
+kedro run
+```
+
+## Configuration
+
+There is **one** environment file, and it lives at the repo root: `../.env.dev` (copy it
+from `../.env.example`). There is **no `.env` in this directory** — creating one has no
+effect, since `ragcore/adapters/config/settings.py` reads the root file by absolute path.
+
+One file, because the pipeline and the TEI container must agree on the embedding model:
+if they were two variables they could diverge, and a divergence writes the *wrong* model's
+vectors into the collection named after the *right* one — silently. They are now the same
+variable, and the pipeline additionally checks TEI's `GET /info` before writing anything.
+
+Tuning surface: `conf/base/parameters.yml` (chunking, normalization, embedding — these are
+hashed into the Qdrant collection name; changing one creates a new collection by design).
+
+## Develop
+
+```bash
+ruff check .     # lint/format
+pytest           # config in pyproject.toml; needs no databases and no .env.dev
+```
