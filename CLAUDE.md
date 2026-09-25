@@ -55,7 +55,7 @@ The embedding service requires an **NVIDIA GPU** (declared in `docker-compose.de
 
 ### Backend without Docker
 
-From `backend/`:
+No env file is loaded: export the variables first (e.g. `set -a; . ../.env.dev; set +a`, then override the Docker hostnames such as `QDRANT_URL`). From `backend/`:
 
 ```bash
 npm run dev          # ts-node src/server.ts
@@ -84,7 +84,7 @@ The core pipeline lives in `backend/src/services/chatService.ts:createChatStream
 3. **Retrieve** (`ragService.retrieveChunks`) → Qdrant top-K (`RETRIEVAL_TOP_K`, default 5).
 4. **Stream sources first** — each Qdrant hit is written to the stream as a `data-document` part *before the LLM runs*, so the UI shows sources immediately.
 5. **Fetch content** (`ragService.fetchChunkDocuments`) → MongoDB, by `chunkId`. This content is used only to build the LLM context, never sent directly to the client.
-6. **Stream LLM** — context is injected into the system prompt (`getDefaultSystemPrompt`, French legal-assistant prompt, overridable via `SYSTEM_PROMPT` env), then `llmProvider.stream()` tokens are written as `text-delta` parts.
+6. **Stream LLM** — context is injected into the system prompt (`config.llm.systemPrompt`, French legal-assistant prompt, overridable via `SYSTEM_PROMPT` env), then `getInfraClients().llm.stream()` tokens are written as `text-delta` parts.
 7. **Finish** — a `finish` part carries `ragTiming` metadata (per-stage latency in ms).
 
 The stream is built with the Vercel **AI SDK** (`createUIMessageStream` / `pipeUIMessageStreamToResponse`). The message/part contract is `AppUIMessage` in `backend/src/types/messages.ts` — keep backend and frontend (`frontend/src/types/messages.ts`) in sync; the custom data part is `{ document: DocumentChunk }` and metadata is `{ ragTiming }`.
@@ -99,15 +99,15 @@ When changing the pipeline, change `createChatStream` once — all three paths i
 
 ### Infrastructure clients (`backend/src/infra/`)
 
-`EmbeddingClient` (TEI), `QdrantVectorClient`, `LLMProvider` (Mammouth.AI-style OpenAI-compatible API), and the MongoDB client. The barrel `infra/index.ts` exposes them as **lazy singletons via `Proxy`** (`embeddingClient`, `qdrantClient`, `llmProvider`) — instantiated on first property access, reused across requests. Import these singletons rather than `new`-ing clients per request. Mongo is the exception: it has an explicit `initMongoClient()` (called at boot in `server.ts`) and `closeMongoClient()` for graceful shutdown.
+`EmbeddingClient` (TEI), `QdrantVectorClient`, `LLMProvider` (Mammouth.AI-style OpenAI-compatible API), and `MongoDbClient`. Each constructor takes its section of `config`; none reads the environment. `infra/clients.ts:initInfraClients(config)` creates them **once at boot**, before the server listens (connects Mongo, resolves the published Qdrant collection, builds the rest) and may refuse the boot. Requests reach them through `getInfraClients()` (throws if called before init); `closeInfraClients()` runs at graceful shutdown. Never `new` a client per request. Failures go through `types/rag.ts:toRagError`, which yields `RagError { stage, code }` with `code: 'TIMEOUT'` when the error's **type** name ends in `TimeoutError`.
 
 ### Cross-cutting backend conventions
 
 - **API responses** go through `utils/response.ts:buildApiResponse(code, message, data?)` → `{ status: {code, message}, data?, meta: {timestamp, traceId} }`. Use it for all JSON responses for consistency.
 - **Logging** is Pino (`utils/logger.ts`). Create a child logger per module: `rootLogger.child({ context: 'moduleName' })`. Logs are structured JSON.
 - **Errors**: wrap async route handlers in `middleware/errorHandler.ts:asyncHandler`; `errorHandler` + `notFoundHandler` are registered last in `app.ts`.
-- **Middleware order** (`app.ts`): requestLogger → helmet/rate-limit/CORS (`middleware/security.ts`) → body parsing → routes → error handlers. The chat stream route additionally uses `streamRateLimiter` and `express-validator` (`middleware/validation.ts`).
-- **API base path** is `/api/v1`. Health is `/api/v1/health` (+ `/services` for per-service latency); it reports `ok`/`degraded` (1 service down)/`down` (2+ down) and returns 503 when not ok.
+- **Middleware order** (`app.ts`): requestLogger → helmet/rate-limit/CORS (`middleware/security.ts`) → body parsing → routes → error handlers. Chat payloads are checked by `validation/chatRequest.ts:parseChatRequest`, shared by the HTTP routes and the WebSocket. `middleware/streamRateLimiter.ts` gives each IP one stream budget (10/min by default), drawn by POST `/streams` and by each WebSocket message (`consumeStreamQuota`). `trust proxy` is `false` in `app.ts` (no proxy yet): set the hop count there once deployed behind one.
+- **API base path** is `/api/v1`. Health is `/api/v1/health` (alias `/services`), with per-service latency; it reports `ok`/`degraded` (1 service down)/`down` (2+ down) and returns 503 when not ok.
 
 ## Ingestion pipeline (`data/`, Python/Kedro)
 
@@ -125,7 +125,7 @@ Tooling: `kedro run` (`--params source=cass,jade` to restrict), `kedro viz`, `ru
 
 ## Configuration
 
-Backend runtime config is environment-driven (see the `environment:` block in `docker-compose.base.yml` for the full list). Key vars: `MONGODB_URI/DATABASE/COLLECTION`, `QDRANT_URL/COLLECTION`, `EMBEDDING_SERVICE_URL/EMBEDDING_MODEL`, `LLM_API_ENDPOINT/API_KEY/MODEL/TEMPERATURE/MAX_TOKENS`, `RETRIEVAL_TOP_K`, `RETRIEVAL_MIN_SCORE`, `SYSTEM_PROMPT`, plus rate-limit and CORS settings. `backend/src/utils/configWarnings.ts:checkEnvironment()` runs at startup and warns about missing/suspect config — check it for the authoritative expected-var list.
+Backend runtime config is environment-driven (see the `environment:` block in `docker-compose.base.yml` for the full list). Key vars: `MONGODB_URI/DATABASE/COLLECTION`, `QDRANT_URL/COLLECTION`, `EMBEDDING_SERVICE_URL/EMBEDDING_MODEL`, `LLM_API_ENDPOINT/API_KEY/MODEL/TEMPERATURE/MAX_TOKENS`, `RETRIEVAL_TOP_K`, `RETRIEVAL_MIN_SCORE`, `SYSTEM_PROMPT`, plus rate-limit and CORS settings. **`backend/src/config.ts` is authoritative**: the only file that reads `process.env`, it loads and validates the environment once at boot into a typed `readonly` `config` (defaults included). An empty value counts as unset; a malformed number (`LLM_TEMPERATURE=abc`) stops the boot with the variable's name. `utils/configWarnings.ts:checkEnvironment()` then logs the missing required vars and the defaulted ones, derived from what `config.ts` actually read.
 
 There is **one** env file for the whole system: `.env.dev` at the repo root (gitignored). Docker Compose feeds it to the serving stack, and the ingestion project reads the same file by absolute path (`ragcore/adapters/config/settings.py`) — a `.env` inside `data/` has no effect. One file so the TEI container and the pipeline can never disagree on the embedding model.
 

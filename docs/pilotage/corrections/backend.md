@@ -8,10 +8,16 @@
 > - `infra/collectionPointer.ts:24` lit `MONGODB_META_DB_NAME` ;
 > - `routes/health.ts:53` sonde `/healthz`.
 >
-> **Premier lot exécuté le 25 septembre 2026** (BE-01, BE-02, BE-04,
-> BE-05), non commité : le sous-module reste en HEAD détachée sur
-> `3b5d811`. Les numéros de ligne des items restants renvoient au code
-> **d'avant** ce lot.
+> **Premier lot** (BE-01, BE-02, BE-04, BE-05) : commité par le porteur
+> (`8dda745`).
+>
+> **Deuxième lot exécuté le 25 septembre 2026** (BE-03, BE-12, BE-13,
+> BE-14, BE-16), non commité : le sous-module reste en HEAD détachée sur
+> `8dda745`.
+>
+> **Troisième lot exécuté le 25 septembre 2026** (BE-06, BE-08, BE-09),
+> non commité, empilé sur le deuxième. Les numéros de ligne des items
+> restants renvoient au code **d'avant** le premier lot.
 
 ## 1. Tableau
 
@@ -19,21 +25,22 @@
 |---|---|---|---|
 | BE-01 | 2 suites de tests sur 3 ne compilent plus | Bloquant | ✅ |
 | BE-02 | 29 erreurs eslint | Bloquant | ✅ |
-| BE-03 | Le rate-limiter de stream fait confiance à `X-Forwarded-For` — **décidé** | Dette (sécurité) | ⬜ mini-ADR |
+| BE-03 | Le rate-limiter de stream fait confiance à `X-Forwarded-For` — **décidé** | Dette (sécurité) | ✅ sans ADR (hygiène) |
 | BE-04 | Route `GET /documents/:eli` morte et fausse — **décidé : suppression** | Dette | ✅ sans ADR (hygiène) |
 | BE-05 | Code mort (liste §2.5) | Dette | ✅ |
-| BE-06 | Barrel `infra/index.ts` + singletons `Proxy` typés `any` | Dette | 🔶 cascade |
+| BE-06 | Barrel `infra/index.ts` + singletons `Proxy` typés `any` | Dette | ✅ |
 | BE-07 | `llm.stream` : décodage et parsing sur-complexes, erreurs avalées | Dette | 🔶 |
-| BE-08 | Le même bloc `try/catch/log/RagError` est copié dans 4 clients | Dette | ⬜ cascade |
-| BE-09 | Configuration dispersée : `process.env` lu dans 15 fichiers, nombres magiques | Dette | ⬜ cascade |
+| BE-08 | Le même bloc `try/catch/log/RagError` est copié dans 4 clients | Dette | ✅ |
+| BE-09 | Configuration dispersée : `process.env` lu dans 15 fichiers, nombres magiques | Dette | ✅ |
 | BE-10 | Commentaires et métadonnées qui mentent | Dette | 🔶 |
 | BE-11 | Typage : `any`, casts, nom qui masque un global | Dette | 🔶 |
-| BE-12 | `dotenv` ne charge rien, `@types/ws` en dépendance runtime | Confort | ⬜ |
-| BE-13 | Le WebSocket ne valide pas son entrée | Dette | ⬜ |
-| BE-14 | `health.ts` : deux handlers identiques, un timer jamais annulé | Confort | ⬜ |
+| BE-12 | `dotenv` ne charge rien, `@types/ws` en dépendance runtime | Confort | ✅ |
+| BE-13 | Le WebSocket ne valide pas son entrée | Dette | ✅ |
+| BE-14 | `health.ts` : deux handlers identiques, un timer jamais annulé | Confort | ✅ |
 | BE-15 | `chatService.createChatStream` : `execute` fait 49 lignes | Dette | ⬜ |
+| BE-16 | Le WebSocket n'a aucune limite de débit (trouvé pendant le lot 2) | Dette (sécurité) | ✅ |
 
-🔶 : entamé dans le premier lot ; le détail dit ce qui reste.
+🔶 : entamé ; le détail dit ce qui reste.
 
 ### Résultat du premier lot
 
@@ -57,6 +64,70 @@ décide avec BE-06 et BE-09, qui réécrivent justement ces modules.
 requête HTTP avec des messages sans `parts` reçoit un 400 au lieu d'une
 réponse ; le repli sur `content` a été retiré avec le code mort. Le
 frontend n'est pas touché, car `useChat` envoie toujours `parts`.
+
+### Résultat du deuxième lot
+
+| Contrôle | Après le lot 1 | Après le lot 2 |
+|---|---|---|
+| `tsc --noEmit` | ✅ | ✅ |
+| `npm run lint` | ✅ 0 | ✅ 0 |
+| `npm test` | 5 suites, 31 tests | ✅ 9 suites, 54 tests |
+| `jest --coverage` (lignes / instructions / fonctions / branches) | 40 / 39 / 36 / 28 % | 66 / **64,5** / 60 / 46 % — seules les instructions restent sous le seuil de 65 % |
+| `npm run build` | ✅ | ✅ |
+
+Nouvelles suites : `validation/chatRequest`, `routes/chatWebSocket` (vrai
+serveur WebSocket), `routes/health` et `middleware/streamRateLimiter`.
+Cette dernière envoie 11 requêtes au vrai `app`, chacune avec un
+`X-Forwarded-For` forgé différent. Elle échoue si l'on remet l'ancienne
+clé fondée sur l'en-tête (contre-épreuve faite). Le code encore sans
+test est surtout dans `infra/` (hors `llm.ts`) et `configWarnings.ts`,
+que le lot 3 réécrit.
+
+**Effets visibles** :
+- `GET /api/v1/health` renvoie aussi `latencyMs` pour chaque service,
+  comme `/services`, qui en devient un alias. Le changement est additif.
+- Une part qui n'est pas un objet avec un `type` texte donne un 400 en
+  HTTP.
+- Sur le WebSocket, une requête invalide, un JSON illisible ou un quota
+  épuisé reçoivent une part `error` explicite, sans lancer le pipeline.
+- POST `/streams` et le WebSocket partagent le budget de 10 questions
+  par minute et par IP.
+
+### Résultat du troisième lot
+
+| Contrôle | Après le lot 2 | Après le lot 3 |
+|---|---|---|
+| `tsc --noEmit` | ✅ | ✅ |
+| `npm run lint` | ✅ 0 | ✅ 0 |
+| `npm test` | 9 suites, 54 tests | ✅ 15 suites, 82 tests |
+| `jest --coverage` (lignes / instructions / fonctions / branches) | 66 / 64,5 / 60 / 46 % | ✅ 90 / 90 / 85 / 86 % — **les quatre seuils sont tenus** |
+| `npm run build` | ✅ | ✅ |
+
+Nouvelles suites : `config`, `types/rag` (`toRagError`),
+`infra/embedding`, `infra/qdrant`, `infra/collectionPointer` et
+`infra/clients`. Contre-épreuve faite : si l'on remet la détection du
+délai par sous-chaîne du message, 6 tests échouent. Restent sans test
+`infra/mongodb.ts` (le pilote réel) et `utils/configWarnings.ts`.
+
+`process.env` n'est plus lu que dans `src/config.ts`.
+
+**Effets visibles** :
+- Un nombre mal écrit dans l'environnement (`LLM_TEMPERATURE=abc`,
+  `RETRIEVAL_TOP_K=2.5`) **bloque le démarrage**, avec un message qui
+  nomme la variable. Avant, il devenait `NaN` sans rien signaler.
+- Le journal de démarrage liste toutes les variables qui prennent leur
+  valeur par défaut, y compris `MONGODB_META_DB_NAME` et `NODE_ENV`,
+  que l'ancienne liste manuelle oubliait.
+- Le code `TIMEOUT` d'un `RagError` dépend du type de l'erreur, plus de
+  son texte. Un message qui contient « timeout » sans être un délai
+  garde le code de l'étape.
+- Le message de log d'un échec d'infrastructure est celui du
+  `RagError`, par exemple `Failed to search Qdrant: …`, et l'erreur
+  d'origine est sérialisée sous `err`.
+
+**Constaté hors lot** : le client Qdrant garde son délai par défaut de
+300 s. Aucune variable `QDRANT_TIMEOUT` ne le règle, ce qui contredit le
+fail-fast du serving.
 
 ## 2. Détail
 
@@ -111,6 +182,14 @@ règles `recommended` sans le parser typé : passer au paquet
 
 ### BE-03 — `X-Forwarded-For` (décidé)
 
+**Fait (lot 2)** :
+- `app.ts` fixe `trust proxy` à `false` : pas de proxy tant que le
+  backend n'est pas déployé (TR-03). Derrière un proxy, il faudra y mettre
+  le nombre de sauts.
+- Le `keyGenerator` et le `skip` sont supprimés. La clé par défaut,
+  `ipKeyGenerator(req.ip)`, s'applique.
+- Pas d'ADR : décision du porteur, traitée comme de l'hygiène.
+
 `middleware/streamRateLimiter.ts:22-31` prend comme clé le premier
 élément de `X-Forwarded-For`, un en-tête que le client contrôle. Il suffit
 de le forger à chaque requête pour contourner la limite (10 requêtes par
@@ -164,6 +243,19 @@ configuration de BE-09, qui expose des instances typées. Les imports
 passent directement par les fichiers sources. Cascade : `server.ts`,
 `ragService.ts`, `chatService.ts`, les tests et `CLAUDE.md`.
 
+**Fait (lot 3)** :
+- `infra/index.ts` est supprimé.
+- `infra/clients.ts:initInfraClients(config)`, appelé par `start()`,
+  connecte Mongo, résout la collection publiée, puis crée les autres
+  clients.
+- `getInfraClients()` les expose, typés, et lève s'il est appelé avant
+  l'initialisation.
+- `closeInfraClients()` ferme Mongo à l'arrêt.
+- `MongoDbClient.connect(config)` renvoie un client déjà connecté : les
+  états `null` et le singleton de module disparaissent.
+- `collectionPointer.ts` reçoit le client Mongo et la configuration en
+  paramètres.
+
 ### BE-07 — `llm.stream`
 
 - `infra/llm.ts:110-128` : le corps de `fetch` est un
@@ -186,10 +278,9 @@ passent directement par les fichiers sources. Cascade : `server.ts`,
 - L'extraction du token est sortie dans `extractToken`.
 - Une ligne non-JSON est journalisée au niveau `debug`.
 
-**Reste** :
-- ne garder que `delta.content` (les deux autres champs sont conservés
-  pour ne pas changer de comportement) ;
-- `stream` fait encore plus de 30 lignes.
+**Reste** : ne garder que `delta.content`. Les deux autres champs sont
+conservés pour ne pas changer de comportement. `stream` repasse sous
+30 lignes au lot 3 : le découpage en lignes est sorti dans `readLines`.
 
 ### BE-08 — gestion d'erreur dupliquée
 
@@ -208,7 +299,27 @@ ou `includes('Timeout')`).
 
 Dans le premier lot, seul `(error as any)?.name` est remplacé, dans les
 4 clients, par `error instanceof Error ? error.name : undefined`. Le
-bloc dupliqué reste.
+bloc dupliqué reste. `health.ts` utilise déjà `AbortSignal.timeout`
+(lot 2, BE-14).
+
+**Fait (lot 3)** :
+- `types/rag.ts:toRagError(failure, error)` est la seule traduction. Le
+  code vaut `TIMEOUT` quand le nom de l'erreur se termine par
+  `TimeoutError`, ce qui couvre `AbortSignal.timeout`,
+  `QdrantClientTimeoutError`, `MongoNetworkTimeoutError` et
+  `MongoOperationTimeoutError`. Sinon, c'est le code de l'étape.
+- Le nom est lu sans passer par `instanceof Error`, car une
+  `DOMException` venue d'un autre realm (le bac à sable de Jest) échoue
+  à ce test.
+- Chaque client déclare sa constante `RagFailure`, et son `catch` tient
+  en trois lignes.
+- `embedding.ts` passe à `AbortSignal.timeout`. Une garde remplace le
+  cast de la réponse TEI.
+- `llm.ts` garde un `AbortController`, annulé une fois la réponse reçue :
+  le délai ne couvre que l'attente de la réponse. `AbortSignal.timeout`
+  couperait aussi une longue réponse en cours de streaming. Le contrôleur
+  interrompt la requête avec une `TimeoutError` pour que le code soit
+  bien `TIMEOUT`.
 
 ### BE-09 — configuration centralisée
 
@@ -229,6 +340,19 @@ constantes nommées. `checkEnvironment` en dérive. Les constructeurs
 reçoivent leur configuration au lieu de lire `process.env` dans leurs
 paramètres par défaut.
 
+**Fait (lot 3)** :
+- `src/config.ts:loadConfig(env)` renvoie `{ config, report }`, découpé
+  par section (`server`, `http`, `mongo`, `qdrant`, `embedding`, `llm`,
+  `retrieval`), avec toutes les valeurs par défaut en constantes nommées.
+- Une valeur vide vaut une variable absente : Compose passe `VAR=`.
+- Un nombre invalide lève une erreur qui nomme la variable.
+- Le lecteur enregistre les variables manquantes et celles qui ont pris
+  leur valeur par défaut. `checkEnvironment(report)` journalise ce
+  rapport, et les listes manuelles disparaissent.
+- Le prompt système par défaut passe de `ragService` à `config.ts`.
+- Les autres nombres magiques deviennent des constantes :
+  `MONGO_MAX_POOL_SIZE` et `FORCED_SHUTDOWN_DELAY_MS`.
+
 ### BE-10 — commentaires et métadonnées faux
 
 | Emplacement | Écrit | Réalité |
@@ -238,7 +362,7 @@ paramètres par défaut.
 | `middleware/streamRateLimiter.ts:3`, l. 13 | `/api/chat/stream`, « SSE streaming endpoint » | `/api/v1/chat/streams` |
 | ~~`infra/llm.ts:89`~~ | ~~« Stream completions from Mammouth API »~~ | ✅ corrigé |
 | ~~`infra/mongodb.ts:151`~~ | ~~paramètre `elis`~~ | ✅ renommé `chunkIds` |
-| `infra/embedding.ts:42` | « 768-dimensional » | dépend du modèle configuré |
+| ~~`infra/embedding.ts:42`~~ | ~~« 768-dimensional »~~ | ✅ corrigé (lot 3) |
 
 ### BE-11 — typage
 
@@ -258,6 +382,10 @@ paramètres par défaut.
 
 ### BE-12 — dépendances et amorçage
 
+**Fait (lot 2)** : `dotenv` est supprimé, car l'environnement vient de
+Compose ou doit être exporté à la main. `@types/ws` est passé en
+`devDependencies`. `express-validator` est aussi retiré (BE-13).
+
 - `server.ts:12` : `dotenv.config()` cherche `backend/.env`, qui n'existe
   pas (le fichier unique est `.env.dev` à la racine), et ne charge donc
   **rien**. C'est le même no-op silencieux que celui retiré de
@@ -268,6 +396,14 @@ paramètres par défaut.
 
 ### BE-13 — WebSocket sans validation
 
+**Fait (lot 2)** : nouvelle fonction pure `validation/chatRequest.ts:parseChatRequest`,
+utilisée par `routes/chat.ts` et `routes/chatWebSocket.ts`. Elle remplace
+`express-validator` et `middleware/validation.ts`. Elle vérifie aussi que
+chaque part est un objet avec un `type` texte. Le listener WebSocket
+capte désormais ses propres rejets : avant, un `ws.send` qui levait dans
+le `catch` devenait un rejet non géré, que `server.ts` traite par un
+arrêt du serveur.
+
 `routes/chatWebSocket.ts:14` fait `JSON.parse` puis un cast direct en
 `{ messages?: AppUIMessage[] }`. `chatValidation` ne protège que les
 routes HTTP. Valider la charge utile à cette frontière avec les mêmes
@@ -275,6 +411,11 @@ règles, extraites en une fonction pure réutilisée par les deux
 transports.
 
 ### BE-14 — `health.ts`
+
+**Fait (lot 2)** : un seul handler, monté sur `/` et `/services`.
+`AbortSignal.timeout` remplace le couple `AbortController`/`setTimeout`
+dans `checkHttpService`. Le timer du ping Mongo est annulé dans un
+`finally`. Le délai de 3 s est une constante nommée.
 
 - `GET /` et `GET /services` ne diffèrent que par `withLatency` : un seul
   handler suffit, qui mesure toujours la latence.
@@ -290,3 +431,17 @@ Le callback `execute` fait 49 lignes utiles (limite de `CLAUDE.md` : 30). Extrai
 - `streamAnswer(writer, messages)`.
 
 À faire **après TR-01**, qui change le contenu de chaque étape.
+
+### BE-16 — WebSocket sans limite de débit
+
+Trouvé pendant le lot 2. Les limiteurs (global et stream) sont des
+middlewares Express : ils ne s'appliquent pas à la requête d'upgrade du
+WebSocket. Or c'est le seul transport qu'utilise le frontend. Il
+n'avait donc **aucune** limite.
+
+**Fait (lot 2)** : `streamRateLimiter.ts` expose `consumeStreamQuota`,
+qui compte chaque message WebSocket dans le même `MemoryStore` que le
+limiteur HTTP. POST `/streams` et le WebSocket partagent le budget, et
+un quota épuisé reçoit une part `error`. Le limiteur global
+(100 requêtes / 15 min) ne couvre toujours pas le WebSocket, mais le
+budget de stream, plus strict, suffit.

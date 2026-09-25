@@ -37,6 +37,8 @@ fin du lot correspondant.
 |---|---|---|---|---|
 | backend | `tsc` ✅ | **29 erreurs** eslint | **2 suites / 3 ne compilent plus** — 4 tests passent, les seuils de couverture ne sont pas mesurables | — |
 | backend, après le 1er lot | `tsc` ✅ | ✅ 0 | ✅ 5 suites, 31 tests — **couverture 40 % des lignes**, sous le seuil de 65 % | — |
+| backend, après le 2e lot | `tsc` ✅ | ✅ 0 | ✅ 9 suites, 54 tests — couverture 66 % des lignes ; seules les instructions (64,5 %) restent sous le seuil de 65 % | — |
+| backend, après le 3e lot | `tsc` ✅ | ✅ 0 | ✅ 15 suites, 82 tests — couverture 90 % des lignes, **les quatre seuils sont tenus** | — |
 | frontend | **1 erreur** `tsc` | **eslint ne démarre pas** | aucun test | — |
 | data | `mypy --strict` ✅ | **95 erreurs** ruff (toutes dans le code mort, DA-01) | 296 ✅ (86 % de couverture) | 12 fichiers à reformater |
 | data, après le lot | `mypy --strict` ✅ | ✅ 0 | 294 ✅ (86 %) | ✅ |
@@ -45,14 +47,17 @@ fin du lot correspondant.
 
 Prises en session le 25 septembre 2026. `PILOTAGE.md` §2 (b) les fait
 passer par un **mini-ADR** avant exécution, puisqu'elles changent un
-comportement visible. Exception : la suppression de la route
-`/documents/:eli` est traitée comme de l'hygiène (§2 c), sans ADR, car
-aucun client ne l'appelle (décision du porteur, 25 septembre 2026).
+comportement visible. Exceptions, traitées comme de l'hygiène (§2 c),
+sans ADR, sur décision du porteur (25 septembre 2026) :
+- la suppression de la route `/documents/:eli`, qu'aucun client
+  n'appelle ;
+- BE-03 : sans proxy devant le backend, qui n'est pas encore déployé,
+  `trust proxy` vaut `false`. La valeur sera à revoir avec TR-03.
 
 | Décision | Items |
 |---|---|
 | Afficher dans l'interface les erreurs du pipeline (aujourd'hui avalées en silence) | FE-03 |
-| Ne plus faire confiance à `X-Forwarded-For` tel quel pour le rate-limit | BE-03 |
+| Ne plus faire confiance à `X-Forwarded-For` tel quel pour le rate-limit — ✅ fait, sans ADR | BE-03 |
 | Supprimer la route `GET /api/v1/documents/:eli` — ✅ faite, sans ADR | BE-04 |
 | **Conserver** le bouton « dossier » du `ChatBox` (placeholder « Work in progress ») | — |
 

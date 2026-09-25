@@ -6,7 +6,7 @@
 
 | ID | Point | Sévérité | Statut |
 |---|---|---|---|
-| TR-01 | **Contrat serving ↔ ingestion rompu** (§1) | Bloquant | ⏸ ADR |
+| TR-01 | **Contrat serving ↔ ingestion rompu** (§1) | Bloquant | 🔶 [ADR-039](../../product/ADR/ADR-039-contrat-ingestion-serving.md) proposé |
 | TR-02 | L'URL WebSocket configurée n'a pas de chemin : le serveur refuse la connexion (§2) | Bloquant | ⬜ |
 | TR-03 | La prod ne peut pas joindre le backend depuis le navigateur (§3) | Dette | ⏸ décision de déploiement |
 | TR-04 | `types/messages.ts` est dupliqué entre backend et frontend, sans contrôle | Confort | ⬜ |
@@ -15,8 +15,16 @@
 
 ## 1. TR-01 — contrat serving ↔ ingestion
 
-**Constat**, déduit de la lecture du code. Il reste à le confirmer en
-interrogeant un point Qdrant réel (voir « Vérification préalable »).
+**Décision** : [ADR-039](../../product/ADR/ADR-039-contrat-ingestion-serving.md),
+option (b). Le payload porte `char_start`/`char_end`, le texte est découpé
+dans le `content` du document Mongo, et le pointeur publié porte une
+version du contrat, vérifiée au boot. Le flux envoie au client chaque
+document parent une fois (`data-parentDocument`, texte entier) et chaque
+passage avec ses bornes de surlignage (`data-document`).
+
+**Constat confirmé le 25 septembre 2026** sur la collection publiée
+`9424808d…` : le payload montre `chunk_id` et aucun `chunkId`, ni texte,
+ni `title`. `LEGIFRANCE` ne contient que `documents` et `manifest`.
 
 | | L'ingestion écrit (`data/src/ragcore`) | Le backend lit (`backend/src`) |
 |---|---|---|
@@ -40,8 +48,9 @@ La réponse s'affiche donc, mais sans jamais s'appuyer sur le corpus.
 - (a) Ajouter `text` au payload Qdrant. Le backend n'a plus besoin de
   Mongo pour le contexte, ce qui retire une étape (`docFetchMs`) du
   pipeline. En contrepartie, le texte est stocké deux fois (Mongo
-  `content` + Qdrant) et le **fingerprint de collection change**
-  (nouvelle collection, réingestion).
+  `content` + Qdrant). ~~Le fingerprint de collection change~~ : faux, il
+  ne dépend que de `WorkflowConfig`. Les trois options imposent une
+  réingestion, dans la même collection.
 - (b) Ajouter `char_start`/`char_end` au payload, puis découper le
   `content` du document Mongo lu par `identifier`. Rien n'est dupliqué,
   mais le backend lit des documents entiers pour en extraire quelques
