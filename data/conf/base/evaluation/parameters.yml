@@ -1,10 +1,5 @@
 # ============================================================
-# Bloc R — runtime de récupération (ADR-026)
+# À VENIR 
 # ============================================================
-#
-# Top-K, seuil, fusion, rerank, graphe : n'existe pas encore côté ingestion. Ce bloc
-# est consommé par la plateforme d'évaluation P2 (B-13, ADR-027), jamais par
-# l'ingestion elle-même. Placeholder posé par B-14 pour établir la frontière ;
-# les clés seront définies lors de B-05/B-13.
 
 evaluation: {}
