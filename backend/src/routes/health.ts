@@ -50,7 +50,7 @@ const checkTei = () =>
   checkHttpService('tei', `${process.env.EMBEDDING_SERVICE_URL || 'http://embedding-service:80'}/health`);
 
 const checkQdrant = () =>
-  checkHttpService('qdrant', `${process.env.QDRANT_URL || 'http://qdrant:6333'}/health`);
+  checkHttpService('qdrant', `${process.env.QDRANT_URL || 'http://qdrant:6333'}/healthz`);
 
 /**
  * Check MongoDB health

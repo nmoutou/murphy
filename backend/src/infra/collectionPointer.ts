@@ -21,7 +21,7 @@ import { logger } from '../utils/logger';
 
 const log = logger.child({ context: 'collectionPointer' });
 
-const META_DB = process.env.MONGODB_META_DATABASE || 'MURPHY_META';
+const META_DB = process.env.MONGODB_META_DB_NAME || 'MURPHY_META';
 const POINTER_COLLECTION = 'meta_published_collection';
 const POINTER_KEY = 'current';
 
