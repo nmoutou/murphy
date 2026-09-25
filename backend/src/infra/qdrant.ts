@@ -1,83 +1,64 @@
 /**
  * Qdrant Vector Database Client
- * Handles semantic search with configurable timeout
+ * Handles semantic search over the collection resolved at boot
  */
 
 import { QdrantClient } from '@qdrant/qdrant-js';
+import type { EmbeddingVector, RagFailure, SearchResult } from '../types/rag';
 import { logger } from '../utils/logger';
-import { RagError, SearchResult, EmbeddingVector } from '../types/rag';
+import { toRagError } from '../types/rag';
+
+export interface QdrantVectorClientOptions {
+  readonly url: string;
+  /** The collection published by the last `ok` ingestion run (`infra/collectionPointer.ts`) */
+  readonly collection: string;
+  readonly minScore: number;
+}
+
+const SEARCH_FAILURE: RagFailure = { stage: 'retrieval', code: 'SEARCH_FAILED', operation: 'search Qdrant' };
 
 /**
  * Qdrant client for vector similarity search
  */
 export class QdrantVectorClient {
   private readonly client: QdrantClient;
-  private readonly collectionName: string;
-  private readonly minScore: number;
 
-  constructor(
-    qdrantUrl: string = process.env.QDRANT_URL || 'http://qdrant:6333',
-    collectionName: string = process.env.QDRANT_COLLECTION || 'chunks',
-    minScore: number = parseFloat(process.env.RETRIEVAL_MIN_SCORE || '0.5')
-  ) {
-    this.client = new QdrantClient({
-      url: qdrantUrl,
-    });
-    this.collectionName = collectionName;
-    this.minScore = minScore;
+  constructor(private readonly options: QdrantVectorClientOptions) {
+    this.client = new QdrantClient({ url: options.url });
   }
 
   /**
    * Search for similar vectors
-   * @param vector Embedding vector (768 dimensions)
+   * @param vector Embedding vector of the question
    * @param topK Number of results to return
    * @returns Array of search results ranked by similarity
    * @throws RagError with stage='retrieval'
    */
   async searchVectors(vector: EmbeddingVector, topK: number): Promise<SearchResult[]> {
     const startTime = Date.now();
+    const { collection, minScore } = this.options;
+    logger.info({ vectorDim: vector.length, topK, collection }, 'Qdrant search started');
 
     try {
-      logger.info(
-        { vectorDim: vector.length, topK, collection: this.collectionName },
-        'Qdrant search started'
-      );
-
-      const response = await this.client.search(this.collectionName, {
-        vector: vector,
+      const points = await this.client.search(collection, {
+        vector,
         limit: topK,
-        score_threshold: this.minScore,
+        score_threshold: minScore,
         with_payload: true,
       });
 
-      const results: SearchResult[] = response.map((point) => ({
+      const results: SearchResult[] = points.map((point) => ({
         id: String(point.id),
         similarity: point.score,
         payload: point.payload || {},
       }));
 
-      const duration = Date.now() - startTime;
-
-      logger.info(
-        { resultCount: results.length, minScore: this.minScore, durationMs: duration },
-        'Qdrant search completed'
-      );
-
+      logger.info({ resultCount: results.length, minScore, durationMs: Date.now() - startTime }, 'Qdrant search completed');
       return results;
     } catch (error) {
-      const duration = Date.now() - startTime;
-      const errorMessage = error instanceof Error ? error.message : String(error);
-
-      logger.error(
-        { errorMessage, errorType: error instanceof Error ? error.name : undefined, durationMs: duration },
-        'Qdrant search failed'
-      );
-
-      throw new RagError(
-        'retrieval',
-        errorMessage.includes('timeout') || errorMessage.includes('Timeout') ? 'TIMEOUT' : 'SEARCH_FAILED',
-        `Failed to search Qdrant: ${errorMessage}`,
-      );
+      const ragError = toRagError(SEARCH_FAILURE, error);
+      logger.error({ err: error, durationMs: Date.now() - startTime }, ragError.message);
+      throw ragError;
     }
   }
 }

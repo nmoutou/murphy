@@ -3,106 +3,75 @@
  * Handles embedding generation with configurable timeout
  */
 
+import type { EmbeddingConfig } from '../config';
+import type { EmbeddingVector, RagFailure } from '../types/rag';
 import { logger } from '../utils/logger';
-import { RagError, EmbeddingVector } from '../types/rag';
+import { toRagError } from '../types/rag';
 
 interface TEIEmbeddingRequest {
   model: string;
   input: string[];
 }
 
-interface TEIEmbeddingResponse {
-  data: Array<{
-    embedding: number[];
-    index: number;
-  }>;
-}
+const EMBEDDING_FAILURE: RagFailure = { stage: 'embedding', code: 'NETWORK', operation: 'generate embeddings' };
+
+const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null;
+
+const isNumberArray = (value: unknown): value is number[] =>
+  Array.isArray(value) && value.every((component) => typeof component === 'number');
+
+/**
+ * First vector of a TEI `/v1/embeddings` response (`{ data: [{ embedding }] }`)
+ * @throws Error when the body does not have that shape
+ */
+const readEmbedding = (body: unknown): EmbeddingVector => {
+  const entries = isRecord(body) ? body.data : undefined;
+  const firstEntry: unknown = Array.isArray(entries) ? entries[0] : undefined;
+  const embedding = isRecord(firstEntry) ? firstEntry.embedding : undefined;
+  if (!isNumberArray(embedding)) throw new Error('Invalid embedding response format');
+  return embedding;
+};
 
 /**
  * Embedding client for TEI service
  */
 export class EmbeddingClient {
-  private readonly serviceUrl: string;
-  private readonly modelName: string;
-  private readonly timeoutMs: number;
-
-  constructor(
-    serviceUrl: string = process.env.EMBEDDING_SERVICE_URL || 'http://embedding-service:80',
-    modelName: string = process.env.EMBEDDING_MODEL_NAME || 'all-mpnet-base-v2',
-    timeoutMs: number = parseInt(process.env.EMBEDDING_SERVICE_TIMEOUT || '10000', 10)
-  ) {
-    this.serviceUrl = serviceUrl;
-    this.modelName = modelName;
-    this.timeoutMs = timeoutMs;
-  }
+  constructor(private readonly settings: EmbeddingConfig) {}
 
   /**
    * Embed a single text string
    * @param text Text to embed
-   * @returns 768-dimensional embedding vector
+   * @returns Embedding vector, sized by the configured model
    * @throws RagError with stage='embedding'
    */
   async embedText(text: string): Promise<EmbeddingVector> {
     const startTime = Date.now();
+    logger.info({ textLength: text.length, modelName: this.settings.modelName }, 'Embedding request started');
 
     try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), this.timeoutMs);
-
-      try {
-        logger.info(
-          { textLength: text.length, modelName: this.modelName },
-          'Embedding request started'
-        );
-
-        const response = await fetch(`${this.serviceUrl}/v1/embeddings`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            model: this.modelName,
-            input: [text],
-          } as TEIEmbeddingRequest),
-          signal: controller.signal,
-        });
-
-        if (!response.ok) {
-          throw new Error(
-            `TEI service returned ${response.status}: ${response.statusText}`
-          );
-        }
-
-        const data = (await response.json()) as TEIEmbeddingResponse;
-
-        if (!data.data || !data.data[0] || !data.data[0].embedding) {
-          throw new Error('Invalid embedding response format');
-        }
-
-        const embedding = data.data[0].embedding;
-        const duration = Date.now() - startTime;
-
-        logger.info(
-          { embeddingDim: embedding.length, durationMs: duration },
-          'Embedding completed'
-        );
-
-        return embedding;
-      } finally {
-        clearTimeout(timeoutId);
-      }
+      const embedding = await this.requestEmbedding(text);
+      logger.info({ embeddingDim: embedding.length, durationMs: Date.now() - startTime }, 'Embedding completed');
+      return embedding;
     } catch (error) {
-      const duration = Date.now() - startTime;
-      const errorMessage = error instanceof Error ? error.message : String(error);
-
-      logger.error(
-        { errorMessage, errorType: error instanceof Error ? error.name : undefined, durationMs: duration },
-        'Embedding failed'
-      );
-
-      throw new RagError(
-        'embedding',
-        errorMessage.includes('abort') ? 'TIMEOUT' : 'NETWORK',
-        `Failed to generate embeddings: ${errorMessage}`,
-      );
+      const ragError = toRagError(EMBEDDING_FAILURE, error);
+      logger.error({ err: error, durationMs: Date.now() - startTime }, ragError.message);
+      throw ragError;
     }
+  }
+
+  private async requestEmbedding(text: string): Promise<EmbeddingVector> {
+    const response = await fetch(`${this.settings.serviceUrl}/v1/embeddings`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: this.settings.modelName, input: [text] } satisfies TEIEmbeddingRequest),
+      signal: AbortSignal.timeout(this.settings.timeoutMs),
+    });
+
+    if (!response.ok) {
+      throw new Error(`TEI service returned ${response.status}: ${response.statusText}`);
+    }
+
+    const body: unknown = await response.json();
+    return readEmbedding(body);
   }
 }

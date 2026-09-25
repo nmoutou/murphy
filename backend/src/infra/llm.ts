@@ -3,8 +3,10 @@
  * OpenAI-compatible provider with streaming support
  */
 
+import type { LlmConfig } from '../config';
+import type { RagFailure } from '../types/rag';
 import { logger } from '../utils/logger';
-import { RagError } from '../types/rag';
+import { toRagError } from '../types/rag';
 
 interface ChatMessage {
   role: 'system' | 'user' | 'assistant';
@@ -29,6 +31,13 @@ interface ChatCompletionChunk {
 
 const SSE_DATA_PREFIX = 'data: ';
 const SSE_DONE_MARKER = '[DONE]';
+const LINE_SEPARATOR = '\n';
+/** Named like the error of `AbortSignal.timeout`, so that `toRagError` classifies it as a timeout */
+const TIMEOUT_ERROR_NAME = 'TimeoutError';
+const LLM_FAILURE: RagFailure = { stage: 'llm', code: 'API_ERROR', operation: 'stream LLM response' };
+
+/** The system prompt is not the provider's business: the pipeline (`chatService`) builds the messages */
+export type LLMProviderOptions = Omit<LlmConfig, 'systemPrompt'>;
 
 /**
  * Token carried by one line of the stream (SSE `data: …` or raw JSON line).
@@ -56,65 +65,51 @@ const extractToken = (rawLine: string): string => {
   return choice?.delta?.content || choice?.delta?.text || choice?.text?.content || '';
 };
 
-export class LLMProvider {
-  private readonly apiUrl: string;
-  private readonly apiKey: string;
-  private readonly model: string;
-  private readonly temperature: number;
-  private readonly maxTokens: number;
-  private readonly timeoutMs: number;
-
-  constructor(
-    apiUrl: string = process.env.LLM_API_ENDPOINT || '',
-    apiKey: string = process.env.LLM_API_KEY || '',
-    model: string = process.env.LLM_MODEL || '',
-    temperature: number = parseFloat(process.env.LLM_TEMPERATURE || '0.7'),
-    maxTokens: number = parseInt(process.env.LLM_MAX_TOKENS || '1000', 10),
-    timeoutMs: number = parseInt(process.env.LLM_TIMEOUT || '30000', 10)
-  ) {
-    if (!apiKey) {
-      logger.warn('LLM_API_KEY not configured');
-    }
-    this.apiUrl = apiUrl;
-    this.apiKey = apiKey;
-    this.model = model;
-    this.temperature = temperature;
-    this.maxTokens = maxTokens;
-    this.timeoutMs = timeoutMs;
+/**
+ * Complete lines of a text stream. A line split across two pieces is emitted
+ * once whole; a last piece without a final newline is dropped.
+ */
+async function* readLines(text: AsyncIterable<string>): AsyncGenerator<string, void, undefined> {
+  let buffer = '';
+  for await (const piece of text) {
+    buffer += piece;
+    const lines = buffer.split(LINE_SEPARATOR);
+    // The last element is an incomplete line: keep it for the next piece
+    buffer = lines.pop() ?? '';
+    yield* lines;
   }
+}
+
+export class LLMProvider {
+  constructor(private readonly settings: LLMProviderOptions) {}
 
   /**
-   * Fires the streaming request with a timeout and checks the HTTP status.
-   * @throws Error (plain) on HTTP error — the caller wraps it into RagError
+   * Fires the streaming request and returns the response body.
+   *
+   * The timeout covers the wait for the response only, not the streaming of the
+   * answer that follows: hence a controller cleared once the response is there,
+   * not `AbortSignal.timeout`, which would also cut a long answer.
+   * @throws Error (plain) on timeout, HTTP error or missing body — `stream` wraps it
    */
-  private async _doRequest(messages: ChatMessage[]): Promise<Response> {
+  private async openStream(messages: ChatMessage[]): Promise<NonNullable<Response['body']>> {
+    const { apiUrl, apiKey, model, temperature, maxTokens, timeoutMs } = this.settings;
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), this.timeoutMs);
+    const timeoutId = setTimeout(
+      () => controller.abort(new DOMException(`LLM API did not answer within ${timeoutMs} ms`, TIMEOUT_ERROR_NAME)),
+      timeoutMs,
+    );
 
     try {
-      const payload: ChatCompletionPayload = {
-        model: this.model,
-        messages,
-        temperature: this.temperature,
-        max_tokens: this.maxTokens,
-        stream: true,
-      };
-
-      const response = await fetch(this.apiUrl, {
+      const response = await fetch(apiUrl, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${this.apiKey}`,
-        },
-        body: JSON.stringify(payload),
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+        body: JSON.stringify({ model, messages, temperature, max_tokens: maxTokens, stream: true } satisfies ChatCompletionPayload),
         signal: controller.signal,
       });
 
-      if (!response.ok) {
-        throw new Error(`LLM API returned ${response.status}: ${response.statusText}`);
-      }
-
-      return response;
+      if (!response.ok) throw new Error(`LLM API returned ${response.status}: ${response.statusText}`);
+      if (!response.body) throw new Error('No response body from LLM API');
+      return response.body;
     } finally {
       clearTimeout(timeoutId);
     }
@@ -128,51 +123,22 @@ export class LLMProvider {
    */
   async *stream(messages: ChatMessage[]): AsyncGenerator<string, void, unknown> {
     const startTime = Date.now();
+    const { model, temperature } = this.settings;
+    logger.debug({ model, messageCount: messages.length, temperature }, 'LLM stream request started');
 
     try {
-      logger.debug(
-        { model: this.model, messageCount: messages.length, temperature: this.temperature },
-        'LLM stream request started'
-      );
-
-      const response = await this._doRequest(messages);
-
-      if (!response.body) {
-        throw new Error('No response body from LLM API');
-      }
-
+      const body = await this.openStream(messages);
       // Streaming decoder: a multi-byte character split across two network chunks
       // (an accented letter, say) is decoded once both halves have arrived.
-      const text = response.body.pipeThrough(new TextDecoderStream());
-      let buffer = '';
-
-      for await (const piece of text) {
-        buffer += piece;
-        const lines = buffer.split('\n');
-        // The last element is an incomplete line: keep it for the next piece
-        buffer = lines.pop() ?? '';
-
-        for (const line of lines) {
-          const token = extractToken(line);
-          if (token) yield token;
-        }
+      for await (const line of readLines(body.pipeThrough(new TextDecoderStream()))) {
+        const token = extractToken(line);
+        if (token) yield token;
       }
-
       logger.debug({ durationMs: Date.now() - startTime }, 'LLM stream finished');
     } catch (error) {
-      const duration = Date.now() - startTime;
-      const errorMessage = error instanceof Error ? error.message : String(error);
-
-      logger.error(
-        { errorMessage, errorType: error instanceof Error ? error.name : undefined, durationMs: duration },
-        'LLM stream failed'
-      );
-
-      throw new RagError(
-        'llm',
-        errorMessage.includes('abort') ? 'TIMEOUT' : 'API_ERROR',
-        `Failed to stream LLM response: ${errorMessage}`,
-      );
+      const ragError = toRagError(LLM_FAILURE, error);
+      logger.error({ err: error, durationMs: Date.now() - startTime }, ragError.message);
+      throw ragError;
     }
   }
 }

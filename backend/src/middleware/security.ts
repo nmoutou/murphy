@@ -1,8 +1,11 @@
 import helmet from 'helmet';
 import { Request, Response } from 'express';
 import rateLimit from 'express-rate-limit';
-import { buildApiResponse } from '../utils/response';
 import cors from 'cors';
+import { buildApiResponse } from '../utils/response';
+import { config } from '../config';
+
+const HTTP_TOO_MANY_REQUESTS = 429;
 
 export const helm = helmet({
   contentSecurityPolicy: {
@@ -14,21 +17,19 @@ export const helm = helmet({
     },
   },
   crossOriginEmbedderPolicy: false,
-})
+});
 
-// Rate limiting: configurable via RATE_LIMIT_WINDOW_MS / RATE_LIMIT_MAX
 export const limiter = rateLimit({
-  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || '900000', 10),
-  max: parseInt(process.env.RATE_LIMIT_MAX || '100', 10),
+  windowMs: config.http.rateLimit.windowMs,
+  limit: config.http.rateLimit.limit,
   handler: (_req: Request, res: Response) => {
-    res.status(429).json(buildApiResponse(429, 'RATE_LIMIT_EXCEEDED'));
+    res.status(HTTP_TOO_MANY_REQUESTS).json(buildApiResponse(HTTP_TOO_MANY_REQUESTS, 'RATE_LIMIT_EXCEEDED'));
   },
   standardHeaders: true,
   legacyHeaders: false,
 });
 
-
 export const originParser = cors({
-  origin: process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : false,
+  origin: config.http.corsOrigins === false ? false : [...config.http.corsOrigins],
   credentials: true,
-})
+});

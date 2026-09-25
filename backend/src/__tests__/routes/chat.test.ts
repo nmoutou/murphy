@@ -52,6 +52,7 @@ describe('request validation', () => {
     ['an empty message list', { messages: [] }],
     ['an unknown role', { messages: [{ id: 'm-1', role: 'robot', parts: [] }] }],
     ['a message without parts', { messages: [{ id: 'm-1', role: 'user', content: 'Quel délai ?' }] }],
+    ['a null part', { messages: [{ id: 'm-1', role: 'user', parts: [null] }] }],
   ])('rejects %s with a 400', async (_case, body) => {
     const response = await request(app).post('/api/v1/chat/completions').send(body);
 

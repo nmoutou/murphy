@@ -5,9 +5,10 @@
 
 import express, { Request, Response } from 'express';
 import { logger as rootLogger } from '../utils/logger';
-import { getMongoDb } from '../infra/mongodb';
+import { getInfraClients } from '../infra/clients';
 import { asyncHandler } from '../middleware/errorHandler';
 import { buildApiResponse } from '../utils/response';
+import { config } from '../config';
 
 const logger = rootLogger.child({ context: 'healthRoutes' });
 const router = express.Router();
@@ -20,16 +21,25 @@ interface ServiceHealth {
   message?: string;
 }
 
+type GlobalStatus = 'ok' | 'degraded' | 'down';
+
+interface GlobalHealth {
+  globalStatus: GlobalStatus;
+  httpStatus: number;
+  statusMsg: string;
+}
+
+const HEALTH_CHECK_TIMEOUT_MS = 3000;
+const HTTP_OK = 200;
+const HTTP_SERVICE_UNAVAILABLE = 503;
+const MIN_DOWN_FOR_GLOBAL_DOWN = 2;
+
 /**
  * Generic HTTP service health check
  */
-async function checkHttpService(name: string, url: string, timeoutMs = 3000): Promise<ServiceHealth> {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-
+async function checkHttpService(name: string, url: string): Promise<ServiceHealth> {
   try {
-    const response = await fetch(url, { method: 'GET', signal: controller.signal });
-    clearTimeout(timeoutId);
+    const response = await fetch(url, { method: 'GET', signal: AbortSignal.timeout(HEALTH_CHECK_TIMEOUT_MS) });
 
     if (response.ok) {
       logger.debug({ service: name, url }, `${name} health check OK`);
@@ -39,7 +49,6 @@ async function checkHttpService(name: string, url: string, timeoutMs = 3000): Pr
     logger.warn({ service: name, url, status: response.status }, `${name} health check failed`);
     return { status: 'down', message: `HTTP ${response.status}` };
   } catch (error) {
-    clearTimeout(timeoutId);
     const message = error instanceof Error ? error.message : 'Unknown error';
     logger.warn({ service: name, url, error: message }, `${name} health check error`);
     return { status: 'down', message };
@@ -47,29 +56,31 @@ async function checkHttpService(name: string, url: string, timeoutMs = 3000): Pr
 }
 
 const checkTei = () =>
-  checkHttpService('tei', `${process.env.EMBEDDING_SERVICE_URL || 'http://embedding-service:80'}/health`);
+  checkHttpService('tei', `${config.embedding.serviceUrl}/health`);
 
 const checkQdrant = () =>
-  checkHttpService('qdrant', `${process.env.QDRANT_URL || 'http://qdrant:6333'}/healthz`);
+  checkHttpService('qdrant', `${config.qdrant.url}/healthz`);
 
 /**
- * Check MongoDB health
- * Attempts admin ping operation
+ * Pings MongoDB, giving up after `HEALTH_CHECK_TIMEOUT_MS`
  */
-async function checkMongoDB(): Promise<ServiceHealth> {
-  const timeoutMs = 3000;
+async function pingMongoDB(): Promise<void> {
+  const mongoDb = getInfraClients().mongo.getDb();
+  let timeoutId: NodeJS.Timeout | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => reject(new Error('MongoDB ping timeout')), HEALTH_CHECK_TIMEOUT_MS);
+  });
 
   try {
-    const mongoDb = await getMongoDb();
+    await Promise.race([mongoDb.admin().ping(), timeout]);
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
 
-    // Use Promise.race to enforce timeout
-    await Promise.race([
-      mongoDb.admin().ping(),
-      new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('MongoDB ping timeout')), timeoutMs)
-      ),
-    ]);
-
+async function checkMongoDB(): Promise<ServiceHealth> {
+  try {
+    await pingMongoDB();
     logger.debug({ service: 'mongodb' }, 'MongoDB health check OK');
     return { status: 'ok' };
   } catch (error) {
@@ -79,46 +90,31 @@ async function checkMongoDB(): Promise<ServiceHealth> {
   }
 }
 
-async function withLatency<T>(fn: () => Promise<T>): Promise<T & { latencyMs: number }> {
+async function measureLatency(check: () => Promise<ServiceHealth>): Promise<ServiceHealth & { latencyMs: number }> {
   const start = Date.now();
-  const result = await fn();
-  return { ...result, latencyMs: Date.now() - start };
+  const health = await check();
+  return { ...health, latencyMs: Date.now() - start };
 }
 
-function resolveGlobalHealth(services: ServiceHealth[]) {
-  const downCount = services.filter((s) => s.status === 'down').length;
-  const globalStatus = downCount === 0 ? 'ok' : downCount >= 2 ? 'down' : 'degraded';
-  const httpStatus = globalStatus === 'ok' ? 200 : 503;
-  const statusMsg = globalStatus === 'ok' ? 'OK' : 'UPSTREAM_UNAVAILABLE';
-  return { globalStatus, httpStatus, statusMsg };
+function resolveGlobalHealth(services: ServiceHealth[]): GlobalHealth {
+  const downCount = services.filter((service) => service.status === 'down').length;
+  if (downCount === 0) return { globalStatus: 'ok', httpStatus: HTTP_OK, statusMsg: 'OK' };
+
+  const globalStatus = downCount >= MIN_DOWN_FOR_GLOBAL_DOWN ? 'down' : 'degraded';
+  return { globalStatus, httpStatus: HTTP_SERVICE_UNAVAILABLE, statusMsg: 'UPSTREAM_UNAVAILABLE' };
 }
 
 /**
- * GET /api/v1/health
- * Status logic: "ok" = all up, "degraded" = 1 down, "down" = 2+ down
+ * GET /api/v1/health (and its alias /api/v1/health/services)
+ * Per-service status and latency. "ok" = all up, "degraded" = 1 down, "down" = 2+ down
  */
 router.get(
-  '/',
-  asyncHandler(async (_req: Request, res: Response) => {
-    const [tei, qdrant, mongodb] = await Promise.all([checkTei(), checkQdrant(), checkMongoDB()]);
-    const { globalStatus, httpStatus, statusMsg } = resolveGlobalHealth([tei, qdrant, mongodb]);
-    res.status(httpStatus).json(
-      buildApiResponse(httpStatus, statusMsg, { status: globalStatus, services: { tei, qdrant, mongodb } })
-    );
-  })
-);
-
-/**
- * GET /api/v1/health/services
- * Same as / with measured latency per service
- */
-router.get(
-  '/services',
+  ['/', '/services'],
   asyncHandler(async (_req: Request, res: Response) => {
     const [tei, qdrant, mongodb] = await Promise.all([
-      withLatency(checkTei),
-      withLatency(checkQdrant),
-      withLatency(checkMongoDB),
+      measureLatency(checkTei),
+      measureLatency(checkQdrant),
+      measureLatency(checkMongoDB),
     ]);
     const { globalStatus, httpStatus, statusMsg } = resolveGlobalHealth([tei, qdrant, mongodb]);
     res.status(httpStatus).json(

@@ -31,7 +31,15 @@ const collectTokens = async (tokens: AsyncIterable<string>): Promise<string[]> =
   return collected;
 };
 
-const createProvider = (): LLMProvider => new LLMProvider('http://llm.test/v1/chat/completions', 'test-key', 'test-model');
+const createProvider = (): LLMProvider =>
+  new LLMProvider({
+    apiUrl: 'http://llm.test/v1/chat/completions',
+    apiKey: 'test-key',
+    model: 'test-model',
+    temperature: 0.7,
+    maxTokens: 1000,
+    timeoutMs: 30_000,
+  });
 
 describe('LLMProvider.stream', () => {
   it('yields the delta contents and skips blank lines, the end marker and invalid JSON', async () => {

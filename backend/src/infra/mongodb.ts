@@ -1,140 +1,100 @@
 /**
  * MongoDB Client
- * Manages connection lifecycle and document fetching
+ * Connected at creation (`MongoDbClient.connect`), closed at shutdown
  */
 
 import { MongoClient, Db, MongoClientOptions } from 'mongodb';
+import type { MongoConfig } from '../config';
+import type { Document, RagFailure } from '../types/rag';
 import { logger } from '../utils/logger';
-import { RagError, Document } from '../types/rag';
+import { toRagError } from '../types/rag';
+
+const MONGO_MAX_POOL_SIZE = 10;
+const CHUNK_PROJECTION = { chunkId: 1, content: 1, type: 1, title: 1 };
+const DOCUMENT_FETCH_FAILURE: RagFailure = {
+  stage: 'retrieval',
+  code: 'DB_FETCH_FAILED',
+  operation: 'fetch documents from MongoDB',
+};
+
+const hideCredentials = (uri: string): string => uri.replace(/\/\/[^@]*@/, '//<credentials>@');
 
 export class MongoDbClient {
-  private client: MongoClient | null = null;
-  private db: Db | null = null;
+  private constructor(
+    private readonly client: MongoClient,
+    private readonly db: Db,
+    private readonly collectionName: string,
+  ) {}
 
-  async connect(): Promise<void> {
-    if (this.client) {
-      logger.info('MongoDB client already initialized');
-      return;
-    }
-
+  /**
+   * Connects, then pings the database so that a wrong URI fails at boot
+   * @throws the driver error when MongoDB cannot be reached
+   */
+  static async connect(settings: MongoConfig): Promise<MongoDbClient> {
     const startTime = Date.now();
+    const options: MongoClientOptions = {
+      serverSelectionTimeoutMS: settings.timeoutMs,
+      connectTimeoutMS: settings.timeoutMs,
+      socketTimeoutMS: settings.timeoutMs,
+      retryWrites: true,
+      maxPoolSize: MONGO_MAX_POOL_SIZE,
+    };
+    logger.info({ mongoUri: hideCredentials(settings.uri), timeoutMs: settings.timeoutMs }, 'Connecting to MongoDB');
 
     try {
-      const mongoUri = process.env.MONGODB_URI || '';
-      const timeoutMs = parseInt(process.env.MONGODB_TIMEOUT || '10000', 10);
-
-      const options: MongoClientOptions = {
-        serverSelectionTimeoutMS: timeoutMs,
-        connectTimeoutMS: timeoutMs,
-        socketTimeoutMS: timeoutMs,
-        retryWrites: true,
-        maxPoolSize: 10,
-      };
-
-      const sanitizedUri = mongoUri.replace(/\/\/[^@]*@/, '//<credentials>@');
-      logger.info({ mongoUri: sanitizedUri, timeoutMs }, 'Connecting to MongoDB');
-
-      this.client = new MongoClient(mongoUri, options);
-      await this.client.connect();
-
-      const database = process.env.MONGODB_DATABASE || 'LEGIFRANCE';
-      this.db = this.client.db(database);
-
-      await this.db.admin().ping();
-
-      const duration = Date.now() - startTime;
-      logger.info({ durationMs: duration, database }, 'MongoDB connected successfully');
+      const client = await new MongoClient(settings.uri, options).connect();
+      const db = client.db(settings.database);
+      await db.admin().ping();
+      logger.info({ durationMs: Date.now() - startTime, database: settings.database }, 'MongoDB connected successfully');
+      return new MongoDbClient(client, db, settings.collection);
     } catch (error) {
-      const duration = Date.now() - startTime;
-      const errorMessage = error instanceof Error ? error.message : String(error);
-
-      logger.error({ errorMessage, durationMs: duration }, 'Failed to initialize MongoDB connection');
-
-      this.client = null;
-      this.db = null;
-
+      logger.error({ err: error, durationMs: Date.now() - startTime }, 'Failed to initialize MongoDB connection');
       throw error;
     }
   }
 
+  /** The driver client, to reach another database than the data one (the meta database) */
   getClient(): MongoClient {
-    if (!this.client) {
-      throw new Error('MongoDB client not initialized. Call connect() first.');
-    }
     return this.client;
   }
 
   getDb(): Db {
-    if (!this.db) {
-      throw new Error('MongoDB database not initialized. Call connect() first.');
-    }
     return this.db;
   }
 
   async close(): Promise<void> {
-    if (!this.client) return;
-
+    logger.info('Closing MongoDB connection');
     try {
-      logger.info('Closing MongoDB connection');
       await this.client.close();
-      this.client = null;
-      this.db = null;
       logger.info('MongoDB connection closed');
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      logger.error({ errorMessage }, 'Error closing MongoDB connection');
+      logger.error({ err: error }, 'Error closing MongoDB connection');
     }
   }
 
+  /**
+   * @throws RagError with stage='retrieval'
+   */
   async fetchDocuments(chunkIds: string[]): Promise<Document[]> {
     const startTime = Date.now();
+    logger.info({ chunkCount: chunkIds.length }, 'Fetching documents from MongoDB');
 
     try {
-      if (!this.db) throw new Error('MongoDB not initialized');
-      if (!chunkIds || chunkIds.length === 0) return [];
-
-      logger.info({ chunkCount: chunkIds.length }, 'Fetching documents from MongoDB');
-
-      const collection = this.db.collection(process.env.MONGODB_COLLECTION || 'chunks');
-
-      const documents = await collection
+      const documents = await this.db
+        .collection<Document>(this.collectionName)
         .find({ chunkId: { $in: chunkIds } })
-        .project({ chunkId: 1, content: 1, type: 1, title: 1 })
+        .project<Document>(CHUNK_PROJECTION)
         .toArray();
 
-      const duration = Date.now() - startTime;
       logger.info(
-        { docCount: documents.length, requested: chunkIds.length, durationMs: duration },
+        { docCount: documents.length, requested: chunkIds.length, durationMs: Date.now() - startTime },
         'Documents fetched from MongoDB'
       );
-
-      return documents as Document[];
+      return documents;
     } catch (error) {
-      const duration = Date.now() - startTime;
-      const errorMessage = error instanceof Error ? error.message : String(error);
-
-      logger.error(
-        { errorMessage, errorType: error instanceof Error ? error.name : undefined, durationMs: duration },
-        'Failed to fetch documents from MongoDB'
-      );
-
-      throw new RagError(
-        'retrieval',
-        errorMessage.includes('timeout') ? 'TIMEOUT' : 'DB_FETCH_FAILED',
-        `Failed to fetch documents from MongoDB: ${errorMessage}`,
-      );
+      const ragError = toRagError(DOCUMENT_FETCH_FAILURE, error);
+      logger.error({ err: error, durationMs: Date.now() - startTime }, ragError.message);
+      throw ragError;
     }
   }
 }
-
-// ---------------------------------------------------------------------------
-// Singleton instance — shared across the application
-// ---------------------------------------------------------------------------
-const mongoDbClient = new MongoDbClient();
-
-// Function exports delegating to the singleton
-export const initMongoClient  = ()      => mongoDbClient.connect();
-export const closeMongoClient = ()      => mongoDbClient.close();
-export const getMongoClient   = async () => mongoDbClient.getClient();
-export const getMongoDb       = async () => mongoDbClient.getDb();
-export const fetchDocuments   = (chunkIds: string[]) => mongoDbClient.fetchDocuments(chunkIds);

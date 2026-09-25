@@ -5,23 +5,27 @@
 
 import type { InferUIMessageChunk } from 'ai';
 import { createChatStream, extractQuestionFromMessages } from '../../services/chatService';
-import { embeddingClient, llmProvider, qdrantClient } from '../../infra';
-import { fetchDocuments } from '../../infra/mongodb';
+import { getInfraClients } from '../../infra/clients';
 import { RagError } from '../../types/rag';
 import type { AppUIMessage } from '../../types/messages';
 
-jest.mock('../../infra', () => ({
-  embeddingClient: { embedText: jest.fn() },
-  qdrantClient: { searchVectors: jest.fn() },
-  llmProvider: { stream: jest.fn() },
-}));
-jest.mock('../../infra/mongodb', () => ({ fetchDocuments: jest.fn() }));
+jest.mock('../../infra/clients', () => {
+  const clients = {
+    embedding: { embedText: jest.fn() },
+    qdrant: { searchVectors: jest.fn() },
+    mongo: { fetchDocuments: jest.fn() },
+    llm: { stream: jest.fn() },
+  };
+  return { getInfraClients: () => clients };
+});
 jest.mock('../../utils/logger', () => {
   const silentLogger = { info: jest.fn(), debug: jest.fn(), warn: jest.fn(), error: jest.fn(), child: () => silentLogger };
   return { logger: silentLogger };
 });
 
 type AppChunk = InferUIMessageChunk<AppUIMessage>;
+
+const { embedding, qdrant, mongo, llm } = getInfraClients();
 
 const EMBEDDING = [0.1, 0.2, 0.3];
 const QUESTION = 'Quel est le délai de prescription ?';
@@ -39,18 +43,18 @@ const readAllParts = async (stream: ReadableStream<AppChunk>): Promise<AppChunk[
 };
 
 const mockLlmTokens = (...tokens: string[]): void => {
-  jest.mocked(llmProvider.stream).mockImplementation(async function* () {
+  jest.mocked(llm.stream).mockImplementation(async function* () {
     yield* tokens;
   });
 };
 
 beforeEach(() => {
-  jest.mocked(embeddingClient.embedText).mockResolvedValue(EMBEDDING);
-  jest.mocked(qdrantClient.searchVectors).mockResolvedValue([
+  jest.mocked(embedding.embedText).mockResolvedValue(EMBEDDING);
+  jest.mocked(qdrant.searchVectors).mockResolvedValue([
     { id: '1', similarity: 0.91, payload: { chunkId: 'chunk-1', title: 'Code civil, art. 2224', type: 'LEGI' } },
     { id: '2', similarity: 0.72, payload: {} },
   ]);
-  jest.mocked(fetchDocuments).mockResolvedValue([
+  jest.mocked(mongo.fetchDocuments).mockResolvedValue([
     { chunkId: 'chunk-1', title: 'Code civil, art. 2224', content: 'Les actions personnelles se prescrivent par cinq ans.' },
   ]);
   mockLlmTokens('Cinq ', 'ans.');
@@ -91,7 +95,7 @@ describe('extractQuestionFromMessages', () => {
 describe('createChatStream', () => {
   it('rejects a blank question before running the pipeline', async () => {
     await expect(createChatStream([userMessage('   ')])).rejects.toThrow('No question provided');
-    expect(embeddingClient.embedText).not.toHaveBeenCalled();
+    expect(embedding.embedText).not.toHaveBeenCalled();
   });
 
   it('streams sources, then the answer, then the timing metadata', async () => {
@@ -115,17 +119,17 @@ describe('createChatStream', () => {
   it('feeds the retrieved content to the LLM, never the chunks without id', async () => {
     await readAllParts(await createChatStream([userMessage(QUESTION)]));
 
-    expect(qdrantClient.searchVectors).toHaveBeenCalledWith(EMBEDDING, 5);
-    expect(fetchDocuments).toHaveBeenCalledWith(['chunk-1']);
+    expect(qdrant.searchVectors).toHaveBeenCalledWith(EMBEDDING, 5);
+    expect(mongo.fetchDocuments).toHaveBeenCalledWith(['chunk-1']);
 
-    const [llmMessages] = jest.mocked(llmProvider.stream).mock.calls[0];
+    const [llmMessages] = jest.mocked(llm.stream).mock.calls[0];
     expect(llmMessages[0].role).toBe('system');
     expect(llmMessages[0].content).toContain('[1] Code civil, art. 2224\nLes actions personnelles se prescrivent par cinq ans.');
     expect(llmMessages[1]).toEqual({ role: 'user', content: QUESTION });
   });
 
   it('ends with an error part when the LLM fails mid-stream', async () => {
-    jest.mocked(llmProvider.stream).mockImplementation(async function* () {
+    jest.mocked(llm.stream).mockImplementation(async function* () {
       yield 'Cinq ';
       throw new RagError('llm', 'API_ERROR', 'Failed to stream LLM response: 502');
     });
@@ -137,13 +141,13 @@ describe('createChatStream', () => {
   });
 
   it('ends with an error part when a stage before the LLM fails', async () => {
-    jest.mocked(embeddingClient.embedText).mockRejectedValue(
+    jest.mocked(embedding.embedText).mockRejectedValue(
       new RagError('embedding', 'NETWORK', 'Failed to generate embeddings: ECONNREFUSED'),
     );
 
     const parts = await readAllParts(await createChatStream([userMessage(QUESTION)]));
 
     expect(parts[parts.length - 1]).toEqual({ type: 'error', errorText: 'Failed to generate embeddings: ECONNREFUSED' });
-    expect(llmProvider.stream).not.toHaveBeenCalled();
+    expect(llm.stream).not.toHaveBeenCalled();
   });
 });

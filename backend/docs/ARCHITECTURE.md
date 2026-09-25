@@ -23,9 +23,9 @@ cette stack) : les deux ne partagent que les bases.
    `data-document` **avant l'appel LLM** : l'UI affiche les sources immédiatement.
 5. **Fetch du contenu** (`ragService.fetchChunkDocuments`) → MongoDB, par `chunkId`. Ce
    contenu ne sert qu'à construire le contexte LLM, jamais renvoyé tel quel au client.
-6. **Streaming LLM** — contexte injecté dans le system prompt (`getDefaultSystemPrompt`,
+6. **Streaming LLM** — contexte injecté dans le system prompt (`config.llm.systemPrompt` :
    assistant juridique FR, surchargeable via `SYSTEM_PROMPT`), tokens de
-   `llmProvider.stream()` écrits en parts `text-delta`.
+   `getInfraClients().llm.stream()` écrits en parts `text-delta`.
 7. **Finish** — part `finish` avec `ragTiming` (latence par étape, en ms).
 
 Le flux est construit avec le Vercel **AI SDK** (`createUIMessageStream` /
@@ -37,7 +37,8 @@ Le flux est construit avec le Vercel **AI SDK** (`createUIMessageStream` /
 ### Trois transports, un seul pipeline
 
 - **WebSocket** `/api/v1/chat/ws` (`routes/chatWebSocket.ts`) — ce que le frontend
-  utilise. Un message entrant, un flux de parts JSON sortant, socket fermée.
+  utilise. Un message entrant, un flux de parts JSON sortant, socket fermée. Une
+  requête invalide ou un quota épuisé reçoivent une part `error`, sans lancer le pipeline.
 - **POST** `/api/v1/chat/streams` (SSE) et **POST** `/api/v1/chat/completions` (draine le
   flux en une réponse JSON) — `routes/chat.ts`, pour tests et clients non-WS.
 
@@ -60,11 +61,22 @@ Le pipeline d'ingestion nomme ses collections par une **empreinte** de sa config
 ## Clients d'infrastructure (`src/infra/`)
 
 `EmbeddingClient` (TEI), `QdrantVectorClient`, `LLMProvider` (API OpenAI-compatible,
-type Mammouth.AI), client MongoDB. Le barrel `infra/index.ts` les expose en **singletons
-paresseux via `Proxy`** (`embeddingClient`, `qdrantClient`, `llmProvider`) — instanciés
-au premier accès, réutilisés entre requêtes : importer les singletons, ne jamais `new`-er
-un client par requête. Exception MongoDB : `initMongoClient()` explicite au boot
-(`server.ts`), `closeMongoClient()` au shutdown gracieux.
+type Mammouth.AI), `MongoDbClient`. Chaque constructeur reçoit sa section de `config`
+(`src/config.ts`) ; aucun ne lit l'environnement.
+
+`infra/clients.ts:initInfraClients(config)` les crée **une fois au boot**, avant
+l'écoute (`server.ts`) : connexion Mongo, résolution de la collection Qdrant publiée
+(`collectionPointer.ts`), puis les trois autres clients. Il peut refuser le démarrage.
+Les requêtes y accèdent par `getInfraClients()`, qui lève s'il est appelé avant
+l'initialisation ; `closeInfraClients()` ferme Mongo au shutdown gracieux. Ne jamais
+`new`-er un client par requête.
+
+**Erreurs** : chaque client traduit ses échecs par `types/rag.ts:toRagError(failure, error)`
+en `RagError { stage, code }`. Le code vaut `TIMEOUT` quand le **type** de l'erreur se
+termine par `TimeoutError` (`AbortSignal.timeout`, `QdrantClientTimeoutError`,
+`MongoNetworkTimeoutError`…), sinon le code propre au client (`NETWORK`,
+`SEARCH_FAILED`, `DB_FETCH_FAILED`, `API_ERROR`). Le délai du LLM ne couvre que
+l'attente de la réponse, pas le streaming qui suit.
 
 ## Conventions transverses
 
@@ -77,8 +89,11 @@ un client par requête. Exception MongoDB : `initMongoClient()` explicite au boo
   `errorHandler` + `notFoundHandler` enregistrés en dernier dans `app.ts`.
 - **Ordre des middlewares** (`app.ts`) : requestLogger → helmet / rate-limit / CORS
   (`middleware/security.ts`) → body parsing → routes → handlers d'erreur. La route de
-  stream ajoute `streamRateLimiter` + `express-validator` (`middleware/validation.ts`).
-- **Base path** : `/api/v1`. Santé : `/api/v1/health` (+ `/services`) — `ok` /
+  stream ajoute `streamRateLimiter`. Les deux transports valident la charge utile avec
+  `validation/chatRequest.ts:parseChatRequest` et partagent le même budget de stream par
+  IP (`consumeStreamQuota` côté WebSocket). `trust proxy` vaut `false` (`app.ts`) tant
+  qu'aucun proxy n'est placé devant le backend.
+- **Base path** : `/api/v1`. Santé : `/api/v1/health` (alias `/services`), latence par service — `ok` /
   `degraded` (1 service down) / `down` (2+), 503 si non-ok.
 
 ## Dépendances externes

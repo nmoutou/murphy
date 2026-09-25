@@ -8,13 +8,19 @@ import { pipeUIMessageStreamToResponse } from 'ai';
 import { logger as rootLogger } from '../utils/logger';
 import { createChatStream } from '../services/chatService';
 import { asyncHandler } from '../middleware/errorHandler';
-import { chatValidation, validationErrorHandler } from '../middleware/validation';
 import { streamRateLimiter } from '../middleware/streamRateLimiter';
 import { buildApiResponse } from '../utils/response';
-import { AppUIMessage } from '../types/messages';
+import { parseChatRequest } from '../validation/chatRequest';
+import type { ValidationIssue } from '../validation/chatRequest';
 
 const logger = rootLogger.child({ context: 'chatRoutes' });
 const router = express.Router();
+
+const HTTP_BAD_REQUEST = 400;
+
+const sendValidationError = (res: Response, issues: readonly ValidationIssue[]): void => {
+  res.status(HTTP_BAD_REQUEST).json({ ...buildApiResponse(HTTP_BAD_REQUEST, 'VALIDATION_ERROR'), errors: issues });
+};
 
 /**
  * POST /api/v1/chat/streams
@@ -28,12 +34,14 @@ const router = express.Router();
 router.post(
   '/streams',
   streamRateLimiter,
-  chatValidation,
-  validationErrorHandler,
   asyncHandler(async (req: Request, res: Response) => {
+    const request = parseChatRequest(req.body);
+    if (!request.isValid) {
+      sendValidationError(res, request.issues);
+      return;
+    }
     try {
-      const { messages } = req.body as { messages: AppUIMessage[] };
-      const stream = await createChatStream(messages || []);
+      const stream = await createChatStream(request.messages);
 
       pipeUIMessageStreamToResponse({
         response: res,
@@ -52,12 +60,14 @@ router.post(
  */
 router.post(
   '/completions',
-  chatValidation,
-  validationErrorHandler,
   asyncHandler(async (req: Request, res: Response) => {
+    const request = parseChatRequest(req.body);
+    if (!request.isValid) {
+      sendValidationError(res, request.issues);
+      return;
+    }
     try {
-      const { messages } = req.body as { messages: AppUIMessage[] };
-      const stream = await createChatStream(messages || []);
+      const stream = await createChatStream(request.messages);
       const reader = stream.getReader();
       let text = '';
 

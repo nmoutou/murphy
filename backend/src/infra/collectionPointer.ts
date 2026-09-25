@@ -16,12 +16,11 @@
  */
 
 import { QdrantClient } from '@qdrant/qdrant-js';
-import { getMongoClient } from './mongodb';
+import type { MongoClient } from 'mongodb';
 import { logger } from '../utils/logger';
 
 const log = logger.child({ context: 'collectionPointer' });
 
-const META_DB = process.env.MONGODB_META_DB_NAME || 'MURPHY_META';
 const POINTER_COLLECTION = 'meta_published_collection';
 const POINTER_KEY = 'current';
 
@@ -33,16 +32,27 @@ export interface PublishedCollection {
   published_at: string;
 }
 
+export interface CollectionSources {
+  readonly mongoClient: MongoClient;
+  /** The database holding the pointer — not the data database */
+  readonly metaDatabase: string;
+  readonly qdrantUrl: string;
+  /** `QDRANT_COLLECTION`: used only when no run has published */
+  readonly fallbackCollection: string;
+}
+
 /**
  * Lit le pointeur publié par le dernier run `ok`. `null` = aucun run n'a encore publié —
  * ce n'est pas une erreur, c'est un système qui n'a pas encore ingéré.
  */
-export async function readPublishedCollection(): Promise<PublishedCollection | null> {
-  // `getMongoDb()` rend la base de DONNÉES (LEGIFRANCE) ; le pointeur vit dans la base
-  // de MÉTA. On passe donc par le client, qui seul permet d'en changer.
-  const client = await getMongoClient();
-  const doc = await client
-    .db(META_DB)
+export async function readPublishedCollection(
+  mongoClient: MongoClient,
+  metaDatabase: string
+): Promise<PublishedCollection | null> {
+  // Le pointeur vit dans la base de MÉTA, pas dans celle des DONNÉES (LEGIFRANCE) :
+  // on passe donc par le client, qui seul permet de changer de base.
+  const doc = await mongoClient
+    .db(metaDatabase)
     .collection<PublishedCollection>(POINTER_COLLECTION)
     .findOne({ key: POINTER_KEY });
   return doc ?? null;
@@ -60,36 +70,37 @@ export async function readPublishedCollection(): Promise<PublishedCollection | n
  * un nom plausible, aucun vecteur derrière, et la panne repoussée jusqu'à la première
  * question d'un utilisateur — au moment le plus coûteux pour la découvrir.
  */
-export async function resolveCollection(qdrantUrl: string): Promise<string> {
-  const published = await readPublishedCollection().catch((error) => {
+export async function resolveCollection(sources: CollectionSources): Promise<string> {
+  const collection = await choosePublishedOrFallback(sources);
+  await assertCollectionExists(sources.qdrantUrl, collection);
+  return collection;
+}
+
+async function choosePublishedOrFallback(sources: CollectionSources): Promise<string> {
+  const published = await readPublishedCollection(sources.mongoClient, sources.metaDatabase).catch((error) => {
     log.warn({ error: String(error) }, 'Pointeur de collection illisible (Mongo)');
     return null;
   });
 
-  let collection: string;
-
-  if (published) {
-    collection = published.collection_name;
-    log.info(
-      {
-        collection,
-        runId: published.run_id,
-        documentCount: published.document_count,
-        publishedAt: published.published_at,
-      },
-      'Collection résolue depuis le pointeur publié'
-    );
-  } else {
-    collection = process.env.QDRANT_COLLECTION || 'chunks';
+  if (!published) {
     log.warn(
-      { collection },
+      { collection: sources.fallbackCollection },
       "Aucun run n'a publié de collection : repli sur QDRANT_COLLECTION. " +
         "Ce nom n'est vérifié par personne — lancer une ingestion complète le remplacera."
     );
+    return sources.fallbackCollection;
   }
 
-  await assertCollectionExists(qdrantUrl, collection);
-  return collection;
+  log.info(
+    {
+      collection: published.collection_name,
+      runId: published.run_id,
+      documentCount: published.document_count,
+      publishedAt: published.published_at,
+    },
+    'Collection résolue depuis le pointeur publié'
+  );
+  return published.collection_name;
 }
 
 /**

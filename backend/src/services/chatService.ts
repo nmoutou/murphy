@@ -1,3 +1,4 @@
+import type { AppUIMessage, AppMessageMetadata } from '../types/messages';
 import { createUIMessageStream } from 'ai';
 import crypto from 'crypto';
 import { logger as rootLogger } from '../utils/logger';
@@ -6,10 +7,9 @@ import {
   retrieveChunks,
   fetchChunkDocuments,
   buildContextString,
-  getDefaultSystemPrompt,
 } from './ragService';
-import { llmProvider } from '../infra';
-import { AppUIMessage, AppMessageMetadata } from '../types/messages';
+import { getInfraClients } from '../infra/clients';
+import { config } from '../config';
 
 const logger = rootLogger.child({ context: 'chatService' });
 
@@ -41,7 +41,7 @@ export async function createChatStream(uiMessages: AppUIMessage[]) {
       const { embedding, embeddingMs } = await embedQuestion(question);
 
       // Stage 2 — Qdrant search
-      const { results, retrievalMs } = await retrieveChunks(embedding, parseInt(process.env.RETRIEVAL_TOP_K || '5', 10));
+      const { results, retrievalMs } = await retrieveChunks(embedding, config.retrieval.topK);
 
       // Stream document references immediately (before LLM)
       for (const result of results) {
@@ -66,7 +66,7 @@ export async function createChatStream(uiMessages: AppUIMessage[]) {
 
       // Stage 4 — Stream LLM
       const context = buildContextString(documents);
-      const systemPromptText = `${getDefaultSystemPrompt()}\n\nContexte:\n${context}`;
+      const systemPromptText = `${config.llm.systemPrompt}\n\nContexte:\n${context}`;
       const llmMessages = [
         { role: 'system' as const, content: systemPromptText },
         { role: 'user' as const, content: question },
@@ -74,7 +74,7 @@ export async function createChatStream(uiMessages: AppUIMessage[]) {
 
       const llmStart = Date.now();
       try {
-        for await (const token of llmProvider.stream(llmMessages)) {
+        for await (const token of getInfraClients().llm.stream(llmMessages)) {
           writer.write({ type: 'text-delta', id: messageId, delta: token });
         }
       } catch (error) {

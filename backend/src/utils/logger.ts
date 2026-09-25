@@ -1,6 +1,5 @@
 import pino from 'pino';
-
-const isDevelopment = process.env.NODE_ENV !== 'production';
+import { config } from '../config';
 
 /**
  * Pino logger configuration
@@ -8,10 +7,10 @@ const isDevelopment = process.env.NODE_ENV !== 'production';
  * Production: JSON format for log aggregation
  */
 export const logger = pino({
-  level: process.env.LOG_LEVEL || (isDevelopment ? 'debug' : 'info'),
+  level: config.server.logLevel,
   
   // Pretty print in development
-  transport: isDevelopment
+  transport: !config.server.isProduction
     ? {
         target: 'pino-pretty',
         options: {
@@ -24,7 +23,7 @@ export const logger = pino({
 
   // Base fields
   base: {
-    env: process.env.NODE_ENV || 'development',
+    env: config.server.nodeEnv,
   },
 
   // Timestamp format
