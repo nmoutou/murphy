@@ -1,5 +1,5 @@
 # ============================================================
-# GENERAL SETTINGS
+# PARAMÈTRE GÉNÉRAUX
 # ============================================================
 
 nlp:
@@ -32,10 +32,8 @@ importation:
           - "section_ta_titre_ta"
 
 # ============================================================
-# Phase 3: Formatting — infra uniquement (ADR-026)
+# Phase 3: Formatage
 # ============================================================
-# Le hashé (normalization.version, chunking.*, embedding_model, dimension) a migré vers
-# `conf/base/workflow/parameters.yml`. Ce qui reste ici n'affecte pas les vecteurs.
 
 formatting:
   tokenizing:
@@ -61,39 +59,18 @@ formatting:
         - titre
 
 # ============================================================
-# Phase 4: Exportation — infra d'embedding (ADR-026)
+# Phase 4: Export - embedding
 # ============================================================
 
 embedding_runtime:
   embedding_service_timeout: 30
   batch_size: 32
-
-  # L'interrupteur d'embedding (ADR-023). `false` = on ne calcule NI n'écrit aucun
-  # vecteur : Qdrant reste vide, Mongo et Neo4j sont peuplés normalement. C'est le
-  # levier d'itération dev sur le modèle de données, où l'embedding (~99,9 % du temps
-  # d'un run) ne sert à rien. N'entre PAS dans le hash (§6) : ne pas produire de
-  # vecteurs n'invalide pas ceux déjà écrits. **N'a d'effet qu'en ENVIRONMENT=dev** —
-  # ailleurs on embarque toujours, quoi que dise ce flag (garde dans le hook, comme
-  # `nuke_all`). Défaut `true` : le comportement historique.
   enabled: true
 
 exportation:
-  # Balises NON-CONFIGURÉES (cadrage « trois portes », amende ADR-022 §1) : le SIGNAL
-  # `tag.unconfigured` est TOUJOURS émis au bilan de run — ce curseur ne règle que le
-  # SORT de la métadonnée, appliqué juste avant l'ingestion (computeIdempotence).
-  #   ingest (défaut) → la balise entre en metadata, sous sa clé chemin-complet
-  #   skip            → elle est retirée du document (prod) — le signal, lui, survit
-  # On compte d'abord, on filtre ensuite.
   unconfigured: ingest
 
   neo4j:
-    # Hydratation des nœuds en DEV (Neo4j = l'outil d'inspection de la v0).
-    # ⚠️ Ces toggles ne concernent QUE Neo4j, et sont FORCÉS à false quand
-    # ENVIRONMENT != dev (garde-fou dans le hook, comme nuke_all).
-    #   include_path    → les chemins des FICHIERS XML source sur le nœud
-    #                     (pas les chemins de balises — le format de clé des
-    #                     métadonnées est TOUJOURS le chemin complet, sans toggle)
-    #   include_content → le texte du document, prop `_text_content`
     include_path: true
     include_content: true
 
@@ -102,9 +79,6 @@ exportation:
     collection: "chunks"
 
   qdrant:
-    # PAS de `collection:` — elle est DÉRIVÉE de l'empreinte du WorkflowConfig (§6),
-    # jamais écrite à la main. La nommer ici permettrait d'écraser les vecteurs d'une
-    # stratégie avec ceux d'une autre sans que rien ne le signale.
     distance: "Cosine"
     batch_size: 100
 
@@ -119,9 +93,6 @@ maintenance:
     - "data/cache"
     - "data/meta/events"
 
-  # `nuke_all` efface TOUTES les données de TOUTES les bases (Mongo documents+manifest,
-  # graphe Neo4j, TOUTES les collections Qdrant) en tête de run — la base méta
-  # MURPHY_META est PRÉSERVÉE. C'est le levier disque du développement : les données
-  # sont jetables en v0. Le node `nukeAll` REFUSE de tourner si ENVIRONMENT != "dev"
-  # (garde-fou : absence de ENVIRONMENT ⇒ prod ⇒ refus). À NE PAS activer en prod.
+  # Efface TOUTES les données de TOUTES les bases (sauf la base méta)
+  # À NE PAS activer en prod.
   nuke_all: true

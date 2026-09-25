@@ -86,7 +86,7 @@ données.
 | `meta_audit_events` | Les événements d'audit (`AuditEvent` : event_type, run_id, owner_id, source, document_id, payload, success, error_message, occurred_at). Rétention infinie. | (owner_id, occurred_at), (document_id, occurred_at), (run_id), (event_type) |
 | `meta_run_summaries` | Un `RunSummary` par run : identité (run_id, owner, source, dates), `status` (`ok`/`degraded`/`failed`), `stats` (counts, breakdowns, unknowns), `error_message`. | unique (run_id), (started_at) |
 | `meta_pending_relations` | Les `PendingRelation` : arêtes différées (source_id, target_id, relation_type, metadata, first_seen_run, last_seen_run). Ni TTL ni retry_count : écrite une fois, promue une fois — ou jamais. | **unique** (owner_id, source_id, target_id, relation_type) — c'est lui qui fait de l'upsert une union ; (owner_id, target_id) pour le rejeu ciblé |
-| `meta_published_collection` | **Le pointeur** (`PublishedCollection`, singleton clé `current`) : `collection_name` (l'empreinte), `fingerprint`, `run_id`, `document_count`, `published_at`. Mis à jour par les seuls runs `ok` ; lu par le backend au boot. | — |
+| `meta_published_collection` | **Le pointeur** (`PublishedCollection`, singleton clé `current`) : `collection_name` (l'empreinte), `fingerprint`, `run_id`, `document_count`, `published_at`, `serving_contract_version` (absent des pointeurs antérieurs à l'ADR-039). Mis à jour par les seuls runs `ok`, et par un run restreint seulement si la version en place est déjà la sienne ; lu par le backend au boot. | — |
 
 `fingerprint` et `collection_name` sont identiques aujourd'hui **par décision** : le jour
 où le nom gagne un préfixe, le serving continue de lire un NOM et la traçabilité une
@@ -101,8 +101,22 @@ EMPREINTE.
   dépôt `QdrantVectorRepository`).
 - **ID de point** : SHA-256 du `chunk_id`, replié sur 63 bits — stable entre processus
   (jamais `hash()` natif, resemé par interpréteur).
-- **Payload** : `chunk_id`, `identifier` (sérialisé, = clé de suppression par document),
-  `owner_id`, + les `metadata` du chunk à plat.
+- **Payload** : les `metadata` du chunk à plat, puis les champs du **contrat de
+  serving** (ADR-039,
+  version `SERVING_CONTRACT_VERSION` = 1), posés en dernier pour qu'aucune métadonnée
+  homonyme ne les écrase :
+
+  | Champ | Rôle côté serving |
+  |---|---|
+  | `chunk_id` | identité du passage, envoyée au client |
+  | `identifier` | document parent dans `documents` (sérialisé, = clé de suppression par document) |
+  | `owner_id` | complète la clé du document parent |
+  | `char_start`, `char_end` | bornes du passage dans le `content` du parent, en **points de code** |
+  | `type_document` (métadonnée, facultatif) | nature du document, affichée comme type de la source |
+
+  Le texte du passage n'est **pas** dans le payload : c'est
+  `documents.content[char_start:char_end]`. Les autres métadonnées sont présentes mais le
+  serving ne s'y appuie pas. Changer un de ces champs est un bump de version.
 - **Écriture** : delete-puis-insert par document (`delete_by_document` puis `upsert`) —
   Qdrant n'a pas de « remplace tous les points de ce document » atomique, et un simple
   upsert laisserait des points orphelins quand la nouvelle version a moins de chunks.

@@ -13,7 +13,10 @@ from datetime import UTC, datetime
 
 from ragcore.core.models.enums import SourceName
 from ragcore.core.models.identifiers import OwnerId, RunId
-from ragcore.core.models.published_collection import PublishedCollection
+from ragcore.core.models.published_collection import (
+    SERVING_CONTRACT_VERSION,
+    PublishedCollection,
+)
 from ragcore.core.models.run_stats import RunStats
 from ragcore.core.models.run_summary import RunStatus, RunSummary
 from ragcore.core.telemetry_events import (
@@ -28,8 +31,8 @@ from ragcore.orchestration.kedro.hooks import TelemetryHooks
 class SpyPublishedRepo:
     """Enregistre ce qui a été publié — et surtout, ce qui ne l'a PAS été."""
 
-    def __init__(self) -> None:
-        self.published: list[PublishedCollection] = []
+    def __init__(self, current: PublishedCollection | None = None) -> None:
+        self.published: list[PublishedCollection] = [current] if current else []
 
     async def publish(self, published: PublishedCollection) -> None:
         self.published.append(published)
@@ -50,11 +53,23 @@ def _summary(stats: RunStats, status: RunStatus = RunStatus.OK) -> RunSummary:
     )
 
 
-def _hooks(repo: SpyPublishedRepo) -> TelemetryHooks:
+def _hooks(repo: SpyPublishedRepo, *, is_full_run: bool = True) -> TelemetryHooks:
     hooks = TelemetryHooks()
     hooks._published_repo = repo  # type: ignore[assignment]  # noqa: SLF001
     hooks._qdrant_collection = "9424808d"  # noqa: SLF001
+    hooks._is_full_run = is_full_run  # noqa: SLF001
     return hooks
+
+
+def _pointer(version: int | None) -> PublishedCollection:
+    """Le pointeur en place avant ce run, à une version donnée du contrat."""
+    return PublishedCollection(
+        collection_name="9424808d",
+        fingerprint="9424808d",
+        run_id=RunId("r-0"),
+        document_count=769,
+        serving_contract_version=version,
+    )
 
 
 _COMPLETE = RunStats(counts={DOCUMENT_FETCHED: 1121, DOCUMENT_PERSISTED: 1121})
@@ -69,6 +84,7 @@ def test_a_complete_run_publishes_its_fingerprint() -> None:
     assert repo.published[0].collection_name == "9424808d"
     assert repo.published[0].document_count == 1121
     assert repo.published[0].run_id == "r-1"
+    assert repo.published[0].serving_contract_version == SERVING_CONTRACT_VERSION
 
 
 def test_a_run_that_LOST_documents_does_NOT_publish() -> None:
@@ -123,3 +139,49 @@ def test_a_FAILED_run_does_not_publish() -> None:
 def test_publishing_is_a_noop_when_the_hook_was_never_wired() -> None:
     """Un run qui n'a pas atteint `before_pipeline_run` ne doit pas exploser ici."""
     TelemetryHooks()._publish_collection(_summary(_COMPLETE))  # noqa: SLF001
+
+
+# --- ADR-039 §3 : un run restreint n'introduit jamais une version du contrat ---------
+
+
+def test_a_restricted_run_publishes_over_a_pointer_of_the_SAME_version() -> None:
+    repo = SpyPublishedRepo(_pointer(SERVING_CONTRACT_VERSION))
+
+    _hooks(repo, is_full_run=False)._publish_collection(_summary(_COMPLETE))  # noqa: SLF001
+
+    assert len(repo.published) == 2
+    assert repo.published[-1].run_id == "r-1"
+
+
+def test_a_restricted_run_does_NOT_publish_over_a_pointer_without_version() -> None:
+    """Il n'a réécrit que ses sources : la collection mêle encore l'ancien format."""
+    repo = SpyPublishedRepo(_pointer(None))
+
+    _hooks(repo, is_full_run=False)._publish_collection(_summary(_COMPLETE))  # noqa: SLF001
+
+    assert [p.run_id for p in repo.published] == ["r-0"]
+
+
+def test_a_restricted_run_does_NOT_publish_when_no_pointer_exists() -> None:
+    repo = SpyPublishedRepo()
+
+    _hooks(repo, is_full_run=False)._publish_collection(_summary(_COMPLETE))  # noqa: SLF001
+
+    assert repo.published == []
+
+
+def test_a_restricted_run_does_NOT_publish_over_ANOTHER_version() -> None:
+    repo = SpyPublishedRepo(_pointer(SERVING_CONTRACT_VERSION - 1))
+
+    _hooks(repo, is_full_run=False)._publish_collection(_summary(_COMPLETE))  # noqa: SLF001
+
+    assert [p.run_id for p in repo.published] == ["r-0"]
+
+
+def test_a_full_run_publishes_over_a_pointer_without_version() -> None:
+    """C'est le chemin d'un bump : le run complet réécrit tout, puis publie."""
+    repo = SpyPublishedRepo(_pointer(None))
+
+    _hooks(repo)._publish_collection(_summary(_COMPLETE))  # noqa: SLF001
+
+    assert repo.published[-1].serving_contract_version == SERVING_CONTRACT_VERSION

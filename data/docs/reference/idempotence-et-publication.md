@@ -107,6 +107,15 @@ conditionnelle** :
   incomplet ; le serving continue de servir le dernier corpus complet, et l'utilisateur
   ne voit jamais la fuite.
 
+Le pointeur publie aussi `serving_contract_version`, la version du contrat de payload
+que ce code écrit (`SERVING_CONTRACT_VERSION`,
+ADR-039 §3). D'où une
+seconde condition, pour les seuls runs **restreints** (`--params source=…`, ou `SOURCE`
+dans `.env.dev`) : ils ne réécrivent que leurs sources, donc ils ne publient que si le
+pointeur en place porte **déjà** la même version (`may_publish`). Sinon la collection
+mêlerait deux formats sous une version qui prétend le contraire. Un bump de version
+impose donc un run complet : `kedro run --params source=all`.
+
 Côté backend (`murphy-backend`, `src/infra/collectionPointer.ts`) : lecture du pointeur
 au boot, repli **bruyant** sur `QDRANT_COLLECTION` si aucun run n'a jamais publié, et
 dans tous les cas vérification que la collection existe réellement dans Qdrant (refus de

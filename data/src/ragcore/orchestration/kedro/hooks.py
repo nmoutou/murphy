@@ -71,7 +71,11 @@ from ragcore.core.config import (
 from ragcore.core.models.audit import build_event
 from ragcore.core.models.enums import SourceName
 from ragcore.core.models.identifiers import OwnerId, RunId
-from ragcore.core.models.published_collection import PublishedCollection
+from ragcore.core.models.published_collection import (
+    SERVING_CONTRACT_VERSION,
+    PublishedCollection,
+    may_publish,
+)
 from ragcore.core.models.run_stats import RunStats
 from ragcore.core.models.run_summary import RunStatus, RunSummary
 from ragcore.core.ports.experiment_tracker import ExperimentTracker
@@ -127,6 +131,9 @@ class TelemetryHooks:
         Elle est déjà dérivée en tête de run (``collection_name(workflow)``) ; la garder
         évite une seconde dérivation, et deux dérivations sont deux occasions de diverger.
         """
+        self._is_full_run = True
+        """Ce run traite-t-il TOUTES les sources ? Seul un run complet peut publier une
+        version du contrat que le pointeur en place ne porte pas encore (ADR-039 §3)."""
         self._embedder: object | None = None
         self._runtime_instance: AsyncioRuntime | None = None
         self._tracker: ExperimentTracker | None = None
@@ -276,7 +283,10 @@ class TelemetryHooks:
         )
 
         # Pipeline context (created early so telemetry adapters can use the run_id)
-        extra = run_params.get("extra_params") or {}
+        # Les `--params` de la ligne de commande. Kedro 1.x les passe sous
+        # `runtime_params` ; l'ancienne clé `extra_params` n'existe plus, et la lire
+        # faisait ignorer `--params source=…` en silence.
+        extra = run_params.get("runtime_params") or {}
         owner_id = extra.get("owner_id", settings.owner_id)
 
         # Les SOURCES du run. Un run nu les ingère TOUTES ; on peut le restreindre :
@@ -295,6 +305,7 @@ class TelemetryHooks:
         # provenance. La restriction par paramètre garde la voie du rejeu ciblé ouverte,
         # mais le bilan ne dit pas encore *quoi* rejouer.
         sources = _resolve_sources(extra.get("source", settings.source))
+        self._is_full_run = set(sources) == set(all_sources())
         definitions = {source: definition_for(source) for source in sources}
 
         # `source=None` dans le contexte signifie « ce run n'est pas mono-source ». Le
@@ -662,6 +673,9 @@ class TelemetryHooks:
             )
             return
 
+        if not self._contract_allows_publication(self._published_repo):
+            return
+
         published = PublishedCollection.of(
             self._qdrant_collection,
             run_id=summary.run_id,
@@ -673,6 +687,26 @@ class TelemetryHooks:
             published.collection_name,
             published.document_count,
         )
+
+    def _contract_allows_publication(
+        self, published_repo: MongoPublishedCollectionRepository
+    ) -> bool:
+        """Vérifie que publier ne mêle pas deux versions du contrat (``may_publish``).
+
+        Le pointeur en place est relu ICI, pas en tête de run : c'est la version publiée
+        au moment de remplacer le pointeur qui compte.
+        """
+        current = self._runtime.run(published_repo.get())
+        if may_publish(current, is_full_run=self._is_full_run):
+            return True
+        logger.warning(
+            "Run restreint : le pointeur de collection n'est PAS mis à jour. Le pointeur "
+            "en place ne porte pas la version %d du contrat de serving, et ce run n'a "
+            "réécrit que ses sources. Lancer un run complet : "
+            "`kedro run --params source=all`.",
+            SERVING_CONTRACT_VERSION,
+        )
+        return False
 
     def _track_and_close(self, summary: RunSummary | None) -> None:
         """Enregistre le bilan dans le tracker, puis ferme le run — **toujours**.

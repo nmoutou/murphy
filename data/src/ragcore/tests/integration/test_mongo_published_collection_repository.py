@@ -18,7 +18,11 @@ from ragcore.adapters.storage.mongo.published_collection_repository import (
     MongoPublishedCollectionRepository,
 )
 from ragcore.core.models.identifiers import RunId
-from ragcore.core.models.published_collection import PublishedCollection
+from ragcore.core.models.published_collection import (
+    POINTER_KEY,
+    SERVING_CONTRACT_VERSION,
+    PublishedCollection,
+)
 
 pytestmark = pytest.mark.integration
 
@@ -55,6 +59,7 @@ async def test_publishing_then_reading_gives_the_collection_back(repo) -> None:
     assert published.collection_name == "9424808d"
     assert published.document_count == 1121
     assert published.run_id == "r-1"
+    assert published.serving_contract_version == SERVING_CONTRACT_VERSION
 
 
 async def test_publishing_twice_REPLACES_and_never_stacks(repo) -> None:
@@ -78,3 +83,24 @@ async def test_publishing_twice_REPLACES_and_never_stacks(repo) -> None:
     # Et il n'y a qu'UN document en base — pas deux.
     count = await repo._collection.count_documents({})  # noqa: SLF001
     assert count == 1
+
+
+async def test_a_pointer_written_before_the_contract_reads_back_WITHOUT_version(
+    repo,
+) -> None:
+    """Le pointeur publié avant l'ADR-039 n'a pas le champ : il ne vaut pas la v1."""
+    await repo._collection.insert_one(  # noqa: SLF001
+        {
+            "key": POINTER_KEY,
+            "collection_name": "9424808d",
+            "fingerprint": "9424808d",
+            "run_id": "r-0",
+            "document_count": 769,
+            "published_at": "2026-09-25T07:34:01.924815Z",
+        }
+    )
+
+    published = await repo.get()
+
+    assert published is not None
+    assert published.serving_contract_version is None

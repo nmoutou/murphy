@@ -8,6 +8,7 @@ clé qu'en Mongo et Neo4j.
 """
 
 import hashlib
+from typing import Any
 
 from qdrant_client import AsyncQdrantClient
 from qdrant_client.models import (
@@ -19,7 +20,7 @@ from qdrant_client.models import (
     VectorParams,
 )
 
-from ragcore.core.models.chunk import EmbeddedChunk
+from ragcore.core.models.chunk import Chunk, EmbeddedChunk
 from ragcore.core.models.identifiers import OwnerId, SourceIdentifier
 
 
@@ -63,16 +64,29 @@ class QdrantVectorRepository:
             PointStruct(
                 id=self._stable_hash_id(ec.chunk.chunk_id),
                 vector=ec.embedding,
-                payload={
-                    "chunk_id": ec.chunk.chunk_id,
-                    "identifier": ec.chunk.parent_identifier.serialize(),
-                    "owner_id": ec.chunk.owner_id,
-                    **ec.chunk.metadata,
-                },
+                payload=self._payload(ec.chunk),
             )
             for ec in embedded_chunks
         ]
         await self._client.upsert(collection_name=self._collection_name, points=points)
+
+    @staticmethod
+    def _payload(chunk: Chunk) -> dict[str, Any]:
+        """Le payload d'un point : les métadonnées à plat, PUIS les champs du contrat.
+
+        Les champs que le serving lit (ADR-039, contrat v1) viennent en dernier : une
+        métadonnée homonyme ne peut pas les écraser. Le texte du passage n'y est pas —
+        il vit dans le ``content`` du document Mongo, entre ``char_start`` et
+        ``char_end`` (points de code).
+        """
+        return {
+            **chunk.metadata,
+            "chunk_id": chunk.chunk_id,
+            "identifier": chunk.parent_identifier.serialize(),
+            "owner_id": chunk.owner_id,
+            "char_start": chunk.char_start,
+            "char_end": chunk.char_end,
+        }
 
     @staticmethod
     def _stable_hash_id(chunk_id: str) -> int:

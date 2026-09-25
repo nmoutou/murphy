@@ -26,7 +26,26 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from .identifiers import RunId
 
-__all__ = ["PublishedCollection", "POINTER_KEY"]
+__all__ = [
+    "PublishedCollection",
+    "POINTER_KEY",
+    "SERVING_CONTRACT_VERSION",
+    "may_publish",
+]
+
+SERVING_CONTRACT_VERSION = 1
+"""La version du contrat ingestion ↔ serving que ce code écrit (ADR-039).
+
+La v1 couvre :
+
+- le payload Qdrant : ``chunk_id``, ``identifier``, ``owner_id``, ``char_start``,
+  ``char_end`` (points de code dans ``content``), ``type_document`` facultatif ;
+- Mongo ``documents`` : ``identifier``, ``owner_id``, ``title``, ``content`` ;
+- ce pointeur, qui publie la version.
+
+Le backend refuse de démarrer sur une autre version. Toute modification de ces champs
+est donc un **bump**, et un bump impose un run complet (voir ``may_publish``).
+"""
 
 POINTER_KEY = "current"
 """La clé du pointeur — il n'y en a QU'UN.
@@ -64,6 +83,13 @@ class PublishedCollection(BaseModel):
 
     published_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
+    serving_contract_version: int | None = None
+    """La version du contrat que cette collection respecte (``SERVING_CONTRACT_VERSION``).
+
+    ``None`` par défaut, et non la version courante : un pointeur écrit avant l'ADR-039
+    doit se relire « sans version », pas se faire passer pour la v1. ``of`` la pose.
+    """
+
     @classmethod
     def of(
         cls,
@@ -77,4 +103,22 @@ class PublishedCollection(BaseModel):
             fingerprint=collection_name,
             run_id=run_id,
             document_count=document_count,
+            serving_contract_version=SERVING_CONTRACT_VERSION,
         )
+
+
+def may_publish(current: PublishedCollection | None, *, is_full_run: bool) -> bool:
+    """Un run ``ok`` peut-il publier sans mêler deux versions du contrat ?
+
+    Un run complet réécrit tous les documents : il publie toujours. Un run restreint
+    (``--params source=…``) ne réécrit que ses sources ; s'il publiait une version que
+    le pointeur en place ne porte pas encore, la collection mêlerait deux formats sous
+    une version qui prétend le contraire. Il ne publie donc que si le pointeur porte
+    déjà la version de ce code.
+    """
+    if is_full_run:
+        return True
+    return (
+        current is not None
+        and current.serving_contract_version == SERVING_CONTRACT_VERSION
+    )
