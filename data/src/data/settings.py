@@ -27,10 +27,8 @@ structlog.configure(
     cache_logger_on_first_use=True,
 )
 
-# Instantiated project hooks.
-# Hooks are executed in a Last-In-First-Out (LIFO) order.
-from omegaconf.resolvers import oc  # noqa: E402
-
+# Importé APRÈS `structlog.configure` : les modules de `ragcore` doivent trouver structlog
+# déjà configuré quand ils créent leurs loggers.
 from ragcore.orchestration.kedro.hooks import TelemetryHooks  # noqa: E402
 
 HOOKS = (TelemetryHooks(),)
@@ -38,33 +36,7 @@ HOOKS = (TelemetryHooks(),)
 # Installed plugins for which to disable hook auto-registration.
 DISABLE_HOOKS_FOR_PLUGINS = ("kedro-viz",)
 
-# Class that manages storing KedroSession data.
-# from kedro.framework.session.store import BaseSessionStore
-# SESSION_STORE_CLASS = BaseSessionStore
-# Keyword arguments to pass to the `SESSION_STORE_CLASS` constructor.
-# SESSION_STORE_ARGS = {
-#     "path": "./sessions"
-# }
-
-# Directory that holds configuration.
-# CONF_SOURCE = "conf"
-
-# Class that manages how configuration is loaded.
-from kedro.config import OmegaConfigLoader  # noqa: E402
-
-CONFIG_LOADER_CLASS = OmegaConfigLoader
-# Keyword arguments to pass to the `CONFIG_LOADER_CLASS` constructor.
-CONFIG_LOADER_ARGS = {
-    "base_env": "base",
-    "custom_resolvers": {
-        "oc.env": oc.env,
-    }
-}
-
-# Class that manages Kedro's library components.
-# from kedro.framework.context import KedroContext
-# CONTEXT_CLASS = KedroContext
-
-# Class that manages the Data Catalog.
-# from kedro.io import DataCatalog
-# DATA_CATALOG_CLASS = DataCatalog
+# REMPLACE les arguments par défaut de Kedro (`base_env: "base"`,
+# `default_run_env: "local"`) au lieu de les compléter : aucun environnement d'exécution
+# n'est donc superposé à `base` — il n'existe pas de `conf/local/`.
+CONFIG_LOADER_ARGS = {"base_env": "base"}

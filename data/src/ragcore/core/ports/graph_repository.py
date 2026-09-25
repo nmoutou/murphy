@@ -29,10 +29,6 @@ class RelationWriteResult:
 class GraphRepository(Protocol):
     """Stockage du graphe (Neo4j) — merge intelligent (pas de delete-node)."""
 
-    async def initialize(self) -> None:
-        """Crée les index Neo4j pour chaque source configurée."""
-        ...
-
     async def merge_document_node(self, document: ParsedDocument) -> None: ...
 
     async def upsert_relations(

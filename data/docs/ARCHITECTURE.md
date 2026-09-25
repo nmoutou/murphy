@@ -29,9 +29,6 @@ Architecture hexagonale stricte : `core/` déclare des **ports** (interfaces), `
 les implémente, et `orchestration/kedro/` n'est qu'un shell — un CLI ou un test peut
 lancer le même pipeline sans Kedro ni YAML.
 
-Vestiges à ne pas prendre pour du code vivant : `src/data/datasets/`, `src/data/models/`
-et `src/data/utils/` ne sont référencés par rien ; `src/data/pipelines/` est vide.
-
 ## Le DAG
 
 Un seul pipeline, enregistré sous `__default__` et `ingestion` (un alias, pas deux

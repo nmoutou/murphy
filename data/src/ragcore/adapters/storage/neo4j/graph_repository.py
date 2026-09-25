@@ -102,16 +102,6 @@ class Neo4jGraphRepository:
         # Défaut = régime prod (nœud maigre). Le hook passe l'hydratation de dev.
         self._hydration = hydration or NodeHydration()
 
-    async def initialize(self) -> None:
-        """Crée l'index Neo4j sur le champ `identifier`."""
-        async with self._driver.session() as session:
-            # `Pending` est indexé comme les autres : la ré-hydratation le cherche par
-            # `identifier`, et sans index elle scannerait le graphe entier.
-            for label in (*_KNOWN_LABELS, PENDING_LABEL):
-                await session.run(
-                    f"CREATE INDEX IF NOT EXISTS FOR (n:{label}) ON (n.identifier)"
-                )
-
     async def merge_document_node(self, document: ParsedDocument) -> None:
         """Merge un nœud document. Le label est calculé depuis ``identifier.document_type``.
 

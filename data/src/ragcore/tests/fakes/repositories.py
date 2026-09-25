@@ -95,9 +95,6 @@ class InMemoryGraphRepository:
         self.nodes: set[str] = set()
         self.edges: list[tuple[Relation, RunId]] = []
 
-    async def initialize(self) -> None:
-        return
-
     async def merge_document_node(self, document: ParsedDocument) -> None:
         self.nodes.add(document.identifier.serialize())
 

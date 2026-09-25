@@ -47,6 +47,7 @@ def _params_reels() -> dict:
     )
     return loader["parameters"]
 
+
 # La config du corpus LEGI telle que `parameters.yml` la peuple aujourd'hui. Elle sert
 # de référence : c'est SON empreinte qui nomme la collection en production.
 #

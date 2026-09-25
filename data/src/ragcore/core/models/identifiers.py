@@ -1,13 +1,10 @@
 import re
-from typing import TYPE_CHECKING, Annotated, Literal, NewType
+from typing import Annotated, Literal, NewType
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from pydantic import ValidationError as PydanticValidationError
 
 from ..exceptions import ValidationError
-
-if TYPE_CHECKING:
-    from .document import RawDocument
 
 DocumentId = NewType("DocumentId", str)
 RunId = NewType("RunId", str)
@@ -51,26 +48,6 @@ class ELI(BaseModel):
                 f"Format ELI invalide : {v!r} (attendu : 8 majuscules + 12 chiffres)"
             )
         return v
-
-    @classmethod
-    def from_raw_document(cls, raw: "RawDocument") -> "ELI":
-        """Extrait et valide l'ELI depuis un RawDocument LEGI.
-
-        Lève ValidationError si l'ELI est absent (REASON_NO_ELI) ou mal formé
-        (REASON_INVALID_ELI) : les deux cas sont des rejets métier, pas des
-        erreurs de lecture.
-        """
-        content = raw.payload.get("content", {})
-        eli_str = content.get("eli") or content.get("id", "")
-        if not eli_str:
-            raise ValidationError("ELI absent du document LEGI")
-        try:
-            return cls(raw=eli_str)
-        except PydanticValidationError as exc:
-            # Sans ce relais, le format invalide remonte en pydantic.ValidationError,
-            # échappe au `except ValidationError` des appelants, et se fait compter
-            # comme une erreur de parsing.
-            raise ValidationError(f"Format ELI invalide : {eli_str!r}") from exc
 
     def serialize(self) -> DocumentId:
         """Représentation sérialisée : 'eli:LEGIARTI000006419264'.

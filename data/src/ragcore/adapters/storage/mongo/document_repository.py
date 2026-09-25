@@ -63,9 +63,7 @@ class MongoDocumentRepository:
         #
         # Les trois champs restent sur le MODÈLE (le chunker et l'extracteur les lisent
         # en phase 1, dans le même run, en mémoire) — ils sont retirés du DUMP.
-        data = document.model_dump(
-            mode="json", exclude={"source_files", "structure"}
-        )
+        data = document.model_dump(mode="json", exclude={"source_files", "structure"})
         # Le champ sérialisé porte l'indexation ; il double la clé du filtre.
         data["identifier"] = identifier_key
         await self._collection.replace_one(filter_, data, upsert=True)
