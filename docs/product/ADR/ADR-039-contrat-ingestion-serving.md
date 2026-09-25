@@ -1,6 +1,6 @@
 # ADR-039 — Contrat ingestion ↔ serving : le texte d'un passage vit dans Mongo, désigné par ses offsets
 
-**Statut** : 🔶 Proposé (25 septembre 2026, correction TR-01,
+**Statut** : ✅ Accepté (25 septembre 2026, correction TR-01,
 [`corrections/transverse.md`](../../pilotage/corrections/transverse.md) §1)
 
 ## Contexte

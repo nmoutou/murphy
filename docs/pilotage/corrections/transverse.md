@@ -6,7 +6,7 @@
 
 | ID | Point | Sévérité | Statut |
 |---|---|---|---|
-| TR-01 | **Contrat serving ↔ ingestion rompu** (§1) | Bloquant | 🔶 [ADR-039](../../product/ADR/ADR-039-contrat-ingestion-serving.md) proposé |
+| TR-01 | **Contrat serving ↔ ingestion rompu** (§1) | Bloquant | 🔶 [ADR-039](../../product/ADR/ADR-039-contrat-ingestion-serving.md) accepté · côté `data/` fait, backend à suivre |
 | TR-02 | L'URL WebSocket configurée n'a pas de chemin : le serveur refuse la connexion (§2) | Bloquant | ⬜ |
 | TR-03 | La prod ne peut pas joindre le backend depuis le navigateur (§3) | Dette | ⏸ décision de déploiement |
 | TR-04 | `types/messages.ts` est dupliqué entre backend et frontend, sans contrôle | Confort | ⬜ |
@@ -21,6 +21,12 @@ dans le `content` du document Mongo, et le pointeur publié porte une
 version du contrat, vérifiée au boot. Le flux envoie au client chaque
 document parent une fois (`data-parentDocument`, texte entier) et chaque
 passage avec ses bornes de surlignage (`data-document`).
+
+**Côté `data/` : fait.** Le payload porte `char_start`/`char_end`, le
+pointeur `serving_contract_version` (`SERVING_CONTRACT_VERSION` = 1),
+et un run restreint ne publie que sur un pointeur de même version
+(`may_publish`). Reste le backend (lot 4) et l'alignement du type côté
+frontend (TR-04).
 
 **Constat confirmé le 25 septembre 2026** sur la collection publiée
 `9424808d…` : le payload montre `chunk_id` et aucun `chunkId`, ni texte,
