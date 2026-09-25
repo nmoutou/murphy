@@ -16,12 +16,18 @@ côté serveur : le backend est stateless, la conversation vit dans l'état du c
 
 ## Le contrat de messages
 
-`src/types/messages.ts` définit `AppUIMessage` — **à garder synchronisé** avec
-`backend/src/types/messages.ts` :
+`AppUIMessage` vient de `@murphy/contract/messages` (`packages/contract/`, ADR-040),
+partagé avec le backend : une modification casse la compilation des deux côtés à la
+fois. `useRagChat` passe ses schémas zod à `useChat` (`dataPartSchemas`,
+`messageMetadataSchema`) : une part qui ne respecte pas le contrat est rejetée à
+l'arrivée.
 
 - parts `text-delta` : les tokens du LLM ;
-- parts custom `data-document` `{ document: DocumentChunk }` : les sources, émises avant
-  la génération ;
+- parts custom `data-parentDocument` `{ parentDocument: ParentDocument }` : le document
+  entier d'où viennent des passages, une fois par document, avant ses passages (pas
+  encore affiché) ;
+- parts custom `data-document` `{ document: DocumentChunk }` : les passages, émis avant
+  la génération, avec leurs offsets UTF-16 dans le `content` du parent ;
 - part `finish` avec metadata `{ ragTiming }` : latences par étape du pipeline RAG.
 
 Les erreurs typées vivent dans `src/types/errors.ts`.

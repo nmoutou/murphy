@@ -6,7 +6,7 @@ import WelcomeLayout from "./layouts/WelcomeLayout";
 import ChatLayout from "./layouts/ChatLayout";
 import ChatBox from "./ChatBox";
 import { useRagChat } from "@/hooks/useRagChat";
-import type { DocumentChunk } from "@/types/messages";
+import type { DocumentChunk } from "@murphy/contract/messages";
 
 export default function MainPanel(){
     const theme = useTheme();

@@ -1,18 +1,16 @@
 /**
- * Quelle collection Qdrant fait foi ?
+ * Quelle collection Qdrant fait foi, et dans quel format ?
  *
  * Le pipeline nomme ses collections par une EMPREINTE de sa config (`9424808d…`) : deux
  * configs produisent deux collections qui coexistent — c'est la condition de l'A/B. Le
- * backend, lui, lisait `QDRANT_COLLECTION` : un nom écrit à la main, qui ne correspondait
- * à aucune empreinte, et qui ne pointait donc sur RIEN.
+ * pipeline publie donc un pointeur dans Mongo (`meta_published_collection`), et **seul un
+ * run `ok` le met à jour** : un run qui a perdu des documents ne publie pas, et le serving
+ * continue de servir le dernier corpus complet.
  *
- * Le pipeline publie désormais un pointeur dans Mongo (`meta_published_collection`), et
- * **seul un run `ok` le met à jour** : un run qui a perdu des documents ne publie pas, et
- * le serving continue de servir le dernier corpus complet.
- *
- * Le fallback sur `QDRANT_COLLECTION` reste — mais il est BRUYANT et VÉRIFIÉ. Un fallback
- * silencieux vers un nom qui n'existe pas reproduirait exactement le défaut qu'on corrige :
- * le backend démarrerait, croirait avoir un corpus, et échouerait à la première question.
+ * Le pointeur porte aussi la version du contrat ingestion ↔ serving que la collection
+ * respecte (ADR-039). Le backend REFUSE de démarrer sans pointeur, sur une autre version,
+ * ou sur une collection absente : une collection que personne n'a publiée n'a pas de
+ * format connu, et la servir reviendrait à découvrir l'écart sur la première question.
  */
 
 import { QdrantClient } from '@qdrant/qdrant-js';
@@ -23,6 +21,14 @@ const log = logger.child({ context: 'collectionPointer' });
 
 const POINTER_COLLECTION = 'meta_published_collection';
 const POINTER_KEY = 'current';
+const FULL_RUN_COMMAND = 'kedro run --params source=all';
+
+/**
+ * La version du contrat que ce code lit (ADR-039 §2) : payload Qdrant, Mongo
+ * `documents`, pointeur. Même valeur que `SERVING_CONTRACT_VERSION` côté `data/`
+ * (`ragcore/core/models/published_collection.py`) : les deux changent ensemble.
+ */
+export const SERVING_CONTRACT_VERSION = 1;
 
 export interface PublishedCollection {
   collection_name: string;
@@ -30,6 +36,8 @@ export interface PublishedCollection {
   run_id: string;
   document_count: number;
   published_at: string;
+  /** Absent d'un pointeur publié avant l'ADR-039 */
+  serving_contract_version?: number;
 }
 
 export interface CollectionSources {
@@ -37,8 +45,6 @@ export interface CollectionSources {
   /** The database holding the pointer — not the data database */
   readonly metaDatabase: string;
   readonly qdrantUrl: string;
-  /** `QDRANT_COLLECTION`: used only when no run has published */
-  readonly fallbackCollection: string;
 }
 
 /**
@@ -59,37 +65,30 @@ export async function readPublishedCollection(
 }
 
 /**
- * Résout la collection à interroger, et REFUSE de démarrer sur une collection absente.
- *
- * L'ordre est délibéré :
- *   1. le pointeur (la vérité, publiée par un run complet) ;
- *   2. à défaut, `QDRANT_COLLECTION` — mais en le disant fort ;
- *   3. dans les deux cas, on VÉRIFIE que la collection existe vraiment.
- *
- * L'étape 3 est celle qui compte. Sans elle, le fallback rejouerait le bug d'origine :
- * un nom plausible, aucun vecteur derrière, et la panne repoussée jusqu'à la première
- * question d'un utilisateur — au moment le plus coûteux pour la découvrir.
+ * Résout la collection à interroger, et REFUSE de démarrer si elle n'est pas servable :
+ * pas de pointeur, une version du contrat inconnue, ou une collection absente de Qdrant.
+ * Mieux vaut le découvrir au boot que sur la première question d'un utilisateur.
  */
 export async function resolveCollection(sources: CollectionSources): Promise<string> {
-  const collection = await choosePublishedOrFallback(sources);
+  const collection = await readServableCollection(sources);
   await assertCollectionExists(sources.qdrantUrl, collection);
   return collection;
 }
 
-async function choosePublishedOrFallback(sources: CollectionSources): Promise<string> {
+async function readServableCollection(sources: CollectionSources): Promise<string> {
   const published = await readPublishedCollection(sources.mongoClient, sources.metaDatabase).catch((error) => {
-    log.warn({ error: String(error) }, 'Pointeur de collection illisible (Mongo)');
-    return null;
+    throw new Error(
+      `Pointeur de collection illisible (${sources.metaDatabase}.${POINTER_COLLECTION}). Cause : ${String(error)}`
+    );
   });
 
   if (!published) {
-    log.warn(
-      { collection: sources.fallbackCollection },
-      "Aucun run n'a publié de collection : repli sur QDRANT_COLLECTION. " +
-        "Ce nom n'est vérifié par personne — lancer une ingestion complète le remplacera."
+    throw new Error(
+      `Aucun run d'ingestion n'a publié de collection (${sources.metaDatabase}.${POINTER_COLLECTION}). ` +
+        `Lancer un run complet : ${FULL_RUN_COMMAND}.`
     );
-    return sources.fallbackCollection;
   }
+  assertContractVersion(published);
 
   log.info(
     {
@@ -97,10 +96,29 @@ async function choosePublishedOrFallback(sources: CollectionSources): Promise<st
       runId: published.run_id,
       documentCount: published.document_count,
       publishedAt: published.published_at,
+      servingContractVersion: published.serving_contract_version,
     },
     'Collection résolue depuis le pointeur publié'
   );
   return published.collection_name;
+}
+
+/**
+ * Une version plus ancienne se corrige en réingérant, une plus récente en mettant le
+ * backend à jour. Un pointeur sans version date d'avant le contrat : réingérer.
+ */
+function assertContractVersion(published: PublishedCollection): void {
+  const version = published.serving_contract_version;
+  if (version === SERVING_CONTRACT_VERSION) return;
+
+  const remedy =
+    version !== undefined && version > SERVING_CONTRACT_VERSION
+      ? 'Mettre à jour le backend.'
+      : `Réingérer le corpus : ${FULL_RUN_COMMAND}.`;
+  throw new Error(
+    `La collection publiée « ${published.collection_name} » suit le contrat de serving ` +
+      `v${version ?? '(aucune)'}, ce backend lit la v${SERVING_CONTRACT_VERSION} (ADR-039). ${remedy}`
+  );
 }
 
 /**
@@ -119,9 +137,8 @@ async function assertCollectionExists(qdrantUrl: string, collection: string): Pr
 
   if (!exists.exists) {
     throw new Error(
-      `La collection Qdrant « ${collection} » n'existe pas. Le backend ne peut rien ` +
-        `retrouver. Lancer une ingestion (kedro run) : un run complet publiera la ` +
-        `collection à servir.`
+      `La collection Qdrant « ${collection} » n'existe pas, alors que le pointeur la ` +
+        `publie. Lancer un run complet : ${FULL_RUN_COMMAND}.`
     );
   }
 

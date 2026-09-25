@@ -1,6 +1,6 @@
 # Corrections — backend
 
-> Périmètre : `backend/` (sous-module `murphy-backend`). Chemins relatifs
+> Périmètre : le dossier `backend/`. Chemins relatifs
 > à `backend/`. Index et ordre d'exécution : [`README.md`](README.md).
 >
 > Les deux correctifs locaux relevés par l'audit sont commités par le
@@ -16,7 +16,10 @@
 > `8dda745`.
 >
 > **Troisième lot exécuté le 25 septembre 2026** (BE-06, BE-08, BE-09),
-> non commité, empilé sur le deuxième. Les numéros de ligne des items
+> non commité, empilé sur le deuxième.
+>
+> **Quatrième lot exécuté le 25 septembre 2026** (TR-01 côté backend,
+> BE-11, BE-15), non commité, sur `144d770`. Les numéros de ligne des items
 > restants renvoient au code **d'avant** le premier lot.
 
 ## 1. Tableau
@@ -33,11 +36,11 @@
 | BE-08 | Le même bloc `try/catch/log/RagError` est copié dans 4 clients | Dette | ✅ |
 | BE-09 | Configuration dispersée : `process.env` lu dans 15 fichiers, nombres magiques | Dette | ✅ |
 | BE-10 | Commentaires et métadonnées qui mentent | Dette | 🔶 |
-| BE-11 | Typage : `any`, casts, nom qui masque un global | Dette | 🔶 |
+| BE-11 | Typage : `any`, casts, nom qui masque un global | Dette | ✅ |
 | BE-12 | `dotenv` ne charge rien, `@types/ws` en dépendance runtime | Confort | ✅ |
 | BE-13 | Le WebSocket ne valide pas son entrée | Dette | ✅ |
 | BE-14 | `health.ts` : deux handlers identiques, un timer jamais annulé | Confort | ✅ |
-| BE-15 | `chatService.createChatStream` : `execute` fait 49 lignes | Dette | ⬜ |
+| BE-15 | `chatService.createChatStream` : `execute` fait 49 lignes | Dette | ✅ |
 | BE-16 | Le WebSocket n'a aucune limite de débit (trouvé pendant le lot 2) | Dette (sécurité) | ✅ |
 
 🔶 : entamé ; le détail dit ce qui reste.
@@ -366,9 +369,11 @@ paramètres par défaut.
 
 ### BE-11 — typage
 
-- `types/rag.ts:24` : `interface Document` masque le type global DOM
-  `Document`. Renommer en `ChunkDocument` (le nom définitif dépend de
-  TR-01).
+- ✅ (lot 4) `types/rag.ts:24` : `interface Document` masque le type global DOM
+  `Document`. Remplacé, avec `SearchResult` et son payload lâche, par les
+  types du contrat ADR-039 : `RetrievedChunk` (point Qdrant validé),
+  `StoredDocument` (document parent Mongo) et `Passage`. Les casts
+  `as string` sur le payload disparaissent de `chatService.ts`.
 - ✅ `types/rag.ts:44` : `[key: string]: any` → `unknown`.
 - ✅ `middleware/validation.ts:13` : `(err as any).path` → restreindre
   avec `err.type === 'field'`.
@@ -376,9 +381,10 @@ paramètres par défaut.
   est supprimé, puisque `value` est déjà typé `UIMessageChunk`.
 - ✅ `infra/qdrant.ts:53` : `(point: any)` → le type est inféré depuis
   `@qdrant/js-client-rest`.
-- `routes/chat.ts:42,62`, `routes/chatWebSocket.ts:15` : `messages || []`
+- ✅ `routes/chat.ts:42,62`, `routes/chatWebSocket.ts:15` : `messages || []`
   laisse passer une liste vide jusqu'à `createChatStream`, qui lève alors
-  « No question provided ». Rejeter en 400 à la validation.
+  « No question provided ». Rejeter en 400 à la validation. Fait avec
+  BE-13 : `validation/chatRequest.ts` refuse une liste vide.
 
 ### BE-12 — dépendances et amorçage
 
@@ -431,6 +437,11 @@ Le callback `execute` fait 49 lignes utiles (limite de `CLAUDE.md` : 30). Extrai
 - `streamAnswer(writer, messages)`.
 
 À faire **après TR-01**, qui change le contenu de chaque étape.
+
+**Fait (lot 4)**, avec TR-01 : `execute` fait 20 lignes utiles. `writeSources`
+écrit chaque document parent une fois, avant son premier passage ;
+`buildLlmMessages` et `streamAnswer` sont extraits. `createChatStream` a
+un type de retour explicite.
 
 ### BE-16 — WebSocket sans limite de débit
 

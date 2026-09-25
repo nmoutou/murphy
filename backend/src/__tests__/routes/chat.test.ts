@@ -8,7 +8,7 @@ import request from 'supertest';
 import type { InferUIMessageChunk } from 'ai';
 import chatRouter from '../../routes/chat';
 import { createChatStream } from '../../services/chatService';
-import type { AppUIMessage } from '../../types/messages';
+import type { AppUIMessage } from '@murphy/contract/messages';
 
 jest.mock('../../services/chatService', () => ({ createChatStream: jest.fn() }));
 jest.mock('../../utils/logger', () => {
@@ -32,7 +32,10 @@ const streamOf = (parts: AppChunk[]): ReadableStream<AppChunk> =>
 const ANSWER_PARTS: AppChunk[] = [
   { type: 'start', messageId: MESSAGE_ID },
   { type: 'text-start', id: MESSAGE_ID },
-  { type: 'data-document', data: { chunkId: 'chunk-1', score: 0.9 } },
+  {
+    type: 'data-document',
+    data: { chunkId: 'chunk-1', identifier: 'LEGIARTI1', highlightStart: 0, highlightEnd: 4, score: 0.9 },
+  },
   { type: 'text-delta', id: MESSAGE_ID, delta: 'Cinq ' },
   { type: 'text-delta', id: MESSAGE_ID, delta: 'ans.' },
   { type: 'text-end', id: MESSAGE_ID },
@@ -102,7 +105,10 @@ describe('POST /api/v1/chat/streams', () => {
 
     expect(response.status).toBe(200);
     expect(response.headers['content-type']).toContain('text/event-stream');
-    expect(response.text).toContain('data: {"type":"data-document","data":{"chunkId":"chunk-1","score":0.9}}');
+    expect(response.text).toContain(
+      'data: {"type":"data-document","data":{"chunkId":"chunk-1","identifier":"LEGIARTI1",' +
+        '"highlightStart":0,"highlightEnd":4,"score":0.9}}',
+    );
     expect(response.text).toContain('data: {"type":"text-delta","id":"message-1","delta":"ans."}');
   });
 });

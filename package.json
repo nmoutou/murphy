@@ -1,23 +1,27 @@
 {
   "name": "murphy",
   "private": true,
-  "description": "Parent repo for the Murphy RAG system: Docker Compose serving stack + backend/frontend/data submodules.",
+  "description": "Murphy RAG system, one repository: backend, frontend and the shared contract are npm workspaces; data/ and eval/ are Python projects beside them. The scripts below wrap the Docker Compose stack.",
+  "workspaces": [
+    "backend",
+    "frontend",
+    "packages/*"
+  ],
   "//": "Two profiles. `ingest` = the 3 databases + TEI, which is what data/ needs to run `kedro run`. `serve` = those plus backend + frontend. The databases carry no profile, so they start under either — declared once, shared by both. WARNING: `docker compose down` without a --profile flag does NOT stop profiled services; it reports success and leaves them running. That is why down/restart/logs/status name both profiles explicitly.",
   "scripts": {
+    "postinstall": "npm run build -w @murphy/contract",
+    "check": "npm run build -w @murphy/contract && npm run type-check -w backend && npm run lint -w backend && npm test -w backend && npm run type-check -w frontend && npm run build -w frontend",
     "compose": "docker compose -f docker-compose.base.yml -f docker-compose.dev.yml --env-file .env.dev",
-
     "ingest:up": "npm run compose -- --profile ingest up -d",
     "ingest:watch": "npm run compose -- --profile ingest up",
     "ingest:down": "npm run compose -- --profile ingest down",
     "ingest:logs": "npm run compose -- --profile ingest logs -f",
     "ingest:status": "npm run compose -- --profile ingest ps --format \"table {{.Name}}\\t{{.Status}}\"",
-
     "serve:up": "npm run compose -- --profile serve up -d",
     "serve:watch": "npm run compose -- --profile serve up",
     "serve:build": "npm run compose -- --profile serve build",
     "serve:down": "npm run compose -- --profile serve down",
     "serve:logs": "npm run compose -- --profile serve logs -f",
-
     "up": "npm run serve:up",
     "watch": "npm run serve:watch",
     "build": "npm run serve:build",

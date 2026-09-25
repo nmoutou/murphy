@@ -1,4 +1,4 @@
-# murphy-data
+# Murphy — data
 
 Python/Kedro **ingestion** pipeline for the Murphy RAG system. Ingests LEGIFRANCE XML
 and writes chunks/embeddings into MongoDB / Qdrant / Neo4j — the same datastores the
@@ -17,7 +17,7 @@ pipeline reference, data model, configuration, telemetry.
 ## Run
 
 The pipeline needs Mongo, Qdrant, Neo4j and the TEI embedding service. They are declared
-**once**, in the parent repo. You do not have to leave this directory to start them:
+**once**, at the repository root. You do not have to leave this directory to start them:
 
 ```bash
 npm run up       # mongo + qdrant + neo4j + embedding-service (GPU). Not backend/frontend.

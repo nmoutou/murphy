@@ -1,17 +1,18 @@
 # Corrections transverses
 
-> Défauts qui traversent plusieurs dépôts : le code de chaque dépôt
+> Défauts qui traversent plusieurs projets : le code de chaque projet
 > peut être correct pris isolément, c'est leur jointure qui est fausse.
 > Index et ordre d'exécution : [`README.md`](README.md).
 
 | ID | Point | Sévérité | Statut |
 |---|---|---|---|
-| TR-01 | **Contrat serving ↔ ingestion rompu** (§1) | Bloquant | 🔶 [ADR-039](../../product/ADR/ADR-039-contrat-ingestion-serving.md) accepté · côté `data/` fait, backend à suivre |
+| TR-01 | **Contrat serving ↔ ingestion rompu** (§1) | Bloquant | ✅ [ADR-039](../../product/ADR/ADR-039-contrat-ingestion-serving.md) · `data/`, backend et frontend (TR-04) |
 | TR-02 | L'URL WebSocket configurée n'a pas de chemin : le serveur refuse la connexion (§2) | Bloquant | ⬜ |
 | TR-03 | La prod ne peut pas joindre le backend depuis le navigateur (§3) | Dette | ⏸ décision de déploiement |
-| TR-04 | `types/messages.ts` est dupliqué entre backend et frontend, sans contrôle | Confort | ⬜ |
+| TR-04 | `types/messages.ts` est dupliqué entre backend et frontend, sans contrôle (§6) | Confort | ✅ `packages/contract` ([ADR-040](../../product/ADR/ADR-040-depot-unique.md)) |
 | TR-05 | `CLAUDE.md` décrit un état qui n'est plus vrai (§4) | Dette | ⬜ après les lots |
-| TR-06 | Environnement local : `node_modules` appartenant à root, `eval/` ne s'installe pas (§5) | Dette | ⬜ |
+| TR-06 | Environnement local : `node_modules` appartenant à root, `eval/` ne s'installe pas (§5) | Dette | 🔶 `node_modules` réglé (ADR-040), reste `eval/` |
+| TR-07 | Sous-modules : un changement de contrat traverse trois ou quatre dépôts (§6) | Dette | ✅ [ADR-040](../../product/ADR/ADR-040-depot-unique.md) |
 
 ## 1. TR-01 — contrat serving ↔ ingestion
 
@@ -25,8 +26,21 @@ passage avec ses bornes de surlignage (`data-document`).
 **Côté `data/` : fait.** Le payload porte `char_start`/`char_end`, le
 pointeur `serving_contract_version` (`SERVING_CONTRACT_VERSION` = 1),
 et un run restreint ne publie que sur un pointeur de même version
-(`may_publish`). Reste le backend (lot 4) et l'alignement du type côté
-frontend (TR-04).
+(`may_publish`).
+
+**Côté backend : fait (lot 4).** Le boot refuse un pointeur absent ou
+d'une autre version, sans repli (`MONGODB_COLLECTION` et
+`QDRANT_COLLECTION` retirés). Le payload est validé à la lecture ; les
+documents parents sont lus par `(identifier, owner_id)` et chaque passage
+découpé en points de code (`services/passages.ts`). Le flux envoie
+`data-parentDocument` une fois par document, puis `data-document` avec
+les bornes de surlignage en UTF-16 ; le LLM ne reçoit que les passages.
+Vérifié sur la stack de dev : 4 documents, 5 passages, bornes justes.
+
+**Côté frontend : fait (TR-04).** Le type vient du contrat partagé
+(`@murphy/contract/messages`), et `useChat` valide les parts à l'arrivée.
+L'UI lit toujours les seules parts `data-document` ; l'affichage du
+document parent et du surlignage est un futur lot frontend.
 
 **Constat confirmé le 25 septembre 2026** sur la collection publiée
 `9424808d…` : le payload montre `chunk_id` et aucun `chunkId`, ni texte,
@@ -126,7 +140,10 @@ connue. Sinon, passer les URL en `ARG` de build dans
 
 ## 5. TR-06 — environnement local
 
-- `backend/node_modules` et `frontend/node_modules` sont des **dossiers
+- ✅ *Réglé par ADR-040* : `docker-compose.dev.yml` ne monte plus que les
+  sources, sans volume `node_modules`, et l'installation se fait une fois
+  à la racine (`npm install`). Constat d'origine :
+  `backend/node_modules` et `frontend/node_modules` étaient des **dossiers
   vides appartenant à root**, créés par les volumes anonymes de
   `docker-compose.dev.yml`. `npm ci` échoue en `EACCES`, et donc aussi
   `npm run lint`, `npm test` et `tsc` hors Docker. Pour débloquer :
@@ -136,3 +153,26 @@ connue. Sinon, passer les URL en `ARG` de build dans
   se compile depuis les sources et réclame Cython, ce qui suggère qu'aucune
   wheel binaire n'existe pour la version de Python résolue. À investiguer :
   épingler une version de Python, ou de `pyyaml`, qui dispose d'une wheel.
+
+## 6. TR-04 et TR-07 — un seul dépôt, un contrat partagé
+
+**Décision** : [ADR-040](../../product/ADR/ADR-040-depot-unique.md). Les
+sous-modules sont réintégrés avec leur historique (4 commits : un retrait,
+trois fusions), sans changer d'emplacement. Backend, frontend et
+`packages/contract` sont des npm workspaces, avec un seul lockfile.
+
+- **Le contrat** : `@murphy/contract/messages`, des schémas zod et les
+  types qui en sont déduits. Les deux copies de `types/messages.ts` sont
+  supprimées. Vérifié : renommer un champ du schéma casse le `tsc` des
+  deux côtés.
+- **FE-01** fait au passage : le `tsc` du frontend est vert.
+- **Docker** : le contexte de build est la racine, avec un
+  `.dockerignore` qui exclut `.env*` (vérifié : aucun `.env` dans les
+  images). En dev, seules les sources sont montées.
+- **CI** : une seule, à la racine (`npm run check`, puis le build des deux
+  images en production). Le lint du frontend y entrera avec FE-02.
+- **Versions** : le lockfile unique garde, pour chaque dépendance
+  directe, la version exacte des anciens lockfiles. Une résolution
+  fraîche avait tiré `@qdrant/qdrant-js` 1.19, qui a retiré `search`.
+  Il reste trois copies de `ai` 6.0.291, toutes de la même version :
+  dédoublonner aurait changé des dizaines de dépendances transitives.

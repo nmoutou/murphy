@@ -4,7 +4,7 @@ import ChatBubble from './ChatBubble';
 import ChatContent from './ChatContent';
 import SourcesList from './SourcesList';
 import AnimatedButtonIcon from '@/components/icons/AnimatedButtonIcon';
-import type { AppUIMessage, DocumentChunk } from '@/types/messages';
+import type { AppUIMessage, DocumentChunk } from '@murphy/contract/messages';
 
 type Props = {
   message: AppUIMessage;

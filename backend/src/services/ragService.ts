@@ -3,9 +3,10 @@
  * Helper functions for the Retrieval-Augmented Generation pipeline.
  */
 
-import type { Document, SearchResult } from '../types/rag';
+import type { Passage, RetrievedChunk } from '../types/rag';
 import { logger as rootLogger } from '../utils/logger';
 import { getInfraClients } from '../infra/clients';
+import { assemblePassages } from './passages';
 
 const logger = rootLogger.child({ context: 'ragService' });
 
@@ -15,12 +16,12 @@ export interface EmbedResult {
 }
 
 export interface RetrievalResult {
-  results: SearchResult[];
+  chunks: RetrievedChunk[];
   retrievalMs: number;
 }
 
-export interface DocFetchResult {
-  documents: Document[];
+export interface PassageFetchResult {
+  passages: Passage[];
   docFetchMs: number;
 }
 
@@ -32,30 +33,29 @@ export async function embedQuestion(question: string): Promise<EmbedResult> {
 
 export async function retrieveChunks(embedding: number[], topK: number): Promise<RetrievalResult> {
   const start = Date.now();
-  const results = await getInfraClients().qdrant.searchVectors(embedding, topK);
-  return { results, retrievalMs: Date.now() - start };
+  const chunks = await getInfraClients().qdrant.searchVectors(embedding, topK);
+  return { chunks, retrievalMs: Date.now() - start };
 }
 
-export async function fetchChunkDocuments(chunkIds: string[]): Promise<DocFetchResult> {
-  if (chunkIds.length === 0) {
-    logger.warn('No documents to fetch (empty chunkId list)');
-    return { documents: [], docFetchMs: 0 };
+/**
+ * Reads the parent documents of the chunks, then cuts each passage out of its parent
+ * @throws RagError with stage='retrieval', `CONTRACT_VIOLATION` when a parent or its offsets do not match
+ */
+export async function fetchPassages(chunks: readonly RetrievedChunk[]): Promise<PassageFetchResult> {
+  if (chunks.length === 0) {
+    logger.warn('No passage to fetch: the search found no chunk');
+    return { passages: [], docFetchMs: 0 };
   }
   const start = Date.now();
-  const documents = await getInfraClients().mongo.fetchDocuments(chunkIds);
-  return { documents, docFetchMs: Date.now() - start };
+  const documents = await getInfraClients().mongo.fetchParentDocuments(chunks);
+  return { passages: assemblePassages(chunks, documents), docFetchMs: Date.now() - start };
 }
 
-export function buildContextString(documents: Document[]): string {
-  if (documents.length === 0) {
+/** The LLM reads the passage alone, not its whole document (ADR-039 §4) */
+export function buildContextString(passages: readonly Passage[]): string {
+  if (passages.length === 0) {
     return 'No relevant documents found.';
   }
 
-  return documents
-    .map((doc, idx) => {
-      const title = doc.title ?? `Document ${idx + 1}`;
-      const content = doc.content ?? '(No content available)';
-      return `[${idx + 1}] ${title}\n${content}`;
-    })
-    .join('\n\n');
+  return passages.map((passage, idx) => `[${idx + 1}] ${passage.document.title}\n${passage.text}`).join('\n\n');
 }

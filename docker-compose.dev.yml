@@ -18,9 +18,10 @@ services:
   backend:
     build:
       target: development
+    # Sources only: dependencies live in the image, and no root-owned node_modules
+    # appears on the host (TR-06)
     volumes:
-      - ./backend:/app:cached
-      - backend_node_modules:/app/node_modules
+      - ./backend/src:/app/backend/src:cached
     command: npm run dev:watch
     ports:
       - "5000:5000"
@@ -30,8 +31,8 @@ services:
     build:
       target: development
     volumes:
-      - ./frontend:/app:cached
-      - frontend_node_modules:/app/node_modules
+      - ./frontend/src:/app/frontend/src:cached
+      - ./frontend/public:/app/frontend/public:cached
     command: npm run dev
     ports:
       - "3000:3000"
@@ -48,7 +49,3 @@ services:
             - driver: nvidia
               device_ids: ['0']
               capabilities: [gpu]
-
-volumes:
-  backend_node_modules:
-  frontend_node_modules:

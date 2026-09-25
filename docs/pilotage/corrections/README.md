@@ -78,7 +78,7 @@ entre l'ingestion et le serving.
 4. **Appliquer les décisions** du §3 : FE-03, BE-03, BE-04.
 5. **Refactorisations en cascade**, plus de 3 fichiers chacune, avec un
    plan annoncé avant de commencer : BE-06, BE-08, BE-09, FE-08.
-6. **Mettre à jour `CLAUDE.md`** et les `docs/` des sous-modules (TR-05).
+6. **Mettre à jour `CLAUDE.md`** et les `docs/` de chaque projet (TR-05).
 
 DA-05 (fichiers de plus de 300 lignes dans `ragcore`) est un chantier à
 part, hors de cet ordre.

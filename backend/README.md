@@ -1,4 +1,4 @@
-# murphy-backend
+# Murphy — backend
 
 Express + TypeScript API — the RAG **serving** orchestrator for the Murphy system.
 
@@ -7,8 +7,10 @@ fetch → stream LLM). No conversational history, no retries.
 
 ## Develop
 
+Dependencies are installed **from the repository root** (`npm install`), which also
+builds the shared contract (`packages/contract`). Then, from this directory:
+
 ```bash
-npm install
 npm run dev          # ts-node src/server.ts
 npm run dev:watch    # nodemon + ts-node (auto-restart)
 npm run type-check
@@ -17,8 +19,8 @@ npm test
 ```
 
 Requires reachable MongoDB, Qdrant, and a TEI embedding service (see env vars in
-`src/utils/configWarnings.ts`). For the full stack including those services, use the
-`murphy-infra` repo.
+`src/config.ts`). For the full stack including those services, run `npm run up` at the
+repository root.
 
-> **Note:** `src/types/messages.ts` is a shared contract duplicated in `murphy-frontend`.
-> Keep both copies in sync.
+The stream contract (`AppUIMessage`) is imported from `@murphy/contract/messages`,
+shared with the frontend: see [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).

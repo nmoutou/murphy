@@ -1,12 +1,13 @@
 /**
  * RAG Service Tests
- * Stage helpers of the pipeline: embedding, retrieval, document fetch, context building
+ * Stage helpers of the pipeline: embedding, retrieval, passage fetch, context building
  */
 
+import type { Passage, RetrievedChunk, StoredDocument } from '../../types/rag';
 import {
   buildContextString,
   embedQuestion,
-  fetchChunkDocuments,
+  fetchPassages,
   retrieveChunks,
 } from '../../services/ragService';
 import { getInfraClients } from '../../infra/clients';
@@ -15,7 +16,7 @@ jest.mock('../../infra/clients', () => {
   const clients = {
     embedding: { embedText: jest.fn() },
     qdrant: { searchVectors: jest.fn() },
-    mongo: { fetchDocuments: jest.fn() },
+    mongo: { fetchParentDocuments: jest.fn() },
     llm: { stream: jest.fn() },
   };
   return { getInfraClients: () => clients };
@@ -26,6 +27,21 @@ jest.mock('../../utils/logger', () => {
 });
 
 const EMBEDDING = [0.1, 0.2, 0.3];
+const DOCUMENT: StoredDocument = {
+  identifier: 'LEGIARTI000006419304',
+  ownerId: 'default',
+  title: 'Code civil, art. 2224',
+  content: 'Article 2224. Cinq ans.',
+};
+const CHUNK: RetrievedChunk = {
+  chunkId: 'LEGIARTI000006419304_0001',
+  identifier: DOCUMENT.identifier,
+  ownerId: DOCUMENT.ownerId,
+  charStart: 14,
+  charEnd: 23,
+  score: 0.9,
+};
+const PASSAGE: Passage = { chunk: CHUNK, document: DOCUMENT, text: 'Cinq ans.', highlightStart: 14, highlightEnd: 23 };
 
 const { embedding, qdrant, mongo } = getInfraClients();
 
@@ -34,31 +50,35 @@ describe('buildContextString', () => {
     expect(buildContextString([])).toBe('No relevant documents found.');
   });
 
-  it('numbers the documents and falls back on missing title or content', () => {
-    const context = buildContextString([
-      { chunkId: 'chunk-1', title: 'Code civil, art. 2224', content: 'Cinq ans.' },
-      { chunkId: 'chunk-2' },
-    ]);
+  it('numbers the passages and gives the passage alone, not its whole document', () => {
+    const second: Passage = { ...PASSAGE, document: { ...DOCUMENT, title: 'Code civil, art. 2225' }, text: 'Dix ans.' };
 
-    expect(context).toBe('[1] Code civil, art. 2224\nCinq ans.\n\n[2] Document 2\n(No content available)');
+    expect(buildContextString([PASSAGE, second])).toBe(
+      '[1] Code civil, art. 2224\nCinq ans.\n\n[2] Code civil, art. 2225\nDix ans.',
+    );
   });
 });
 
-describe('fetchChunkDocuments', () => {
-  it('skips MongoDB when there is no chunk to fetch', async () => {
-    await expect(fetchChunkDocuments([])).resolves.toEqual({ documents: [], docFetchMs: 0 });
-    expect(mongo.fetchDocuments).not.toHaveBeenCalled();
+describe('fetchPassages', () => {
+  it('skips MongoDB when there is no chunk', async () => {
+    await expect(fetchPassages([])).resolves.toEqual({ passages: [], docFetchMs: 0 });
+    expect(mongo.fetchParentDocuments).not.toHaveBeenCalled();
   });
 
-  it('returns the fetched documents with the stage duration', async () => {
-    const documents = [{ chunkId: 'chunk-1', content: 'Cinq ans.' }];
-    jest.mocked(mongo.fetchDocuments).mockResolvedValue(documents);
+  it('reads the parents of the chunks and cuts the passages out', async () => {
+    jest.mocked(mongo.fetchParentDocuments).mockResolvedValue([DOCUMENT]);
 
-    const fetched = await fetchChunkDocuments(['chunk-1']);
+    const fetched = await fetchPassages([CHUNK]);
 
-    expect(mongo.fetchDocuments).toHaveBeenCalledWith(['chunk-1']);
-    expect(fetched.documents).toBe(documents);
+    expect(mongo.fetchParentDocuments).toHaveBeenCalledWith([CHUNK]);
+    expect(fetched.passages).toEqual([PASSAGE]);
     expect(fetched.docFetchMs).toBeGreaterThanOrEqual(0);
+  });
+
+  it('refuses a chunk whose parent is missing', async () => {
+    jest.mocked(mongo.fetchParentDocuments).mockResolvedValue([]);
+
+    await expect(fetchPassages([CHUNK])).rejects.toMatchObject({ code: 'CONTRACT_VIOLATION' });
   });
 });
 
@@ -76,13 +96,12 @@ describe('embedQuestion', () => {
 
 describe('retrieveChunks', () => {
   it('searches the requested number of chunks', async () => {
-    const results = [{ id: '1', similarity: 0.9, payload: { chunkId: 'chunk-1' } }];
-    jest.mocked(qdrant.searchVectors).mockResolvedValue(results);
+    jest.mocked(qdrant.searchVectors).mockResolvedValue([CHUNK]);
 
     const retrieved = await retrieveChunks(EMBEDDING, 3);
 
     expect(qdrant.searchVectors).toHaveBeenCalledWith(EMBEDDING, 3);
-    expect(retrieved.results).toBe(results);
+    expect(retrieved.chunks).toEqual([CHUNK]);
     expect(retrieved.retrievalMs).toBeGreaterThanOrEqual(0);
   });
 });

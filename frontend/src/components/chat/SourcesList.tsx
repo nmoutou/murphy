@@ -1,6 +1,6 @@
 'use client';
 
-import { DocumentChunk } from '@/types/messages';
+import type { DocumentChunk } from '@murphy/contract/messages';
 import { useTheme } from '@/components/providers/ThemeProvider';
 import SourceItem from './SourceItem';
 

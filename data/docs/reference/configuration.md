@@ -8,7 +8,7 @@ pipeline :
 | **Workflow** (`WorkflowConfig`) | `conf/base/workflow/parameters.yml` | « En changer la valeur invalide-t-il les vecteurs déjà produits ? » → oui |
 | **Infra d'ingestion** | `conf/base/ingestion/parameters.yml` | → non (tokenizing, relations, timeout/batch/enabled, exportation, maintenance) |
 | **Runtime de récupération** (bloc R) | `conf/base/evaluation/parameters.yml` | → sans objet côté ingestion — consommé par P2 (placeholder, B-13) |
-| **Infra** (`InfraSettings`, `EmbeddingRuntimeSettings`) | `.env.dev` à la **racine du repo parent** | → non (le *où* et le *comment*, jamais le *quoi*) |
+| **Infra** (`InfraSettings`, `EmbeddingRuntimeSettings`) | `.env.dev` à la **racine du dépôt** | → non (le *où* et le *comment*, jamais le *quoi*) |
 
 Depuis **ADR-026** (B-14), cette frontière n'est plus qu'une convention de
 commentaires : c'est une partition **physique**, en trois fichiers sous
@@ -100,7 +100,7 @@ URI, secret, chemin ou paramètre d'infra n'y a sa place.
 | `cleanup_enabled` / `cache_paths` | `true`, `data/cache` + `data/meta/events` | Nettoyage de fichiers en tête de run (node `cleanup`). |
 | `nuke_all` | `true` | Efface TOUTES les données de TOUTES les bases en tête de run (Mongo documents+manifest, graphe Neo4j, **toutes** les collections Qdrant), en **préservant `MURPHY_META`**. Refuse de tourner si `ENVIRONMENT != dev` (l'absence de la variable vaut `prod`). Le levier disque du développement — à ne jamais activer en prod. |
 
-## `.env.dev` (racine du repo parent)
+## `.env.dev` (racine du dépôt)
 
 **Un seul fichier, par chemin absolu** (`settings.py:ROOT_ENV_FILE`) — jamais résolu
 depuis le CWD (un `kedro run` lancé d'ailleurs prendrait silencieusement tous les

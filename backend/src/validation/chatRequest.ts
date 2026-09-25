@@ -4,7 +4,7 @@
  * routes (`routes/chat.ts`) and the WebSocket (`routes/chatWebSocket.ts`)
  */
 
-import type { AppUIMessage } from '../types/messages';
+import type { AppUIMessage } from '@murphy/contract/messages';
 
 export interface ValidationIssue {
   readonly field: string;

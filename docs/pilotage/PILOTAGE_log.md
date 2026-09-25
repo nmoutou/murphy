@@ -2,6 +2,18 @@
 
 > 10 lignes max par entrée, la plus récente en tête (`PILOTAGE.md` §1.4).
 
+## 2026-09-25 — Un seul dépôt (ADR-040), TR-04
+
+- **Fait** : sous-modules réintégrés avec leur historique (4 commits) ; npm workspaces,
+  un seul lockfile ; `packages/contract` (schémas zod) remplace les deux `messages.ts` ;
+  FE-01 ; Docker depuis la racine ; une CI unique. TR-01, TR-04 et TR-07 ✅.
+- **Décidé** : [ADR-040](../product/ADR/ADR-040-depot-unique.md), `packages/` réservé à ce
+  qui franchit une frontière d'exécution entre workspaces.
+- **Vérifié** : `npm run check` vert (104 tests, `tsc` frontend vert) ; stack de dev et
+  images de prod ; aucun `.env` dans les images.
+- **Bloqué** : rien.
+- **Prochain pas** : pousser, archiver les trois anciens dépôts ; relire et commiter.
+
 ## 2026-08-08 — B-08, carte de wayfinding [#1](https://github.com/left-eyebr0w/murphy/issues/1)
 
 - **Fait** : rien de livrable — la carte (*golden-set v1, spécification prête à

@@ -1,4 +1,4 @@
-# Documentation — murphy-backend
+# Documentation — backend
 
 Documentation technique du backend de **serving** de Murphy : l'API Express/TypeScript qui
 orchestre le pipeline RAG à la requête (embed → retrieve → fetch → stream LLM).
@@ -10,8 +10,8 @@ orchestre le pipeline RAG à la requête (embed → retrieve → fetch → strea
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Vue d'ensemble : le pipeline RAG, les trois transports, les clients d'infrastructure, les conventions transverses. **Commencer ici.** |
 | `reference/` | Références détaillées (contrat de messages, API, configuration) — *à écrire ; même ossature que `data/docs/reference/`.* |
 
-La vue système globale (serving + ingestion + bases partagées) vit dans le repo parent :
-`docs/technical/ARCHITECTURE.md`.
+La vue système globale (serving + ingestion + bases partagées) vit à la racine du dépôt :
+[`docs/technical/ARCHITECTURE.md`](../../docs/technical/ARCHITECTURE.md).
 
 ---
 
@@ -19,7 +19,7 @@ La vue système globale (serving + ingestion + bases partagées) vit dans le rep
 
 ### Avec Docker (stack complète)
 
-Depuis la **racine du repo parent** (requiert `.env.dev`, gitignoré) :
+Depuis la **racine du dépôt** (requiert `.env.dev`, gitignoré) :
 
 ```bash
 npm run up        # build + démarre la stack dev (backend inclus), détaché
@@ -28,13 +28,17 @@ npm run logs      # suivre les logs
 npm run down      # tout arrêter
 ```
 
-Le backend écoute sur le port `5000` en dev, sources montées avec hot-reload.
+Le backend écoute sur le port `5000` en dev. Seul `src/` est monté, avec hot-reload :
+les dépendances et le contrat compilé vivent dans l'image, donc changer
+`package.json`, `tsconfig.json` ou `packages/contract` demande `npm run serve:build`.
 
 ### Sans Docker
 
 Aucun fichier d'environnement n'est chargé : exporter les variables avant (par exemple
 `set -a; . ../.env.dev; set +a`, puis surcharger les noms d'hôtes Docker comme
-`QDRANT_URL`). Depuis `backend/` :
+`QDRANT_URL`). Installer une fois **depuis la racine** : `npm install` (un seul lockfile
+pour les workspaces ; le `postinstall` construit `packages/contract`). `npm run check` à
+la racine lance tout ce que lance la CI. Puis, depuis `backend/` :
 
 ```bash
 npm run dev          # ts-node src/server.ts
@@ -59,10 +63,9 @@ avec un message qui nomme la variable. `checkEnvironment` journalise ensuite les
 variables manquantes et celles qui ont pris leur valeur par défaut.
 
 Critiques (erreur logguée si absentes, sans bloquer) : `LLM_API_ENDPOINT`, `LLM_API_KEY`, `LLM_MODEL`,
-`MONGODB_URI`. Principales optionnelles : `PORT` (5000), `MONGODB_DATABASE`/`COLLECTION`,
+`MONGODB_URI`. Principales optionnelles : `PORT` (5000), `MONGODB_DATABASE` (LEGIFRANCE),
 `MONGODB_META_DB_NAME` (MURPHY_META — le pointeur de collection), `QDRANT_URL`,
-`QDRANT_COLLECTION` (repli seulement — voir ARCHITECTURE), `EMBEDDING_SERVICE_URL`,
-`EMBEDDING_MODEL_NAME`, `RETRIEVAL_TOP_K` (5), `RETRIEVAL_MIN_SCORE` (0.5),
+`EMBEDDING_SERVICE_URL`, `EMBEDDING_MODEL_NAME`, `RETRIEVAL_TOP_K` (5), `RETRIEVAL_MIN_SCORE` (0.5),
 `LLM_TEMPERATURE`/`MAX_TOKENS`/`TIMEOUT`, `SYSTEM_PROMPT`, les rate limits et
 `CORS_ORIGIN`.
 
@@ -77,7 +80,9 @@ curl http://localhost:5000/api/v1/health   # ok | degraded (1 service down) | do
 
 | Symptôme | Piste |
 |---|---|
-| Refus de démarrer : « collection Qdrant n'existe pas » | Aucun run d'ingestion `ok` n'a publié de pointeur, et le repli `QDRANT_COLLECTION` pointe sur rien. Lancer une ingestion complète (`kedro run` dans `data/`). |
+| Refus de démarrer : « Aucun run d'ingestion n'a publié de collection » ou « collection Qdrant n'existe pas » | Pas de pointeur, ou il désigne une collection disparue. Lancer un run complet : `kedro run --params source=all` dans `data/`. |
+| Refus de démarrer : « contrat de serving vN » | Le corpus publié et le backend ne suivent pas la même version du contrat (ADR-039). Version plus ancienne ou absente : réingérer (run complet). Plus récente : mettre à jour le backend. |
+| Part `error` « Serving contract violated » | Un point Qdrant, son document Mongo ou ses offsets ne respectent pas le contrat ; le message cite le `chunk_id`. Réingérer le corpus. |
 | 0 source sur toutes les questions | Collection vide, ou `RETRIEVAL_MIN_SCORE` trop haut. |
 | Embedding indisponible | Conteneur TEI (GPU requis) — `npm run logs` depuis la racine. |
 | LLM timeout / 4xx | `LLM_API_ENDPOINT` / `LLM_API_KEY` / `LLM_MODEL` ; augmenter `LLM_TIMEOUT` si réseau lent. |

@@ -1,6 +1,9 @@
 ##########################
 # Development Stage
-# Used for local development with hot-reload and source mounting
+# The build context is the repository root: frontend and the shared contract are npm
+# workspaces resolved by the root lockfile. docker-compose.dev.yml mounts frontend/src
+# and frontend/public only (hot-reload); dependencies, config and the contract live in
+# the image, so changing them means rebuilding it (`npm run serve:build`).
 ##########################
 FROM node:22 AS development
 WORKDIR /app
@@ -8,14 +11,20 @@ WORKDIR /app
 # Install system dependencies (curl for healthchecks)
 RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 
-# Copy package files
-COPY package*.json ./
+# Every workspace manifest: `npm ci` checks the lockfile against all of them
+COPY package.json package-lock.json ./
+COPY backend/package.json backend/
+COPY frontend/package.json frontend/
+COPY packages/contract/package.json packages/contract/
 
-# Install ALL dependencies (including devDependencies)
-RUN npm ci
+# Scripts are skipped: the root postinstall would build the contract before its sources are here
+RUN npm ci -w frontend -w @murphy/contract --ignore-scripts
 
-# Note: Source code is mounted via docker-compose volumes in dev mode
-# Next.js dev server with hot-reload
+COPY packages/contract/ packages/contract/
+RUN npm run build -w @murphy/contract
+
+COPY frontend/ frontend/
+WORKDIR /app/frontend
 
 EXPOSE 3000
 ENV NODE_ENV=development
@@ -27,19 +36,9 @@ CMD ["npm", "run", "dev"]
 # Builder Stage
 # Builds Next.js application
 ##########################
-FROM node:22 AS builder
-WORKDIR /app
-
-# Copy package files
-COPY package*.json ./
-
-# Install dependencies
-RUN npm ci
-
-# Copy source code
-COPY . .
-
-# Build Next.js app
+FROM development AS builder
+# `next build` expects production: a development NODE_ENV would bundle React's dev build
+ENV NODE_ENV=production
 RUN npm run build
 
 ##########################
@@ -52,13 +51,19 @@ WORKDIR /app
 # Install system dependencies (curl for healthchecks)
 RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 
-# Copy built app from builder
-COPY --from=builder /app/.next ./.next
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/package*.json ./
+COPY package.json package-lock.json ./
+COPY backend/package.json backend/
+COPY frontend/package.json frontend/
+COPY packages/contract/package.json packages/contract/
 
 # Install only production dependencies
-RUN npm ci --omit=dev
+RUN npm ci --omit=dev -w frontend --ignore-scripts
+
+# Copy built app from builder
+COPY --from=builder /app/packages/contract/dist packages/contract/dist
+COPY --from=builder /app/frontend/.next frontend/.next
+COPY --from=builder /app/frontend/public frontend/public
+WORKDIR /app/frontend
 
 EXPOSE 3000
 ENV NODE_ENV=production

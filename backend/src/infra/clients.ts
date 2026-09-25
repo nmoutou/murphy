@@ -23,18 +23,18 @@ let clients: InfraClients | undefined;
 /**
  * Connects MongoDB, resolves the Qdrant collection to serve, then builds the
  * other clients.
- * @throws when MongoDB is unreachable or the resolved collection does not exist:
- * the boot must stop rather than fail on the first question
+ * @throws when MongoDB is unreachable, no collection is published in the serving
+ * contract version this code reads, or it does not exist: the boot must stop rather
+ * than fail on the first question
  */
 export const initInfraClients = async (config: AppConfig): Promise<void> => {
   const mongo = await MongoDbClient.connect(config.mongo);
   // The collection name is a fingerprint of the ingestion config: it is read from
-  // the pointer published by the last `ok` run, never guessed
+  // the pointer published by the last `ok` run, never guessed nor configured
   const collection = await resolveCollection({
     mongoClient: mongo.getClient(),
     metaDatabase: config.mongo.metaDatabase,
     qdrantUrl: config.qdrant.url,
-    fallbackCollection: config.qdrant.fallbackCollection,
   });
 
   clients = {

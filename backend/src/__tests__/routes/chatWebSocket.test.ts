@@ -9,7 +9,7 @@ import type { InferUIMessageChunk } from 'ai';
 import { registerChatWebSocket } from '../../routes/chatWebSocket';
 import { createChatStream } from '../../services/chatService';
 import { consumeStreamQuota } from '../../middleware/streamRateLimiter';
-import type { AppUIMessage } from '../../types/messages';
+import type { AppUIMessage } from '@murphy/contract/messages';
 
 jest.mock('../../services/chatService', () => ({ createChatStream: jest.fn() }));
 jest.mock('../../middleware/streamRateLimiter', () => ({ consumeStreamQuota: jest.fn() }));
@@ -25,7 +25,10 @@ const VALID_PAYLOAD = { messages: [{ id: 'user-1', role: 'user', parts: [{ type:
 
 const ANSWER_PARTS: AppChunk[] = [
   { type: 'start', messageId: MESSAGE_ID },
-  { type: 'data-document', data: { chunkId: 'chunk-1', score: 0.9 } },
+  {
+    type: 'data-document',
+    data: { chunkId: 'chunk-1', identifier: 'LEGIARTI1', highlightStart: 0, highlightEnd: 4, score: 0.9 },
+  },
   { type: 'text-delta', id: MESSAGE_ID, delta: 'Cinq ans.' },
   { type: 'finish', finishReason: 'stop' },
 ];

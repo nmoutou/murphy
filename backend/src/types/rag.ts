@@ -56,31 +56,52 @@ export const toRagError = (failure: RagFailure, error: unknown): RagError => {
   return new RagError(failure.stage, isTimeout ? TIMEOUT_CODE : failure.code, `Failed to ${failure.operation}: ${cause}`);
 };
 
-/**
- * Raw document from MongoDB
- */
-export interface Document {
-  _id?: { toString(): string };
-  chunkId: string;
-  content?: string;
-  title?: string;
-  type?: string;
-  score?: number;
-  [key: string]: unknown;
-}
+const CONTRACT_VIOLATION_CODE = 'CONTRACT_VIOLATION';
 
 /**
- * Search result from Qdrant
+ * The databases do not hold what the serving contract (ADR-039) says. Never skipped
+ * silently: a wrong passage in the LLM context is worse than a visible error.
  */
-export interface SearchResult {
-  id: string;
-  similarity: number;
-  payload: {
-    chunkId?: string;
-    title?: string;
-    type?: string;
-    [key: string]: unknown;
-  };
+export const contractViolation = (message: string): RagError =>
+  new RagError('retrieval', CONTRACT_VIOLATION_CODE, `Serving contract violated (ADR-039): ${message}`);
+
+/** The key of a document in MongoDB `documents` (ADR-039 §2) */
+export interface DocumentKey {
+  readonly identifier: string;
+  readonly ownerId: string;
+}
+
+/** A `Map` key for a `DocumentKey`: JSON keeps the two parts apart whatever they contain */
+export const serializeDocumentKey = ({ identifier, ownerId }: DocumentKey): string =>
+  JSON.stringify([identifier, ownerId]);
+
+/**
+ * A Qdrant hit, its payload checked against the serving contract (ADR-039 §2).
+ * `charStart`/`charEnd` count Unicode code points in the parent's `content`.
+ */
+export interface RetrievedChunk extends DocumentKey {
+  readonly chunkId: string;
+  readonly charStart: number;
+  readonly charEnd: number;
+  readonly score: number;
+  /** `type_document`, when the source sets it */
+  readonly type?: string;
+}
+
+/** A parent document as the ingestion stored it in MongoDB `documents` */
+export interface StoredDocument extends DocumentKey {
+  readonly title: string;
+  readonly content: string;
+}
+
+/** A retrieved chunk joined to its parent document, with its text cut out */
+export interface Passage {
+  readonly chunk: RetrievedChunk;
+  readonly document: StoredDocument;
+  readonly text: string;
+  /** UTF-16 offsets of `text` in `document.content` */
+  readonly highlightStart: number;
+  readonly highlightEnd: number;
 }
 
 /**

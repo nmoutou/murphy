@@ -11,7 +11,7 @@ import { logger as rootLogger } from '../utils/logger';
 import { createChatStream } from '../services/chatService';
 import { consumeStreamQuota } from '../middleware/streamRateLimiter';
 import { parseChatRequest } from '../validation/chatRequest';
-import type { AppUIMessage } from '../types/messages';
+import type { AppUIMessage } from '@murphy/contract/messages';
 
 const logger = rootLogger.child({ context: 'chatWebSocket' });
 

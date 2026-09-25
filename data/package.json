@@ -1,8 +1,8 @@
 {
   "name": "murphy-data",
   "private": true,
-  "description": "Call-forwarder to the parent repo's compose stack. No Node code lives here — this file exists so that `kedro run` and `npm run up` can be typed from the same directory.",
-  "//": "The containers are declared ONCE, in the parent repo, because the databases are shared with the serving stack: two declarations would mean two Mongos, and nothing would guarantee the backend reads the database the pipeline wrote. `npm --prefix ..` runs the parent's script with the parent as CWD, which is what makes `--env-file .env.dev` and the relative -f paths resolve.",
+  "description": "Call-forwarder to the compose stack at the repository root. Not an npm workspace. No Node code lives here — this file exists so that `kedro run` and `npm run up` can be typed from the same directory.",
+  "//": "The containers are declared ONCE, at the repository root, because the databases are shared with the serving stack: two declarations would mean two Mongos, and nothing would guarantee the backend reads the database the pipeline wrote. `npm --prefix ..` runs the root script with the root as CWD, which is what makes `--env-file .env.dev` and the relative -f paths resolve.",
   "scripts": {
     "up": "npm --prefix .. run ingest:up",
     "watch": "npm --prefix .. run ingest:watch",

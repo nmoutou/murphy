@@ -19,20 +19,26 @@ cette stack) : les deux ne partagent que les bases.
 2. **Embedding** (`ragService.embedQuestion`) → service TEI.
 3. **Retrieval** (`ragService.retrieveChunks`) → Qdrant, top-K (`RETRIEVAL_TOP_K`,
    défaut 5), seuil `RETRIEVAL_MIN_SCORE` (défaut 0.5).
-4. **Streaming des sources d'abord** — chaque hit Qdrant est écrit comme part
-   `data-document` **avant l'appel LLM** : l'UI affiche les sources immédiatement.
-5. **Fetch du contenu** (`ragService.fetchChunkDocuments`) → MongoDB, par `chunkId`. Ce
-   contenu ne sert qu'à construire le contexte LLM, jamais renvoyé tel quel au client.
-6. **Streaming LLM** — contexte injecté dans le system prompt (`config.llm.systemPrompt` :
-   assistant juridique FR, surchargeable via `SYSTEM_PROMPT`), tokens de
+4. **Lecture des passages** (`ragService.fetchPassages`) → MongoDB `documents`, par
+   `(identifier, owner_id)` (clé indexée). Le texte de chaque passage est découpé dans le
+   `content` de son document parent, entre `char_start` et `char_end`
+   (`services/passages.ts`, voir « Le contrat avec l'ingestion »).
+5. **Streaming des sources** — **avant l'appel LLM** : pour chaque passage, dans l'ordre du
+   classement, une part `data-parentDocument` (le document entier, **une fois** par
+   document, avant son premier passage) puis une part `data-document` (le passage et ses
+   bornes de surlignage).
+6. **Streaming LLM** — contexte (le texte **des passages seuls**, pas des documents)
+   injecté dans le system prompt (`config.llm.systemPrompt` : assistant juridique FR,
+   surchargeable via `SYSTEM_PROMPT`), tokens de
    `getInfraClients().llm.stream()` écrits en parts `text-delta`.
 7. **Finish** — part `finish` avec `ragTiming` (latence par étape, en ms).
 
 Le flux est construit avec le Vercel **AI SDK** (`createUIMessageStream` /
-`pipeUIMessageStreamToResponse`). Le contrat de parts est `AppUIMessage`
-(`src/types/messages.ts`) — à garder **synchronisé** avec
-`frontend/src/types/messages.ts` : part custom `{ document: DocumentChunk }`, metadata
-`{ ragTiming }`.
+`pipeUIMessageStreamToResponse`). Le contrat de parts est `AppUIMessage`, importé de
+`@murphy/contract/messages` (`packages/contract/`, ADR-040), que le frontend importe
+aussi : parts custom `{ document: DocumentChunk; parentDocument: ParentDocument }`,
+metadata `{ ragTiming }`. Le backend n'en importe que les types ; changer le contrat
+casse la compilation des deux côtés à la fois.
 
 ### Trois transports, un seul pipeline
 
@@ -45,18 +51,40 @@ Le flux est construit avec le Vercel **AI SDK** (`createUIMessageStream` /
 Toute évolution du pipeline se fait dans `createChatStream` ; les trois chemins en
 héritent.
 
+## Le contrat avec l'ingestion (ADR-039)
+
+L'ingestion et le serving ne partagent aucun code : leur contrat est écrit dans l'ADR-039
+et **versionné**. Ce que le backend lit :
+
+| Où | Quoi |
+|---|---|
+| Payload Qdrant | `chunk_id`, `identifier`, `owner_id`, `char_start`, `char_end`, `type_document` (facultatif) — validé à la lecture (`infra/qdrant.ts`) |
+| Mongo `LEGIFRANCE.documents` | `identifier`, `owner_id`, `title`, `content` — un document **entier** par clé (`infra/mongodb.ts`) |
+| Pointeur `MURPHY_META.meta_published_collection` | `collection_name`, `serving_contract_version` |
+
+- **Offsets** : `char_start`/`char_end` comptent des **points de code** (le `str` Python).
+  `services/passages.ts` les convertit une fois en unités UTF-16 : `highlightStart` /
+  `highlightEnd` d'une part `data-document` se lisent directement avec
+  `content.slice(highlightStart, highlightEnd)` côté client.
+- **Violation** : un point sans champ du contrat, un document parent absent ou des offsets
+  hors de `content` lèvent une `RagError` `retrieval` / `CONTRACT_VIOLATION` qui cite le
+  `chunk_id`. La réponse s'arrête sur une part `error` : pas d'écart silencieux.
+
 ## La résolution de collection Qdrant (`src/infra/collectionPointer.ts`)
 
 Le pipeline d'ingestion nomme ses collections par une **empreinte** de sa config
-(ex. `9424808d…`) et publie, à chaque run complet (`ok`), un **pointeur** dans Mongo
-`MURPHY_META.meta_published_collection` (clé `current`). Au boot, le backend :
+(ex. `9424808d…`) et publie, à chaque run `ok`, un **pointeur** dans Mongo
+`MURPHY_META.meta_published_collection` (clé `current`). Au boot, le backend lit ce
+pointeur et **refuse de démarrer** :
 
-1. lit le pointeur (la vérité, publiée par un run complet) ;
-2. à défaut, se replie sur `QDRANT_COLLECTION` — **bruyamment** (aucun run n'a encore
-   publié) ;
-3. dans les deux cas, **vérifie que la collection existe** dans Qdrant et refuse de
-   démarrer sinon — mieux vaut le découvrir au boot que sur la première question d'un
-   utilisateur.
+1. s'il est absent ou illisible (aucun run n'a publié) ;
+2. s'il ne porte pas `serving_contract_version` = `SERVING_CONTRACT_VERSION` (1) — le
+   message dit s'il faut réingérer ou mettre à jour le backend ;
+3. si la collection qu'il désigne n'existe pas dans Qdrant.
+
+Il n'y a **pas de repli** sur un nom configuré : une collection que personne n'a publiée
+n'a pas de format connu. Mieux vaut le découvrir au boot que sur la première question
+d'un utilisateur.
 
 ## Clients d'infrastructure (`src/infra/`)
 

@@ -1,6 +1,6 @@
 # Corrections — frontend
 
-> Périmètre : `frontend/` (sous-module `murphy-frontend`). Chemins
+> Périmètre : le dossier `frontend/`. Chemins
 > relatifs à `frontend/`. Index et ordre d'exécution :
 > [`README.md`](README.md).
 
@@ -8,7 +8,7 @@
 
 | ID | Point | Sévérité | Statut |
 |---|---|---|---|
-| FE-01 | `tsc` en erreur : `components/chat/types.ts` importe un type inexistant | Bloquant | ⬜ |
+| FE-01 | `tsc` en erreur : `components/chat/types.ts` importe un type inexistant | Bloquant | ✅ avec TR-04 |
 | FE-02 | eslint ne démarre pas | Bloquant | ⬜ |
 | FE-03 | Les erreurs du pipeline ne s'affichent jamais — **décidé** | Bloquant | ⬜ mini-ADR |
 | FE-04 | Code mort (liste §2.4) | Dette | ⬜ |
@@ -42,6 +42,8 @@ directement une config *flat*, et `FlatCompat` plante en la sérialisant
 - S'attendre à de nouvelles erreurs une fois le lint réparé : au moins
   les `any` de FE-07 et de `useRagChat.ts:13`, plus les variables
   inutilisées de FE-04 et FE-05.
+- Une fois le lint vert, l'ajouter au script `check` de la racine, que
+  la CI lance (ADR-040).
 
 ### FE-03 — erreurs invisibles (décidé)
 

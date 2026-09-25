@@ -1,13 +1,13 @@
 # Architecture système — Murphy
 
 Vue d'ensemble du système complet. **La documentation technique détaillée vit au plus près
-du code, dans le `docs/` de chaque submodule** :
+du code, dans le `docs/` de chaque projet** :
 
 - [`backend/docs/`](../../backend/docs/README.md) — le serving (API RAG Express/TS)
 - [`frontend/docs/`](../../frontend/docs/README.md) — l'UI de chat (Next.js)
 - [`data/docs/`](../../data/docs/README.md) — l'ingestion (Kedro + ragcore)
 
-Ce document ne couvre que ce qu'aucun submodule ne peut dire seul : comment les deux
+Ce document ne couvre que ce qu'aucun projet ne peut dire seul : comment les deux
 moitiés du système s'articulent.
 
 ## Les deux moitiés
@@ -52,9 +52,9 @@ C'est la seule zone où une modification d'un côté casse l'autre. Quatre contr
 
 | Contrat | Écrit par l'ingestion | Lu par le serving |
 |---|---|---|
-| **Pointeur de collection** | `MURPHY_META.meta_published_collection` (clé `current`), mis à jour **seulement par un run `ok`** | Au boot (`backend/src/infra/collectionPointer.ts`) : c'est lui qui dit quelle collection Qdrant fait foi. Repli bruyant sur `QDRANT_COLLECTION`, et refus de démarrer si la collection n'existe pas. |
-| **Vecteurs** | Collections Qdrant nommées par l'**empreinte** de la config d'ingestion (normalisation + chunking + modèle) — jamais un nom fixe | Recherche cosine top-K dans la collection pointée |
-| **Contenu** | Mongo `LEGIFRANCE.documents` (+ `manifest`) | Fetch du contenu pour le contexte LLM ⚠️ le backend lit encore `MONGODB_COLLECTION` (défaut `chunks`) — désalignement connu avec l'ingestion, à résorber |
+| **Pointeur de collection** | `MURPHY_META.meta_published_collection` (clé `current`), mis à jour **seulement par un run `ok`**, avec la version du contrat (`serving_contract_version`) | Au boot (`backend/src/infra/collectionPointer.ts`) : c'est lui qui dit quelle collection Qdrant fait foi. Pas de repli : refus de démarrer sans pointeur, sur une autre version du contrat (ADR-039) ou sur une collection absente. |
+| **Vecteurs** | Collections Qdrant nommées par l'**empreinte** de la config d'ingestion (normalisation + chunking + modèle) — jamais un nom fixe ; payload `chunk_id`, `identifier`, `owner_id`, `char_start`, `char_end` (ADR-039) | Recherche cosine top-K dans la collection pointée |
+| **Contenu** | Mongo `LEGIFRANCE.documents` (+ `manifest`) : un document entier par `(identifier, owner_id)` | Lecture des documents parents ; le texte d'un passage est `content[char_start:char_end]` (points de code). Le passage va au LLM, le document entier au client (`data-parentDocument`) |
 | **Modèle d'embedding** | `all-mpnet-base-v2`, 768 dim, Cosine — vérifié contre TEI au démarrage du run | Le même modèle via le même conteneur TEI |
 
 Le modèle d'embedding est le contrat le plus fragile : question et corpus doivent être
@@ -81,17 +81,18 @@ npm run up | watch | logs | status | down | build
 Ports dev : frontend `3000`, backend `5000`, Qdrant `6333`, Mongo `27017`, Neo4j
 `7474`/`7687`, TEI `5001→80`.
 
-## Où vit quoi (repo parent)
+## Où vit quoi (un seul dépôt, ADR-040)
 
 | Emplacement | Contenu |
 |---|---|
 | `docs/pilotage/` | Pilotage PM² : backlog, exigences, risques, statut |
 | `docs/product/` | Vision, versions, programme, **ADRs** (les décisions d'architecture citées partout : ADR-022 régimes dev/prod, ADR-023 interrupteur d'embedding, …) |
 | `docs/technical/` | Ce document — la vue système, et rien d'autre |
-| `backend/`, `frontend/`, `data/` | **Submodules git** — code + leur propre `docs/` |
+| `backend/`, `frontend/`, `data/`, `eval/` | Les projets — code + leur propre `docs/`. `backend` et `frontend` sont des npm workspaces (un seul lockfile à la racine) ; `data` et `eval` sont en Python |
+| `packages/contract/` | `@murphy/contract` : le contrat du flux backend ↔ frontend (schémas zod, types déduits), compilé, partagé par les deux workspaces. Une modification casse la compilation des deux côtés à la fois |
 | `docker-compose.*.yml` | La stack de serving |
 
-Convention de documentation : chaque submodule porte un `docs/README.md` (index +
+Convention de documentation : chaque projet porte un `docs/README.md` (index +
 opérations), un `docs/ARCHITECTURE.md` (vue d'ensemble du sous-système) et un
-`docs/reference/` (les références détaillées). Le repo parent ne documente que le
+`docs/reference/` (les références détaillées). `docs/` à la racine ne documente que le
 transversal.

@@ -19,8 +19,8 @@ describe('loadConfig', () => {
     expect(config.server).toEqual({ port: 5000, nodeEnv: 'development', isProduction: false, logLevel: 'debug' });
     expect(config.http.corsOrigins).toBe(false);
     expect(config.http.streamRateLimit).toEqual({ windowMs: 60_000, limit: 10 });
-    expect(config.mongo.collection).toBe('chunks');
-    expect(config.qdrant).toEqual({ url: 'http://qdrant:6333', fallbackCollection: 'chunks' });
+    expect(config.mongo).toMatchObject({ database: 'LEGIFRANCE', metaDatabase: 'MURPHY_META' });
+    expect(config.qdrant).toEqual({ url: 'http://qdrant:6333' });
     expect(config.retrieval).toEqual({ topK: 5, minScore: 0.5 });
     expect(config.llm.systemPrompt).toContain('assistant juridique');
   });

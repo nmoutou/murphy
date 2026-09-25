@@ -8,7 +8,7 @@ import type { RagFailure } from '../types/rag';
 import { logger } from '../utils/logger';
 import { toRagError } from '../types/rag';
 
-interface ChatMessage {
+export interface ChatMessage {
   role: 'system' | 'user' | 'assistant';
   content: string;
 }

@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 import UserMessage from "@/components/chat/UserMessage";
 import AIMessage from "@/components/chat/AIMessage";
 import ErrorMessage from "@/components/chat/ErrorMessage";
-import type { AppUIMessage, DocumentChunk } from "@/types/messages";
+import type { AppUIMessage, DocumentChunk } from "@murphy/contract/messages";
 
 interface ChatLayoutProps {
     messages: Array<AppUIMessage>

@@ -1,6 +1,6 @@
 # Corrections — data
 
-> Périmètre : `data/` (sous-module `murphy-data`). Chemins relatifs à
+> Périmètre : le dossier `data/`. Chemins relatifs à
 > `data/`. Index et ordre d'exécution : [`README.md`](README.md).
 >
 > **Lot exécuté le 25 septembre 2026** (DA-01 → DA-04, DA-06), non

@@ -31,15 +31,13 @@ export interface HttpConfig {
 export interface MongoConfig {
   readonly uri: string;
   readonly database: string;
-  readonly collection: string;
   readonly metaDatabase: string;
   readonly timeoutMs: number;
 }
 
+/** The collection itself is read from the pointer published by the ingestion (`infra/collectionPointer.ts`) */
 export interface QdrantConfig {
   readonly url: string;
-  /** Used only when no ingestion run has published a collection (`infra/collectionPointer.ts`) */
-  readonly fallbackCollection: string;
 }
 
 export interface EmbeddingConfig {
@@ -95,8 +93,6 @@ const DEFAULT_RATE_LIMIT_WINDOW_MS = 900_000;
 const DEFAULT_RATE_LIMIT_MAX = 100;
 const DEFAULT_STREAM_RATE_LIMIT_WINDOW_MS = 60_000;
 const DEFAULT_STREAM_RATE_LIMIT_MAX = 10;
-/** Same name on both sides: the Mongo chunk collection and the Qdrant fallback */
-const DEFAULT_CHUNK_COLLECTION = 'chunks';
 const DEFAULT_MONGODB_DATABASE = 'LEGIFRANCE';
 const DEFAULT_MONGODB_META_DATABASE = 'MURPHY_META';
 const DEFAULT_MONGODB_TIMEOUT_MS = 10_000;
@@ -184,14 +180,12 @@ const readHttpConfig = (reader: EnvReader): HttpConfig => ({
 const readMongoConfig = (reader: EnvReader): MongoConfig => ({
   uri: reader.required('MONGODB_URI'),
   database: reader.optional('MONGODB_DATABASE') ?? DEFAULT_MONGODB_DATABASE,
-  collection: reader.optional('MONGODB_COLLECTION') ?? DEFAULT_CHUNK_COLLECTION,
   metaDatabase: reader.optional('MONGODB_META_DB_NAME') ?? DEFAULT_MONGODB_META_DATABASE,
   timeoutMs: reader.integer('MONGODB_TIMEOUT', DEFAULT_MONGODB_TIMEOUT_MS),
 });
 
 const readQdrantConfig = (reader: EnvReader): QdrantConfig => ({
   url: reader.optional('QDRANT_URL') ?? DEFAULT_QDRANT_URL,
-  fallbackCollection: reader.optional('QDRANT_COLLECTION') ?? DEFAULT_CHUNK_COLLECTION,
 });
 
 const readEmbeddingConfig = (reader: EnvReader): EmbeddingConfig => ({

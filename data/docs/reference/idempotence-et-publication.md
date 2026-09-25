@@ -116,11 +116,11 @@ pointeur en place porte **déjà** la même version (`may_publish`). Sinon la co
 mêlerait deux formats sous une version qui prétend le contraire. Un bump de version
 impose donc un run complet : `kedro run --params source=all`.
 
-Côté backend (`murphy-backend`, `src/infra/collectionPointer.ts`) : lecture du pointeur
-au boot, repli **bruyant** sur `QDRANT_COLLECTION` si aucun run n'a jamais publié, et
-dans tous les cas vérification que la collection existe réellement dans Qdrant (refus de
-démarrer sinon — mieux vaut le découvrir au boot que sur la première question d'un
-utilisateur).
+Côté backend (`backend/src/infra/collectionPointer.ts`) : lecture du pointeur
+au boot, **sans repli**. Le backend refuse de démarrer si aucun run n'a publié, si le
+pointeur porte une autre version du contrat que la sienne, ou si la collection n'existe
+pas dans Qdrant — mieux vaut le découvrir au boot que sur la première question d'un
+utilisateur.
 
 C'est le point où l'équation de complétude (voir
 [telemetrie.md](telemetrie.md#le-statut-dun-run)) cesse d'être un outil de diagnostic

@@ -2,7 +2,7 @@
 
 import ChatBubble from './ChatBubble';
 import ChatContent from './ChatContent';
-import type { AppUIMessage } from '@/types/messages';
+import type { AppUIMessage } from '@murphy/contract/messages';
 
 type Props = {
   message: AppUIMessage;

@@ -10,16 +10,15 @@ The serving system (backend) is **stateless by design**: every request recompute
 
 ## Repository layout
 
-This is the **parent repo** (orchestration + infra). The three application projects are
-**git submodules**, each its own GitHub repo. Clone with `git clone --recursive`, or run
-`git submodule update --init --recursive` after a plain clone. To edit application code,
-commit and push **inside** the submodule, then commit the updated pointer here.
+**One repository** (ADR-040): the applications, the infra and the docs live and are committed together. There are no submodules any more — a change that spans backend, frontend and data is one commit. The TypeScript projects are **npm workspaces** (`backend`, `frontend`, `packages/*`) with a single `package-lock.json` at the root: run `npm install` **at the root**, never inside a workspace. `data/` and `eval/` are Python projects beside them, outside the workspaces.
 
-- `backend/` — **submodule** ([murphy-backend](https://github.com/left-eyebr0w/murphy-backend)). Express + TypeScript API (the RAG **serving** orchestrator). The bulk of the runtime request logic.
-- `frontend/` — **submodule** ([murphy-frontend](https://github.com/left-eyebr0w/murphy-frontend)). Next.js 16 (App Router) + React 19 + Tailwind v4 chat UI.
-- `data/` — **submodule** ([murphy-data](https://github.com/left-eyebr0w/murphy-data)). Python/Kedro **ingestion** project that populates the databases (XML → parse → chunk → embed → Mongo/Qdrant/Neo4j). Runs offline, separately from the serving stack.
-- `docker-compose.base.yml` + `.dev.yml` / `.prod.yml` — the stack at the repo root: backend, frontend, MongoDB, Qdrant, Neo4j, and a HuggingFace TEI embedding service (GPU). Build contexts are `./backend` and `./frontend`. Two Compose **profiles** share the same DB/embedding services: `ingest` (just the databases + TEI, for running `data/`'s `kedro run` against them) and `serve` (adds backend + frontend). The `data/` pipeline code itself still runs outside Docker, invoked manually.
-- `docs/` — **cross-cutting docs only**: `pilotage/` (PM² steering), `product/` (vision, versions, ADRs), and `technical/ARCHITECTURE.md` (the system-level view). **Detailed technical documentation lives in each submodule's `docs/` folder** (`backend/docs/`, `frontend/docs/`, `data/docs/` — each with `README.md` index+operations, `ARCHITECTURE.md`, and `reference/`).
+- `backend/` — Express + TypeScript API (the RAG **serving** orchestrator). The bulk of the runtime request logic.
+- `frontend/` — Next.js 16 (App Router) + React 19 + Tailwind v4 chat UI.
+- `packages/contract/` — `@murphy/contract`, what backend and frontend exchange at runtime: zod schemas and the types inferred from them, one module per contract imported by subpath (`@murphy/contract/messages`, no barrel). Compiled by `tsc` to `dist/` (the root `postinstall` builds it). `packages/` only holds what crosses a runtime boundary between two workspaces.
+- `data/` — Python/Kedro **ingestion** project that populates the databases (XML → parse → chunk → embed → Mongo/Qdrant/Neo4j). Runs offline, separately from the serving stack.
+- `eval/` — Python evaluation harness (P2). Reads the databases through its own client; never imports `ragcore` (ADR-027).
+- `docker-compose.base.yml` + `.dev.yml` / `.prod.yml` — the stack at the repo root: backend, frontend, MongoDB, Qdrant, Neo4j, and a HuggingFace TEI embedding service (GPU). The build context is the **repo root** (`backend/Dockerfile`, `frontend/Dockerfile`), because the apps share the root lockfile and the contract; the root `.dockerignore` keeps `.env*`, `node_modules`, `data/`, `eval/` and `docs/` out of it. Two Compose **profiles** share the same DB/embedding services: `ingest` (just the databases + TEI, for running `data/`'s `kedro run` against them) and `serve` (adds backend + frontend). The `data/` pipeline code itself still runs outside Docker, invoked manually.
+- `docs/` — **cross-cutting docs only**: `pilotage/` (PM² steering), `product/` (vision, versions, ADRs), and `technical/ARCHITECTURE.md` (the system-level view). **Detailed technical documentation lives in each project's `docs/` folder** (`backend/docs/`, `frontend/docs/`, `data/docs/` — each with `README.md` index+operations, `ARCHITECTURE.md`, and `reference/`).
 
 Ingestion and serving share databases but no code. The backend assumes the databases are already populated by the `data/` pipeline.
 
@@ -49,13 +48,15 @@ npm run status   # container status table, both profiles
 
 `qdrant`/`mongo` have no profile (always up under either); `backend`/`frontend` are `serve`-only; `embedding-service` is in both profiles (needed by the ingestion pipeline for embedding *and* by the backend at request time). Because of the silent-leak behavior of unprofiled `down`, always use the npm scripts above rather than raw `docker compose down`.
 
-Dev ports: frontend `3000`, backend `5000`, Qdrant `6333`, Mongo `27017`, Neo4j `7474`/`7687`, embedding service `5001→80`. Dev mode mounts source into the containers with hot-reload (`ts-node` watch for backend, `next dev` for frontend).
+Dev ports: frontend `3000`, backend `5000`, Qdrant `6333`, Mongo `27017`, Neo4j `7474`/`7687`, embedding service `5001→80`. Dev mode mounts **only the sources** into the containers (`backend/src`, `frontend/src`, `frontend/public`) with hot-reload (`ts-node` watch for backend, `next dev` for frontend). Dependencies, app config and the built contract live in the images: after changing `packages/contract`, a `package.json` or an app config file, run `npm run serve:build`.
 
 The embedding service requires an **NVIDIA GPU** (declared in `docker-compose.dev.yml`). Without one, run backend/frontend locally instead and point env vars at reachable services.
 
 ### Backend without Docker
 
-No env file is loaded: export the variables first (e.g. `set -a; . ../.env.dev; set +a`, then override the Docker hostnames such as `QDRANT_URL`). From `backend/`:
+Install once from the repo root: `npm install` (it also builds `packages/contract`). `npm run check` at the root runs everything the CI runs: contract build, backend type-check + lint + tests, frontend type-check + build.
+
+No env file is loaded: export the variables first (e.g. `set -a; . ../.env.dev; set +a`, then override the Docker hostnames such as `QDRANT_URL`). From `backend/` (or from the root with `-w backend`):
 
 ```bash
 npm run dev          # ts-node src/server.ts
@@ -73,7 +74,7 @@ Jest coverage thresholds (`jest.config.js`: lines/statements 65%, functions 60%,
 
 ### Frontend without Docker
 
-From `frontend/`: `npm run dev` (Turbopack), `npm run build`, `npm run lint`. TS path alias `@/*` → `frontend/src/*`.
+From `frontend/`: `npm run dev` (Turbopack), `npm run build`, `npm run type-check`, `npm run lint` (broken until FE-02). TS path alias `@/*` → `frontend/src/*`.
 
 ## Architecture: the RAG request flow (serving)
 
@@ -82,12 +83,12 @@ The core pipeline lives in `backend/src/services/chatService.ts:createChatStream
 1. **Extract question** — the last `user` message's text parts (`extractQuestionFromMessages`). Requests carry an AI SDK `messages` array, not a bare `question` string.
 2. **Embed** (`ragService.embedQuestion`) → TEI embedding service.
 3. **Retrieve** (`ragService.retrieveChunks`) → Qdrant top-K (`RETRIEVAL_TOP_K`, default 5).
-4. **Stream sources first** — each Qdrant hit is written to the stream as a `data-document` part *before the LLM runs*, so the UI shows sources immediately.
-5. **Fetch content** (`ragService.fetchChunkDocuments`) → MongoDB, by `chunkId`. This content is used only to build the LLM context, never sent directly to the client.
-6. **Stream LLM** — context is injected into the system prompt (`config.llm.systemPrompt`, French legal-assistant prompt, overridable via `SYSTEM_PROMPT` env), then `getInfraClients().llm.stream()` tokens are written as `text-delta` parts.
+4. **Fetch passages** (`ragService.fetchPassages`) → MongoDB `documents`, by `(identifier, owner_id)`. Each passage's text is cut out of its parent document's `content` between the payload's `char_start`/`char_end` (Unicode code points, converted to UTF-16 in `services/passages.ts`). A missing parent or out-of-range offsets raise a `CONTRACT_VIOLATION` `RagError` naming the chunk (ADR-039).
+5. **Stream sources** — *before the LLM runs*, in ranking order: a `data-parentDocument` part (the whole document, **once** per document, before its first passage), then a `data-document` part per passage (with `highlightStart`/`highlightEnd`, UTF-16 offsets into the parent's `content`).
+6. **Stream LLM** — context (the passage texts only, not the whole documents) is injected into the system prompt (`config.llm.systemPrompt`, French legal-assistant prompt, overridable via `SYSTEM_PROMPT` env), then `getInfraClients().llm.stream()` tokens are written as `text-delta` parts.
 7. **Finish** — a `finish` part carries `ragTiming` metadata (per-stage latency in ms).
 
-The stream is built with the Vercel **AI SDK** (`createUIMessageStream` / `pipeUIMessageStreamToResponse`). The message/part contract is `AppUIMessage` in `backend/src/types/messages.ts` — keep backend and frontend (`frontend/src/types/messages.ts`) in sync; the custom data part is `{ document: DocumentChunk }` and metadata is `{ ragTiming }`.
+The stream is built with the Vercel **AI SDK** (`createUIMessageStream` / `pipeUIMessageStreamToResponse`). The message/part contract is `AppUIMessage` in `packages/contract/src/messages.ts` (`@murphy/contract/messages`), shared by both sides: the backend compiles against its types, the frontend validates incoming parts with its zod schemas (`useChat({ dataPartSchemas, messageMetadataSchema })`), so a change breaks both compilations at once. The custom data parts are `{ document: DocumentChunk; parentDocument: ParentDocument }` and metadata is `{ ragTiming }`.
 
 ### Two transports, same pipeline
 
@@ -125,11 +126,11 @@ Tooling: `kedro run` (`--params source=cass,jade` to restrict), `kedro viz`, `ru
 
 ## Configuration
 
-Backend runtime config is environment-driven (see the `environment:` block in `docker-compose.base.yml` for the full list). Key vars: `MONGODB_URI/DATABASE/COLLECTION`, `QDRANT_URL/COLLECTION`, `EMBEDDING_SERVICE_URL/EMBEDDING_MODEL`, `LLM_API_ENDPOINT/API_KEY/MODEL/TEMPERATURE/MAX_TOKENS`, `RETRIEVAL_TOP_K`, `RETRIEVAL_MIN_SCORE`, `SYSTEM_PROMPT`, plus rate-limit and CORS settings. **`backend/src/config.ts` is authoritative**: the only file that reads `process.env`, it loads and validates the environment once at boot into a typed `readonly` `config` (defaults included). An empty value counts as unset; a malformed number (`LLM_TEMPERATURE=abc`) stops the boot with the variable's name. `utils/configWarnings.ts:checkEnvironment()` then logs the missing required vars and the defaulted ones, derived from what `config.ts` actually read.
+Backend runtime config is environment-driven (see the `environment:` block in `docker-compose.base.yml` for the full list). Key vars: `MONGODB_URI/DATABASE/META_DB_NAME`, `QDRANT_URL`, `EMBEDDING_SERVICE_URL/EMBEDDING_MODEL`, `LLM_API_ENDPOINT/API_KEY/MODEL/TEMPERATURE/MAX_TOKENS`, `RETRIEVAL_TOP_K`, `RETRIEVAL_MIN_SCORE`, `SYSTEM_PROMPT`, plus rate-limit and CORS settings. **`backend/src/config.ts` is authoritative**: the only file that reads `process.env`, it loads and validates the environment once at boot into a typed `readonly` `config` (defaults included). An empty value counts as unset; a malformed number (`LLM_TEMPERATURE=abc`) stops the boot with the variable's name. `utils/configWarnings.ts:checkEnvironment()` then logs the missing required vars and the defaulted ones, derived from what `config.ts` actually read.
 
 There is **one** env file for the whole system: `.env.dev` at the repo root (gitignored). Docker Compose feeds it to the serving stack, and the ingestion project reads the same file by absolute path (`ragcore/adapters/config/settings.py`) — a `.env` inside `data/` has no effect. One file so the TEI container and the pipeline can never disagree on the embedding model.
 
-The embedding model and dimensions must match between ingestion and serving: the pipeline embeds with `all-mpnet-base-v2` (768-dim, Cosine), so the TEI service and `RETRIEVAL_*` settings on the backend must align with vectors of the same model/dimensionality. `QDRANT_COLLECTION` is only a **fallback**: the backend resolves the collection from the pointer published by the last `ok` ingestion run (`MURPHY_META.meta_published_collection`) and refuses to boot if the resolved collection doesn't exist.
+The embedding model and dimensions must match between ingestion and serving: the pipeline embeds with `all-mpnet-base-v2` (768-dim, Cosine), so the TEI service and `RETRIEVAL_*` settings on the backend must align with vectors of the same model/dimensionality. The Qdrant collection is never configured: the backend reads it from the pointer published by the last `ok` ingestion run (`MURPHY_META.meta_published_collection`) and **refuses to boot** when there is no pointer, when its `serving_contract_version` differs from the backend's `SERVING_CONTRACT_VERSION` (ADR-039), or when the collection doesn't exist.
 
 Neo4j is provisioned in compose and written by the ingestion pipeline, but is not yet wired into the backend request path — it's reserved for future graph-based context enrichment.
 

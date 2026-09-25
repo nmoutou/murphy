@@ -1,4 +1,4 @@
-# Documentation — murphy-data
+# Documentation — data
 
 Documentation technique du pipeline d'**ingestion** de Murphy : LEGIFRANCE XML → parse →
 chunk → embed → MongoDB / Qdrant / Neo4j. Le pipeline tourne hors-ligne, hors de la stack
@@ -37,7 +37,7 @@ de **cadrage historiques** (doctrine ragcore, migration, lots) — utiles pour c
 
 ### Configuration
 
-Il y a **un seul** fichier d'environnement, et il vit à la **racine du repo parent** :
+Il y a **un seul** fichier d'environnement, et il vit à la **racine du dépôt** :
 `../.env.dev` (copié depuis `../.env.example`). Il n'y a pas de `.env` dans `data/` — en
 créer un n'a aucun effet : `ragcore/adapters/config/settings.py` lit le fichier racine par
 chemin absolu, et **lève** s'il est absent (fail-fast, pas de défauts silencieux).
@@ -89,7 +89,7 @@ uniquement pour `EMBEDDING_PROVIDER=local`), `tracking` (MLflow, pour lire l'A/B
 
 | Symptôme | Piste |
 |---|---|
-| `FileNotFoundError` au démarrage sur `.env.dev` | Le fichier vit à la **racine du repo parent**, pas dans `data/`. |
+| `FileNotFoundError` au démarrage sur `.env.dev` | Le fichier vit à la **racine du dépôt**, pas dans `data/`. |
 | Run « ok » mais 0 document | `XML_SOURCE_PATH` ne pointe sur rien (un répertoire absent ne lève pas — il donne zéro document) ; vérifier le chemin et les sous-répertoires par source. |
 | `nuke_all refusé` | `ENVIRONMENT` ≠ `dev` dans le `.env.dev` racine — c'est le garde-fou voulu. |
 | Avertissement « vecteurs NULS » | `EMBEDDING_PROVIDER=noop` (le défaut). Passer à `openai` + `EMBEDDING_SERVICE_URL` pour un vrai run. |

@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build --turbopack",
+    "type-check": "tsc --noEmit",
     "start": "next start",
     "lint": "eslint"
   },
@@ -20,6 +21,7 @@
     "typescript": "^5.9.3"
   },
   "dependencies": {
+    "@murphy/contract": "*",
     "@ai-sdk/react": "^3.0.89",
     "ai": "^6.0.87",
     "next": "^16.1.6",

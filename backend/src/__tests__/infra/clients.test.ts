@@ -17,7 +17,7 @@ jest.mock('../../utils/logger', () => {
   return { logger: silentLogger };
 });
 
-const { config } = loadConfig({ QDRANT_URL: 'http://qdrant.test', QDRANT_COLLECTION: 'fallback' });
+const { config } = loadConfig({ QDRANT_URL: 'http://qdrant.test' });
 
 afterEach(async () => {
   await closeInfraClients();
@@ -38,7 +38,6 @@ describe('infrastructure clients', () => {
       mongoClient: 'driver-client',
       metaDatabase: 'MURPHY_META',
       qdrantUrl: 'http://qdrant.test',
-      fallbackCollection: 'fallback',
     });
   });
 

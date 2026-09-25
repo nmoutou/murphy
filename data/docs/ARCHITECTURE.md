@@ -113,9 +113,9 @@ Déroulé détaillé nœud par nœud : [reference/pipeline.md](reference/pipelin
 
 | Contrat | Écrit par l'ingestion | Lu par le backend |
 |---|---|---|
-| Contenu | Mongo `LEGIFRANCE.documents` (+ `manifest`) | via `MONGODB_*` |
+| Contenu | Mongo `LEGIFRANCE.documents` (+ `manifest`) | documents parents par `(identifier, owner_id)`, passage = `content[char_start:char_end]` |
 | Vecteurs | Qdrant, collection = empreinte de la config | via le pointeur publié |
-| Pointeur | `MURPHY_META.meta_published_collection` (clé `current`) | au boot (`infra/collectionPointer.ts`), repli bruyant sur `QDRANT_COLLECTION` |
+| Pointeur | `MURPHY_META.meta_published_collection` (clé `current`), avec `serving_contract_version` | au boot (`infra/collectionPointer.ts`), refus de démarrer sans pointeur ou sur une autre version (ADR-039) |
 | Graphe | Neo4j (nœuds + arêtes typées par verbe) | pas encore câblé côté serving |
 
 Le modèle d'embedding et sa dimension (`all-mpnet-base-v2`, 768, Cosine) doivent être les
