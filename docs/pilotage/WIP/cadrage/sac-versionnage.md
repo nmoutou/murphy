@@ -9,7 +9,7 @@
 > ne sont pas ici — elles s'arrangeront en fonction de ce sac.
 >
 > **Statut : durable jusqu'au tri.** Contrairement à
-> `descripion-target-golden-set.md`, ce document n'est pas jetable — il est
+> `description-target-golden-set.md`, ce document n'est pas jetable — il est
 > destiné à être consommé par l'exercice de rejalonnement, puis à disparaître
 > dans lui.
 
@@ -41,7 +41,7 @@
 | **1** | **Guide d'annotation** | dire à l'assesseur comment attribuer un grade (cascade q1→q3) | **n'existe pas** — `ADR-008.guide_version` pointe vers un document inexistant ([#19](https://github.com/left-eyebr0w/murphy/issues/19)) |
 | **2** | **Contraintes de rédaction de la `narrative`** | dire comment se rédige la `narrative` (huit contraintes) | à écrire ([#19](https://github.com/left-eyebr0w/murphy/issues/19)) |
 | **3** | **Protocole d'assessment *inter*** | définir la machinerie du désaccord entre assesseurs (troisième compartiment, séparateur en aveugle, table de réparation q2/q3) | à écrire ([#19](https://github.com/left-eyebr0w/murphy/issues/19)) — sans domicile depuis qu'ADR-038 cesse d'être un livrable |
-| **5** | **Conduite d'une campagne d'assessment** | définir comment une campagne s'ordonne et s'arrête (file unique, règle de famine, tourniquet par cas, deux critères d'arrêt) | ⚠️ **absent du sac jusqu'ici** — écrit seulement dans `descripion-target-golden-set.md` |
+| **5** | **Conduite d'une campagne d'assessment** | définir comment une campagne s'ordonne et s'arrête (file unique, règle de famine, tourniquet par cas, deux critères d'arrêt) | ⚠️ **absent du sac jusqu'ici** — écrit seulement dans `description-target-golden-set.md` |
 | **6** | **Pilote de calibration** | définir l'essai qui produit le seuil d'auto-cohérence (~5 cas, re-jugement à l'aveugle) | décidé en [#18](https://github.com/left-eyebr0w/murphy/issues/18) — était rangé à tort sous *pooling* |
 | **7** | **Protocole de pooling** | définir qui contribue au pool et comment le budget s'y alloue (allocation gloutonne par contribution RBP) | décidé en [#18](https://github.com/left-eyebr0w/murphy/issues/18), **sans domicile déclaré** |
 
@@ -56,7 +56,7 @@
 
 | N° | Livrable | Ce que c'est | État |
 |---|---|---|---|
-| **16** | **Spécification de l'instrument de mesure** | définir ce qui est mesuré et comment (`RBP(p) + résidu`, famille sentinelle, grades 0–3, écart apparié, les deux refus de publication) | ⚠️ **absent du sac jusqu'ici** — écrit seulement dans `descripion-target-golden-set.md` |
+| **16** | **Spécification de l'instrument de mesure** | définir ce qui est mesuré et comment (`RBP(p) + résidu`, famille sentinelle, grades 0–3, écart apparié, les deux refus de publication) | ⚠️ **absent du sac jusqu'ici** — écrit seulement dans `description-target-golden-set.md` |
 | **17** | **Format du rapport** | définir ce qu'une publication contient et dans quel ordre (`correspondance_litterale` en tête, ventilations sans seuil, grandeur de transfert par paire) | épars, non rassemblé |
 | **18** | **Contrat de recevabilité** | définir ce qu'un tiers doit fournir pour qu'un run étranger soit projetable, notable et poolable | ⚠️ **domicilié en ADR-008** — jamais rédigé pour son lecteur |
 

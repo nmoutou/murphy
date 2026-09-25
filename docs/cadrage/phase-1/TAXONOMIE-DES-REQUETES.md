@@ -4,7 +4,7 @@
 
 ### 0.1. Spécifications générales
 
-**La taxonomie classe des requêtes, pas des utilisateurs.** La règle de non-personalisation (**D-06**) l'impose : le système ne voit d'un usager que ce que sa requête inclut. Toute propriété qui ne se lit pas dans la requête est illégitime ici. Ce qui s'apparenterait à un niveau d'expertise n'est permis qu'à la condition d'être inclus dans la formulation elle-même, en temps que propriété de la requête.
+**La taxonomie classe des requêtes, pas des utilisateurs.** La règle de non-personnalisation (**D-06**) l'impose : le système ne voit d'un usager que ce que sa requête inclut. Toute propriété qui ne se lit pas dans la requête est illégitime ici. Ce qui s'apparenterait à un niveau d'expertise n'est permis qu'à la condition d'être inclus dans la formulation elle-même, en tant que propriété de la requête.
 
 **Critère d'admission d'une classe :** Deux requêtes appartiennent à des classes différentes si, et seulement si, **le système doit se comporter différemment, ou échouer différemment**. 
 
@@ -44,7 +44,7 @@ Les spécimens sont produits par une seule tête. Le risque est que la taxonomie
 
 ### 1.1 L'axe primaire
 
-Ce dont l'utilisateur dispose d'emblée, à priori. La méthodologie l'évalue par rapport à la phrase qui "porte" le problème : *le moteur "exige" le vocabulaire de la réponse comme "clé d'accès" à la réponse.* L'axe prpopsé mesure la distance entre **ce que l'usager a déjà** et **les mots que le corpus contient**. 
+Ce dont l'utilisateur dispose d'emblée, à priori. La méthodologie l'évalue par rapport à la phrase qui "porte" le problème : *le moteur "exige" le vocabulaire de la réponse comme "clé d'accès" à la réponse.* L'axe proposé mesure la distance entre **ce que l'usager a déjà** et **les mots que le corpus contient**. 
 
 L'axe peut se lire comme un gradient *ordonné et nommé* : l'identifiant du producteur, puis les mots des textes eux-mêmes, puis le nom qu'un tiers leur a donné, puis ceux de l'usager.
 

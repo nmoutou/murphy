@@ -31,7 +31,7 @@ ADR-033 a fixé ce qu'on teste — le mécanisme de récupération exercé. Il l
 ouvert ce qu'il ne pouvait pas fixer : **le cadre d'échantillonnage**. Un axe
 dit quoi écrire ; il ne dit pas si ce qu'on a écrit représente quoi que ce soit.
 
-Le chantier `docs/droit/taxomonie/`, repris de zéro le 31 juillet 2026, visait
+Le chantier `docs/droit/taxonomie/`, repris de zéro le 31 juillet 2026, visait
 exactement ce cadre : une taxonomie du droit fournirait le dénominateur qui
 manque. La question posée en session était donc : **peut-on s'en passer ?**
 
@@ -114,7 +114,7 @@ sa requalification en test de fumée.
 | | Organise par | Cadre d'échantillonnage | Répond à | Aveugle à |
 |---|---|---|---|---|
 | **Fonctionnel** (ADR-033) | la fonction de récupération exercée | aucun | « la récupération marche-t-elle ? » | l'importance des questions posées |
-| **Contenu** (`docs/droit/taxomonie/`) | la région du droit | lui-même | « la couverture est-elle régulière ? » | la mécanique de récupération |
+| **Contenu** (`docs/droit/taxonomie/`) | la région du droit | lui-même | « la couverture est-elle régulière ? » | la mécanique de récupération |
 | **Usage** (panel, ADR-025) | ce qui est effectivement demandé | la distribution de la demande | « le service répond-il aux besoins réels ? » | tout ce que personne n'a encore demandé |
 
 **Ils ne se fusionnent pas**, et c'est une décision, pas une commodité : ce sont
@@ -334,6 +334,6 @@ ADR-016 (découplage récupération/génération) · ADR-017 (strates) · ADR-02
 vérification/validation) · ~~**ADR-033 (prolongé : il fixe l'axe, celui-ci fixe le
 cadre)**~~ ⛔ **obsolète — lire ADR-036** · ADR-035 (paradigme TREC, ADR de méthode : il
 arbitre cet ADR et non l'inverse) · ADR-037 (provenance d'authoring) · `GOLDEN-SET.md` §4,
-§5, §7 — **tous trois estampillés périmés** dans le fichier · `docs/droit/taxomonie/`
+§5, §7 — **tous trois estampillés périmés** dans le fichier · `docs/droit/taxonomie/`
 (second instrument) · R-05 (`RISQUES.md`) ·
 [carte #1](https://github.com/left-eyebr0w/murphy/issues/1)

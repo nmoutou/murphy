@@ -12,7 +12,7 @@
 > l'état.** Il est le **seul lieu de définition de P-01 à P-04** (§*Pièges de construction*),
 > que `GOLDEN-SET.md` §2.3 invoque **par sigle**, et **six documents durables le citent** —
 > `GOLDEN-SET.md`, ADR-032, ADR-035, `ADR/INDEX.md`, `recherche/requetes-generees.md`,
-> `droit/taxomonie/SOURCES.md`. Son homonyme `B-08-generation-requetes.md`, lui, avait
+> `droit/taxonomie/SOURCES.md`. Son homonyme `B-08-generation-requetes.md`, lui, avait
 > **zéro** lien durable entrant : il a été supprimé le 7 août, et **confondre les deux
 > ferait le dégât**.
 >

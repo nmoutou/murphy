@@ -65,5 +65,5 @@
 #### Légende : 
 - **⬛ structurel** : impacte directement le cadrage du projet
 - **🟦 pratique** : impacte les activités du projet
-- **🟧 indeterminé** : impact encore à définir
+- **🟧 indéterminé** : impact encore à définir
 - **Case vide** : pas d'impact

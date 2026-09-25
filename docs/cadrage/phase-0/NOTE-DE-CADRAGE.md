@@ -146,7 +146,7 @@ Un critère unique trie ce qui relève de T0 : **le service serait-il publiable 
 
 Le cadrage en est le premier segment. T0 porte la **quasi-totalité de l'architecture définitive** : elle est construite pour les deux régimes, d'évaluation et opérationnel, alors que seul le premier tournera en T1 ; Le régime opérationnel n'y est pas disponible. On y construit déjà ce qui sert à observer et à exploiter le système. Rattraper une architecture au moment où les utilisateurs arrivent est précisément ce que T1 ne peut pas et ne doit pas faire.
 
-Toutefois, certaines pièces ne peuvent-être **exercées** seulement en T1 : demandes d'accès réellement traitées, durées de conservation réellement appliquées, violations réellement notifiées. 
+Toutefois, certaines pièces ne peuvent être **exercées** qu'en T1 : demandes d'accès réellement traitées, durées de conservation réellement appliquées, violations réellement notifiées. 
 
 Rien de tout cela ne passe devant un guichet, toutefois, c'est la phase où l'on s'y prépare ; "Montrer patte blanche", c'est **pouvoir produire le dossier sur demande**, à tout moment.
 
@@ -158,7 +158,7 @@ Il en résulte une liste **close et courte** des données personnelles de T1 : l
 
 Plusieurs itérations, avec deux profils d'utilisateurs différents : les groupes A et B définis en §2.
 
-**T1 n'élargit pas le périmètre fonctionnel.** La totalité du travail de developpement est : d'amélioration, de mise en conformité, de correction et/ou d'optimisation de ce qui existe déjà.
+**T1 n'élargit pas le périmètre fonctionnel.** La totalité du travail de développement est : d'amélioration, de mise en conformité, de correction et/ou d'optimisation de ce qui existe déjà.
 
 **Le versionnement des briques est une condition d'entrée.** Toutes les observations viennent désormais d'un système déployé, et **plusieurs choses y varient à la fois** : corpus, configuration d'ingestion, graphe, runtime, jugements de référence, utilisateurs. Une notation, un retour ou une mesure qu'on ne peut pas rattacher à l'état exact qui l'a produite est une donnée perdue en silence. Chaque artefact déployé doit être identifiable au même titre que ce qui l'a fabriqué.
 

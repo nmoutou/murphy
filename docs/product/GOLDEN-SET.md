@@ -123,7 +123,7 @@ Deux cadres de remplacement ont été examinés et écartés :
 
 | Écarté | Pourquoi |
 |---|---|
-| **Un cadre promis à la taxonomie** (`docs/droit/taxomonie/`, ADR-034 §5) | Elle est hors chemin critique et sur son propre calendrier. Écrire une dépendance qu'on ne peut pas honorer en v1 revient à dater un chèque. |
+| **Un cadre promis à la taxonomie** (`docs/droit/taxonomie/`, ADR-034 §5) | Elle est hors chemin critique et sur son propre calendrier. Écrire une dépendance qu'on ne peut pas honorer en v1 revient à dater un chèque. |
 | **Le corpus lui-même comme cadre par défaut** | C'est exactement la circularité qu'ADR-029 écarte pour la strate 2 et qu'ADR-031 écarte pour le graphe. |
 
 L'argument décisif n'est pas qu'un meilleur cadre resterait à trouver, mais que
