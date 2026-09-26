@@ -1,7 +1,5 @@
 import { Geist, Geist_Mono } from 'next/font/google';
-import { ThemeProvider } from '@/components/providers/ThemeProvider';
 import '@/styles/globals.css';
-import '@/styles/scrollbar.css';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -20,11 +18,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="fr">
-      <ThemeProvider>
-        <body className={`${geistSans.variable} ${geistMono.variable} antialiased flex h-screen`}>
-          {children}
-        </body>
-      </ThemeProvider>
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased flex h-screen`}>
+        {children}
+      </body>
     </html>
   );
 }

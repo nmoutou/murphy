@@ -1,7 +1,6 @@
 'use client';
 
 import { useCallback } from 'react';
-import { useTheme } from './providers/ThemeProvider';
 import WelcomeLayout from './layouts/WelcomeLayout';
 import ChatLayout from './layouts/ChatLayout';
 import ChatBox from './ChatBox';
@@ -9,7 +8,6 @@ import ErrorDialog from './chat/ErrorDialog';
 import { useRagChat } from '@/hooks/useRagChat';
 
 export default function MainPanel() {
-  const theme = useTheme();
   const { messages, sendMessage, stop, status, errorStage, clearError } = useRagChat();
   const isLoading = status === 'submitted' || status === 'streaming';
   const errorDialog = errorStage && <ErrorDialog stage={errorStage} onClose={clearError} />;
@@ -22,10 +20,7 @@ export default function MainPanel() {
   );
 
   return (
-    <div
-      style={{ backgroundColor: theme.colors.primary }}
-      className="min-h-screen w-full flex flex-col items-center relative"
-    >
+    <div className="min-h-screen w-full flex flex-col items-center relative bg-primary">
       {/* Chat messages or welcome */}
       {messages.length > 0 ? (
         <div className="flex-1 min-h-0 w-full flex justify-center items-start py-4 overflow-y-auto scrollbar">

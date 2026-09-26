@@ -1,6 +1,5 @@
 import AnimatedButtonIcon from './icons/AnimatedButtonIcon';
 import ButtonIcon from './icons/ButtonIcon';
-import { useTheme } from './providers/ThemeProvider';
 import { useState, useEffect, useCallback } from 'react';
 
 const DEFAULT_PLACEHOLDER = "Nul n'est censé ignorer la loi.";
@@ -13,7 +12,6 @@ interface ChatBoxProps {
 }
 
 export default function ChatBox({ onEnter, onCancel, disabled = false, absolute }: ChatBoxProps) {
-  const theme = useTheme();
   const [content, setContent] = useState('');
 
   const launchSearch = useCallback(() => {
@@ -39,10 +37,9 @@ export default function ChatBox({ onEnter, onCancel, disabled = false, absolute 
 
   return (
     <div
-      className={`flex justify-center items-center p-3 rounded-[25px] gap-2 mx-8 w-full max-w-[600px] ${absolute ? 'fixed bottom-0 my-4' : ''}`}
-      style={{ backgroundColor: theme.colors.secondary }}
+      className={`flex justify-center items-center p-3 rounded-[25px] gap-2 mx-8 w-full max-w-[600px] bg-secondary ${absolute ? 'fixed bottom-0 my-4' : ''}`}
     >
-      <div style={{ pointerEvents: disabled ? 'none' : 'auto' }}>
+      <div className={disabled ? 'pointer-events-none' : 'pointer-events-auto'}>
         <AnimatedButtonIcon
           icon="folder"
           size={32}
@@ -55,8 +52,7 @@ export default function ChatBox({ onEnter, onCancel, disabled = false, absolute 
 
       <input
         name="chatbox"
-        className="h-full w-full focus:outline-none placeholder:italic placeholder:text-center truncate disabled:opacity-50"
-        style={{ color: theme.colors.tertiary }}
+        className="h-full w-full text-tertiary focus:outline-none placeholder:italic placeholder:text-center truncate disabled:opacity-50"
         placeholder={DEFAULT_PLACEHOLDER}
         onChange={(event) => {
           setContent(event.target.value);

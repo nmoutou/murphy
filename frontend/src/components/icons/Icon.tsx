@@ -1,4 +1,3 @@
-import { useTheme } from '@/components/providers/ThemeProvider';
 import Image from 'next/image';
 
 interface IconProps {
@@ -10,15 +9,14 @@ interface IconProps {
 }
 
 export default function Icon({ icon, alt, size, animated = false, negative = false }: IconProps) {
-  const theme = useTheme();
-
   const src = animated ? `/icons/animated/${icon}.gif` : `/icons/static/${icon}.png`;
-  const dark = theme.name === 'dark' && !negative ? 'invert' : '';
+  // Black icons on a dark theme: inverted, unless drawn on a light background
+  const inversion = negative ? '' : 'invert';
 
   return (
     <Image
       aria-hidden
-      className={dark}
+      className={inversion}
       src={src}
       alt={alt}
       width={size}

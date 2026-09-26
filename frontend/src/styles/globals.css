@@ -5,13 +5,17 @@
   --font-mono: var(--font-geist-mono);
 }
 
-/* The dark theme as Tailwind colors (bg-secondary, text-tertiary…). ThemeProvider
-   holds the same values until the inline styles are gone (FE-08). */
+/* The dark theme as Tailwind colors: bg-secondary, text-tertiary… (FE-08) */
 @theme {
   --color-primary: #0e0d11;
   --color-secondary: #2a292d;
   --color-tertiary: #d9d9d9;
   --color-quaternary: #ffffff;
+}
+
+@utility scrollbar {
+  scrollbar-width: medium;
+  scrollbar-color: var(--color-tertiary) var(--color-secondary);
 }
 
 body {
@@ -38,11 +42,11 @@ body {
 
 /* Variants */
 .chat-bubble-user {
-  @apply rounded-br-none;
+  @apply rounded-br-none bg-secondary text-tertiary;
 }
 
 .chat-bubble-agent {
-  @apply rounded-bl-none;
+  @apply rounded-bl-none bg-quaternary text-secondary;
 }
 
 /* Messages */
@@ -62,11 +66,11 @@ body {
 /* TO-DO: Simplifier */
 
 .source-item {
-  @apply p-2 rounded text-xs hover:opacity-80 border;
+  @apply p-2 rounded text-xs opacity-80 border border-tertiary;
 }
 
 .sources-list-header {
-  @apply mt-3 pt-3 border-t;
+  @apply mt-3 pt-3 border-t border-tertiary;
 }
 
 .sources-list-summary {
