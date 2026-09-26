@@ -7,7 +7,7 @@
 | ID | Point | Sévérité | Statut |
 |---|---|---|---|
 | TR-01 | **Contrat serving ↔ ingestion rompu** (§1) | Bloquant | ✅ [ADR-039](../../product/ADR/ADR-039-contrat-ingestion-serving.md) · `data/`, backend et frontend (TR-04) |
-| TR-02 | L'URL WebSocket configurée n'a pas de chemin : le serveur refuse la connexion (§2) | Bloquant | ⬜ |
+| TR-02 | L'URL WebSocket configurée n'a pas de chemin : le serveur refuse la connexion (§2) | Bloquant | ✅ `lib/chatSocketUrl.ts` |
 | TR-03 | La prod ne peut pas joindre le backend depuis le navigateur (§3) | Dette | ⏸ décision de déploiement |
 | TR-04 | `types/messages.ts` est dupliqué entre backend et frontend, sans contrôle (§6) | Confort | ✅ `packages/contract` ([ADR-040](../../product/ADR/ADR-040-depot-unique.md)) |
 | TR-05 | `CLAUDE.md` décrit un état qui n'est plus vrai (§4) | Dette | ⬜ après les lots |
@@ -111,21 +111,34 @@ le frontend dérive le chemin. `NEXT_PUBLIC_API_URL` n'est aujourd'hui lue
 que par du code mort (FE-04). Supprimer `NEXT_PUBLIC_WS_URL` de
 `.env.example` et de `docker-compose.base.yml:87`.
 
+**Fait (26 septembre 2026).** `frontend/src/lib/chatSocketUrl.ts` déduit
+l'adresse de `NEXT_PUBLIC_API_URL` (défaut `http://localhost:5000`) :
+`http:` → `ws:`, `https:` → `wss:`, chemin `/api/v1/chat/ws`. Une URL
+malformée lève une erreur qui nomme la variable. `NEXT_PUBLIC_WS_URL`
+est retirée de `.env.example`, de compose et du `.env.dev` local.
+Vérifié sur la stack de dev : la valeur est bien inlinée dans le bundle
+servi, et un WebSocket ouvert sur l'adresse déduite reçoit 5
+`data-parentDocument` et 5 `data-document`. Dans le navigateur, une
+question affiche ses sources ; la réponse du LLM manque, faute de
+variables LLM dans le `.env.dev` local, et l'échec ne s'affiche pas
+(FE-03). La prod reste soumise à TR-03 : l'image est construite sans la
+variable.
+
 ## 3. TR-03 — la prod ne joint pas le backend
 
 - Dans `docker-compose.prod.yml`, le backend ne publie **aucun port**, et
   aucun reverse proxy n'est déclaré. Or c'est le **navigateur** qui ouvre
   le WebSocket vers le backend.
-- Next.js **inline les `NEXT_PUBLIC_*` au build**. Les passer via
-  `environment:` (`docker-compose.base.yml:86-87`) n'agit qu'en mode
-  `next dev`. L'image de production, construite sans ces variables, retombe
-  sur `ws://localhost:5000/...`.
+- Next.js **inline les `NEXT_PUBLIC_*` au build**. Passer
+  `NEXT_PUBLIC_API_URL` via `environment:` (`docker-compose.base.yml:84`)
+  n'agit qu'en mode `next dev`. L'image de production, construite sans
+  cette variable, retombe sur `ws://localhost:5000/api/v1/chat/ws`.
 
 **Décision à prendre** : servir le frontend et l'API sous la même origine
 derrière un reverse proxy (`/api` → backend). L'URL devient alors
-relative, TR-02 disparaît, et `trust proxy` (BE-03) prend une valeur
-connue. Sinon, passer les URL en `ARG` de build dans
-`frontend/Dockerfile`.
+relative : `chatSocketUrl.ts` devra la déduire de l'origine de la page,
+et `trust proxy` (BE-03) prend une valeur connue. Sinon, passer
+`NEXT_PUBLIC_API_URL` en `ARG` de build dans `frontend/Dockerfile`.
 
 ## 4. TR-05 — `CLAUDE.md` à réaligner
 

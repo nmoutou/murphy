@@ -10,7 +10,8 @@ le LLM). Next.js 16 (App Router), React 19, Tailwind v4.
 
 Le cœur vit dans `src/hooks/useRagChat.ts` : un `WebSocketChatTransport` custom branché
 sur `useChat` de `@ai-sdk/react`. Une question envoyée sur
-`/api/v1/chat/ws` (`NEXT_PUBLIC_WS_URL`), un flux de parts JSON reçu (format
+`/api/v1/chat/ws` (l'adresse est déduite de `NEXT_PUBLIC_API_URL` par
+`src/lib/chatSocketUrl.ts`), un flux de parts JSON reçu (format
 UI-message-stream du Vercel AI SDK), socket fermée en fin de réponse. Pas d'historique
 côté serveur : le backend est stateless, la conversation vit dans l'état du client.
 

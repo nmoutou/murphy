@@ -2,6 +2,7 @@ import { useChat } from '@ai-sdk/react';
 import type { ChatTransport } from 'ai';
 import type { AppUIMessage } from '@murphy/contract/messages';
 import { appDataPartSchemas, appMessageMetadataSchema } from '@murphy/contract/messages';
+import { getChatSocketUrl } from '@/lib/chatSocketUrl';
 
 class WebSocketChatTransport implements ChatTransport<AppUIMessage> {
   private url: string;
@@ -63,7 +64,7 @@ class WebSocketChatTransport implements ChatTransport<AppUIMessage> {
 
 export function useRagChat() {
   const { messages, sendMessage, stop, status } = useChat<AppUIMessage>({
-    transport: new WebSocketChatTransport(process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:5000/api/v1/chat/ws'),
+    transport: new WebSocketChatTransport(getChatSocketUrl()),
     // The socket is an external boundary: a part that breaks the contract is rejected here
     dataPartSchemas: appDataPartSchemas,
     messageMetadataSchema: appMessageMetadataSchema,

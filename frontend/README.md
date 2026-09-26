@@ -16,7 +16,8 @@ npm run type-check
 npm run lint        # broken until FE-02
 ```
 
-Set `NEXT_PUBLIC_API_URL` and `NEXT_PUBLIC_WS_URL` to point at the backend.
+Set `NEXT_PUBLIC_API_URL` to the backend base URL (default `http://localhost:5000`);
+the chat WebSocket URL is derived from it (`src/lib/chatSocketUrl.ts`).
 
 The stream contract (`AppUIMessage`) is imported from `@murphy/contract/messages`,
 shared with the backend: see [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).

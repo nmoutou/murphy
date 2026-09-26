@@ -2,6 +2,16 @@
 
 > 10 lignes max par entrée, la plus récente en tête (`PILOTAGE.md` §1.4).
 
+## 2026-09-26 — TR-02
+
+- **Fait** : l'adresse du WebSocket est déduite de `NEXT_PUBLIC_API_URL`
+  (`frontend/src/lib/chatSocketUrl.ts`) ; `NEXT_PUBLIC_WS_URL` retirée. TR-02 ✅.
+- **Vérifié** : `npm run check` vert ; valeur inlinée dans le bundle de dev ; WebSocket
+  sur l'adresse déduite : parts `data-parentDocument` et `data-document` reçues ;
+  dans le navigateur, les sources s'affichent (pas de réponse : variables LLM vides).
+- **Bloqué** : rien. La CI unique passe depuis le push de `main`.
+- **Prochain pas** : FE-02 (eslint), puis le code mort du frontend.
+
 ## 2026-09-25 — Un seul dépôt (ADR-040), TR-04
 
 - **Fait** : sous-modules réintégrés avec leur historique (4 commits) ; npm workspaces,

@@ -43,5 +43,4 @@ Alias de chemin TS : `@/*` → `src/*`.
 
 | Variable | Défaut | Rôle |
 |---|---|---|
-| `NEXT_PUBLIC_API_URL` | — | URL de l'API backend |
-| `NEXT_PUBLIC_WS_URL` | `ws://localhost:5000/api/v1/chat/ws` | URL du WebSocket de chat |
+| `NEXT_PUBLIC_API_URL` | `http://localhost:5000` | URL de base du backend. L'adresse du WebSocket de chat en est déduite (`ws:`/`wss:` + `/api/v1/chat/ws`) |

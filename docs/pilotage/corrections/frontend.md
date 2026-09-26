@@ -68,7 +68,7 @@ l'exige `CLAUDE.md`.
 
 | Élément | Pourquoi mort |
 |---|---|
-| `lib/api.ts` + `types/errors.ts` | `checkHealth` n'est importé nulle part. `NEXT_PUBLIC_API_URL` n'est lue qu'ici (voir TR-02) |
+| `lib/api.ts` + `types/errors.ts` | `checkHealth` n'est importé nulle part. `chatSocketUrl.ts` lit aussi `NEXT_PUBLIC_API_URL` depuis TR-02 |
 | `components/KeyComboListener.tsx` | jamais monté. Il est en plus faux : `combos` est utilisé avant sa déclaration, et l'effet ne retire pas ses écouteurs |
 | `components/chat/types.ts` | voir FE-01 |
 | dépendance `zustand` | aucun import |
