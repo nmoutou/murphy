@@ -14,6 +14,7 @@ npm run dev         # Turbopack
 npm run build
 npm run type-check
 npm run lint        # eslint, no warning allowed
+npm run format      # prettier --write src (format:check runs in CI)
 ```
 
 Set `NEXT_PUBLIC_API_URL` to the backend base URL (default `http://localhost:5000`);

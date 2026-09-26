@@ -4,8 +4,12 @@ import Link from 'next/link';
 const LOGO_RATIO = 3 / 14;
 const LOGO_DEFAULT_WIDTH = 355;
 
-export default function Logo({ width = LOGO_DEFAULT_WIDTH }) {
-  const height = LOGO_DEFAULT_WIDTH * LOGO_RATIO;
+interface LogoProps {
+  readonly width?: number;
+}
+
+export default function Logo({ width = LOGO_DEFAULT_WIDTH }: LogoProps) {
+  const height = width * LOGO_RATIO;
 
   return (
     <Link href="/">

@@ -4,19 +4,23 @@ import Icon from './Icon';
 type ButtonIconVariant = 'primary' | 'secondary';
 
 interface ButtonIconProps {
-  icon: string;
-  alt: string;
-  size: number;
-  onClick: () => void;
-  variant?: ButtonIconVariant;
-  animatedOnHover?: boolean;
+  readonly icon: string;
+  /** The accessible name of the button: the icon itself is decorative */
+  readonly label: string;
+  readonly size: number;
+  /** Optional for a submit button, which its form handles */
+  readonly onClick?: () => void;
+  readonly type?: 'button' | 'submit';
+  readonly variant?: ButtonIconVariant;
+  readonly animatedOnHover?: boolean;
 }
 
 export default function ButtonIcon({
   icon,
-  alt,
+  label,
   size,
   onClick,
+  type = 'button',
   variant = 'secondary',
   animatedOnHover = false,
 }: ButtonIconProps) {
@@ -29,12 +33,14 @@ export default function ButtonIcon({
 
   return (
     <button
+      type={type}
+      aria-label={label}
       className={`p-1 rounded-full transition-all ${background} ${opacity}`}
       onPointerEnter={() => setIsHovered(true)}
       onPointerLeave={() => setIsHovered(false)}
       onClick={onClick}
     >
-      <Icon icon={icon} alt={alt} size={size} animated={animated} negative={isNegative} />
+      <Icon icon={icon} size={size} animated={animated} negative={isNegative} />
     </button>
   );
 }

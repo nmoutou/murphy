@@ -54,7 +54,7 @@ The embedding service requires an **NVIDIA GPU** (declared in `docker-compose.de
 
 ### Backend without Docker
 
-Install once from the repo root: `npm install` (it also builds `packages/contract`). `npm run check` at the root runs everything the CI runs: contract build, backend type-check + lint + tests, frontend type-check + lint + build.
+Install once from the repo root: `npm install` (it also builds `packages/contract`). `npm run check` at the root runs everything the CI runs: contract build, backend type-check + lint + tests, frontend type-check + lint + format check + build.
 
 No env file is loaded: export the variables first (e.g. `set -a; . ../.env.dev; set +a`, then override the Docker hostnames such as `QDRANT_URL`). From `backend/` (or from the root with `-w backend`):
 
@@ -74,7 +74,7 @@ Jest coverage thresholds (`jest.config.js`: lines/statements 65%, functions 60%,
 
 ### Frontend without Docker
 
-From `frontend/`: `npm run dev` (Turbopack), `npm run build`, `npm run type-check`, `npm run lint` (eslint, `--max-warnings=0`). TS path alias `@/*` → `frontend/src/*`.
+From `frontend/`: `npm run dev` (Turbopack), `npm run build`, `npm run type-check`, `npm run lint` (eslint, `--max-warnings=0`), `npm run format` (Prettier; `format:check` runs in CI). TS path alias `@/*` → `frontend/src/*`. Colors are Tailwind classes from the `@theme` of `styles/globals.css` (`bg-secondary`, `text-tertiary`…); no theme context, no inline styles.
 
 ## Architecture: the RAG request flow (serving)
 

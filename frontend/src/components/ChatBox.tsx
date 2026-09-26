@@ -1,88 +1,76 @@
+import { useState } from 'react';
+import type { FormEvent } from 'react';
 import AnimatedButtonIcon from './icons/AnimatedButtonIcon';
 import ButtonIcon from './icons/ButtonIcon';
-import { useState, useEffect, useCallback } from 'react';
 
 const DEFAULT_PLACEHOLDER = "Nul n'est censé ignorer la loi.";
+const WORK_IN_PROGRESS = 'Work in progress !';
+const ICON_SIZE = 32;
 
 interface ChatBoxProps {
-  onEnter: (content: string) => void;
-  onCancel?: () => void;
-  disabled?: boolean;
-  absolute: boolean;
+  readonly onEnter: (content: string) => void;
+  readonly onCancel?: () => void;
+  readonly disabled?: boolean;
+  /** Pinned to the bottom of the page, once the conversation has started */
+  readonly isDocked: boolean;
 }
 
-export default function ChatBox({ onEnter, onCancel, disabled = false, absolute }: ChatBoxProps) {
+export default function ChatBox({ onEnter, onCancel, disabled = false, isDocked }: ChatBoxProps) {
   const [content, setContent] = useState('');
 
-  const launchSearch = useCallback(() => {
-    if (content && !disabled) {
-      onEnter(content);
-      setContent('');
-    }
-  }, [content, onEnter, disabled]);
+  // Enter in the field submits the form natively, NumpadEnter included
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (disabled || !content.trim()) return;
+    onEnter(content);
+    setContent('');
+  };
 
-  useEffect(() => {
-    function keyOnHandler(e: KeyboardEvent) {
-      if (e.code == 'Enter') {
-        launchSearch();
-      }
-    }
-
-    document.addEventListener('keydown', keyOnHandler);
-
-    return function () {
-      document.removeEventListener('keydown', keyOnHandler);
-    };
-  }, [launchSearch]);
+  const dockClasses = isDocked ? 'fixed bottom-0 my-4' : '';
+  const attachClasses = disabled ? 'pointer-events-none' : 'pointer-events-auto';
 
   return (
-    <div
-      className={`flex justify-center items-center p-3 rounded-[25px] gap-2 mx-8 w-full max-w-[600px] bg-secondary ${absolute ? 'fixed bottom-0 my-4' : ''}`}
+    <form
+      onSubmit={handleSubmit}
+      className={`flex justify-center items-center p-3 rounded-[25px] gap-2 mx-8 w-full max-w-[600px] bg-secondary ${dockClasses}`}
     >
-      <div className={disabled ? 'pointer-events-none' : 'pointer-events-auto'}>
+      <div className={attachClasses}>
         <AnimatedButtonIcon
           icon="folder"
-          size={32}
-          alt="Folder icon"
-          onClick={() => {
-            alert('Work in progress !');
-          }}
+          size={ICON_SIZE}
+          label="Joindre un document"
+          onClick={() => alert(WORK_IN_PROGRESS)}
         />
       </div>
 
       <input
         name="chatbox"
+        aria-label="Votre question"
         className="h-full w-full text-tertiary focus:outline-none placeholder:italic placeholder:text-center truncate disabled:opacity-50"
         placeholder={DEFAULT_PLACEHOLDER}
-        onChange={(event) => {
-          setContent(event.target.value);
-        }}
+        onChange={(event) => setContent(event.target.value)}
         value={content}
         disabled={disabled}
         autoComplete="off"
       />
 
-      {!disabled ? (
-        <AnimatedButtonIcon
-          icon="globe"
-          size={32}
-          alt="Globe icon"
-          onClick={() => {
-            launchSearch();
-          }}
+      {disabled ? (
+        <ButtonIcon
+          icon="stop"
+          label="Annuler"
+          size={ICON_SIZE}
+          onClick={onCancel}
           variant="primary"
         />
       ) : (
-        <ButtonIcon
-          icon="stop"
-          alt="Annuler"
-          size={32}
-          onClick={() => {
-            onCancel?.();
-          }}
+        <AnimatedButtonIcon
+          icon="globe"
+          label="Envoyer la question"
+          size={ICON_SIZE}
+          type="submit"
           variant="primary"
         />
       )}
-    </div>
+    </form>
   );
 }

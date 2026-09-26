@@ -2,6 +2,17 @@
 
 > 10 lignes max par entrée, la plus récente en tête (`PILOTAGE.md` §1.4).
 
+## 2026-09-26 — Prettier, FE-08, FE-06, FE-10
+
+- **Fait** : Prettier (commit de formatage dédié, `format:check` en CI) ; couleurs en
+  classes Tailwind, `ThemeProvider` et styles inline supprimés ; `ChatBox` en `<form>`,
+  noms accessibles, police Geist. FE-06, FE-08, FE-10 ✅, FE-11 🔶.
+- **Décidé** : style Prettier (guillemets simples, 2 espaces, 100 colonnes).
+- **Vérifié** : `npm run check` vert ; Chrome headless : rendu identique (sauf police),
+  Entrée/NumpadEnter dans le champ seulement, arrêt, modale d'erreur.
+- **Bloqué** : rien. Piège : cache Turbopack périmé dans le conteneur (documenté).
+- **Prochain pas** : reste de FE-11 (`es2017`, `app/error.tsx`), puis TR-05.
+
 ## 2026-09-26 — FE-03, FE-09 (ADR-041)
 
 - **Fait** : les erreurs s'affichent dans une modale générique (`<dialog>`), qui nomme

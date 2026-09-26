@@ -41,6 +41,7 @@ fin du lot correspondant.
 | backend, après le 3e lot | `tsc` ✅ | ✅ 0 | ✅ 15 suites, 82 tests — couverture 90 % des lignes, **les quatre seuils sont tenus** | — |
 | frontend | **1 erreur** `tsc` | **eslint ne démarre pas** | aucun test | — |
 | frontend, après le lot FE-02/04/05/07 | `tsc` ✅ | ✅ 0, avertissements compris | aucun test | — |
+| frontend, après le lot FE-06/08/10 | `tsc` ✅ | ✅ 0 | aucun test | ✅ Prettier (`format:check` en CI) |
 | data | `mypy --strict` ✅ | **95 erreurs** ruff (toutes dans le code mort, DA-01) | 296 ✅ (86 % de couverture) | 12 fichiers à reformater |
 | data, après le lot | `mypy --strict` ✅ | ✅ 0 | 294 ✅ (86 %) | ✅ |
 

@@ -67,16 +67,23 @@ src/
 ├── lib/                    # webSocketChatTransport.ts, chatSocketUrl.ts (adresse du
 │                           # WebSocket), chatErrorStage.ts, messageText.ts
 ├── components/
-│   ├── MainPanel.tsx, ChatBox.tsx        # entrée + panneau principal
+│   ├── MainPanel.tsx, ChatBox.tsx        # panneau principal + formulaire de question
 │   ├── chat/               # ChatContent, ChatBubble, AIMessage, UserMessage,
 │   │                       # SourcesList/SourceItem (les documents), ErrorDialog
 │   ├── ui/Modal.tsx        # la coquille des fenêtres modales
 │   ├── layouts/            # WelcomeLayout (accueil) / ChatLayout (conversation)
-│   ├── providers/ThemeProvider.tsx
-│   └── icons/
-└── styles/                 # globals.css, scrollbar.css (Tailwind v4)
+│   └── icons/              # Icon, AnimatedIcon (décoratives), ButtonIcon, Logo
+└── styles/globals.css      # Tailwind v4 : @theme, @utility scrollbar, classes du chat
 ```
 
-Le thème est fourni par `ThemeProvider`. Ses couleurs sont aussi déclarées dans le
-`@theme` de `globals.css` (`bg-secondary`, `text-tertiary`…), que les nouveaux
-composants utilisent. Les styles inline disparaîtront avec FE-08.
+## Styles et accessibilité
+
+- **Couleurs** : le thème, unique et sombre, est déclaré dans le `@theme` de
+  `globals.css`. Les composants emploient des classes Tailwind (`bg-secondary`,
+  `text-tertiary`…). Il n'y a pas de contexte de thème ni de style inline.
+- **Police** : Geist, chargée par `next/font` dans `app/layout.tsx`, et appliquée par
+  `font-sans` sur le `body`.
+- **Icônes** : `Icon` et `AnimatedIcon` sont décoratives (`alt=""`). Un bouton-icône
+  porte son nom accessible (`ButtonIcon`, prop `label` → `aria-label`).
+- **Saisie** : le `ChatBox` est un `<form>`. « Entrée » soumet depuis le champ, et une
+  question vide n'est pas envoyée.

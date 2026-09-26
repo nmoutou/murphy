@@ -28,10 +28,10 @@ export default function ChatLayout({ messages }: ChatLayoutProps) {
       {messages.map((message, index) => {
         const isLastUser = message.role === 'user' && index === messages.length - 1;
         const ref = isLastUser ? lastUserRef : undefined;
-        const style = isLastUser ? { scrollMarginTop: '16px' } : undefined;
 
+        // scroll-mt only acts on the scrollIntoView target: the last question
         return (
-          <div key={message.id ?? index} ref={ref} style={style}>
+          <div key={message.id} ref={ref} className="scroll-mt-4">
             {message.role === 'user' ? (
               <UserMessage message={message} />
             ) : (

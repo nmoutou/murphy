@@ -22,7 +22,7 @@ interface ErrorDialogProps {
 }
 
 export default function ErrorDialog({ stage, onClose }: ErrorDialogProps) {
-  const errorIcon = <AnimatedIcon icon="error" alt="Erreur" size={32} />;
+  const errorIcon = <AnimatedIcon icon="error" size={32} />;
 
   return (
     <Modal title={ERROR_TITLE} titleIcon={errorIcon} onClose={onClose}>

@@ -29,13 +29,13 @@ export default function MainPanel() {
       ) : (
         <div className="flex-1 w-full flex flex-col justify-center items-center">
           <WelcomeLayout />
-          <ChatBox onEnter={handleQuery} onCancel={stop} disabled={isLoading} absolute={false} />
+          <ChatBox onEnter={handleQuery} onCancel={stop} disabled={isLoading} isDocked={false} />
         </div>
       )}
 
       {/* Chat input for messages view */}
       {messages.length > 0 && (
-        <ChatBox onEnter={handleQuery} onCancel={stop} disabled={isLoading} absolute={true} />
+        <ChatBox onEnter={handleQuery} onCancel={stop} disabled={isLoading} isDocked={true} />
       )}
 
       {errorDialog}

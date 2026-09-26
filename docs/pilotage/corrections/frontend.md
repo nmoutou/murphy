@@ -13,12 +13,12 @@
 | FE-03 | Les erreurs du pipeline ne s'affichent jamais — **décidé** | Bloquant | ✅ [ADR-041](../../product/ADR/ADR-041-erreurs-du-chat-en-modale.md) |
 | FE-04 | Code mort (liste §2.4) | Dette | ✅ |
 | FE-05 | Callbacks vides propagés sur 4 niveaux | Dette | ✅ |
-| FE-06 | Bugs discrets (liste §2.6) | Dette | 🔶 clé de `SourcesList` |
+| FE-06 | Bugs discrets (liste §2.6) | Dette | ✅ |
 | FE-07 | Extraction du texte d'un message dupliquée 3 fois, avec des `any` | Dette | ✅ |
-| FE-08 | Styles inline partout pour un thème unique et statique | Dette | 🔶 couleurs dans `@theme` |
+| FE-08 | Styles inline partout pour un thème unique et statique | Dette | ✅ |
 | FE-09 | `WebSocketChatTransport` : états de stream incohérents | Dette | ✅ |
-| FE-10 | Accessibilité : les boutons-icônes n'ont pas de nom accessible | Confort | ⬜ |
-| FE-11 | Configuration : cible ES2015, pas d'Error Boundary, formatage hétérogène | Confort | ⬜ |
+| FE-10 | Accessibilité : les boutons-icônes n'ont pas de nom accessible | Confort | ✅ |
+| FE-11 | Configuration : cible ES2015, pas d'Error Boundary, formatage hétérogène | Confort | 🔶 Prettier fait |
 
 ## 2. Détail
 
@@ -158,6 +158,26 @@ en autorise 2.
 | `globals.css:13` | `font-family: Arial` sur `body` écrase la police Geist chargée dans `layout.tsx` | utiliser `var(--font-sans)` |
 | `styles/scrollbar.css:1-3` | les directives `@tailwind` sont la syntaxe v3 ; en v4, `@layer utilities` devient `@utility` | fusionner dans `globals.css` avec `@utility scrollbar` |
 
+**Fait (26 septembre 2026)** : tout le tableau.
+- `ChatBox` est un `<form onSubmit>`, et l'écoute de `keydown` sur le
+  `document` est supprimée. « Entrée » et `NumpadEnter` soumettent depuis
+  le champ, et plus ailleurs.
+  - Une question faite d'espaces n'est plus envoyée : elle donnait une
+    erreur `request`.
+  - `ButtonIcon` reçoit un `type`, `button` par défaut, pour que le bouton
+    dossier et le bouton d'arrêt ne soumettent pas le formulaire.
+- `absolute` devient `isDocked` ; `Logo` calcule sa hauteur à partir de
+  `width` ; `ChatLayout` prend `message.id` comme clé.
+  - Le `scrollMarginTop` inline de `ChatLayout` devient `scroll-mt-4`.
+- `ThemeProvider` et `scrollbar.css` disparaissent avec FE-08.
+- Le `body` reçoit `font-sans` : la police Geist s'affiche. C'est le seul
+  changement visible.
+- Vérifié dans Chrome headless, par le protocole DevTools :
+  - « Entrée » hors du champ n'envoie rien ; « Entrée » et `NumpadEnter`
+    envoient depuis le champ ;
+  - le globe envoie la question, et « Annuler » arrête la réponse ;
+  - le bouton dossier affiche son `alert` sans soumettre.
+
 ### FE-07 — texte d'un message
 
 `AIMessage.tsx:16-27`, `UserMessage.tsx:12-17` et `ChatLayout.tsx:41-42`
@@ -178,9 +198,22 @@ type, sans `any` ni cast. Écrire une seule fonction
 
 **Entamé (26 septembre 2026, avec FE-03)** : les couleurs du thème sont
 déclarées dans le `@theme` de `globals.css`. `Modal` et `ErrorDialog`
-n'emploient que des classes (`bg-secondary`, `text-tertiary`…). Il reste
-la cascade sur les 7 composants existants, puis la suppression de
-`ThemeProvider`.
+n'emploient que des classes (`bg-secondary`, `text-tertiary`…).
+
+**Fait (26 septembre 2026)** :
+- Les 8 composants qui lisaient `useTheme` passent par des classes
+  Tailwind. Les bulles et les sources les reçoivent par `@apply`, dans
+  leurs classes de variante.
+- `ThemeProvider` est supprimé, et l'inversion des icônes devient fixe.
+- `scrollbar.css` est remplacé par `@utility scrollbar` dans
+  `globals.css`.
+- Il ne reste aucun `style={{…}}` dans `src/`.
+- Vérifié dans Chrome headless : couleurs calculées et capture d'écran
+  identiques à l'état précédent.
+- **Piège rencontré** : en dev, Turbopack a continué de servir l'ancien
+  `globals.css`, même après un redémarrage du conteneur. Le cache
+  `.next/dev` du conteneur était périmé : le vider (voir
+  `frontend/docs/README.md`) a réglé le problème.
 
 Le thème est **unique et statique** (`darkTheme`), mais ses couleurs
 passent par `style={{ … }}` dans 7 composants : `ChatBox`, `ChatBubble`,
@@ -232,6 +265,14 @@ en CSS (`prefers-color-scheme`).
 aucun nom accessible. Poser `aria-label={alt}` sur le `<button>` et
 laisser l'image décorative (`alt=""`).
 
+**Fait (26 septembre 2026)** :
+- `Icon` et `AnimatedIcon` n'ont plus de prop `alt` : l'image est
+  décorative (`alt=""`, `aria-hidden`).
+- `ButtonIcon` reçoit un `label`, posé en `aria-label`.
+- Les boutons du `ChatBox` s'appellent « Joindre un document »,
+  « Envoyer la question » et « Annuler ». Le champ s'appelle « Votre
+  question ».
+
 ### FE-11 — configuration
 
 - `tsconfig.json:3` : la cible `es2015` devient `es2017`, la valeur par
@@ -241,3 +282,9 @@ laisser l'image décorative (`alt=""`).
 - Le formatage est hétérogène : 2 ou 4 espaces, guillemets `"` ou `'`,
   points-virgules présents ou non selon les fichiers. Un passage de
   Prettier, en un commit dédié, sans aucun autre changement.
+
+**Fait en partie (26 septembre 2026)** : Prettier, avec guillemets
+simples, 2 espaces, points-virgules et 100 colonnes (`.prettierrc.json`).
+- La passe de formatage a son commit dédié.
+- `npm run format:check` fait partie de `check`, donc de la CI.
+- Restent : la cible `es2017`, `allowJs` et `app/error.tsx`.

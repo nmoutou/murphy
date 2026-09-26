@@ -35,9 +35,15 @@ npm run build       # next build --turbopack
 npm run start       # next start (après build)
 npm run type-check  # tsc --noEmit
 npm run lint        # eslint, zéro avertissement toléré
+npm run format      # prettier --write src
+npm run format:check  # le contrôle lancé par la CI
 ```
 
 Alias de chemin TS : `@/*` → `src/*`.
+
+**Un changement de CSS ne s'affiche pas en dev ?** Le cache de Turbopack dans le
+conteneur (`.next/dev`) peut rester périmé, même après un redémarrage. Il faut le
+vider : `docker exec frontend rm -rf /app/frontend/.next/dev && docker restart frontend`.
 
 ### Configuration
 
