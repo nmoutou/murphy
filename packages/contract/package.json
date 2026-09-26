@@ -8,6 +8,10 @@
     "./messages": {
       "types": "./dist/messages.d.ts",
       "default": "./dist/messages.js"
+    },
+    "./errors": {
+      "types": "./dist/errors.d.ts",
+      "default": "./dist/errors.js"
     }
   },
   "//": "typesVersions: the same subpaths for resolvers that ignore `exports` (ts-jest forces the node10 resolution)",
@@ -15,6 +19,9 @@
     "*": {
       "messages": [
         "./dist/messages.d.ts"
+      ],
+      "errors": [
+        "./dist/errors.d.ts"
       ]
     }
   },
