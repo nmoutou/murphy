@@ -3,8 +3,6 @@
 import { useEffect, useRef } from "react";
 import UserMessage from "@/components/chat/UserMessage";
 import AIMessage from "@/components/chat/AIMessage";
-import ErrorMessage from "@/components/chat/ErrorMessage";
-import { getMessageText } from "@/lib/messageText";
 import type { AppUIMessage } from "@murphy/contract/messages";
 
 interface ChatLayoutProps {
@@ -36,8 +34,6 @@ export default function ChatLayout({ messages }: ChatLayoutProps){
                     <div key={message.id ?? index} ref={ref} style={style}>
                         {message.role === "user" ? (
                             <UserMessage message={message} />
-                        ) : getMessageText(message).startsWith("❌") ? (
-                            <ErrorMessage message={getMessageText(message)} />
                         ) : (
                             <AIMessage message={message} />
                         )}

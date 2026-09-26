@@ -5,12 +5,14 @@ import { useTheme } from "./providers/ThemeProvider";
 import WelcomeLayout from "./layouts/WelcomeLayout";
 import ChatLayout from "./layouts/ChatLayout";
 import ChatBox from "./ChatBox";
+import ErrorDialog from "./chat/ErrorDialog";
 import { useRagChat } from "@/hooks/useRagChat";
 
 export default function MainPanel(){
     const theme = useTheme();
-    const { messages, sendMessage, stop, status } = useRagChat();
+    const { messages, sendMessage, stop, status, errorStage, clearError } = useRagChat();
     const isLoading = status === 'submitted' || status === 'streaming';
+    const errorDialog = errorStage && <ErrorDialog stage={errorStage} onClose={clearError} />;
 
     const handleQuery = useCallback(
         async (question: string) => {
@@ -50,6 +52,8 @@ export default function MainPanel(){
                     absolute={true}
                 />
             )}
+
+            {errorDialog}
         </div>
     );
 }

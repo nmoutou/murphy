@@ -4,7 +4,7 @@ import React from 'react';
 import { useTheme } from '@/components/providers/ThemeProvider';
 
 interface ChatBubbleProps {
-  variant: 'user' | 'agent' | 'error';
+  variant: 'user' | 'agent';
   children: React.ReactNode;
   className?: string;
 }
@@ -15,7 +15,6 @@ export default function ChatBubble({ variant, children, className = '' }: ChatBu
   const colorMap = {
     user: { bg: theme.colors.secondary, text: theme.colors.tertiary },
     agent: { bg: theme.colors.quaternary, text: theme.colors.secondary },
-    error: { bg: theme.colors.error, text: theme.colors.tertiary },
   };
 
   const colors = colorMap[variant];

@@ -9,7 +9,6 @@ type Theme = {
         secondary: string
         tertiary: string
         quaternary: string
-        error: string
     }
 }
 
@@ -20,7 +19,6 @@ const darkTheme:Theme = {
         secondary: "#2a292dff",
         tertiary: "#D9D9D9",
         quaternary: "#FFFFFF",
-        error: "#CB3930",
     }
 };
 

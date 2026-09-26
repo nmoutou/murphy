@@ -1,73 +1,21 @@
 import { useChat } from '@ai-sdk/react';
-import type { ChatTransport, UIMessageChunk } from 'ai';
 import type { AppUIMessage } from '@murphy/contract/messages';
 import { appDataPartSchemas, appMessageMetadataSchema } from '@murphy/contract/messages';
-import { getChatSocketUrl } from '@/lib/chatSocketUrl';
-
-class WebSocketChatTransport implements ChatTransport<AppUIMessage> {
-  private url: string;
-
-  constructor(url: string) {
-    this.url = url;
-  }
-
-  async sendMessages({ messages, abortSignal }: Parameters<ChatTransport<AppUIMessage>['sendMessages']>[0]) {
-    return new Promise<ReadableStream<UIMessageChunk>>((resolve, reject) => {
-      const ws = new WebSocket(this.url);
-
-      const stream = new ReadableStream({
-        start(controller) {
-          const abort = () => ws.close();
-
-          if (abortSignal) {
-            abortSignal.addEventListener('abort', abort);
-          }
-
-          ws.onopen = () => {
-            ws.send(JSON.stringify({ messages }));
-          };
-
-          ws.onmessage = (event) => {
-            try {
-              const chunk = JSON.parse(event.data as string);
-              controller.enqueue(chunk);
-            } catch (error) {
-              controller.error(error);
-            }
-          };
-
-          ws.onerror = () => {
-            controller.error(new Error('WebSocket error'));
-            reject(new Error('WebSocket error'));
-          };
-
-          ws.onclose = () => {
-            controller.close();
-            if (abortSignal) {
-              abortSignal.removeEventListener('abort', abort);
-            }
-          };
-        },
-        cancel() {
-          ws.close();
-        },
-      });
-
-      resolve(stream);
-    });
-  }
-
-  async reconnectToStream() {
-    return null;
-  }
-}
+import { webSocketChatTransport } from '@/lib/webSocketChatTransport';
+import { readErrorStage } from '@/lib/chatErrorStage';
 
 export function useRagChat() {
-  const { messages, sendMessage, stop, status } = useChat<AppUIMessage>({
-    transport: new WebSocketChatTransport(getChatSocketUrl()),
+  const { messages, sendMessage, stop, status, error, clearError, setMessages } = useChat<AppUIMessage>({
+    transport: webSocketChatTransport,
     // The socket is an external boundary: a part that breaks the contract is rejected here
     dataPartSchemas: appDataPartSchemas,
     messageMetadataSchema: appMessageMetadataSchema,
+    onError: (chatError) => console.error('Chat request failed:', chatError),
+    // A failed answer leaves no bubble behind: the question stays, the modal says why (ADR-041)
+    onFinish: ({ isError, message }) => {
+      if (!isError) return;
+      setMessages((current) => current.filter((candidate) => candidate.id !== message.id));
+    },
   });
 
   return {
@@ -75,5 +23,7 @@ export function useRagChat() {
     sendMessage,
     stop,
     status,
+    errorStage: error ? readErrorStage(error) : undefined,
+    clearError,
   };
 }

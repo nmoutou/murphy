@@ -5,6 +5,15 @@
   --font-mono: var(--font-geist-mono);
 }
 
+/* The dark theme as Tailwind colors (bg-secondary, text-tertiary…). ThemeProvider
+   holds the same values until the inline styles are gone (FE-08). */
+@theme {
+  --color-primary: #0E0D11;
+  --color-secondary: #2a292d;
+  --color-tertiary: #D9D9D9;
+  --color-quaternary: #FFFFFF;
+}
+
 body {
   font-family: Arial, Helvetica, sans-serif;
 }
@@ -38,10 +47,6 @@ body {
   @apply rounded-bl-none;
 }
 
-.chat-bubble-error {
-  @apply rounded-bl-none;
-}
-
 /* Messages */
 .message-container {
   @apply flex mb-4 px-4;
@@ -52,10 +57,6 @@ body {
 }
 
 .message-container-agent {
-  @apply justify-start;
-}
-
-.message-container-error {
   @apply justify-start;
 }
 
