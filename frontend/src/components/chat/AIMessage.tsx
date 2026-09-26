@@ -12,7 +12,9 @@ type Props = {
 
 export default function AIMessage({ message }: Props) {
   const textContent = getMessageText(message);
-  const chunks = message.parts.flatMap((part) => (part.type === 'data-document' ? [part.data] : []));
+  const chunks = message.parts.flatMap((part) =>
+    part.type === 'data-document' ? [part.data] : [],
+  );
 
   return (
     <ChatBubble variant="agent">

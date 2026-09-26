@@ -21,7 +21,7 @@ export default function ChatBubble({ variant, children, className = '' }: ChatBu
 
   return (
     <div className={`message-container message-container-${variant}`}>
-      <div 
+      <div
         className={`chat-bubble chat-bubble-${variant} ${className}`}
         style={{ backgroundColor: colors.bg, color: colors.text }}
       >

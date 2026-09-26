@@ -14,9 +14,7 @@ export default function SourcesList({ chunks }: SourcesListProps) {
   return (
     <div className="sources-list-header" style={{ borderColor: theme.colors.tertiary }}>
       <details className="cursor-pointer">
-        <summary className="sources-list-summary">
-          Sources ({chunks.length})
-        </summary>
+        <summary className="sources-list-summary">Sources ({chunks.length})</summary>
         <div className="sources-list-content">
           {chunks.map((chunk) => (
             <SourceItem key={chunk.chunkId} chunk={chunk} />

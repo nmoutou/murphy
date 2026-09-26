@@ -1,12 +1,10 @@
-import MainPanel from "@/components/MainPanel";
+import MainPanel from '@/components/MainPanel';
 
 export const metadata = {
-    title: "Murphy - Application",
-    description: "Le moteur de recherche juridique"
-}
+  title: 'Murphy - Application',
+  description: 'Le moteur de recherche juridique',
+};
 
-export default function App(){
-    return (
-        <MainPanel/>
-    );
+export default function App() {
+  return <MainPanel />;
 }

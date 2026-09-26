@@ -1,41 +1,37 @@
-"use client";
+'use client';
 
-import { createContext, useContext } from "react";
+import { createContext, useContext } from 'react';
 
 type Theme = {
-    name: string
-    colors:{
-        primary: string
-        secondary: string
-        tertiary: string
-        quaternary: string
-    }
-}
-
-const darkTheme:Theme = {
-    name: "dark",
-    colors: {
-        primary: "#0E0D11",
-        secondary: "#2a292dff",
-        tertiary: "#D9D9D9",
-        quaternary: "#FFFFFF",
-    }
+  name: string;
+  colors: {
+    primary: string;
+    secondary: string;
+    tertiary: string;
+    quaternary: string;
+  };
 };
 
-const defaultTheme:Theme = darkTheme;
+const darkTheme: Theme = {
+  name: 'dark',
+  colors: {
+    primary: '#0E0D11',
+    secondary: '#2a292dff',
+    tertiary: '#D9D9D9',
+    quaternary: '#FFFFFF',
+  },
+};
 
-const ThemeContext = createContext<Theme>(defaultTheme)
+const defaultTheme: Theme = darkTheme;
 
-export function ThemeProvider({ 
-    children 
-}: Readonly<{ 
-    children: React.ReactNode; 
-}>) {    
-    return (
-        <ThemeContext.Provider value={defaultTheme}>
-            {children}
-        </ThemeContext.Provider>
-    );
+const ThemeContext = createContext<Theme>(defaultTheme);
+
+export function ThemeProvider({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return <ThemeContext.Provider value={defaultTheme}>{children}</ThemeContext.Provider>;
 }
 
-export const useTheme = () => useContext(ThemeContext)
+export const useTheme = () => useContext(ThemeContext);

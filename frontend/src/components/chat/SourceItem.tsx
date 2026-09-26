@@ -11,10 +11,7 @@ export default function SourceItem({ chunk }: SourceItemProps) {
   const theme = useTheme();
 
   return (
-    <div
-      className="source-item"
-      style={{ borderColor: theme.colors.tertiary, opacity: 0.8 }}
-    >
+    <div className="source-item" style={{ borderColor: theme.colors.tertiary, opacity: 0.8 }}>
       <div className="flex justify-between gap-2">
         <div className="flex-1">
           <div className="font-semibold">{chunk.title ?? chunk.chunkId}</div>

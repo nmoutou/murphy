@@ -2,7 +2,8 @@ import type { ChatErrorStage } from '@murphy/contract/errors';
 import { parseChatError } from '@murphy/contract/errors';
 
 /** Raised by the transport when the socket fails, or closes before the end of the answer */
-export const CONNECTION_ERROR_MESSAGE = 'The chat WebSocket failed or closed before the end of the answer';
+export const CONNECTION_ERROR_MESSAGE =
+  'The chat WebSocket failed or closed before the end of the answer';
 
 /** `connection` = the backend could not be reached, or dropped the answer */
 export type DisplayedErrorStage = ChatErrorStage | 'connection';
