@@ -2,6 +2,14 @@
 
 > 10 lignes max par entrée, la plus récente en tête (`PILOTAGE.md` §1.4).
 
+## 2026-09-26 — FE-11
+
+- **Fait** : cible `es2017`, `allowJs` retiré, Error Boundary `app/error.tsx`. FE-11 ✅ :
+  toutes les corrections du frontend sont closes.
+- **Vérifié** : `npm run check` vert ; erreur de rendu provoquée → page d'erreur affichée.
+- **Bloqué** : rien.
+- **Prochain pas** : TR-05 (réaligner `CLAUDE.md`), puis BE-07 / BE-10.
+
 ## 2026-09-26 — Prettier, FE-08, FE-06, FE-10
 
 - **Fait** : Prettier (commit de formatage dédié, `format:check` en CI) ; couleurs en

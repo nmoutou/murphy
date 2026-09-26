@@ -18,7 +18,7 @@
 | FE-08 | Styles inline partout pour un thème unique et statique | Dette | ✅ |
 | FE-09 | `WebSocketChatTransport` : états de stream incohérents | Dette | ✅ |
 | FE-10 | Accessibilité : les boutons-icônes n'ont pas de nom accessible | Confort | ✅ |
-| FE-11 | Configuration : cible ES2015, pas d'Error Boundary, formatage hétérogène | Confort | 🔶 Prettier fait |
+| FE-11 | Configuration : cible ES2015, pas d'Error Boundary, formatage hétérogène | Confort | ✅ |
 
 ## 2. Détail
 
@@ -288,3 +288,13 @@ simples, 2 espaces, points-virgules et 100 colonnes (`.prettierrc.json`).
 - La passe de formatage a son commit dédié.
 - `npm run format:check` fait partie de `check`, donc de la CI.
 - Restent : la cible `es2017`, `allowJs` et `app/error.tsx`.
+
+**Fini (26 septembre 2026)** :
+- `tsconfig.json` : cible `es2017` et `allowJs` retiré. Les deux `.mjs` de
+  configuration ne sont pas dans son `include`.
+- `app/error.tsx` : l'Error Boundary de la page. Elle affiche un message
+  et un bouton « Réessayer » (`reset`), et envoie l'erreur à
+  `console.error`.
+- Vérifié dans Chrome headless, en levant temporairement une erreur de
+  rendu dans `MainPanel` : la page d'erreur s'affiche à la place d'un
+  écran blanc.

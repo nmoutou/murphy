@@ -62,7 +62,7 @@ l'arrivée.
 
 ```
 src/
-├── app/                    # App Router : layout.tsx, page.tsx
+├── app/                    # App Router : layout.tsx, page.tsx, error.tsx (Error Boundary)
 ├── hooks/useRagChat.ts     # l'état du chat, l'erreur à afficher
 ├── lib/                    # webSocketChatTransport.ts, chatSocketUrl.ts (adresse du
 │                           # WebSocket), chatErrorStage.ts, messageText.ts
