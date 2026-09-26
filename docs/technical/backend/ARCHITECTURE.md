@@ -134,10 +134,10 @@ l'attente de la réponse, pas le streaming qui suit.
 - **Erreurs** : handlers async enveloppés par `middleware/errorHandler.ts:asyncHandler` ;
   `errorHandler` + `notFoundHandler` enregistrés en dernier dans `app.ts`.
 - **Ordre des middlewares** (`app.ts`) : requestLogger → helmet / rate-limit / CORS
-  (`middleware/security.ts`) → body parsing → routes → handlers d'erreur. La route de
-  stream ajoute `streamRateLimiter`. Les deux transports valident la charge utile avec
-  `validation/chatRequest.ts:parseChatRequest` et partagent le même budget de stream par
-  IP (`consumeStreamQuota` côté WebSocket). `trust proxy` vaut `false` (`app.ts`) tant
+  (`middleware/security.ts`) → body parsing → routes → handlers d'erreur. Les routes
+  `/streams` et `/completions` ajoutent `streamRateLimiter`. Les trois transports valident
+  la charge utile avec `validation/chatRequest.ts:parseChatRequest` et partagent le même
+  budget de stream par IP (`consumeStreamQuota` côté WebSocket). `trust proxy` vaut `false` (`app.ts`) tant
   qu'aucun proxy n'est placé devant le backend.
 - **Base path** : `/api/v1`. Santé : `/api/v1/health` (alias `/services`), latence par service — `ok` /
   `degraded` (1 service down) / `down` (2+), 503 si non-ok.

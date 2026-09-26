@@ -1,7 +1,8 @@
 /**
  * Stream Rate Limiter
- * Per-IP budget for the chat stream, stricter than the global limiter. POST
- * `/api/v1/chat/streams` and the WebSocket draw from the same budget.
+ * Per-IP budget for the chat pipeline, stricter than the global limiter. POST
+ * `/api/v1/chat/streams`, POST `/api/v1/chat/completions` and the WebSocket
+ * draw from the same budget: each one runs the whole pipeline, the LLM included.
  */
 
 import rateLimit, { ipKeyGenerator, MemoryStore } from 'express-rate-limit';

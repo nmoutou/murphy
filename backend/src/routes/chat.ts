@@ -91,6 +91,7 @@ router.post(
  */
 router.post(
   '/completions',
+  streamRateLimiter,
   asyncHandler(async (req: Request, res: Response) => {
     const request = parseChatRequest(req.body);
     if (!request.isValid) {

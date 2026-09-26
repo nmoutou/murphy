@@ -63,3 +63,19 @@ describe('POST /api/v1/chat/streams rate limit', () => {
     expect(consoleError).toHaveBeenCalledWith(expect.objectContaining({ code: 'ERR_ERL_UNEXPECTED_X_FORWARDED_FOR' }));
   });
 });
+
+describe('POST /api/v1/chat/completions rate limit', () => {
+  it('draws from the budget of /streams', async () => {
+    // Spends what the previous tests left of the loopback budget, whatever that is
+    let streamsStatus = HTTP_BAD_REQUEST;
+    for (let attempt = 0; attempt <= STREAM_MAX_REQUESTS && streamsStatus !== HTTP_TOO_MANY_REQUESTS; attempt++) {
+      streamsStatus = (await request(app).post('/api/v1/chat/streams').send({ messages: [] })).status;
+    }
+
+    const response = await request(app).post('/api/v1/chat/completions').send({ messages: [] });
+
+    expect(streamsStatus).toBe(HTTP_TOO_MANY_REQUESTS);
+    expect(response.status).toBe(HTTP_TOO_MANY_REQUESTS);
+    expect(response.body.status.message).toBe('STREAM_RATE_LIMIT_EXCEEDED');
+  });
+});
