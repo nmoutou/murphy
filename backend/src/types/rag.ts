@@ -3,7 +3,10 @@
  * Shared types for embedding, retrieval, and LLM operations
  */
 
-export type RagStage = 'embedding' | 'retrieval' | 'llm';
+import type { ChatError, ChatErrorStage } from '@murphy/contract/errors';
+
+/** `request` = extracting the question, the first step of the pipeline */
+export type RagStage = Exclude<ChatErrorStage, 'internal'>;
 
 /**
  * RAG Error with stage information
@@ -55,6 +58,15 @@ export const toRagError = (failure: RagFailure, error: unknown): RagError => {
   const cause = readErrorField(error, 'message') ?? String(error);
   return new RagError(failure.stage, isTimeout ? TIMEOUT_CODE : failure.code, `Failed to ${failure.operation}: ${cause}`);
 };
+
+const INTERNAL_CHAT_ERROR: ChatError = { stage: 'internal', code: 'INTERNAL' };
+
+/**
+ * What the client is told of a failure (ADR-041): the stage and the code of a
+ * `RagError`, nothing of any other error. The message stays in the logs.
+ */
+export const toChatError = (error: unknown): ChatError =>
+  error instanceof RagError ? { stage: error.stage, code: error.code } : INTERNAL_CHAT_ERROR;
 
 const CONTRACT_VIOLATION_CODE = 'CONTRACT_VIOLATION';
 

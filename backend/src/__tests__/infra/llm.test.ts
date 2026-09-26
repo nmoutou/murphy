@@ -77,4 +77,27 @@ describe('LLMProvider.stream', () => {
       code: 'API_ERROR',
     });
   });
+
+  it("follows the caller's abort signal and ends without an error", async () => {
+    const abortController = new AbortController();
+    jest.spyOn(global, 'fetch').mockImplementation(async (_url, init) => {
+      const requestSignal = init?.signal;
+      const body = new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(new TextEncoder().encode(sseLine('Cinq ')));
+          // Like a real fetch, the body fails once the request signal is raised
+          requestSignal?.addEventListener('abort', () => controller.error(requestSignal.reason));
+        },
+      });
+      return new Response(body);
+    });
+
+    const tokens: string[] = [];
+    for await (const token of createProvider().stream(MESSAGES, abortController.signal)) {
+      tokens.push(token);
+      abortController.abort();
+    }
+
+    expect(tokens).toEqual(['Cinq ']);
+  });
 });

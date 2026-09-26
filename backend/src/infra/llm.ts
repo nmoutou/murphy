@@ -88,10 +88,11 @@ export class LLMProvider {
    *
    * The timeout covers the wait for the response only, not the streaming of the
    * answer that follows: hence a controller cleared once the response is there,
-   * not `AbortSignal.timeout`, which would also cut a long answer.
+   * not `AbortSignal.timeout`, which would also cut a long answer. The caller's
+   * signal covers both: the request, then the body read under the same `fetch`.
    * @throws Error (plain) on timeout, HTTP error or missing body — `stream` wraps it
    */
-  private async openStream(messages: ChatMessage[]): Promise<NonNullable<Response['body']>> {
+  private async openStream(messages: ChatMessage[], abortSignal?: AbortSignal): Promise<NonNullable<Response['body']>> {
     const { apiUrl, apiKey, model, temperature, maxTokens, timeoutMs } = this.settings;
     const controller = new AbortController();
     const timeoutId = setTimeout(
@@ -104,7 +105,7 @@ export class LLMProvider {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
         body: JSON.stringify({ model, messages, temperature, max_tokens: maxTokens, stream: true } satisfies ChatCompletionPayload),
-        signal: controller.signal,
+        signal: abortSignal ? AbortSignal.any([controller.signal, abortSignal]) : controller.signal,
       });
 
       if (!response.ok) throw new Error(`LLM API returned ${response.status}: ${response.statusText}`);
@@ -118,16 +119,17 @@ export class LLMProvider {
   /**
    * Stream completions from the configured OpenAI-compatible API
    * @param messages Chat messages (system + user)
+   * @param abortSignal once raised, the request is cut and the iterator ends without error
    * @returns Async iterator for streaming tokens
    * @throws RagError with stage='llm'
    */
-  async *stream(messages: ChatMessage[]): AsyncGenerator<string, void, unknown> {
+  async *stream(messages: ChatMessage[], abortSignal?: AbortSignal): AsyncGenerator<string, void, unknown> {
     const startTime = Date.now();
     const { model, temperature } = this.settings;
     logger.debug({ model, messageCount: messages.length, temperature }, 'LLM stream request started');
 
     try {
-      const body = await this.openStream(messages);
+      const body = await this.openStream(messages, abortSignal);
       // Streaming decoder: a multi-byte character split across two network chunks
       // (an accented letter, say) is decoded once both halves have arrived.
       for await (const line of readLines(body.pipeThrough(new TextDecoderStream()))) {
@@ -136,6 +138,10 @@ export class LLMProvider {
       }
       logger.debug({ durationMs: Date.now() - startTime }, 'LLM stream finished');
     } catch (error) {
+      if (abortSignal?.aborted) {
+        logger.debug({ durationMs: Date.now() - startTime }, 'LLM stream aborted by the caller');
+        return;
+      }
       const ragError = toRagError(LLM_FAILURE, error);
       logger.error({ err: error, durationMs: Date.now() - startTime }, ragError.message);
       throw ragError;

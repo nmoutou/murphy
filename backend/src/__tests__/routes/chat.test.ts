@@ -9,6 +9,8 @@ import type { InferUIMessageChunk } from 'ai';
 import chatRouter from '../../routes/chat';
 import { createChatStream } from '../../services/chatService';
 import type { AppUIMessage } from '@murphy/contract/messages';
+import { serializeChatError } from '@murphy/contract/errors';
+import { RagError } from '../../types/rag';
 
 jest.mock('../../services/chatService', () => ({ createChatStream: jest.fn() }));
 jest.mock('../../utils/logger', () => {
@@ -73,27 +75,30 @@ describe('POST /api/v1/chat/completions', () => {
 
     expect(response.status).toBe(200);
     expect(response.body.data).toEqual({ role: 'assistant', parts: [{ type: 'text', text: 'Cinq ans.' }] });
-    expect(createChatStream).toHaveBeenCalledWith(VALID_BODY.messages);
+    expect(createChatStream).toHaveBeenCalledWith(VALID_BODY.messages, expect.any(AbortSignal));
   });
 
-  it('answers 500 when the stream carries an error part', async () => {
+  it('answers 500 with the stage and code when the stream carries an error part', async () => {
+    const chatError = { stage: 'retrieval', code: 'SEARCH_FAILED' } as const;
     jest.mocked(createChatStream).mockResolvedValue(
-      streamOf([{ type: 'start', messageId: MESSAGE_ID }, { type: 'error', errorText: 'Failed to search Qdrant' }]),
+      streamOf([{ type: 'start', messageId: MESSAGE_ID }, { type: 'error', errorText: serializeChatError(chatError) }]),
     );
 
     const response = await request(app).post('/api/v1/chat/completions').send(VALID_BODY);
 
     expect(response.status).toBe(500);
     expect(response.body.status.message).toBe('CHAT_STREAM_ERROR');
+    expect(response.body.data).toEqual(chatError);
   });
 
   it('answers 500 when the pipeline cannot start', async () => {
-    jest.mocked(createChatStream).mockRejectedValue(new Error('No question provided'));
+    jest.mocked(createChatStream).mockRejectedValue(new RagError('request', 'NO_QUESTION', 'No question provided'));
 
     const response = await request(app).post('/api/v1/chat/completions').send(VALID_BODY);
 
     expect(response.status).toBe(500);
     expect(response.body.status.message).toBe('CHAT_STREAM_ERROR');
+    expect(response.body.data).toEqual({ stage: 'request', code: 'NO_QUESTION' });
   });
 });
 
@@ -110,5 +115,6 @@ describe('POST /api/v1/chat/streams', () => {
         '"highlightStart":0,"highlightEnd":4,"score":0.9}}',
     );
     expect(response.text).toContain('data: {"type":"text-delta","id":"message-1","delta":"ans."}');
+    expect(createChatStream).toHaveBeenCalledWith(VALID_BODY.messages, expect.any(AbortSignal));
   });
 });

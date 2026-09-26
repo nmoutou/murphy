@@ -12,14 +12,18 @@ import { createChatStream } from '../services/chatService';
 import { consumeStreamQuota } from '../middleware/streamRateLimiter';
 import { parseChatRequest } from '../validation/chatRequest';
 import type { AppUIMessage } from '@murphy/contract/messages';
+import type { ChatError } from '@murphy/contract/errors';
+import { serializeChatError } from '@murphy/contract/errors';
+import { toChatError } from '../types/rag';
 
 const logger = rootLogger.child({ context: 'chatWebSocket' });
 
-const RATE_LIMIT_ERROR = 'Too many requests, please try again later';
-const INVALID_JSON_ERROR = 'Invalid request: payload is not valid JSON';
+const RATE_LIMITED_ERROR: ChatError = { stage: 'request', code: 'RATE_LIMITED' };
+const INVALID_JSON_ERROR: ChatError = { stage: 'request', code: 'INVALID_JSON' };
+const INVALID_REQUEST_ERROR: ChatError = { stage: 'request', code: 'INVALID_REQUEST' };
 
-const sendErrorAndClose = (ws: WebSocket, errorText: string): void => {
-  ws.send(JSON.stringify({ type: 'error', errorText }));
+const sendErrorAndClose = (ws: WebSocket, chatError: ChatError): void => {
+  ws.send(JSON.stringify({ type: 'error', errorText: serializeChatError(chatError) }));
   ws.close();
 };
 
@@ -48,28 +52,32 @@ const forwardStream = async (ws: WebSocket, stream: ReadableStream<InferUIMessag
 const handleChatMessage = async (ws: WebSocket, raw: RawData, remoteAddress: string | undefined): Promise<void> => {
   if (!(await consumeStreamQuota(remoteAddress))) {
     logger.warn({ ip: remoteAddress }, 'Stream rate limit exceeded');
-    sendErrorAndClose(ws, RATE_LIMIT_ERROR);
+    sendErrorAndClose(ws, RATE_LIMITED_ERROR);
     return;
   }
 
   const payload = parseJson(raw);
   if (payload === undefined) {
+    logger.warn('Chat payload is not valid JSON');
     sendErrorAndClose(ws, INVALID_JSON_ERROR);
     return;
   }
 
   const request = parseChatRequest(payload);
   if (!request.isValid) {
-    const details = request.issues.map((issue) => `${issue.field}: ${issue.message}`).join('; ');
-    sendErrorAndClose(ws, `Invalid request: ${details}`);
+    logger.warn({ issues: request.issues }, 'Invalid chat request');
+    sendErrorAndClose(ws, INVALID_REQUEST_ERROR);
     return;
   }
 
+  // The client leaving stops the pipeline, the LLM included (ADR-041)
+  const abortController = new AbortController();
+  ws.on('close', () => abortController.abort());
   try {
-    await forwardStream(ws, await createChatStream(request.messages));
+    await forwardStream(ws, await createChatStream(request.messages, abortController.signal));
   } catch (error) {
     logger.error({ err: error }, 'WebSocket chat stream failed');
-    sendErrorAndClose(ws, error instanceof Error ? error.message : String(error));
+    sendErrorAndClose(ws, toChatError(error));
   }
 };
 

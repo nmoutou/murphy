@@ -44,12 +44,29 @@ casse la compilation des deux côtés à la fois.
 
 - **WebSocket** `/api/v1/chat/ws` (`routes/chatWebSocket.ts`) — ce que le frontend
   utilise. Un message entrant, un flux de parts JSON sortant, socket fermée. Une
-  requête invalide ou un quota épuisé reçoivent une part `error`, sans lancer le pipeline.
+  requête invalide ou un quota épuisé reçoivent une part `error` d'étape `request`, sans
+  lancer le pipeline.
 - **POST** `/api/v1/chat/streams` (SSE) et **POST** `/api/v1/chat/completions` (draine le
   flux en une réponse JSON) — `routes/chat.ts`, pour tests et clients non-WS.
 
 Toute évolution du pipeline se fait dans `createChatStream` ; les trois chemins en
 héritent.
+
+### Erreurs et arrêt (ADR-041)
+
+- **Une erreur dit l'étape, pas le détail.** Le `errorText` d'une part `error` est un
+  `ChatError` sérialisé, `{ stage, code }` (`@murphy/contract/errors`) :
+  - l'étape vaut `request`, `embedding`, `retrieval`, `llm` ou `internal` ;
+  - `types/rag.ts:toChatError` la tire d'une `RagError`, et toute autre erreur devient
+    `internal` ;
+  - le message complet reste dans les logs, sans partir au client.
+  - `/completions` renvoie ce même objet dans le `data` de son 500.
+- **Le départ du client arrête le pipeline.** La fermeture du socket, ou celle de la
+  réponse HTTP, lève le signal passé à `createChatStream`.
+  - Le signal est vérifié avant le LLM, puis après lui.
+  - `llm.stream` le transmet à son `fetch`, ce qui coupe la génération en cours.
+  - Le flux s'arrête sans part `error` ni `finish`, et le backend logue « Chat stream
+    aborted by the client ».
 
 ## Le contrat avec l'ingestion (ADR-039)
 
@@ -67,8 +84,9 @@ et **versionné**. Ce que le backend lit :
   `highlightEnd` d'une part `data-document` se lisent directement avec
   `content.slice(highlightStart, highlightEnd)` côté client.
 - **Violation** : un point sans champ du contrat, un document parent absent ou des offsets
-  hors de `content` lèvent une `RagError` `retrieval` / `CONTRACT_VIOLATION` qui cite le
-  `chunk_id`. La réponse s'arrête sur une part `error` : pas d'écart silencieux.
+  hors de `content` lèvent une `RagError` `retrieval` / `CONTRACT_VIOLATION`. Son message,
+  logué, cite le `chunk_id`. La réponse s'arrête sur une part `error` : pas d'écart
+  silencieux.
 
 ## La résolution de collection Qdrant (`src/infra/collectionPointer.ts`)
 

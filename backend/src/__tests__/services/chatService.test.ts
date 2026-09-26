@@ -8,6 +8,7 @@ import { createChatStream, extractQuestionFromMessages } from '../../services/ch
 import { getInfraClients } from '../../infra/clients';
 import { RagError } from '../../types/rag';
 import type { AppUIMessage } from '@murphy/contract/messages';
+import { serializeChatError } from '@murphy/contract/errors';
 import type { RetrievedChunk, StoredDocument } from '../../types/rag';
 
 jest.mock('../../infra/clients', () => {
@@ -56,6 +57,9 @@ const userMessage = (text: string, id = 'user-1'): AppUIMessage => ({
   role: 'user',
   parts: [{ type: 'text', text }],
 });
+
+/** A client that stays until the end */
+const NOT_ABORTED = new AbortController().signal;
 
 const readAllParts = async (stream: ReadableStream<AppChunk>): Promise<AppChunk[]> => {
   const parts: AppChunk[] = [];
@@ -110,12 +114,15 @@ describe('extractQuestionFromMessages', () => {
 
 describe('createChatStream', () => {
   it('rejects a blank question before running the pipeline', async () => {
-    await expect(createChatStream([userMessage('   ')])).rejects.toThrow('No question provided');
+    await expect(createChatStream([userMessage('   ')], NOT_ABORTED)).rejects.toMatchObject({
+      stage: 'request',
+      code: 'NO_QUESTION',
+    });
     expect(embedding.embedText).not.toHaveBeenCalled();
   });
 
   it('streams the parent document once, then its passages, then the answer and the timing', async () => {
-    const parts = await readAllParts(await createChatStream([userMessage(QUESTION)]));
+    const parts = await readAllParts(await createChatStream([userMessage(QUESTION)], NOT_ABORTED));
 
     expect(parts.map((part) => part.type)).toEqual([
       'start', 'text-start', 'data-parentDocument', 'data-document', 'data-document',
@@ -147,7 +154,7 @@ describe('createChatStream', () => {
   });
 
   it('feeds each passage to the LLM, not the whole document', async () => {
-    await readAllParts(await createChatStream([userMessage(QUESTION)]));
+    await readAllParts(await createChatStream([userMessage(QUESTION)], NOT_ABORTED));
 
     expect(qdrant.searchVectors).toHaveBeenCalledWith(EMBEDDING, 5);
     expect(mongo.fetchParentDocuments).toHaveBeenCalledWith(CHUNKS);
@@ -161,13 +168,16 @@ describe('createChatStream', () => {
     expect(llmMessages[1]).toEqual({ role: 'user', content: QUESTION });
   });
 
-  it('ends with an error part, before any source, when the databases break the contract', async () => {
+  it('ends with the stage and code, before any source, when the databases break the contract', async () => {
     jest.mocked(mongo.fetchParentDocuments).mockResolvedValue([]);
 
-    const parts = await readAllParts(await createChatStream([userMessage(QUESTION)]));
+    const parts = await readAllParts(await createChatStream([userMessage(QUESTION)], NOT_ABORTED));
 
     expect(parts.map((part) => part.type)).toEqual(['start', 'text-start', 'error']);
-    expect(parts[2]).toMatchObject({ errorText: expect.stringContaining('chunk-2') });
+    expect(parts[2]).toEqual({
+      type: 'error',
+      errorText: serializeChatError({ stage: 'retrieval', code: 'CONTRACT_VIOLATION' }),
+    });
     expect(llm.stream).not.toHaveBeenCalled();
   });
 
@@ -177,9 +187,12 @@ describe('createChatStream', () => {
       throw new RagError('llm', 'API_ERROR', 'Failed to stream LLM response: 502');
     });
 
-    const parts = await readAllParts(await createChatStream([userMessage(QUESTION)]));
+    const parts = await readAllParts(await createChatStream([userMessage(QUESTION)], NOT_ABORTED));
 
-    expect(parts[parts.length - 1]).toEqual({ type: 'error', errorText: 'Failed to stream LLM response: 502' });
+    expect(parts[parts.length - 1]).toEqual({
+      type: 'error',
+      errorText: serializeChatError({ stage: 'llm', code: 'API_ERROR' }),
+    });
     expect(parts.some((part) => part.type === 'finish')).toBe(false);
   });
 
@@ -188,9 +201,55 @@ describe('createChatStream', () => {
       new RagError('embedding', 'NETWORK', 'Failed to generate embeddings: ECONNREFUSED'),
     );
 
-    const parts = await readAllParts(await createChatStream([userMessage(QUESTION)]));
+    const parts = await readAllParts(await createChatStream([userMessage(QUESTION)], NOT_ABORTED));
 
-    expect(parts[parts.length - 1]).toEqual({ type: 'error', errorText: 'Failed to generate embeddings: ECONNREFUSED' });
+    expect(parts[parts.length - 1]).toEqual({
+      type: 'error',
+      errorText: serializeChatError({ stage: 'embedding', code: 'NETWORK' }),
+    });
     expect(llm.stream).not.toHaveBeenCalled();
+  });
+
+  it('tells nothing of an unexpected failure but that it is internal', async () => {
+    jest.mocked(embedding.embedText).mockRejectedValue(new Error('connect ECONNREFUSED 10.0.0.3:80'));
+
+    const parts = await readAllParts(await createChatStream([userMessage(QUESTION)], NOT_ABORTED));
+
+    expect(parts[parts.length - 1]).toEqual({
+      type: 'error',
+      errorText: serializeChatError({ stage: 'internal', code: 'INTERNAL' }),
+    });
+  });
+});
+
+describe('createChatStream, once the client has left', () => {
+  it('hands its abort signal to the LLM', async () => {
+    const abortController = new AbortController();
+
+    await readAllParts(await createChatStream([userMessage(QUESTION)], abortController.signal));
+
+    expect(llm.stream).toHaveBeenCalledWith(expect.any(Array), abortController.signal);
+  });
+
+  it('does not call the LLM when the client left during the retrieval', async () => {
+    const abortController = new AbortController();
+    abortController.abort();
+
+    const parts = await readAllParts(await createChatStream([userMessage(QUESTION)], abortController.signal));
+
+    expect(llm.stream).not.toHaveBeenCalled();
+    expect(parts.some((part) => part.type === 'error' || part.type === 'finish')).toBe(false);
+  });
+
+  it('ends without an error or a finish part when the client leaves during the answer', async () => {
+    const abortController = new AbortController();
+    jest.mocked(llm.stream).mockImplementation(async function* () {
+      yield 'Cinq ';
+      abortController.abort();
+    });
+
+    const parts = await readAllParts(await createChatStream([userMessage(QUESTION)], abortController.signal));
+
+    expect(parts.map((part) => part.type).slice(-1)).toEqual(['text-delta']);
   });
 });

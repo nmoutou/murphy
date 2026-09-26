@@ -1,5 +1,5 @@
 import type { InferUIMessageChunk, UIMessageStreamWriter } from 'ai';
-import type { AppUIMessage, AppMessageMetadata } from '@murphy/contract/messages';
+import type { AppUIMessage, AppMessageMetadata, RagTiming } from '@murphy/contract/messages';
 import type { ChatMessage } from '../infra/llm';
 import type { Passage } from '../types/rag';
 import { createUIMessageStream } from 'ai';
@@ -7,7 +7,8 @@ import crypto from 'crypto';
 import { logger as rootLogger } from '../utils/logger';
 import { embedQuestion, retrieveChunks, fetchPassages, buildContextString } from './ragService';
 import { getInfraClients } from '../infra/clients';
-import { serializeDocumentKey } from '../types/rag';
+import { RagError, serializeDocumentKey, toChatError } from '../types/rag';
+import { serializeChatError } from '@murphy/contract/errors';
 import { config } from '../config';
 
 const logger = rootLogger.child({ context: 'chatService' });
@@ -63,28 +64,66 @@ const buildLlmMessages = (question: string, passages: readonly Passage[]): ChatM
   { role: 'user', content: question },
 ];
 
+const ABORTED_BY_CLIENT = 'Chat stream aborted by the client';
+
+/** Embeds the question, finds and reads its passages, then writes them as sources */
+const retrieveSources = async (writer: AppWriter, question: string) => {
+  const { embedding, embeddingMs } = await embedQuestion(question);
+  const { chunks, retrievalMs } = await retrieveChunks(embedding, config.retrieval.topK);
+  // The title and the text live in the parent documents: read them before the sources
+  const { passages, docFetchMs } = await fetchPassages(chunks);
+  writeSources(writer, passages);
+  return { passages, timing: { embeddingMs, retrievalMs, docFetchMs } };
+};
+
 /**
  * @returns the LLM duration, or `undefined` once the failure is written as an `error` part
  */
-const streamAnswer = async (writer: AppWriter, messageId: string, messages: ChatMessage[]): Promise<number | undefined> => {
+const streamAnswer = async (
+  writer: AppWriter,
+  messageId: string,
+  messages: ChatMessage[],
+  abortSignal: AbortSignal,
+): Promise<number | undefined> => {
   const llmStart = Date.now();
   try {
-    for await (const token of getInfraClients().llm.stream(messages)) {
+    for await (const token of getInfraClients().llm.stream(messages, abortSignal)) {
       writer.write({ type: 'text-delta', id: messageId, delta: token });
     }
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    writer.write({ type: 'error', errorText: errorMessage });
+    writer.write({ type: 'error', errorText: serializeChatError(toChatError(error)) });
     return undefined;
   }
   return Date.now() - llmStart;
 };
 
-export async function createChatStream(uiMessages: AppUIMessage[]): Promise<ReadableStream<InferUIMessageChunk<AppUIMessage>>> {
-  const question = extractQuestionFromMessages(uiMessages);
+const writeFinish = (writer: AppWriter, messageId: string, ragTiming: RagTiming): void => {
+  writer.write({ type: 'text-end', id: messageId });
+  writer.write({
+    type: 'finish',
+    finishReason: 'stop',
+    messageMetadata: { ragTiming } satisfies AppMessageMetadata,
+  });
+};
 
+/** The client is gone: nothing more is written, and the next stages do not run */
+const isAbortedByClient = (abortSignal: AbortSignal): boolean => {
+  if (abortSignal.aborted) logger.info(ABORTED_BY_CLIENT);
+  return abortSignal.aborted;
+};
+
+/**
+ * The RAG pipeline as a stream of UI message parts
+ * @param abortSignal raised when the client leaves: the pipeline stops before or during the LLM
+ * @throws RagError with stage='request' when the last user message has no text
+ */
+export async function createChatStream(
+  uiMessages: AppUIMessage[],
+  abortSignal: AbortSignal,
+): Promise<ReadableStream<InferUIMessageChunk<AppUIMessage>>> {
+  const question = extractQuestionFromMessages(uiMessages);
   if (!question.trim()) {
-    throw new Error('No question provided');
+    throw new RagError('request', 'NO_QUESTION', 'No question provided');
   }
 
   const messageId = crypto.randomUUID();
@@ -95,30 +134,18 @@ export async function createChatStream(uiMessages: AppUIMessage[]): Promise<Read
       writer.write({ type: 'start', messageId });
       writer.write({ type: 'text-start', id: messageId });
 
-      const { embedding, embeddingMs } = await embedQuestion(question);
-      const { chunks, retrievalMs } = await retrieveChunks(embedding, config.retrieval.topK);
-      // The title and the text live in the parent documents: read them before the sources
-      const { passages, docFetchMs } = await fetchPassages(chunks);
-      writeSources(writer, passages);
+      const { passages, timing } = await retrieveSources(writer, question);
+      if (isAbortedByClient(abortSignal)) return;
 
-      const llmMs = await streamAnswer(writer, messageId, buildLlmMessages(question, passages));
-      if (llmMs === undefined) return;
+      const llmMs = await streamAnswer(writer, messageId, buildLlmMessages(question, passages), abortSignal);
+      if (llmMs === undefined || isAbortedByClient(abortSignal)) return;
 
-      writer.write({ type: 'text-end', id: messageId });
-      writer.write({
-        type: 'finish',
-        finishReason: 'stop',
-        messageMetadata: {
-          ragTiming: { embeddingMs, retrievalMs, docFetchMs, llmMs, totalMs: Date.now() - startTime },
-        } satisfies AppMessageMetadata,
-      });
-
+      writeFinish(writer, messageId, { ...timing, llmMs, totalMs: Date.now() - startTime });
       logger.info({ questionLength: question.length, totalMs: Date.now() - startTime }, 'Chat stream finished');
     },
     onError: (err) => {
-      const msg = err instanceof Error ? err.message : String(err);
       logger.error({ err }, 'Chat stream failed');
-      return msg;
+      return serializeChatError(toChatError(err));
     },
   });
 }

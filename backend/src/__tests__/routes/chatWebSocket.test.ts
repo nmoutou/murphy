@@ -10,6 +10,9 @@ import { registerChatWebSocket } from '../../routes/chatWebSocket';
 import { createChatStream } from '../../services/chatService';
 import { consumeStreamQuota } from '../../middleware/streamRateLimiter';
 import type { AppUIMessage } from '@murphy/contract/messages';
+import type { ChatError } from '@murphy/contract/errors';
+import { serializeChatError } from '@murphy/contract/errors';
+import { RagError } from '../../types/rag';
 
 jest.mock('../../services/chatService', () => ({ createChatStream: jest.fn() }));
 jest.mock('../../middleware/streamRateLimiter', () => ({ consumeStreamQuota: jest.fn() }));
@@ -32,6 +35,8 @@ const ANSWER_PARTS: AppChunk[] = [
   { type: 'text-delta', id: MESSAGE_ID, delta: 'Cinq ans.' },
   { type: 'finish', finishReason: 'stop' },
 ];
+
+const errorPart = (chatError: ChatError): AppChunk => ({ type: 'error', errorText: serializeChatError(chatError) });
 
 const streamOf = (parts: AppChunk[]): ReadableStream<AppChunk> =>
   new ReadableStream<AppChunk>({
@@ -77,18 +82,18 @@ describe('chat WebSocket', () => {
     jest.mocked(createChatStream).mockResolvedValue(streamOf(ANSWER_PARTS));
 
     await expect(exchange(JSON.stringify(VALID_PAYLOAD))).resolves.toEqual(ANSWER_PARTS);
-    expect(createChatStream).toHaveBeenCalledWith(VALID_PAYLOAD.messages);
+    expect(createChatStream).toHaveBeenCalledWith(VALID_PAYLOAD.messages, expect.any(AbortSignal));
   });
 
   it.each([
-    ['a payload that is not JSON', 'Quel délai ?', 'Invalid request: payload is not valid JSON'],
+    ['a payload that is not JSON', 'Quel délai ?', 'INVALID_JSON'],
     [
       'a message without parts',
       JSON.stringify({ messages: [{ id: 'user-1', role: 'user', content: 'Quel délai ?' }] }),
-      'Invalid request: messages[0].parts: parts must be an array of objects with a string type',
+      'INVALID_REQUEST',
     ],
-  ])('answers %s with an error part, without running the pipeline', async (_case, rawPayload, errorText) => {
-    await expect(exchange(rawPayload)).resolves.toEqual([{ type: 'error', errorText }]);
+  ])('answers %s with a request error, without running the pipeline', async (_case, rawPayload, code) => {
+    await expect(exchange(rawPayload)).resolves.toEqual([errorPart({ stage: 'request', code })]);
     expect(createChatStream).not.toHaveBeenCalled();
   });
 
@@ -96,16 +101,37 @@ describe('chat WebSocket', () => {
     jest.mocked(consumeStreamQuota).mockResolvedValue(false);
 
     await expect(exchange(JSON.stringify(VALID_PAYLOAD))).resolves.toEqual([
-      { type: 'error', errorText: 'Too many requests, please try again later' },
+      errorPart({ stage: 'request', code: 'RATE_LIMITED' }),
     ]);
     expect(createChatStream).not.toHaveBeenCalled();
   });
 
   it('answers with an error part when the pipeline cannot start', async () => {
-    jest.mocked(createChatStream).mockRejectedValue(new Error('No question provided'));
+    jest.mocked(createChatStream).mockRejectedValue(new RagError('request', 'NO_QUESTION', 'No question provided'));
 
     await expect(exchange(JSON.stringify(VALID_PAYLOAD))).resolves.toEqual([
-      { type: 'error', errorText: 'No question provided' },
+      errorPart({ stage: 'request', code: 'NO_QUESTION' }),
     ]);
+  });
+
+  it('raises the abort signal when the client leaves mid-stream', async () => {
+    let pipelineSignal: AbortSignal | undefined;
+    jest.mocked(createChatStream).mockImplementation(async (_messages, abortSignal) => {
+      pipelineSignal = abortSignal;
+      // A pipeline still running: one part, and the stream stays open
+      return new ReadableStream<AppChunk>({ start: (controller) => controller.enqueue(ANSWER_PARTS[0]) });
+    });
+
+    const client = new WebSocket(serverUrl);
+    client.on('open', () => client.send(JSON.stringify(VALID_PAYLOAD)));
+    client.on('message', () => client.close());
+    await new Promise((resolve) => client.on('close', resolve));
+    // The server may see the close before or after the client does
+    await new Promise<void>((resolve) => {
+      if (pipelineSignal?.aborted) resolve();
+      pipelineSignal?.addEventListener('abort', () => resolve());
+    });
+
+    expect(pipelineSignal?.aborted).toBe(true);
   });
 });

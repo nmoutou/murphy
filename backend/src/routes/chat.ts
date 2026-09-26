@@ -4,6 +4,7 @@
  */
 
 import express, { Request, Response } from 'express';
+import type { InferUIMessageChunk } from 'ai';
 import { pipeUIMessageStreamToResponse } from 'ai';
 import { logger as rootLogger } from '../utils/logger';
 import { createChatStream } from '../services/chatService';
@@ -12,14 +13,44 @@ import { streamRateLimiter } from '../middleware/streamRateLimiter';
 import { buildApiResponse } from '../utils/response';
 import { parseChatRequest } from '../validation/chatRequest';
 import type { ValidationIssue } from '../validation/chatRequest';
+import type { AppUIMessage } from '@murphy/contract/messages';
+import type { ChatError } from '@murphy/contract/errors';
+import { parseChatError } from '@murphy/contract/errors';
+import { toChatError } from '../types/rag';
 
 const logger = rootLogger.child({ context: 'chatRoutes' });
 const router = express.Router();
 
 const HTTP_BAD_REQUEST = 400;
+const HTTP_SERVER_ERROR = 500;
+const CHAT_STREAM_ERROR = 'CHAT_STREAM_ERROR';
 
 const sendValidationError = (res: Response, issues: readonly ValidationIssue[]): void => {
   res.status(HTTP_BAD_REQUEST).json({ ...buildApiResponse(HTTP_BAD_REQUEST, 'VALIDATION_ERROR'), errors: issues });
+};
+
+/** Raised when the client leaves: the pipeline stops, the LLM included (ADR-041) */
+const abortOnClose = (res: Response): AbortSignal => {
+  const abortController = new AbortController();
+  res.on('close', () => abortController.abort());
+  return abortController.signal;
+};
+
+interface DrainedAnswer {
+  readonly text: string;
+  /** Set when the stream ended on an `error` part */
+  readonly chatError?: ChatError;
+}
+
+const drainAnswer = async (stream: ReadableStream<InferUIMessageChunk<AppUIMessage>>): Promise<DrainedAnswer> => {
+  const reader = stream.getReader();
+  let text = '';
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) return { text };
+    if (value.type === 'text-delta') text += value.delta;
+    if (value.type === 'error') return { text, chatError: parseChatError(value.errorText) };
+  }
 };
 
 /**
@@ -41,7 +72,7 @@ router.post(
       return;
     }
     try {
-      const stream = await createChatStream(request.messages);
+      const stream = await createChatStream(request.messages, abortOnClose(res));
 
       pipeUIMessageStreamToResponse({
         response: res,
@@ -49,7 +80,7 @@ router.post(
       });
     } catch (error) {
       logger.error({ err: error }, 'Chat stream error');
-      res.status(500).json(buildApiResponse(500, 'CHAT_STREAM_ERROR'));
+      res.status(HTTP_SERVER_ERROR).json(buildApiResponse(HTTP_SERVER_ERROR, CHAT_STREAM_ERROR, toChatError(error)));
     }
   })
 );
@@ -67,25 +98,15 @@ router.post(
       return;
     }
     try {
-      const stream = await createChatStream(request.messages);
-      const reader = stream.getReader();
-      let text = '';
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        if (value.type === 'text-delta') {
-          text += value.delta;
-        }
-        if (value.type === 'error') {
-          throw new Error(value.errorText);
-        }
+      const { text, chatError } = await drainAnswer(await createChatStream(request.messages, abortOnClose(res)));
+      if (chatError) {
+        res.status(HTTP_SERVER_ERROR).json(buildApiResponse(HTTP_SERVER_ERROR, CHAT_STREAM_ERROR, chatError));
+        return;
       }
-
       res.json(buildApiResponse(200, 'OK', { role: 'assistant', parts: [{ type: 'text', text }] }));
     } catch (error) {
       logger.error({ err: error }, 'Chat completions error');
-      res.status(500).json(buildApiResponse(500, 'CHAT_STREAM_ERROR'));
+      res.status(HTTP_SERVER_ERROR).json(buildApiResponse(HTTP_SERVER_ERROR, CHAT_STREAM_ERROR, toChatError(error)));
     }
   })
 );
