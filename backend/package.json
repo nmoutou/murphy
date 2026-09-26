@@ -1,7 +1,7 @@
 {
   "name": "backend",
   "version": "1.0.0",
-  "description": "Backend service with Temporal workflow orchestration",
+  "description": "Murphy RAG serving API: Express + TypeScript, streams LLM answers with their legal sources",
   "main": "dist/server.js",
   "scripts": {
     "start": "node dist/server.js",

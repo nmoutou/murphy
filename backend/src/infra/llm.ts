@@ -21,12 +21,9 @@ interface ChatCompletionPayload {
   stream: boolean;
 }
 
-/** One streamed chunk, in the shapes the accepted OpenAI-compatible APIs send. */
+/** One streamed chunk of an OpenAI-compatible API; `content` is null on some chunks (end of answer) */
 interface ChatCompletionChunk {
-  choices?: Array<{
-    delta?: { content?: string; text?: string };
-    text?: { content?: string };
-  }>;
+  choices?: Array<{ delta?: { content?: string | null } }>;
 }
 
 const SSE_DATA_PREFIX = 'data: ';
@@ -61,8 +58,7 @@ const extractToken = (rawLine: string): string => {
     return '';
   }
 
-  const choice = chunk?.choices?.[0];
-  return choice?.delta?.content || choice?.delta?.text || choice?.text?.content || '';
+  return chunk?.choices?.[0]?.delta?.content ?? '';
 };
 
 /**

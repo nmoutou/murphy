@@ -39,6 +39,7 @@ fin du lot correspondant.
 | backend, après le 1er lot | `tsc` ✅ | ✅ 0 | ✅ 5 suites, 31 tests — **couverture 40 % des lignes**, sous le seuil de 65 % | — |
 | backend, après le 2e lot | `tsc` ✅ | ✅ 0 | ✅ 9 suites, 54 tests — couverture 66 % des lignes ; seules les instructions (64,5 %) restent sous le seuil de 65 % | — |
 | backend, après le 3e lot | `tsc` ✅ | ✅ 0 | ✅ 15 suites, 82 tests — couverture 90 % des lignes, **les quatre seuils sont tenus** | — |
+| backend, après BE-07/BE-10 | `tsc` ✅ | ✅ 0 | ✅ 17 suites, 115 tests — couverture 95,5 % des lignes, 95,4 % des instructions, 90,9 % des fonctions, 91,6 % des branches | — |
 | frontend | **1 erreur** `tsc` | **eslint ne démarre pas** | aucun test | — |
 | frontend, après le lot FE-02/04/05/07 | `tsc` ✅ | ✅ 0, avertissements compris | aucun test | — |
 | frontend, après le lot FE-06/08/10 | `tsc` ✅ | ✅ 0 | aucun test | ✅ Prettier (`format:check` en CI) |

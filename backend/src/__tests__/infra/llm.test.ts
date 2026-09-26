@@ -49,6 +49,14 @@ describe('LLMProvider.stream', () => {
     await expect(collectTokens(createProvider().stream(MESSAGES))).resolves.toEqual(['Cinq ', 'ans.']);
   });
 
+  it('reads only delta.content: other fields and null contents yield nothing', async () => {
+    const ignoredChoices = [{ delta: { text: 'x' } }, { text: { content: 'y' } }, { delta: { content: null } }, { delta: { role: 'assistant' } }];
+    const ignoredLines = ignoredChoices.map((choice) => `data: ${JSON.stringify({ choices: [choice] })}\n`).join('');
+    jest.spyOn(global, 'fetch').mockResolvedValue(responseOf(new TextEncoder().encode(`${ignoredLines}${sseLine('ok')}`)));
+
+    await expect(collectTokens(createProvider().stream(MESSAGES))).resolves.toEqual(['ok']);
+  });
+
   it('rebuilds a line split across network chunks', async () => {
     const bytes = new TextEncoder().encode(sseLine('prescription'));
     const middle = Math.floor(bytes.length / 2);

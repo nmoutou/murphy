@@ -2,6 +2,17 @@
 
 > 10 lignes max par entrée, la plus récente en tête (`PILOTAGE.md` §1.4).
 
+## 2026-09-26 — BE-07, BE-10
+
+- **Fait** : le token du LLM n'est plus lu que dans `delta.content` ; description
+  du `package.json` du backend corrigée. BE-07, BE-10 ✅ : toutes les corrections
+  du backend sont closes.
+- **Vérifié** : chunks réels de Mammouth (`delta.role`, `delta.content` seulement) ;
+  `npm run check` vert (115 tests) ; couverture 95,5 % des lignes, seuils tenus ;
+  question par WebSocket sur la stack de dev → réponse complète.
+- **Bloqué** : rien.
+- **Prochain pas** : passe de clôture (critère §5, TR-03, TR-06 et DA-05 au backlog).
+
 ## 2026-09-26 — TR-05
 
 - **Fait** : `CLAUDE.md` réaligné sur le code, partie projet resserrée (490 → 458

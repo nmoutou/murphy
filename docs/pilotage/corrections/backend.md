@@ -32,10 +32,10 @@
 | BE-04 | Route `GET /documents/:eli` morte et fausse — **décidé : suppression** | Dette | ✅ sans ADR (hygiène) |
 | BE-05 | Code mort (liste §2.5) | Dette | ✅ |
 | BE-06 | Barrel `infra/index.ts` + singletons `Proxy` typés `any` | Dette | ✅ |
-| BE-07 | `llm.stream` : décodage et parsing sur-complexes, erreurs avalées | Dette | 🔶 |
+| BE-07 | `llm.stream` : décodage et parsing sur-complexes, erreurs avalées | Dette | ✅ |
 | BE-08 | Le même bloc `try/catch/log/RagError` est copié dans 4 clients | Dette | ✅ |
 | BE-09 | Configuration dispersée : `process.env` lu dans 15 fichiers, nombres magiques | Dette | ✅ |
-| BE-10 | Commentaires et métadonnées qui mentent | Dette | 🔶 |
+| BE-10 | Commentaires et métadonnées qui mentent | Dette | ✅ |
 | BE-11 | Typage : `any`, casts, nom qui masque un global | Dette | ✅ |
 | BE-12 | `dotenv` ne charge rien, `@types/ws` en dépendance runtime | Confort | ✅ |
 | BE-13 | Le WebSocket ne valide pas son entrée | Dette | ✅ |
@@ -283,9 +283,12 @@ passent directement par les fichiers sources. Cascade : `server.ts`,
 - L'extraction du token est sortie dans `extractToken`.
 - Une ligne non-JSON est journalisée au niveau `debug`.
 
-**Reste** : ne garder que `delta.content`. Les deux autres champs sont
-conservés pour ne pas changer de comportement. `stream` repasse sous
-30 lignes au lot 3 : le découpage en lignes est sorti dans `readLines`.
+- `stream` repasse sous 30 lignes au lot 3 : le découpage en lignes est
+  sorti dans `readLines`.
+- Seul `delta.content` est lu ; `delta.text` et `text.content` sont
+  retirés. Un appel en streaming à Mammouth (`llama-4-maverick`) l'a
+  vérifié le 26 septembre 2026 : ses chunks ne portent que `delta.role` et
+  `delta.content`. Un test fixe ce comportement.
 
 ### BE-08 — gestion d'erreur dupliquée
 
@@ -362,9 +365,9 @@ paramètres par défaut.
 
 | Emplacement | Écrit | Réalité |
 |---|---|---|
-| `package.json:4` | « Backend service with Temporal workflow orchestration » | aucun Temporal |
+| ~~`package.json:4`~~ | ~~« Backend service with Temporal workflow orchestration »~~ | ✅ corrigé |
 | ~~`routes/chat.ts:21-33`~~ | ~~`POST /api/chat/stream`, corps `{ id, question, history }`…~~ | ✅ corrigé, et `/completions` est documentée |
-| `middleware/streamRateLimiter.ts:3`, l. 13 | `/api/chat/stream`, « SSE streaming endpoint » | `/api/v1/chat/streams` |
+| ~~`middleware/streamRateLimiter.ts:3`, l. 13~~ | ~~`/api/chat/stream`, « SSE streaming endpoint »~~ | ✅ corrigé |
 | ~~`infra/llm.ts:89`~~ | ~~« Stream completions from Mammouth API »~~ | ✅ corrigé |
 | ~~`infra/mongodb.ts:151`~~ | ~~paramètre `elis`~~ | ✅ renommé `chunkIds` |
 | ~~`infra/embedding.ts:42`~~ | ~~« 768-dimensional »~~ | ✅ corrigé (lot 3) |
