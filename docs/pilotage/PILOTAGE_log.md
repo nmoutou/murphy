@@ -2,6 +2,18 @@
 
 > 10 lignes max par entrée, la plus récente en tête (`PILOTAGE.md` §1.4).
 
+## 2026-09-26 — FE-03, FE-09 (ADR-041)
+
+- **Fait** : les erreurs s'affichent dans une modale générique (`<dialog>`), qui nomme
+  l'étape en cause (`@murphy/contract/errors`) ; bulle retirée ; transport fiabilisé.
+  FE-03, FE-09 ✅, FE-08 🔶, BE-17 et BE-18 ouverts puis ✅.
+- **Décidé** : [ADR-041](../product/ADR/ADR-041-erreurs-du-chat-en-modale.md) ; l'arrêt du
+  client coupe désormais le pipeline, LLM compris ; pas de bouton « Réessayer ».
+- **Vérifié** : `npm run check` vert (114 tests) ; Chrome headless : TEI ou backend
+  arrêtés → modale, puis nouvelle question OK ; socket fermé → « aborted » côté backend.
+- **Bloqué** : rien.
+- **Prochain pas** : fin de FE-06, FE-10, FE-11, puis la cascade FE-08.
+
 ## 2026-09-26 — FE-02, FE-04, FE-05, FE-07
 
 - **Fait** : eslint redémarre (config *flat* de Next) ; code mort et callbacks

@@ -14,7 +14,7 @@ The serving system (backend) is **stateless by design**: every request recompute
 
 - `backend/` — Express + TypeScript API (the RAG **serving** orchestrator). The bulk of the runtime request logic.
 - `frontend/` — Next.js 16 (App Router) + React 19 + Tailwind v4 chat UI.
-- `packages/contract/` — `@murphy/contract`, what backend and frontend exchange at runtime: zod schemas and the types inferred from them, one module per contract imported by subpath (`@murphy/contract/messages`, no barrel). Compiled by `tsc` to `dist/` (the root `postinstall` builds it). `packages/` only holds what crosses a runtime boundary between two workspaces.
+- `packages/contract/` — `@murphy/contract`, what backend and frontend exchange at runtime: zod schemas and the types inferred from them, one module per contract imported by subpath (`@murphy/contract/messages`, `@murphy/contract/errors`, no barrel). Compiled by `tsc` to `dist/` (the root `postinstall` builds it). `packages/` only holds what crosses a runtime boundary between two workspaces.
 - `data/` — Python/Kedro **ingestion** project that populates the databases (XML → parse → chunk → embed → Mongo/Qdrant/Neo4j). Runs offline, separately from the serving stack.
 - `eval/` — Python evaluation harness (P2). Reads the databases through its own client; never imports `ragcore` (ADR-027).
 - `docker-compose.base.yml` + `.dev.yml` / `.prod.yml` — the stack at the repo root: backend, frontend, MongoDB, Qdrant, Neo4j, and a HuggingFace TEI embedding service (GPU). The build context is the **repo root** (`backend/Dockerfile`, `frontend/Dockerfile`), because the apps share the root lockfile and the contract; the root `.dockerignore` keeps `.env*`, `node_modules`, `data/`, `eval/` and `docs/` out of it. Two Compose **profiles** share the same DB/embedding services: `ingest` (just the databases + TEI, for running `data/`'s `kedro run` against them) and `serve` (adds backend + frontend). The `data/` pipeline code itself still runs outside Docker, invoked manually.
@@ -93,10 +93,12 @@ The stream is built with the Vercel **AI SDK** (`createUIMessageStream` / `pipeU
 ### Two transports, same pipeline
 
 `createChatStream` produces one stream consumed three ways:
-- **WebSocket** (`routes/chatWebSocket.ts`, path `/api/v1/chat/ws`) — this is what the frontend actually uses (`useRagChat.ts` implements a custom `WebSocketChatTransport` over `@ai-sdk/react`'s `useChat`). One message in, stream of JSON parts out, socket closes.
+- **WebSocket** (`routes/chatWebSocket.ts`, path `/api/v1/chat/ws`) — this is what the frontend actually uses (`useRagChat.ts` plugs the custom transport `lib/webSocketChatTransport.ts` into `@ai-sdk/react`'s `useChat`). One message in, stream of JSON parts out, socket closes.
 - **POST `/api/v1/chat/streams`** (SSE) and **POST `/api/v1/chat/completions`** (drains the stream to a single JSON response) — `routes/chat.ts`. Useful for testing/non-streaming clients.
 
 When changing the pipeline, change `createChatStream` once — all three paths inherit it.
+
+**Errors and abort (ADR-041)**: an `error` part's `errorText` is a serialized `ChatError` `{ stage, code }` (`@murphy/contract/errors`; `types/rag.ts:toChatError`), never the raw message, which stays in the logs; the frontend shows the stage in a modal (`components/ui/Modal.tsx`). Closing the socket or the HTTP response raises the `AbortSignal` passed to `createChatStream`: the pipeline stops before the LLM, or cuts the LLM request (`llm.stream(messages, signal)`).
 
 ### Infrastructure clients (`backend/src/infra/`)
 

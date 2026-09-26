@@ -10,13 +10,13 @@
 |---|---|---|---|
 | FE-01 | `tsc` en erreur : `components/chat/types.ts` importe un type inexistant | Bloquant | ✅ avec TR-04 |
 | FE-02 | eslint ne démarre pas | Bloquant | ✅ |
-| FE-03 | Les erreurs du pipeline ne s'affichent jamais — **décidé** | Bloquant | ⬜ mini-ADR |
+| FE-03 | Les erreurs du pipeline ne s'affichent jamais — **décidé** | Bloquant | ✅ [ADR-041](../../product/ADR/ADR-041-erreurs-du-chat-en-modale.md) |
 | FE-04 | Code mort (liste §2.4) | Dette | ✅ |
 | FE-05 | Callbacks vides propagés sur 4 niveaux | Dette | ✅ |
 | FE-06 | Bugs discrets (liste §2.6) | Dette | 🔶 clé de `SourcesList` |
 | FE-07 | Extraction du texte d'un message dupliquée 3 fois, avec des `any` | Dette | ✅ |
-| FE-08 | Styles inline partout pour un thème unique et statique | Dette | ⬜ cascade |
-| FE-09 | `WebSocketChatTransport` : états de stream incohérents | Dette | ⬜ |
+| FE-08 | Styles inline partout pour un thème unique et statique | Dette | 🔶 couleurs dans `@theme` |
+| FE-09 | `WebSocketChatTransport` : états de stream incohérents | Dette | ✅ |
 | FE-10 | Accessibilité : les boutons-icônes n'ont pas de nom accessible | Confort | ⬜ |
 | FE-11 | Configuration : cible ES2015, pas d'Error Boundary, formatage hétérogène | Confort | ⬜ |
 
@@ -72,6 +72,31 @@ une bulle vide et `…` s'arrête de clignoter.
 la détection du préfixe « ❌ » et le `replace('❌ ', '')`. Le message
 affiché reste générique ; le détail part dans `console.error`, comme
 l'exige `CLAUDE.md`.
+
+**Correction révisée par [ADR-041](../../product/ADR/ADR-041-erreurs-du-chat-en-modale.md)**
+(décision du porteur, 26 septembre 2026) : une modale plutôt qu'un
+message sous le dernier échange, l'étape en cause nommée, la bulle de
+l'IA retirée et le backend arrêté.
+
+**Fait (26 septembre 2026)** :
+- `components/ui/Modal.tsx` : la coquille générique, sur `<dialog>` et
+  `showModal()` (fond grisé, page inerte, Échap). Son premier contenu est
+  `chat/ErrorDialog.tsx`, avec une phrase par étape.
+- La part `error` porte `{ stage, code }` (`@murphy/contract/errors`,
+  BE-18). `lib/chatErrorStage.ts` en tire l'étape affichée, avec
+  `connection` pour un socket en échec.
+- `useRagChat` retire la bulle de l'IA en cas d'erreur, et expose
+  `errorStage` et `clearError`.
+- `ErrorMessage.tsx`, la détection du préfixe « ❌ » et la variante
+  `error` de `ChatBubble` sont supprimés, ainsi que la couleur `error` du
+  thème, devenue inutile.
+- **Vérifié dans Chrome headless** sur la stack de dev :
+  - TEI arrêté : « L'encodage de votre question a échoué », focus dans la
+    modale, bulle retirée, question conservée ;
+  - backend arrêté : « Le serveur est injoignable » ;
+  - Échap ferme la modale, et une nouvelle question fonctionne ensuite.
+  - Au niveau du WebSocket : Qdrant arrêté donne `retrieval` /
+    `SEARCH_FAILED`.
 
 ### FE-04 — code mort
 
@@ -151,6 +176,12 @@ type, sans `any` ni cast. Écrire une seule fonction
 
 ### FE-08 — styles inline
 
+**Entamé (26 septembre 2026, avec FE-03)** : les couleurs du thème sont
+déclarées dans le `@theme` de `globals.css`. `Modal` et `ErrorDialog`
+n'emploient que des classes (`bg-secondary`, `text-tertiary`…). Il reste
+la cascade sur les 7 composants existants, puis la suppression de
+`ThemeProvider`.
+
 Le thème est **unique et statique** (`darkTheme`), mais ses couleurs
 passent par `style={{ … }}` dans 7 composants : `ChatBox`, `ChatBubble`,
 `SourceItem`, `SourcesList`, `MainPanel`, `ButtonIcon` et `Logo`/`Icon`
@@ -183,6 +214,16 @@ en CSS (`prefers-color-scheme`).
 - **Typage** : `ReadableStream<any>` → `ReadableStream<UIMessageChunk>`.
   Le `JSON.parse` des messages entrants, qui marque la frontière du
   système, gagne à vérifier au minimum la présence de `type`.
+
+**Fait (26 septembre 2026, avec FE-03)** : le transport sort du hook
+(`lib/webSocketChatTransport.ts`).
+- C'est un objet de module, sans classe ni état.
+- `sendMessages` est `async` et renvoie le flux, sans `new Promise`.
+- Le flux se règle une seule fois (`isSettled`), et l'annulation par
+  `useChat` y compte.
+- Un socket en échec, ou fermé avant `finish` ou `error`, fait passer le
+  flux en erreur de connexion.
+- `JSON.parse` est suivi d'un garde sur `type`.
 
 ### FE-10 — accessibilité
 

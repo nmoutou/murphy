@@ -57,7 +57,7 @@ sans ADR, sur décision du porteur (25 septembre 2026) :
 
 | Décision | Items |
 |---|---|
-| Afficher dans l'interface les erreurs du pipeline (aujourd'hui avalées en silence) | FE-03 |
+| Afficher dans l'interface les erreurs du pipeline (aujourd'hui avalées en silence) — ✅ faite, dans une modale ([ADR-041](../../product/ADR/ADR-041-erreurs-du-chat-en-modale.md)) | FE-03 |
 | Ne plus faire confiance à `X-Forwarded-For` tel quel pour le rate-limit — ✅ fait, sans ADR | BE-03 |
 | Supprimer la route `GET /api/v1/documents/:eli` — ✅ faite, sans ADR | BE-04 |
 | **Conserver** le bouton « dossier » du `ChatBox` (placeholder « Work in progress ») | — |

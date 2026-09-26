@@ -42,6 +42,8 @@
 | BE-14 | `health.ts` : deux handlers identiques, un timer jamais annulé | Confort | ✅ |
 | BE-15 | `chatService.createChatStream` : `execute` fait 49 lignes | Dette | ✅ |
 | BE-16 | Le WebSocket n'a aucune limite de débit (trouvé pendant le lot 2) | Dette (sécurité) | ✅ |
+| BE-17 | La fermeture du client n'arrête pas le pipeline : le LLM génère jusqu'au bout (trouvé avec FE-03) | Dette | ✅ [ADR-041](../../product/ADR/ADR-041-erreurs-du-chat-en-modale.md) |
+| BE-18 | Le message brut d'une erreur part au client, sans l'étape en cause (trouvé avec FE-03) | Dette (sécurité) | ✅ [ADR-041](../../product/ADR/ADR-041-erreurs-du-chat-en-modale.md) |
 
 🔶 : entamé ; le détail dit ce qui reste.
 
@@ -456,3 +458,32 @@ limiteur HTTP. POST `/streams` et le WebSocket partagent le budget, et
 un quota épuisé reçoit une part `error`. Le limiteur global
 (100 requêtes / 15 min) ne couvre toujours pas le WebSocket, mais le
 budget de stream, plus strict, suffit.
+
+### BE-17 — l'arrêt n'atteint pas le pipeline
+
+Trouvé en préparant FE-03. Fermer le WebSocket annulait la lecture du
+flux (`reader.cancel()`), mais `createUIMessageStream` n'interrompt pas
+`execute` : ses écritures sont avalées par `safeEnqueue`, et le LLM
+générait jusqu'au bout. Le bouton d'arrêt du frontend n'arrêtait donc
+que l'affichage.
+
+**Fait (26 septembre 2026, ADR-041)** :
+- `createChatStream` reçoit un `AbortSignal`, que lève la fermeture du
+  socket ou de la réponse HTTP ;
+- le signal est vérifié avant le LLM et après lui ;
+- `llm.stream` le transmet à son `fetch`, puis se termine sans erreur.
+- Vérifié sur la stack de dev : socket fermé en pleine réponse, le
+  backend logue « Chat stream aborted by the client », sans « Chat
+  stream finished ».
+
+### BE-18 — message brut envoyé au client
+
+`onError` et `streamAnswer` renvoyaient `err.message` au client, par
+exemple `Failed to search Qdrant: connect ECONNREFUSED …`. L'étape en
+cause, connue par `RagError.stage`, était perdue.
+
+**Fait (26 septembre 2026, ADR-041)** :
+- `errorText` porte un `ChatError` sérialisé, `{ stage, code }`
+  (`@murphy/contract/errors`), construit par `types/rag.ts:toChatError` ;
+- une erreur qui n'est pas une `RagError` devient `internal` ;
+- le détail reste dans les logs.
