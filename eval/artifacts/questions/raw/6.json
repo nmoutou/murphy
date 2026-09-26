@@ -1,8 +1,0 @@
-[
-  {"id": 1, "situation": "Une salariée en CDI apprend qu'elle est enceinte et craint d'être licenciée pendant sa grossesse.", "question": "Je suis enceinte et je viens de le dire à mon patron, est-ce qu'il a le droit de me licencier maintenant ?"},
-  {"id": 2, "situation": "Un salarié travaille régulièrement au-delà de son horaire prévu sans que ces heures apparaissent sur sa fiche de paie.", "question": "Je reste tous les soirs après l'heure de fin mais rien n'apparaît sur mon bulletin de salaire, est-ce que mon employeur doit me payer ces heures en plus ?"},
-  {"id": 3, "situation": "Un homme en arrêt maladie depuis plusieurs semaines s'interroge sur son droit à toucher de l'argent pendant cette période.", "question": "Je suis en arrêt maladie et je n'ai plus de salaire, qui doit me verser de l'argent pendant que je ne travaille pas ?"},
-  {"id": 4, "situation": "Une personne enchaîne des contrats courts chez le même employeur sur le même poste depuis longtemps.", "question": "Ça fait des années que mon employeur me renouvelle des contrats courts pour le même travail, est-ce qu'il a le droit de faire ça indéfiniment ?"},
-  {"id": 5, "situation": "Un salarié démissionne pour suivre son conjoint muté dans une autre région et veut savoir s'il touchera le chômage.", "question": "Je quitte mon travail parce que mon mari est muté à l'autre bout de la France, est-ce que j'ai droit au chômage en partant de moi-même ?"},
-  {"id": 6, "situation": "Un employé subit des remarques humiliantes répétées de son responsable devant ses collègues.", "question": "Mon chef me rabaisse devant tout le monde presque tous les jours depuis des mois, est-ce que mon employeur est obligé de faire quelque chose ?"}
-]

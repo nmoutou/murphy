@@ -1,6 +1,0 @@
-Les artefacts de ce dossier sont COMMITÉS — c'est le « jeu de paires versionné »
-d'E-P2-05, pas une sortie de travail jetable.
-
-Produits par `murphy-eval-cocitation` (cf. README) :
-  pairs.jsonl   le jeu de paires miné (une CocitationPair par ligne)
-  summary.json  la volumétrie (total, documents distincts, ventilation par verbe)

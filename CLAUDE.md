@@ -17,7 +17,7 @@ One repository (ADR-040). The TypeScript projects are **npm workspaces** (`backe
 - `packages/contract/` — `@murphy/contract`: the zod schemas, and the types inferred from them, that backend and frontend exchange at runtime. One module per subpath (`@murphy/contract/messages`, `@murphy/contract/errors`), no barrel; compiled by `tsc` to `dist/`. Only what crosses a runtime boundary between workspaces belongs in `packages/`.
 - `data/` — Python/Kedro ingestion (XML → chunks → Mongo/Qdrant/Neo4j), run offline. It shares the databases with the backend, never code.
 - `eval/` — Python evaluation harness; never imports `ragcore` (ADR-027).
-- `docs/` — cross-cutting docs only: `pilotage/` (steering, corrections in progress), `product/` (vision, versions, `ADR/`), `technical/ARCHITECTURE.md`. Each project documents itself in its own `docs/` (`README.md` = index + operations, `ARCHITECTURE.md`).
+- `docs/` — cross-cutting docs only: `pilotage/` (steering: status, backlog, log), `product/` (vision, versions, `ADR/`), `technical/ARCHITECTURE.md`. Each project documents itself in its own `docs/` (`README.md` = index + operations, `ARCHITECTURE.md`).
 
 ## Commands
 

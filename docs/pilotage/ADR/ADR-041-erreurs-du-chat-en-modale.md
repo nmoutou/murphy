@@ -1,7 +1,7 @@
 # ADR-041 — Erreurs du chat : une modale, l'étape en cause, un arrêt propagé au backend
 
 **Statut** : ✅ Accepté (26 septembre 2026, corrections FE-03 et FE-09,
-[`corrections/frontend.md`](../../pilotage/corrections/frontend.md))
+[`corrections/frontend.md`](../archives/corrections/frontend.md))
 
 ## Contexte
 
@@ -92,6 +92,6 @@ d'arrêt du `ChatBox` en bénéficie aussi.
 ## Références
 
 ADR-040 (dépôt unique, contrat partagé) ·
-[`corrections/frontend.md`](../../pilotage/corrections/frontend.md) (FE-03, FE-08,
+[`corrections/frontend.md`](../archives/corrections/frontend.md) (FE-03, FE-08,
 FE-09, FE-10) · `backend/src/types/rag.ts` (`RagError`) ·
 `packages/contract/src/messages.ts`

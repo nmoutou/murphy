@@ -1,7 +1,7 @@
 # ADR-040 — Un seul dépôt : fin des sous-modules, contrat du flux dans un paquet partagé
 
 **Statut** : ✅ Accepté (25 septembre 2026, corrections TR-04 et TR-07,
-[`corrections/transverse.md`](../../pilotage/corrections/transverse.md))
+[`corrections/transverse.md`](../archives/corrections/transverse.md))
 
 ## Contexte
 
@@ -99,5 +99,5 @@ des deux images).
 
 ADR-026 (restructuration de la configuration) · ADR-027 (plateforme end-to-end) ·
 ADR-039 (contrat ingestion ↔ serving) ·
-[`corrections/transverse.md`](../../pilotage/corrections/transverse.md) (TR-01, TR-04,
+[`corrections/transverse.md`](../archives/corrections/transverse.md) (TR-01, TR-04,
 TR-06, TR-07) · `packages/contract/src/messages.ts`

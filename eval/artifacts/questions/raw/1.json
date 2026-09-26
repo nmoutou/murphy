@@ -1,8 +1,0 @@
-[
-  {"id": 1, "situation": "Un voisin a rayé la carrosserie de la voiture garée devant chez lui après une dispute sur le stationnement", "question": "Mon voisin a rayé ma voiture volontairement pendant une dispute, est-ce que c'est puni par la loi ?"},
-  {"id": 2, "situation": "Une femme reçoit chaque semaine des messages insistants d'un ancien collègue qu'elle a demandé d'arrêter", "question": "Un ancien collègue m'envoie des messages sans arrêt alors que je lui ai dit d'arrêter, qu'est-ce que la loi prévoit contre ça ?"},
-  {"id": 3, "situation": "Un homme s'est fait pousser au sol lors d'une bagarre à la sortie d'un bar et a un bras immobilisé", "question": "On m'a poussé par terre devant un bar et j'ai le bras cassé, est-ce que celui qui a fait ça risque quelque chose ?"},
-  {"id": 4, "situation": "Des parents découvrent que leur fils au collège se fait insulter et bousculer tous les jours par les mêmes élèves", "question": "Mon fils est insulté et bousculé tous les jours au collège par le même groupe, est-ce que la loi punit ça ?"},
-  {"id": 5, "situation": "Une locataire rentre chez elle et trouve la porte forcée et des affaires disparues", "question": "Je suis rentrée chez moi, la porte était forcée et il manque des affaires, quelle est la règle sur ce genre de vol ?"},
-  {"id": 6, "situation": "Un homme découvre que sa boîte aux lettres et son portail ont été tagués et abîmés pendant la nuit", "question": "Quelqu'un a tagué mon portail et cassé ma boîte aux lettres la nuit, qu'est-ce que je peux reprocher légalement à l'auteur ?"}
-]

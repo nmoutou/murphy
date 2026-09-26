@@ -1,8 +1,0 @@
-[
-  {"id": 1, "situation": "Une femme mariée à un Français depuis plusieurs années vit avec lui en France et veut devenir française.", "question": "Je suis mariée à un Français et on vit ensemble en France, est-ce que je peux devenir française grâce au mariage et à quelles conditions ?"},
-  {"id": 2, "situation": "Un homme en situation irrégulière travaille depuis longtemps comme cuisinier avec des fiches de paie à son nom.", "question": "Je travaille en France sans titre de séjour mais j'ai des bulletins de salaire depuis des années, qu'est-ce qui me permettrait d'obtenir des papiers par le travail ?"},
-  {"id": 3, "situation": "Un étudiant étranger a fini son master et veut rester chercher un emploi en France.", "question": "J'ai terminé mes études en France avec mon diplôme, ai-je le droit de rester pour chercher du travail et sous quelles conditions ?"},
-  {"id": 4, "situation": "Un demandeur d'asile a reçu un refus de l'administration chargée des réfugiés et ne sait plus quoi faire.", "question": "Ma demande d'asile a été refusée, est-ce que je peux contester cette réponse et est-ce que j'ai le droit de rester en attendant ?"},
-  {"id": 5, "situation": "Un homme titulaire d'un titre de séjour salarié veut faire venir sa femme et ses enfants restés au pays.", "question": "J'ai un titre de séjour et un travail en France, quelles sont les conditions pour faire venir ma femme et mes enfants qui sont restés au pays ?"},
-  {"id": 6, "situation": "Une personne a reçu un courrier de la préfecture lui demandant de quitter la France après un refus de renouvellement.", "question": "La préfecture a refusé de renouveler mon titre et m'ordonne de partir de France, qu'est-ce que je peux faire contre cette décision ?"}
-]

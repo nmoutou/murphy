@@ -1,7 +1,7 @@
 # ADR-039 — Contrat ingestion ↔ serving : le texte d'un passage vit dans Mongo, désigné par ses offsets
 
 **Statut** : ✅ Accepté (25 septembre 2026, correction TR-01,
-[`corrections/transverse.md`](../../pilotage/corrections/transverse.md) §1)
+[`corrections/transverse.md`](../archives/corrections/transverse.md) §1)
 
 ## Contexte
 
@@ -173,5 +173,5 @@ retrouvé. Le flux porte donc **deux types de parts**, chacun envoyé une fois :
 
 ADR-004 (unité document) · ADR-016 (découplage récupération/génération) · ADR-020
 (tri-base, fail-fast) · ADR-022 §4 (épuration Mongo) ·
-[`corrections/transverse.md`](../../pilotage/corrections/transverse.md) §1 (TR-01) ·
-[`corrections/backend.md`](../../pilotage/corrections/backend.md) (BE-11, BE-15)
+[`corrections/transverse.md`](../archives/corrections/transverse.md) §1 (TR-01) ·
+[`corrections/backend.md`](../archives/corrections/backend.md) (BE-11, BE-15)

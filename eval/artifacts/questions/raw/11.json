@@ -1,8 +1,0 @@
-[
-  {"id": 1, "situation": "Un salarié découvre que son employeur a installé des caméras dans l'atelier où il travaille, sans qu'on lui en ait parlé.", "question": "Mon patron a mis des caméras dans l'atelier sans nous prévenir, est-ce qu'il a le droit de nous filmer pendant qu'on travaille ?"},
-  {"id": 2, "situation": "Une personne a demandé à un site de vente en ligne d'effacer son compte et ses informations, sans réponse.", "question": "J'ai demandé à un site internet de supprimer mon compte et tout ce qu'ils savent de moi, ils ne répondent pas. Est-ce qu'ils sont obligés de le faire ?"},
-  {"id": 3, "situation": "Un habitant veut organiser un rassemblement sur la place de sa commune pour protester contre un projet local.", "question": "On veut se réunir à une cinquantaine sur la place du village pour protester contre un projet, faut-il demander l'autorisation à quelqu'un ?"},
-  {"id": 4, "situation": "Un parent apprend que l'école a diffusé sur son site des photos de classe où figure son enfant.", "question": "L'école a mis des photos de la classe avec mon fils sur son site internet sans me demander mon avis, avaient-ils le droit ?"},
-  {"id": 5, "situation": "Un candidat à un logement se voit réclamer par l'agence des documents qui lui semblent très personnels.", "question": "L'agence immobilière me demande mon relevé de compte bancaire et le nom de mon médecin pour louer un appartement, peuvent-ils exiger ça ?"},
-  {"id": 6, "situation": "Une personne refusée pour un crédit soupçonne qu'elle est inscrite dans un fichier et veut savoir ce qui y figure.", "question": "La banque m'a refusé un prêt en disant que j'étais dans un fichier, ai-je le droit de savoir ce qui est écrit sur moi dedans ?"}
-]
