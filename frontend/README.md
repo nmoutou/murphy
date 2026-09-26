@@ -13,7 +13,7 @@ builds the shared contract (`packages/contract`). Then, from this directory:
 npm run dev         # Turbopack
 npm run build
 npm run type-check
-npm run lint        # broken until FE-02
+npm run lint        # eslint, no warning allowed
 ```
 
 Set `NEXT_PUBLIC_API_URL` to the backend base URL (default `http://localhost:5000`);

@@ -34,7 +34,7 @@ npm run dev         # next dev --turbopack
 npm run build       # next build --turbopack
 npm run start       # next start (après build)
 npm run type-check  # tsc --noEmit
-npm run lint        # eslint — cassé jusqu'à FE-02
+npm run lint        # eslint, zéro avertissement toléré
 ```
 
 Alias de chemin TS : `@/*` → `src/*`.

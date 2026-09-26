@@ -21,9 +21,6 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="fr">
-      <head>
-        <meta charSet="utf-8"/>
-      </head>
       <ThemeProvider>
         <body className={`${geistSans.variable} ${geistMono.variable} antialiased flex h-screen`}>
           {children}

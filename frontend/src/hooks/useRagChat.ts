@@ -1,5 +1,5 @@
 import { useChat } from '@ai-sdk/react';
-import type { ChatTransport } from 'ai';
+import type { ChatTransport, UIMessageChunk } from 'ai';
 import type { AppUIMessage } from '@murphy/contract/messages';
 import { appDataPartSchemas, appMessageMetadataSchema } from '@murphy/contract/messages';
 import { getChatSocketUrl } from '@/lib/chatSocketUrl';
@@ -12,7 +12,7 @@ class WebSocketChatTransport implements ChatTransport<AppUIMessage> {
   }
 
   async sendMessages({ messages, abortSignal }: Parameters<ChatTransport<AppUIMessage>['sendMessages']>[0]) {
-    return new Promise<ReadableStream<any>>((resolve, reject) => {
+    return new Promise<ReadableStream<UIMessageChunk>>((resolve, reject) => {
       const ws = new WebSocket(this.url);
 
       const stream = new ReadableStream({

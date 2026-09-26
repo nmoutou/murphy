@@ -40,6 +40,7 @@ fin du lot correspondant.
 | backend, après le 2e lot | `tsc` ✅ | ✅ 0 | ✅ 9 suites, 54 tests — couverture 66 % des lignes ; seules les instructions (64,5 %) restent sous le seuil de 65 % | — |
 | backend, après le 3e lot | `tsc` ✅ | ✅ 0 | ✅ 15 suites, 82 tests — couverture 90 % des lignes, **les quatre seuils sont tenus** | — |
 | frontend | **1 erreur** `tsc` | **eslint ne démarre pas** | aucun test | — |
+| frontend, après le lot FE-02/04/05/07 | `tsc` ✅ | ✅ 0, avertissements compris | aucun test | — |
 | data | `mypy --strict` ✅ | **95 erreurs** ruff (toutes dans le code mort, DA-01) | 296 ✅ (86 % de couverture) | 12 fichiers à reformater |
 | data, après le lot | `mypy --strict` ✅ | ✅ 0 | 294 ✅ (86 %) | ✅ |
 
@@ -60,6 +61,7 @@ sans ADR, sur décision du porteur (25 septembre 2026) :
 | Ne plus faire confiance à `X-Forwarded-For` tel quel pour le rate-limit — ✅ fait, sans ADR | BE-03 |
 | Supprimer la route `GET /api/v1/documents/:eli` — ✅ faite, sans ADR | BE-04 |
 | **Conserver** le bouton « dossier » du `ChatBox` (placeholder « Work in progress ») | — |
+| **Supprimer** la copie des réponses de l'IA (26 septembre 2026) — ✅ faite, sans ADR | FE-05 |
 
 **TR-01 exige un ADR à part entière** : il fixe où vit le texte d'un chunk
 entre l'ingestion et le serving.

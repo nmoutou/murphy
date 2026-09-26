@@ -5,15 +5,13 @@ import { useTheme } from '@/components/providers/ThemeProvider';
 
 interface SourceItemProps {
   chunk: DocumentChunk;
-  onChunkClick?: (chunk: DocumentChunk) => void;
 }
 
-export default function SourceItem({ chunk, onChunkClick }: SourceItemProps) {
+export default function SourceItem({ chunk }: SourceItemProps) {
   const theme = useTheme();
 
   return (
     <div
-      onClick={() => onChunkClick?.(chunk)}
       className="source-item"
       style={{ borderColor: theme.colors.tertiary, opacity: 0.8 }}
     >

@@ -10,12 +10,6 @@ type Theme = {
         tertiary: string
         quaternary: string
         error: string
-        quinary?: string
-        senary?: string
-        septenary?: string
-        octonary?: string
-        nonary?: string
-        denary?: string
     }
 }
 

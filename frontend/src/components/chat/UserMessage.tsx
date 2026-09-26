@@ -2,6 +2,7 @@
 
 import ChatBubble from './ChatBubble';
 import ChatContent from './ChatContent';
+import { getMessageText } from '@/lib/messageText';
 import type { AppUIMessage } from '@murphy/contract/messages';
 
 type Props = {
@@ -9,17 +10,10 @@ type Props = {
 };
 
 export default function UserMessage({ message }: Props) {
-  const textContent = Array.isArray(message.parts)
-    ? message.parts
-        .filter((part) => part.type === 'text')
-        .map((part: any) => part.text as string)
-        .join('')
-    : '';
-
   return (
     <ChatBubble variant="user">
       <div className="chat-layout">
-        <ChatContent>{textContent}</ChatContent>
+        <ChatContent>{getMessageText(message)}</ChatContent>
       </div>
     </ChatBubble>
   );

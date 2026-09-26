@@ -2,6 +2,16 @@
 
 > 10 lignes max par entrée, la plus récente en tête (`PILOTAGE.md` §1.4).
 
+## 2026-09-26 — FE-02, FE-04, FE-05, FE-07
+
+- **Fait** : eslint redémarre (config *flat* de Next) ; code mort et callbacks
+  vides retirés ; `getMessageText` sans `any`. FE-02, FE-04, FE-05, FE-07 ✅, FE-06 🔶.
+- **Décidé** : on ne peut plus copier une réponse de l'IA (bouton supprimé).
+- **Vérifié** : `npm run check` vert, lint frontend compris (0 avertissement) ;
+  réponse du LLM affichée sur la stack de dev.
+- **Bloqué** : rien.
+- **Prochain pas** : mini-ADR de FE-03 (erreurs affichées), avec FE-09.
+
 ## 2026-09-26 — TR-02
 
 - **Fait** : l'adresse du WebSocket est déduite de `NEXT_PUBLIC_API_URL`

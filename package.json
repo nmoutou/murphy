@@ -10,7 +10,7 @@
   "//": "Two profiles. `ingest` = the 3 databases + TEI, which is what data/ needs to run `kedro run`. `serve` = those plus backend + frontend. The databases carry no profile, so they start under either — declared once, shared by both. WARNING: `docker compose down` without a --profile flag does NOT stop profiled services; it reports success and leaves them running. That is why down/restart/logs/status name both profiles explicitly.",
   "scripts": {
     "postinstall": "npm run build -w @murphy/contract",
-    "check": "npm run build -w @murphy/contract && npm run type-check -w backend && npm run lint -w backend && npm test -w backend && npm run type-check -w frontend && npm run build -w frontend",
+    "check": "npm run build -w @murphy/contract && npm run type-check -w backend && npm run lint -w backend && npm test -w backend && npm run type-check -w frontend && npm run lint -w frontend && npm run build -w frontend",
     "compose": "docker compose -f docker-compose.base.yml -f docker-compose.dev.yml --env-file .env.dev",
     "ingest:up": "npm run compose -- --profile ingest up -d",
     "ingest:watch": "npm run compose -- --profile ingest up",

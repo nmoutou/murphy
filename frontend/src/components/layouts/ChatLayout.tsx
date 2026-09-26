@@ -4,16 +4,14 @@ import { useEffect, useRef } from "react";
 import UserMessage from "@/components/chat/UserMessage";
 import AIMessage from "@/components/chat/AIMessage";
 import ErrorMessage from "@/components/chat/ErrorMessage";
-import type { AppUIMessage, DocumentChunk } from "@murphy/contract/messages";
+import { getMessageText } from "@/lib/messageText";
+import type { AppUIMessage } from "@murphy/contract/messages";
 
 interface ChatLayoutProps {
     messages: Array<AppUIMessage>
-    status?: 'submitted' | 'streaming' | 'ready' | 'error'
-    onSourceClick?: (chunk: DocumentChunk) => void
-    onCopy?: (content: string) => void
 }
 
-export default function ChatLayout({ messages, status, onSourceClick, onCopy }: ChatLayoutProps){
+export default function ChatLayout({ messages }: ChatLayoutProps){
     const hasHistory = messages.length > 2;
 
     const lastUserRef = useRef<HTMLDivElement | null>(null);
@@ -38,14 +36,10 @@ export default function ChatLayout({ messages, status, onSourceClick, onCopy }: 
                     <div key={message.id ?? index} ref={ref} style={style}>
                         {message.role === "user" ? (
                             <UserMessage message={message} />
-                        ) : message.parts?.some((part) => part.type === 'text' && part.text.startsWith("❌")) ? (
-                            <ErrorMessage message={message.parts.map((part) => part.type === 'text' ? part.text : '').join('')} />
+                        ) : getMessageText(message).startsWith("❌") ? (
+                            <ErrorMessage message={getMessageText(message)} />
                         ) : (
-                            <AIMessage
-                                message={message}
-                                onSourceClick={onSourceClick}
-                                onCopy={onCopy}
-                            />
+                            <AIMessage message={message} />
                         )}
                     </div>
                 );

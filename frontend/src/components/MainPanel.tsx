@@ -6,7 +6,6 @@ import WelcomeLayout from "./layouts/WelcomeLayout";
 import ChatLayout from "./layouts/ChatLayout";
 import ChatBox from "./ChatBox";
 import { useRagChat } from "@/hooks/useRagChat";
-import type { DocumentChunk } from "@murphy/contract/messages";
 
 export default function MainPanel(){
     const theme = useTheme();
@@ -20,14 +19,6 @@ export default function MainPanel(){
         [sendMessage]
     );
 
-    const handleSourceClick = useCallback((chunk: DocumentChunk) => {
-        // TODO: Implement source expansion/modal
-    }, []);
-
-    const handleCopy = useCallback((content: string) => {
-        // Optional: Add notification here
-    }, []);
-    
     return (
         <div
             style={{ backgroundColor: theme.colors.primary }}
@@ -36,12 +27,7 @@ export default function MainPanel(){
             {/* Chat messages or welcome */}
             { messages.length > 0 ? (
                 <div className="flex-1 min-h-0 w-full flex justify-center items-start py-4 overflow-y-auto scrollbar">
-                    <ChatLayout 
-                        messages={messages}
-                        status={status}
-                        onSourceClick={handleSourceClick}
-                        onCopy={handleCopy}
-                    />
+                    <ChatLayout messages={messages} />
                 </div>
             ) : (
                 <div className="flex-1 w-full flex flex-col justify-center items-center">

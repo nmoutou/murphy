@@ -31,16 +31,13 @@ l'arrivée.
   la génération, avec leurs offsets UTF-16 dans le `content` du parent ;
 - part `finish` avec metadata `{ ragTiming }` : latences par étape du pipeline RAG.
 
-Les erreurs typées vivent dans `src/types/errors.ts`.
-
 ## Arborescence des composants
 
 ```
 src/
 ├── app/                    # App Router : layout.tsx, page.tsx
 ├── hooks/useRagChat.ts     # le transport WS + l'état du chat
-├── types/                  # messages.ts (contrat backend), errors.ts
-├── lib/api.ts              # appels HTTP hors chat
+├── lib/                    # chatSocketUrl.ts (adresse du WebSocket), messageText.ts
 ├── components/
 │   ├── MainPanel.tsx, ChatBox.tsx        # entrée + panneau principal
 │   ├── chat/               # ChatContent, ChatBubble, AIMessage, UserMessage,
@@ -51,4 +48,4 @@ src/
 └── styles/                 # globals.css, scrollbar.css (Tailwind v4)
 ```
 
-L'état UI est géré par `zustand` ; le thème par `ThemeProvider`.
+Le thème est fourni par `ThemeProvider`.

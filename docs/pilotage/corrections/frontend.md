@@ -9,12 +9,12 @@
 | ID | Point | Sévérité | Statut |
 |---|---|---|---|
 | FE-01 | `tsc` en erreur : `components/chat/types.ts` importe un type inexistant | Bloquant | ✅ avec TR-04 |
-| FE-02 | eslint ne démarre pas | Bloquant | ⬜ |
+| FE-02 | eslint ne démarre pas | Bloquant | ✅ |
 | FE-03 | Les erreurs du pipeline ne s'affichent jamais — **décidé** | Bloquant | ⬜ mini-ADR |
-| FE-04 | Code mort (liste §2.4) | Dette | ⬜ |
-| FE-05 | Callbacks vides propagés sur 4 niveaux | Dette | ⬜ |
-| FE-06 | Bugs discrets (liste §2.6) | Dette | ⬜ |
-| FE-07 | Extraction du texte d'un message dupliquée 3 fois, avec des `any` | Dette | ⬜ |
+| FE-04 | Code mort (liste §2.4) | Dette | ✅ |
+| FE-05 | Callbacks vides propagés sur 4 niveaux | Dette | ✅ |
+| FE-06 | Bugs discrets (liste §2.6) | Dette | 🔶 clé de `SourcesList` |
+| FE-07 | Extraction du texte d'un message dupliquée 3 fois, avec des `any` | Dette | ✅ |
 | FE-08 | Styles inline partout pour un thème unique et statique | Dette | ⬜ cascade |
 | FE-09 | `WebSocketChatTransport` : états de stream incohérents | Dette | ⬜ |
 | FE-10 | Accessibilité : les boutons-icônes n'ont pas de nom accessible | Confort | ⬜ |
@@ -44,6 +44,15 @@ directement une config *flat*, et `FlatCompat` plante en la sérialisant
   inutilisées de FE-04 et FE-05.
 - Une fois le lint vert, l'ajouter au script `check` de la racine, que
   la CI lance (ADR-040).
+
+**Fait (26 septembre 2026)** :
+- `eslint.config.mjs` importe directement les deux configs *flat* de Next,
+  avec `defineConfig` et `globalIgnores`.
+- `@eslint/eslintrc` est retiré.
+- Le lint s'est révélé avec 6 erreurs et 4 avertissements, tous réglés par
+  FE-04, FE-05 et FE-07 (plus le `ReadableStream<any>` de FE-09).
+- `npm run lint` tourne en `--max-warnings=0` et fait partie de `check`,
+  donc de la CI.
 
 ### FE-03 — erreurs invisibles (décidé)
 
@@ -80,6 +89,13 @@ l'exige `CLAUDE.md`.
 | commentaire modèle | `next.config.ts:4` |
 | `<head><meta charSet>` | `app/layout.tsx:24-26` : Next l'émet déjà |
 
+**Fait (26 septembre 2026)** : tout le tableau.
+- `lib/api.ts`, `types/errors.ts` et `KeyComboListener.tsx` sont supprimés,
+  ainsi que la dépendance `zustand`.
+- `ChatContent` ne reçoit plus qu'une chaîne, toujours rendue en markdown.
+- Vérifié sur la stack de dev : Next émet toujours son propre
+  `<meta charSet>`.
+
 ### FE-05 — callbacks vides
 
 `MainPanel` crée `handleSourceClick` et `handleCopy`, deux no-ops
@@ -93,6 +109,16 @@ en autorise 2.
 - **`onCopy`** : `AIMessage` copie déjà lui-même. Retirer le callback et
   toujours afficher le bouton de copie. Au passage, `AIMessage` n'attend
   pas `navigator.clipboard.writeText`, qui est une promesse non gérée.
+
+**Fait (26 septembre 2026)** :
+- Les deux callbacks sont retirés de toute la chaîne, avec le
+  `cursor-pointer` de `.source-item`.
+- **Copie supprimée** (décision du porteur, 26 septembre 2026) : on ne doit
+  pas pouvoir copier une réponse de l'IA. Le bouton et `handleCopy` sont
+  retirés ; les icônes `edit` restent, pour un usage futur.
+  - Avant sa suppression, le bouton était invisible : icône blanche (`invert`)
+    sur une bulle blanche, visible au seul survol.
+- Au passage (FE-06), `SourcesList` prend `chunk.chunkId` comme clé.
 
 ### FE-06 — bugs discrets
 
@@ -115,6 +141,13 @@ extraient chacun le texte des `parts`, avec `(part: any)`. Comme
 type, sans `any` ni cast. Écrire une seule fonction
 `getMessageText(message)`, à côté de `types/messages.ts`. De même,
 `part.type === 'data-document'` donne `part.data` typé `DocumentChunk`.
+
+**Fait (26 septembre 2026)** :
+- `lib/messageText.ts:getMessageText` est placé dans le frontend : c'est de
+  la présentation, pas du contrat (ADR-040). Il est utilisé par
+  `AIMessage`, `UserMessage` et `ChatLayout`.
+- Les passages sont extraits par un `flatMap` typé.
+- Il ne reste aucun `any` dans `src/`.
 
 ### FE-08 — styles inline
 
