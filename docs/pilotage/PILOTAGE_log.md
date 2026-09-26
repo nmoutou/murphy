@@ -2,6 +2,14 @@
 
 > 10 lignes max par entrée, la plus récente en tête (`PILOTAGE.md` §1.4).
 
+## 2026-09-26 — TR-05
+
+- **Fait** : `CLAUDE.md` réaligné sur le code, partie projet resserrée (490 → 458
+  lignes) ; partie règles inchangée, exemples compris. TR-05 ✅.
+- **Vérifié** : chaque chemin, script, variable et route cités, relus contre le dépôt.
+- **Bloqué** : rien.
+- **Prochain pas** : BE-07 et BE-10 (entamés), TR-06 (`eval/`), puis TR-03 (déploiement).
+
 ## 2026-09-26 — FE-11
 
 - **Fait** : cible `es2017`, `allowJs` retiré, Error Boundary `app/error.tsx`. FE-11 ✅ :

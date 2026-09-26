@@ -10,7 +10,7 @@
 | TR-02 | L'URL WebSocket configurée n'a pas de chemin : le serveur refuse la connexion (§2) | Bloquant | ✅ `lib/chatSocketUrl.ts` |
 | TR-03 | La prod ne peut pas joindre le backend depuis le navigateur (§3) | Dette | ⏸ décision de déploiement |
 | TR-04 | `types/messages.ts` est dupliqué entre backend et frontend, sans contrôle (§6) | Confort | ✅ `packages/contract` ([ADR-040](../../product/ADR/ADR-040-depot-unique.md)) |
-| TR-05 | `CLAUDE.md` décrit un état qui n'est plus vrai (§4) | Dette | ⬜ après les lots |
+| TR-05 | `CLAUDE.md` décrit un état qui n'est plus vrai (§4) | Dette | ✅ |
 | TR-06 | Environnement local : `node_modules` appartenant à root, `eval/` ne s'installe pas (§5) | Dette | 🔶 `node_modules` réglé (ADR-040), reste `eval/` |
 | TR-07 | Sous-modules : un changement de contrat traverse trois ou quatre dépôts (§6) | Dette | ✅ [ADR-040](../../product/ADR/ADR-040-depot-unique.md) |
 
@@ -150,6 +150,18 @@ et `trust proxy` (BE-03) prend une valeur connue. Sinon, passer
   depuis `EMBEDDING_MODEL` ;
 - le dossier `eval/` à la racine n'est pas mentionné dans « Repository
   layout ».
+
+**Fait (26 septembre 2026)** : les quatre points étaient déjà réglés au fil
+des lots. La relecture contre le code en a trouvé d'autres, corrigés :
+- les paramètres de `data/` vivent dans `conf/base/workflow/` (ADR-026) ;
+- l'alias du health est `/api/v1/health/services` ;
+- `neo4j` n'a pas de profil Compose ;
+- seul `data/docs/` a un dossier `reference/`.
+
+La partie projet est aussi resserrée, et les doublons entre sections sont
+supprimés (pointeur de collection, fichier d'env). La partie règles est
+gardée telle quelle, exemples compris (décision du porteur). Le fichier
+passe de 490 à 458 lignes.
 
 ## 5. TR-06 — environnement local
 
