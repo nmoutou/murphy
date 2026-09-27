@@ -20,21 +20,8 @@ def cleanup_node(
     """Delete all files under the parameterized cache paths (no hardcoded paths)."""
     total_deleted = 0
     cleaned: list[str] = []
-
     for path_str in cache_paths:
-        path = Path(path_str)
-        if not path.exists():
-            continue
-        count = 0
-        for f in sorted(path.rglob("*"), reverse=True):
-            try:
-                if f.is_file():
-                    f.unlink()
-                    count += 1
-                elif f.is_dir():
-                    f.rmdir()  # only succeeds if empty
-            except OSError as exc:
-                logger.warning("Could not delete %s: %s", f, exc)
+        count = _clear(Path(path_str))
         total_deleted += count
         if count:
             cleaned.append(path_str)
@@ -50,3 +37,21 @@ def cleanup_node(
         )
     )
     return result
+
+
+def _clear(path: Path) -> int:
+    """Vide ``path`` (fichiers, puis dossiers devenus vides). Rend le nombre de
+    fichiers supprimés ; un chemin absent n'a rien à vider."""
+    if not path.exists():
+        return 0
+    count = 0
+    for entry in sorted(path.rglob("*"), reverse=True):
+        try:
+            if entry.is_file():
+                entry.unlink()
+                count += 1
+            elif entry.is_dir():
+                entry.rmdir()  # only succeeds if empty
+        except OSError as exc:
+            logger.warning("Could not delete %s: %s", entry, exc)
+    return count

@@ -8,6 +8,7 @@ dans leur propre runtime) : rien n'est lié à la boucle du hook.
 from __future__ import annotations
 
 import logging
+from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol, runtime_checkable
@@ -18,8 +19,8 @@ from ragcore.adapters.embedding.noop_embedder import NoopEmbedder
 from ragcore.adapters.embedding.openai_embedder import (
     EmbeddingTransport,
     OpenAIEmbedder,
-    assert_service_serves_model,
 )
+from ragcore.adapters.embedding.served_model import assert_service_serves_model
 from ragcore.adapters.runtime import AsyncioRuntimeFactory
 from ragcore.adapters.storage.mongo.audit_repository import MongoAuditRepository
 from ragcore.adapters.storage.mongo.client import create_mongo_client
@@ -27,12 +28,17 @@ from ragcore.adapters.telemetry.factory import WorkerTelemetryFactory
 from ragcore.application.ingest_document import IngestDocumentUseCase
 from ragcore.application.ingestion_runner import IngestionRunner
 from ragcore.application.run_context import PipelineContext
+from ragcore.core.models.enums import SourceName
 from ragcore.core.ports.embedder import BaseEmbedder
 from ragcore.core.ports.runtime import AsyncRuntime
 from ragcore.core.ports.telemetry import WorkerTelemetry
 from ragcore.orchestration.kedro.run_plan import RunPlan
 from ragcore.orchestration.kedro.stores import open_clients, open_document_stores
-from ragcore.orchestration.kedro.workload import UseCaseFactory, build_document_workload
+from ragcore.orchestration.kedro.workload import (
+    UseCaseFactory,
+    WorkloadSteps,
+    build_document_workload,
+)
 from ragcore.sources.composite import (
     CompositeConnector,
     RoutingParser,
@@ -43,7 +49,7 @@ from ragcore.sources.generic import (
     GenericRelationExtractor,
     StructuralChunker,
 )
-from ragcore.sources.registry import definition_for
+from ragcore.sources.registry import SourceDefinition, definition_for
 
 __all__ = [
     "ProcessingStack",
@@ -85,9 +91,8 @@ class ProcessingStack:
 
     connector: CompositeConnector
     parser: RoutingParser
-    chunker: StructuralChunker
-    extractor: RoutingRelationExtractor
-    embedder: BaseEmbedder
+    steps: WorkloadSteps
+    """Ce que chaque worker applique à un document : chunker, embedder, extracteur."""
 
 
 def prepare_embedder(
@@ -190,17 +195,27 @@ def build_processing_stack(
                 for source, definition in definitions.items()
             }
         ),
+        steps=_workload_steps(plan, definitions, embedder),
+    )
+
+
+def _workload_steps(
+    plan: RunPlan,
+    definitions: Mapping[SourceName, SourceDefinition],
+    embedder: BaseEmbedder,
+) -> WorkloadSteps:
+    return WorkloadSteps(
         chunker=StructuralChunker(
             max_chunk_size=plan.workflow.chunking.size,
             overlap=plan.workflow.chunking.overlap,
         ),
+        embedder=embedder,
         extractor=RoutingRelationExtractor(
             {
                 source: GenericRelationExtractor(definition.table, source)
                 for source, definition in definitions.items()
             }
         ),
-        embedder=embedder,
     )
 
 
@@ -216,9 +231,7 @@ def build_runner(
     hook : une seconde dérivation ferait écrire workers et phase 2 dans deux collections.
     """
     workload = build_document_workload(
-        chunker=stack.chunker,
-        embedder=stack.embedder,
-        extractor=stack.extractor,
+        steps=stack.steps,
         use_case_factory=_use_case_factory(settings, plan),
         context=context,
         embedding_enabled=plan.embedding_enabled,

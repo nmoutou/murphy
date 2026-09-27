@@ -14,8 +14,8 @@ import pytest
 from ragcore.adapters.embedding.openai_embedder import (
     EmbeddingTransport,
     OpenAIEmbedder,
-    assert_service_serves_model,
 )
+from ragcore.adapters.embedding.served_model import assert_service_serves_model
 from ragcore.core.config import EmbeddingConfig
 from ragcore.core.exceptions import EmbeddingModelMismatchError
 from ragcore.core.models.chunk import Chunk

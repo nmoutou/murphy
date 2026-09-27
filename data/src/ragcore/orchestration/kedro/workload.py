@@ -25,6 +25,7 @@ qu'en creux avant ce module, et il les rend concrètes toutes les trois :
 from __future__ import annotations
 
 from collections.abc import Callable
+from dataclasses import dataclass
 
 from ragcore.application.ingest_document import IngestDocumentUseCase
 from ragcore.application.ingestion_runner import DocumentWorkload, WorkloadResult
@@ -33,11 +34,14 @@ from ragcore.core.models.document import ParsedDocument
 from ragcore.core.models.enums import Operation
 from ragcore.core.ports.chunker import BaseChunker
 from ragcore.core.ports.embedder import BaseEmbedder
-from ragcore.core.ports.relation_extractor import BaseRelationExtractor
+from ragcore.core.ports.relation_extractor import (
+    BaseRelationExtractor,
+    ExtractionResult,
+)
 from ragcore.core.ports.runtime import AsyncRuntime
 from ragcore.core.ports.telemetry import WorkerTelemetry
 
-__all__ = ["UseCaseFactory", "build_document_workload"]
+__all__ = ["UseCaseFactory", "WorkloadSteps", "build_document_workload"]
 
 # Fabrique un use case posé sur la télémétrie DU worker. Ce n'est pas un détail : le
 # use case tient des dépôts Mongo/Neo4j/Qdrant, et un client Motor est lié à la boucle
@@ -46,10 +50,21 @@ __all__ = ["UseCaseFactory", "build_document_workload"]
 UseCaseFactory = Callable[[WorkerTelemetry], IngestDocumentUseCase]
 
 
-def build_document_workload(  # noqa: PLR0913 — chaque argument est une pièce du workload ; les grouper cacherait ce qu'on assemble
-    chunker: BaseChunker,
-    embedder: BaseEmbedder,
-    extractor: BaseRelationExtractor,
+@dataclass(frozen=True)
+class WorkloadSteps:
+    """Les trois traitements d'un document, partagés entre les workers.
+
+    Le chunker et l'extracteur sont purs, et l'embedder crée son client HTTP *à l'appel*
+    (donc sur la bonne boucle) : ils se partagent sans risque.
+    """
+
+    chunker: BaseChunker
+    embedder: BaseEmbedder
+    extractor: BaseRelationExtractor
+
+
+def build_document_workload(
+    steps: WorkloadSteps,
     use_case_factory: UseCaseFactory,
     context: PipelineContext,
     embedding_enabled: bool = True,
@@ -61,9 +76,8 @@ def build_document_workload(  # noqa: PLR0913 — chaque argument est une pièce
     parallélise. ``runtime`` et ``telemetry`` sont ceux du worker courant, fournis par
     le runner — ils ne sont donc PAS capturés ici.
 
-    Le chunker et l'extracteur sont purs, et l'embedder crée son client HTTP *à
-    l'appel* (donc sur la bonne boucle) : ils se partagent sans risque. Le use case,
-    lui, tient des dépôts liés à une boucle — d'où la ``use_case_factory``, appelée une
+    Les ``steps`` se partagent sans risque (cf. ``WorkloadSteps``). Le use case, lui,
+    tient des dépôts liés à une boucle — d'où la ``use_case_factory``, appelée une
     fois PAR worker avec la télémétrie de ce worker.
 
     ``embedding_enabled=False`` (dev, ADR-023) SAUTE l'embedding : ``embed()`` n'est pas
@@ -76,20 +90,7 @@ def build_document_workload(  # noqa: PLR0913 — chaque argument est une pièce
     pas de workflow. La garde ``ENVIRONMENT != dev ⇒ toujours embarquer`` vit dans le
     plan du run (`run_plan.plan_run`), pas ici : ce booléen arrive déjà arbitré.
     """
-
-    # Le use case d'un worker, mémorisé. La fabrique crée TROIS clients (Mongo, Neo4j,
-    # Qdrant) : l'appeler par document en créait 1121 jeux au lieu de 4 — ce que sa propre
-    # docstring interdisait déjà (« un use case PAR worker »). La clé est la télémétrie,
-    # qui est justement l'objet-identité du worker : le runner en construit une par shard.
-    use_cases: dict[int, IngestDocumentUseCase] = {}
-
-    def _use_case_for(telemetry: WorkerTelemetry) -> IngestDocumentUseCase:
-        key = id(telemetry)
-        use_case = use_cases.get(key)
-        if use_case is None:
-            use_case = use_case_factory(telemetry)
-            use_cases[key] = use_case
-        return use_case
+    use_cases = _UseCasePerWorker(use_case_factory)
 
     def workload(
         parsed: ParsedDocument,
@@ -100,25 +101,10 @@ def build_document_workload(  # noqa: PLR0913 — chaque argument est une pièce
         # Plus d'inconnus de PARSE ici : les balises non-configurées sont ROUTÉES par la
         # cascade du parser (metadata ou lien) et SIGNALÉES au site de parse
         # (computeIdempotence, `tag.unconfigured`) — cadrage B-00-d. Ne restent que les
-        # inconnus d'EXTRACTION (typelien/sens/identifiant), déclarés plus bas.
+        # inconnus d'EXTRACTION (typelien/sens/identifiant), déclarés par `_extract`.
+        parsed, extraction = _extract(steps.extractor, parsed, telemetry)
 
-        # L'extraction passe AVANT le chunking, et ce n'est pas un détail d'ordre : c'est
-        # elle qui sépare les cibles identifiées (des arêtes) des cibles décrites (des
-        # citations). Le document doit porter ses citations AVANT d'être écrit, sinon
-        # Mongo et Neo4j reçoivent un document amputé du champ.
-        #
-        # Le SEUL appelant de extract() hors tests. Ses inconnus voyagent, eux aussi,
-        # dans la donnée — et sont déclarés ici.
-        extraction = extractor.extract(parsed)
-        _declare_unknowns(telemetry, extraction.unknowns)
-        if extraction.citations:
-            # `ParsedDocument` est gelé : on en dérive une copie. Sans citation, on garde
-            # l'instance d'origine — inutile de recopier 1 121 documents pour un tuple vide.
-            parsed = parsed.model_copy(
-                update={"citations": tuple(extraction.citations)}
-            )
-
-        chunks = chunker.chunk(parsed)
+        chunks = steps.chunker.chunk(parsed)
         # ``embed`` est le seul port de traitement asynchrone : le pont sync→async est
         # le runtime DU WORKER (sa boucle, ses clients), jamais une globale (§11).
         #
@@ -126,18 +112,69 @@ def build_document_workload(  # noqa: PLR0913 — chaque argument est une pièce
         # vide → le step Qdrant n'a aucun point à écrire. On ne touche pas au chunker : les
         # chunks restent le témoin de ce qu'on aurait embarqué, et Mongo/Neo4j sont écrits
         # à l'identique. C'est un skip, pas un embedder de substitution — voir la docstring.
-        embedded = runtime.run(embedder.embed(chunks)) if embedding_enabled else []
+        embedded = (
+            runtime.run(steps.embedder.embed(chunks)) if embedding_enabled else []
+        )
 
         # Le use case du worker — construit UNE fois, réutilisé sur tous ses documents.
-        # La saga n'écrit qu'un NŒUD (mongo → qdrant → neo4j:node) ; signature à 4
-        # arguments depuis le lot 4 : les relations ne passent plus par le use case.
-        use_case = _use_case_for(telemetry)
+        # La saga n'écrit qu'un NŒUD (mongo → qdrant → neo4j:node) : les relations ne
+        # passent pas par le use case.
+        use_case = use_cases.for_worker(telemetry)
         runtime.run(use_case.execute(parsed, embedded, operation, context))
 
         # Les relations ne sont PAS écrites ici : elles remontent vers la phase 2.
         return WorkloadResult(relations=extraction.relations)
 
     return workload
+
+
+class _UseCasePerWorker:
+    """Le use case de chaque worker, mémorisé.
+
+    La fabrique crée TROIS clients (Mongo, Neo4j, Qdrant) : l'appeler par document en
+    créait 1121 jeux au lieu de 4 — ce que sa propre docstring interdisait déjà (« un use
+    case PAR worker »). La clé est la télémétrie, qui est justement l'objet-identité du
+    worker : le runner en construit une par shard.
+    """
+
+    def __init__(self, factory: UseCaseFactory) -> None:
+        self._factory = factory
+        self._use_cases: dict[int, IngestDocumentUseCase] = {}
+
+    def for_worker(self, telemetry: WorkerTelemetry) -> IngestDocumentUseCase:
+        key = id(telemetry)
+        use_case = self._use_cases.get(key)
+        if use_case is None:
+            use_case = self._factory(telemetry)
+            self._use_cases[key] = use_case
+        return use_case
+
+
+def _extract(
+    extractor: BaseRelationExtractor,
+    parsed: ParsedDocument,
+    telemetry: WorkerTelemetry,
+) -> tuple[ParsedDocument, ExtractionResult]:
+    """Extrait les liens du document, déclare ses inconnus, et lui pose ses citations.
+
+    L'extraction passe AVANT le chunking, et ce n'est pas un détail d'ordre : c'est elle
+    qui sépare les cibles identifiées (des arêtes) des cibles décrites (des citations).
+    Le document doit porter ses citations AVANT d'être écrit, sinon Mongo et Neo4j
+    reçoivent un document amputé du champ.
+
+    Le SEUL appelant de extract() hors tests. Ses inconnus voyagent, eux aussi, dans la
+    donnée — et sont déclarés ici.
+    """
+    extraction = extractor.extract(parsed)
+    _declare_unknowns(telemetry, extraction.unknowns)
+    if not extraction.citations:
+        # Sans citation, on garde l'instance d'origine — inutile de recopier 1 121
+        # documents pour un tuple vide.
+        return parsed, extraction
+    # `ParsedDocument` est gelé : on en dérive une copie.
+    return parsed.model_copy(
+        update={"citations": tuple(extraction.citations)}
+    ), extraction
 
 
 def _declare_unknowns(

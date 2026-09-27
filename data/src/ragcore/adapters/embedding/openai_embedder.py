@@ -8,20 +8,17 @@ import asyncio
 import logging
 import threading
 from dataclasses import dataclass
-from urllib.parse import urlsplit, urlunsplit
 
 import httpx
 
 from ragcore.core.config import EmbeddingConfig
-from ragcore.core.exceptions import EmbeddingModelMismatchError
 from ragcore.core.models.chunk import Chunk, EmbeddedChunk
 
-__all__ = ["OpenAIEmbedder", "assert_service_serves_model"]
+__all__ = ["EmbeddingTransport", "OpenAIEmbedder"]
 
 _LOGGER = logging.getLogger(__name__)
 
 _TIMEOUT_SECONDS = 120.0
-_INFO_TIMEOUT_SECONDS = 10.0
 
 # Le service refuse un lot qui dépasse la fenêtre du modèle. Ce n'est PAS une panne : c'est
 # lui qui nous apprend la limite, et c'est la seule façon fiable de la connaître — le
@@ -35,52 +32,6 @@ def _rejected(chunk: Chunk) -> ValueError:
         f"Le service refuse le chunk {chunk.chunk_id} même vide : le rejet n'est pas une "
         f"question de taille. Vérifier la santé du service d'embedding."
     )
-
-
-async def assert_service_serves_model(base_url: str, expected_model: str) -> None:
-    """Le service sert-il bien le modèle dont le nom **baptise la collection** (§6) ?
-
-    TEI ignore le champ ``model`` de la requête : il ne sert que le modèle de son
-    ``--model-id``. Une divergence entre le conteneur et ``parameters.yml`` écrit donc les
-    vecteurs d'un modèle dans la collection nommée d'après un autre, **sans rien lever**.
-    ``GET /info`` est le seul endroit où le service *dit* ce qu'il sert : c'est la seule
-    façon de fermer le trou.
-
-    Appelée **avant le pool** (depuis le hook), jamais depuis un worker — voir
-    ``EmbeddingModelMismatchError``. Un service injoignable est **fatal** lui aussi : tant
-    qu'on ne peut pas vérifier ce qu'il sert, on n'écrit pas.
-
-    Miroir exact du garde-fou de dimension de ``_embed_batch`` : même esprit, même moment
-    (avant d'écrire), même verdict (on refuse d'écrire).
-    """
-    # `/info` est à la RACINE du service, pas sous le préfixe `/v1` de l'API compatible
-    # OpenAI. Interroger `{base_url}/info` donnerait un 404 — donc un garde-fou qui ne se
-    # déclencherait jamais, ce qui est pire que pas de garde-fou du tout.
-    parts = urlsplit(base_url)
-    info_url = urlunsplit((parts.scheme, parts.netloc, "/info", "", ""))
-
-    try:
-        async with httpx.AsyncClient(timeout=_INFO_TIMEOUT_SECONDS) as client:
-            response = await client.get(info_url)
-            response.raise_for_status()
-            served = response.json().get("model_id")
-    except (httpx.HTTPError, ValueError) as exc:
-        raise EmbeddingModelMismatchError(
-            f"Impossible d'interroger {info_url} : {exc}. Le service d'embedding "
-            f"est-il démarré (`npm run up`) ? Tant qu'on ne peut pas VÉRIFIER quel "
-            f"modèle il sert, on n'écrit pas."
-        ) from exc
-
-    if served != expected_model:
-        raise EmbeddingModelMismatchError(
-            f"Le service sert « {served} », or la configuration déclare "
-            f"« {expected_model} ». TEI ignore le champ `model` de la requête : il ne "
-            f"sert QUE le modèle de son `--model-id`. Continuer écrirait les vecteurs de "
-            f"« {served} » dans la collection nommée d'après l'empreinte de "
-            f"« {expected_model} », sans que rien ne le signale. Aligner EMBEDDING_MODEL "
-            f"(.env.dev, à la racine) et embedding.embedding.embedding_model "
-            f"(conf/base/parameters.yml)."
-        )
 
 
 @dataclass(frozen=True)

@@ -20,7 +20,7 @@ DAG les nomme, le hook les fournit.
 
 from __future__ import annotations
 
-from kedro.pipeline import Pipeline, node, pipeline
+from kedro.pipeline import Node, Pipeline, node, pipeline
 
 from .nodes.cleanup import cleanup_node
 from .nodes.compute_idempotence import compute_idempotence_node
@@ -37,91 +37,115 @@ def create_ingestion_pipeline() -> Pipeline:
     """cleanup → nukeAll → connect → computeIdempotence → ingest → resolve → report."""
     return pipeline(
         [
-            node(
-                func=cleanup_node,
-                inputs=[
-                    "params:maintenance.cache_paths",
-                    "pipeline_context",
-                    "telemetry",
-                ],
-                outputs="cleanup_results",
-                name="cleanup",
-            ),
-            node(
-                func=nuke_all_node,
-                inputs=[
-                    "doc_repo",
-                    "manifest_repo",
-                    "graph_repo",
-                    "vector_repo",
-                    "params:maintenance",
-                    "pipeline_context",
-                    "telemetry",
-                    "pipeline_runtime",
-                ],
-                outputs="nuke_done",
-                name="nukeAll",
-            ),
-            node(
-                func=connect_node,
-                inputs=[
-                    "connector",
-                    "pipeline_context",
-                    "telemetry",
-                    "pipeline_runtime",
-                    # signal-only : impose nukeAll AVANT connect (arête du DAG).
-                    "nuke_done",
-                ],
-                outputs="raw_documents",
-                name="connect",
-            ),
-            node(
-                func=compute_idempotence_node,
-                inputs=[
-                    "raw_documents",
-                    "parser",
-                    "manifest_repo",
-                    "pipeline_context",
-                    "telemetry",
-                    "pipeline_runtime",
-                    # Le curseur `exportation.unconfigured` (ingest|skip) : appliqué au
-                    # site de parse, juste avant que le document parte à l'ingestion.
-                    "params:exportation",
-                ],
-                outputs=["to_process", "to_skip"],
-                name="computeIdempotence",
-            ),
-            node(
-                func=ingest_node,
-                inputs=["to_process", "runner", "pipeline_context"],
-                outputs="ingestion_outcome",
-                name="ingest",
-            ),
-            node(
-                func=resolve_relations_node,
-                # ``ingestion_outcome`` en input = la barrière phase-1/phase-2.
-                inputs=[
-                    "ingestion_outcome",
-                    "resolve_service",
-                    "pipeline_runtime",
-                    "pipeline_context",
-                ],
-                outputs="resolution_outcome",
-                name="resolveRelations",
-            ),
-            node(
-                func=report_node,
-                inputs=[
-                    "ingestion_outcome",
-                    "resolution_outcome",
-                    "to_skip",
-                    # Le node POUSSE les stats des workers vers le hook. Kedro libère les
-                    # MemoryDataset dès leur dernier lecteur : après ce node, plus
-                    # personne ne peut relire `ingestion_outcome`.
-                    "run_stats_sink",
-                ],
-                outputs="run_report",
-                name="report",
-            ),
+            _cleanup(),
+            _nuke_all(),
+            _connect(),
+            _compute_idempotence(),
+            _ingest(),
+            _resolve_relations(),
+            _report(),
         ]
+    )
+
+
+def _cleanup() -> Node:
+    return node(
+        func=cleanup_node,
+        inputs=["params:maintenance.cache_paths", "pipeline_context", "telemetry"],
+        outputs="cleanup_results",
+        name="cleanup",
+    )
+
+
+def _nuke_all() -> Node:
+    return node(
+        func=nuke_all_node,
+        inputs=[
+            "doc_repo",
+            "manifest_repo",
+            "graph_repo",
+            "vector_repo",
+            "params:maintenance",
+            "pipeline_context",
+            "telemetry",
+            "pipeline_runtime",
+        ],
+        outputs="nuke_done",
+        name="nukeAll",
+    )
+
+
+def _connect() -> Node:
+    return node(
+        func=connect_node,
+        inputs=[
+            "connector",
+            "pipeline_context",
+            "telemetry",
+            "pipeline_runtime",
+            # signal-only : impose nukeAll AVANT connect (arête du DAG).
+            "nuke_done",
+        ],
+        outputs="raw_documents",
+        name="connect",
+    )
+
+
+def _compute_idempotence() -> Node:
+    return node(
+        func=compute_idempotence_node,
+        inputs=[
+            "raw_documents",
+            "parser",
+            "manifest_repo",
+            "pipeline_context",
+            "telemetry",
+            "pipeline_runtime",
+            # Le curseur `exportation.unconfigured` (ingest|skip) : appliqué au site de
+            # parse, juste avant que le document parte à l'ingestion.
+            "params:exportation",
+        ],
+        outputs=["to_process", "to_skip"],
+        name="computeIdempotence",
+    )
+
+
+def _ingest() -> Node:
+    return node(
+        func=ingest_node,
+        inputs=["to_process", "runner", "pipeline_context"],
+        outputs="ingestion_outcome",
+        name="ingest",
+    )
+
+
+def _resolve_relations() -> Node:
+    return node(
+        func=resolve_relations_node,
+        # ``ingestion_outcome`` en input = la barrière phase-1/phase-2.
+        inputs=[
+            "ingestion_outcome",
+            "resolve_service",
+            "pipeline_runtime",
+            "pipeline_context",
+        ],
+        outputs="resolution_outcome",
+        name="resolveRelations",
+    )
+
+
+def _report() -> Node:
+    return node(
+        func=report_node,
+        inputs=[
+            "ingestion_outcome",
+            "resolution_outcome",
+            "to_skip",
+            # Le node POUSSE les stats des workers vers l'agrégat du run. Kedro libère
+            # les MemoryDataset dès leur dernier lecteur : après ce node, plus personne
+            # ne peut relire `ingestion_outcome`.
+            "run_stats_sink",
+        ],
+        outputs="run_report",
+        name="report",
     )

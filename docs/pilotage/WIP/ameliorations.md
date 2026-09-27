@@ -6,6 +6,34 @@ dans l'historique git : `git show 9c32a83^:docs/pilotage/corrections/`.
 
 ## Faites
 
+### 2026-09-27 — `orchestration/kedro/` : nœuds et pipeline découpés (chantier 3, lot 5)
+
+- **Fichiers** : `orchestration/kedro/nodes/compute_idempotence.py`, `nuke_all.py`,
+  `cleanup.py`, `connect.py`, `orchestration/kedro/pipeline.py`, `workload.py`,
+  `assembly.py`, `adapters/embedding/openai_embedder.py`, nouveau
+  `adapters/embedding/served_model.py` (sous `data/src/ragcore/`) ; tests
+  `test_workload.py`, `test_openai_embedder.py`.
+- **Catégorie** : taille des fonctions et des fichiers / duplication / paramètres.
+- **Fait** :
+  - `compute_idempotence_node` (115 lignes, la plus longue de `data/`) : signature
+    inchangée (c'est le DAG), corps à ~20 lignes. Les deux branches d'exclusion
+    (`ValidationError`, `ParseError`), identiques au motif près, passent par un seul
+    `_ParseSite.exclude` paramétré par un `_Rejection` (raison, log, forme de la raison
+    au manifeste) ; `declare_signals`, `decide_operation`, `_apply_cursor`.
+  - `create_ingestion_pipeline` (84) : une fonction par nœud (`_cleanup()`…), la
+    publique ne fait qu'assembler.
+  - `nuke_all_node` (44), `cleanup_node` (35), `connect_node` (31) : `_assert_dev_environment`,
+    `_drop_mongo`, `_emit_nuked`, `_clear`, `_emit`.
+  - `build_document_workload` : 6 paramètres (`noqa`) → 4, via `WorkloadSteps(chunker,
+    embedder, extractor)`, que `assembly.ProcessingStack` réutilise ; le cache de use
+    case par worker devient `_UseCasePerWorker`, l'extraction `_extract`.
+  - `assert_service_serves_model` passe dans `served_model.py` : `openai_embedder.py`
+    avait franchi 300 lignes (305) avec `EmbeddingTransport` au lot 4.
+- **Pourquoi** : les dernières fonctions longues de `data/`.
+- **Vérification** : `ruff`, `ruff format --check`, `mypy` verts ; 329 tests réussis ;
+  `deepcopy` des `HOOKS` et `kedro registry list` OK. **Plus aucune fonction de plus de
+  30 lignes ni aucun fichier de plus de 300 lignes dans `data/src` (hors tests).**
+
 ### 2026-09-27 — adaptateurs : Neo4j, index Mongo, embedder (chantier 3, lot 4)
 
 - **Fichiers** : `adapters/storage/neo4j/graph_repository.py`, nouveau

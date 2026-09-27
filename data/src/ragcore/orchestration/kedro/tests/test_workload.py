@@ -29,7 +29,7 @@ from ragcore.core.models.enums import Operation, SourceName
 from ragcore.core.models.identifiers import ELI, OwnerId
 from ragcore.core.models.relation import Relation
 from ragcore.core.ports.relation_extractor import ExtractionResult
-from ragcore.orchestration.kedro.workload import build_document_workload
+from ragcore.orchestration.kedro.workload import WorkloadSteps, build_document_workload
 from ragcore.tests.fakes import (
     FakeRuntime,
     InMemoryDocumentRepository,
@@ -144,9 +144,11 @@ def _run(
     vectors = InMemoryVectorRepository()
     context = PipelineContext.create(owner_id=OWNER, source=SourceName.LEGI)
     workload = build_document_workload(
-        chunker=_StubChunker(),
-        embedder=_StubEmbedder(),
-        extractor=extractor or _StubExtractor(),
+        steps=WorkloadSteps(
+            chunker=_StubChunker(),
+            embedder=_StubEmbedder(),
+            extractor=extractor or _StubExtractor(),
+        ),
         use_case_factory=_use_case_factory(graph, vectors),
         context=context,
         embedding_enabled=embedding_enabled,

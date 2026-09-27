@@ -61,29 +61,11 @@ def nuke_all_node(  # noqa: PLR0913 — le nuke touche 3 stores + leurs 3 dépô
         pipeline_runtime.run(vector_repo.ensure_collection())
         return {"mongodb": False, "neo4j": False, "qdrant": False}
 
-    # Le garde-fou, AVANT toute écriture. L'absence de `ENVIRONMENT` vaut `prod`
-    # (voir InfraSettings.environment) : un `.env` incomplet est traité comme protégé.
-    environment = get_infra_settings().environment
-    if environment != "dev":
-        raise NukeAllOutsideDevError(
-            f"nuke_all refusé : ENVIRONMENT={environment!r}, attendu 'dev'. "
-            f"Ce mode efface TOUTES les données de TOUTES les bases — il n'est autorisé "
-            f"que là où les données sont jetables. Pour l'exécuter, ENVIRONMENT doit "
-            f"valoir strictement 'dev' dans le .env de la racine."
-        )
-
+    _assert_dev_environment()
     logger.warning(
         "nuke_all activé (ENVIRONMENT=dev) : effacement de TOUTES les données de TOUTES les bases"
     )
-
-    logger.warning("nuke_all Mongo : suppression des collections documents + manifest")
-    pipeline_runtime.run(doc_repo.drop_collection())
-    pipeline_runtime.run(manifest_repo.drop_collection())
-    # Dropper une collection détruit ses index avec elle. Ceux que le hook a posés en
-    # `before_pipeline_run` viennent de disparaître : sans ce rappel, tout le run
-    # réécrit dans des collections nues, et l'unicité de (identifier, owner_id) ne
-    # protège plus rien — en silence.
-    pipeline_runtime.run(ensure_data_indexes(doc_repo.database))
+    _drop_mongo(doc_repo, manifest_repo, pipeline_runtime)
 
     logger.warning("nuke_all Neo4j : suppression complète du graphe")
     pipeline_runtime.run(graph_repo.drop_all())
@@ -97,13 +79,47 @@ def nuke_all_node(  # noqa: PLR0913 — le nuke touche 3 stores + leurs 3 dépô
     # avant que le pool ne démarre, qu'on vienne de tout dropper ou non.
     pipeline_runtime.run(vector_repo.ensure_collection())
 
+    _emit_nuked(telemetry, pipeline_context, dropped)
+    return dropped
+
+
+def _emit_nuked(
+    telemetry: TelemetryPort, context: PipelineContext, dropped: dict[str, bool]
+) -> None:
     telemetry.emit(
         build_event(
             event_type=MAINTENANCE_NUKE_ALL_EXECUTED,
-            run_id=pipeline_context.run_id,
-            owner_id=pipeline_context.owner_id,
-            source=pipeline_context.source,
+            run_id=context.run_id,
+            owner_id=context.owner_id,
+            source=context.source,
             payload=dropped,
         )
     )
-    return dropped
+
+
+def _assert_dev_environment() -> None:
+    """Le garde-fou, AVANT toute écriture. L'absence de `ENVIRONMENT` vaut `prod` (voir
+    InfraSettings.environment) : un `.env` incomplet est traité comme protégé."""
+    environment = get_infra_settings().environment
+    if environment != "dev":
+        raise NukeAllOutsideDevError(
+            f"nuke_all refusé : ENVIRONMENT={environment!r}, attendu 'dev'. "
+            f"Ce mode efface TOUTES les données de TOUTES les bases — il n'est autorisé "
+            f"que là où les données sont jetables. Pour l'exécuter, ENVIRONMENT doit "
+            f"valoir strictement 'dev' dans le .env de la racine."
+        )
+
+
+def _drop_mongo(
+    doc_repo: MongoDocumentRepository,
+    manifest_repo: MongoManifestRepository,
+    pipeline_runtime: AsyncRuntime,
+) -> None:
+    logger.warning("nuke_all Mongo : suppression des collections documents + manifest")
+    pipeline_runtime.run(doc_repo.drop_collection())
+    pipeline_runtime.run(manifest_repo.drop_collection())
+    # Dropper une collection détruit ses index avec elle. Ceux que le hook a posés en
+    # `before_pipeline_run` viennent de disparaître : sans ce rappel, tout le run
+    # réécrit dans des collections nues, et l'unicité de (identifier, owner_id) ne
+    # protège plus rien — en silence.
+    pipeline_runtime.run(ensure_data_indexes(doc_repo.database))
