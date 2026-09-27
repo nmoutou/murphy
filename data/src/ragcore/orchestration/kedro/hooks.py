@@ -58,25 +58,20 @@ from ragcore.adapters.telemetry.registry_aware import RegistryAwareTelemetry
 from ragcore.adapters.tracking import build_experiment_tracker
 from ragcore.application.ingest_document import IngestDocumentUseCase
 from ragcore.application.ingestion_runner import IngestionRunner
+from ragcore.application.publish_collection import CollectionPublisher
 from ragcore.application.resolve_relations import ResolveRelationsService
 from ragcore.application.run_context import PipelineContext
 from ragcore.core.config import WorkflowConfig, collection_name
 from ragcore.core.models.audit import build_event
 from ragcore.core.models.identifiers import OwnerId, RunId
-from ragcore.core.models.published_collection import (
-    SERVING_CONTRACT_VERSION,
-    PublishedCollection,
-    may_publish,
-)
 from ragcore.core.models.run_stats import RunStats
-from ragcore.core.models.run_summary import RunStatus, RunSummary
+from ragcore.core.models.run_summary import RunSummary
 from ragcore.core.ports.experiment_tracker import ExperimentTracker
 from ragcore.core.ports.telemetry import WorkerTelemetry
 from ragcore.core.services.run_artifacts import run_scoped_filename
 from ragcore.core.services.telemetry_registry import TelemetryRegistry
 from ragcore.core.telemetry_events import (
     CHUNK_TRUNCATED,
-    DOCUMENT_PERSISTED,
     EVENT_CATALOG,
     PIPELINE_RUN_COMPLETED,
     PIPELINE_RUN_FAILED,
@@ -123,16 +118,8 @@ class TelemetryHooks:
         self._context: PipelineContext | None = None
         self._stats_dir: Path | None = None
         self._summary_repo: MongoRunSummaryRepository | None = None
-        self._published_repo: MongoPublishedCollectionRepository | None = None
-        self._qdrant_collection: str | None = None
-        """L'empreinte que ce run écrit. Retenue ici pour être PUBLIÉE si le run est `ok`.
-
-        Elle est déjà dérivée en tête de run (``collection_name(workflow)``) ; la garder
-        évite une seconde dérivation, et deux dérivations sont deux occasions de diverger.
-        """
-        self._is_full_run = True
-        """Ce run traite-t-il TOUTES les sources ? Seul un run complet peut publier une
-        version du contrat que le pointeur en place ne porte pas encore (ADR-039 §3)."""
+        self._publisher: CollectionPublisher | None = None
+        """Publie l'empreinte du run en fin de run, si le bilan dit `ok` (ADR-039)."""
         self._embedder: object | None = None
         self._runtime_instance: AsyncioRuntime | None = None
         self._tracker: ExperimentTracker | None = None
@@ -289,7 +276,7 @@ class TelemetryHooks:
         # provenance. La restriction par paramètre garde la voie du rejeu ciblé ouverte,
         # mais le bilan ne dit pas encore *quoi* rejouer.
         sources = resolve_sources(extra.get("source", settings.source))
-        self._is_full_run = set(sources) == set(all_sources())
+        is_full_run = set(sources) == set(all_sources())
         definitions = {source: definition_for(source) for source in sources}
 
         # `source=None` dans le contexte signifie « ce run n'est pas mono-source ». Le
@@ -320,8 +307,9 @@ class TelemetryHooks:
         self._stats_dir = meta_root / "stats"
         self._stats_dir.mkdir(parents=True, exist_ok=True)
         self._summary_repo = summary_repo
-        self._published_repo = published_repo
-        self._qdrant_collection = qdrant_collection
+        self._publisher = CollectionPublisher(
+            published_repo, qdrant_collection, is_full_run=is_full_run
+        )
         self._aggregator = RunStatsAggregator(
             run_id=self._context.run_id,
             owner_id=self._context.owner_id,
@@ -630,67 +618,14 @@ class TelemetryHooks:
         self._runtime.run(self._summary_repo.upsert(summary))
         return summary
 
-    def _publish_collection(self, summary: RunSummary | None) -> None:
-        """Publie l'empreinte de ce run — **si et seulement si** le run est `ok`.
+    def _publish(self, summary: RunSummary | None) -> None:
+        """Publie l'empreinte du run si le bilan le permet (``CollectionPublisher``).
 
-        C'est ici que l'équation de complétude cesse d'être un outil de diagnostic pour
-        devenir **la condition de publication**. Un run `degraded` a laissé un corpus
-        incomplet : publier son empreinte propagerait la fuite jusqu'à l'utilisateur, qui
-        n'aurait aucun moyen de le savoir. Le corpus précédent, lui, était complet — le
-        pointeur ne bouge pas, et le serving continue de servir le dernier bon.
-
-        Le statut est LU dans le bilan, jamais re-dérivé : deux dérivations sont deux
-        occasions de diverger, et celle-ci déciderait de ce que voit l'utilisateur.
+        Sans bilan ou sans publieur (hook jamais câblé), il n'y a rien à publier.
         """
-        if (
-            summary is None
-            or self._published_repo is None
-            or self._qdrant_collection is None
-        ):
+        if summary is None or self._publisher is None:
             return
-
-        if summary.status is not RunStatus.OK:
-            logger.warning(
-                "Run `%s` : le pointeur de collection n'est PAS mis à jour. Le corpus de "
-                "ce run est incomplet, le serving continue de servir le précédent.",
-                summary.status.value,
-            )
-            return
-
-        if not self._contract_allows_publication(self._published_repo):
-            return
-
-        published = PublishedCollection.of(
-            self._qdrant_collection,
-            run_id=summary.run_id,
-            document_count=summary.stats.counts.get(DOCUMENT_PERSISTED, 0),
-        )
-        self._runtime.run(self._published_repo.publish(published))
-        logger.info(
-            "Collection publiée : `%s` (%d documents) — c'est elle que le serving lira.",
-            published.collection_name,
-            published.document_count,
-        )
-
-    def _contract_allows_publication(
-        self, published_repo: MongoPublishedCollectionRepository
-    ) -> bool:
-        """Vérifie que publier ne mêle pas deux versions du contrat (``may_publish``).
-
-        Le pointeur en place est relu ICI, pas en tête de run : c'est la version publiée
-        au moment de remplacer le pointeur qui compte.
-        """
-        current = self._runtime.run(published_repo.get())
-        if may_publish(current, is_full_run=self._is_full_run):
-            return True
-        logger.warning(
-            "Run restreint : le pointeur de collection n'est PAS mis à jour. Le pointeur "
-            "en place ne porte pas la version %d du contrat de serving, et ce run n'a "
-            "réécrit que ses sources. Lancer un run complet : "
-            "`kedro run --params source=all`.",
-            SERVING_CONTRACT_VERSION,
-        )
-        return False
+        self._runtime.run(self._publisher.publish_if_complete(summary))
 
     def _track_and_close(self, summary: RunSummary | None) -> None:
         """Enregistre le bilan dans le tracker, puis ferme le run — **toujours**.
@@ -749,7 +684,7 @@ class TelemetryHooks:
         # Et SEULEMENT si ce bilan dit `ok`, on publie l'empreinte : c'est ce que le
         # serving lira. Un run dégradé ne publie pas — le dernier corpus complet reste
         # en place. La publication est la CONSÉQUENCE du bilan, jamais son présupposé.
-        self._publish_collection(summary)
+        self._publish(summary)
 
         # Le bilan part aussi vers le tracker (§9), et le run d'expérience se ferme. En
         # `noop` c'est sans effet ; en MLflow, c'est ici que le fingerprint devient un

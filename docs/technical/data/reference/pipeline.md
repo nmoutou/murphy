@@ -232,7 +232,7 @@ Chemin nominal (`after_pipeline_run`), dans l'ordre — et l'ordre est l'enjeu :
    **re-dérivé des compteurs** (`RunSummary.of` → `_status_from`) — voir
    [telemetrie.md](telemetrie.md#le-statut-dun-run). Écrit en JSON
    (`data/08_reporting/stats/`) et upsert Mongo (`meta_run_summaries`).
-5. **Publication** (`_publish_collection`) : si et seulement si le bilan dit `ok`, le
+5. **Publication** (`application/publish_collection.py:CollectionPublisher`) : si et seulement si le bilan dit `ok`, le
    pointeur `meta_published_collection` est mis à jour avec l'empreinte de ce run. Un run
    `degraded` ne publie pas — le serving reste sur le dernier corpus complet.
 6. **Tracking** : le bilan part au tracker (MLflow le cas échéant), et le run d'expérience

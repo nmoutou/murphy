@@ -6,6 +6,29 @@ dans l'historique git : `git show 9c32a83^:docs/pilotage/corrections/`.
 
 ## Faites
 
+### 2026-09-27 — publication du pointeur extraite du hook (chantier 1, lot 2)
+
+- **Fichiers** : nouveau `application/publish_collection.py`, `orchestration/kedro/hooks.py`
+  (sous `data/src/ragcore/`) ; `tests/unit/orchestration/test_publish_condition.py`
+  devenu `tests/unit/application/test_publish_collection.py` ; nouveau
+  `tests/unit/orchestration/test_hooks_unwired.py` ;
+  `docs/technical/data/reference/pipeline.md`.
+- **Catégorie** : structure / testabilité.
+- **Fait** : `CollectionPublisher(repo, collection_name, is_full_run=…)` porte la règle
+  de publication (ADR-039) : `publish_if_complete(summary)` ne publie que sur un bilan
+  `ok` et si `may_publish` l'autorise ; il rend le pointeur publié ou `None`. Mêmes logs
+  et mêmes docstrings que `_publish_collection` / `_contract_allows_publication`, retirés
+  du hook. Dans le hook, `_published_repo`, `_qdrant_collection` et `_is_full_run`
+  deviennent un seul `_publisher`. La règle vit dans `application/` (pas de dépendance
+  à Kedro), et non dans `orchestration/kedro/publication.py` comme prévu au départ.
+- **Pourquoi** : une règle métier n'a rien à faire dans le câblage Kedro ; ses 9 tests
+  écrivaient trois attributs privés du hook pour l'atteindre. Ils visent maintenant
+  `CollectionPublisher` directement.
+- **Vérification** : `ruff`, `ruff format --check`, `mypy` verts ; 315 tests réussis
+  (les 9 cas de publication conservés, 1 test du pointeur rendu, 2 tests d'un hook jamais
+  câblé qui finit ou échoue sans exploser) ; `deepcopy` des `HOOKS` OK.
+  `hooks.py` : 801 → 736 lignes.
+
 ### 2026-09-27 — `hooks.py` : paramètres du run extraits (chantier 1, lot 1)
 
 - **Fichiers** : `orchestration/kedro/hooks.py`, nouveau `orchestration/kedro/run_parameters.py`
