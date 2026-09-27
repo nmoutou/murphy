@@ -21,7 +21,12 @@ from pathlib import Path
 
 import pytest
 
-from ragcore.adapters.embedding import LocalEmbedder, NoopEmbedder, OpenAIEmbedder
+from ragcore.adapters.embedding import (
+    EmbeddingTransport,
+    LocalEmbedder,
+    NoopEmbedder,
+    OpenAIEmbedder,
+)
 from ragcore.adapters.runtime import AsyncioRuntime, AsyncioRuntimeFactory
 from ragcore.adapters.storage.mongo.audit_repository import MongoAuditRepository
 from ragcore.adapters.storage.mongo.document_repository import MongoDocumentRepository
@@ -45,6 +50,7 @@ from ragcore.adapters.tracking import (
     MlflowExperimentTracker,
     NoopExperimentTracker,
 )
+from ragcore.core.config import EmbeddingConfig
 from ragcore.core.models.enums import SourceName
 from ragcore.core.ports.audit_repository import AuditRepository
 from ragcore.core.ports.document_repository import DocumentRepository
@@ -137,7 +143,8 @@ class TestEmbedders:
         # La construire n'ouvre aucune connexion : la conformité reste hors-réseau.
         assert isinstance(
             OpenAIEmbedder(
-                model_name="whatever", dimension=768, base_url="http://tei.invalid/v1"
+                EmbeddingConfig(model_name="whatever", dimension=768),
+                EmbeddingTransport(base_url="http://tei.invalid/v1"),
             ),
             BaseEmbedder,
         )

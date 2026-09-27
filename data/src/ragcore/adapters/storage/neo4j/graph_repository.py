@@ -6,9 +6,6 @@ unique et explicite est ce qui rend le ``MERGE`` déterministe. Le label du nœu
 ``document_type`` de l'identifiant.
 """
 
-from dataclasses import dataclass
-from typing import Any
-
 import neo4j
 
 from ragcore.core.models.document import ParsedDocument
@@ -17,30 +14,9 @@ from ragcore.core.models.identifiers import OwnerId, RunId, SourceIdentifier
 from ragcore.core.models.relation import Relation
 from ragcore.core.ports.graph_repository import RelationWriteResult
 
+from .node_properties import NodeHydration, node_label, node_props
 
-@dataclass(frozen=True)
-class NodeHydration:
-    """Ce qu'un nœud document porte AU-DELÀ de ses trois props de base (ADR-022 §2).
-
-    Le défaut est le régime PROD : nœud maigre (``title``, ``source``,
-    ``schema_version``), rien d'autre. C'est le constructeur — le hook — qui ouvre les
-    vannes en dev (``resolve_node_hydration``), jamais ce module : le défaut penche
-    vers le refus, comme ``nuke_all`` et l'interrupteur d'embedding.
-
-    - ``metadata`` : les métadonnées du document en props (clés chemin-complet,
-      valeurs chaînes). Neo4j est l'outil d'inspection privilégié de la v0 — un nœud
-      maigre est un obstacle à l'itération sur le modèle de données.
-    - ``include_path`` : les chemins des FICHIERS source (``document.source_files``).
-      Un chemin absolu du poste d'ingestion n'a de sens qu'en dev.
-    - ``include_content`` : le texte du document, sous la prop ``_text_content``
-      (convention ``_text_`` du cadrage B-00-d). Les sections n'ont pas de prop à
-      elles : chaque section est un morceau LITTÉRAL de ``content`` (invariant du
-      parser) — ``_text_content`` les contient toutes.
-    """
-
-    metadata: bool = False
-    include_path: bool = False
-    include_content: bool = False
+__all__ = ["PENDING_LABEL", "Neo4jGraphRepository", "NodeHydration"]
 
 
 # Labels Neo4j connus, utilisés pour la création des index.
@@ -64,29 +40,36 @@ au prochain run. Seul (b) mérite un nœud, et c'est celui-ci.
 seul ``identifier`` et retombe sur ce nœud quel que soit son label.
 """
 
+_MERGE_NODE = (
+    "MERGE (d {identifier: $identifier, owner_id: $owner_id})"
+    " SET d:$($label)"
+    # Le document est là : il n'est plus attendu. Neo4j ignore le retrait d'un label
+    # absent, donc c'est sûr sur un nœud qui vient d'être créé.
+    f" REMOVE d:{PENDING_LABEL}"
+    " SET d += $props"
+    " RETURN d"
+)
 
-CITATIONS_PROP = "citations"
-"""La prop qui porte les cibles décrites, en **JSON sérialisé**.
+_COUNT_INCOMING = (
+    "MATCH (n {identifier: $identifier, owner_id: $owner_id})"
+    " OPTIONAL MATCH (n)<-[incoming]-()"
+    " RETURN count(incoming) AS entrantes"
+)
 
-Neo4j ne stocke pas d'objet imbriqué : une propriété est un scalaire ou un tableau de
-scalaires. Trois listes parallèles (``citation_texts``, ``citation_verbs``,
-``citation_sens``) exprimeraient la même chose sans garantir qu'elles restent alignées —
-une désynchronisation y serait invisible et silencieuse. Un JSON par citation garde
-chaque triplet solidaire.
-"""
+_DETACH_DELETE_NODE = (
+    "MATCH (n {identifier: $identifier, owner_id: $owner_id}) DETACH DELETE n"
+)
 
-
-def _citation_props(document: ParsedDocument) -> dict[str, Any]:
-    """Les citations du document, prêtes pour ``SET d += $props``.
-
-    Rend un dict VIDE quand il n'y en a pas, plutôt qu'une liste vide : ``SET d +=``
-    écrirait sinon une prop vide sur les ~99 % de documents qui ne citent rien de décrit.
-    """
-    if not document.citations:
-        return {}
-    return {
-        CITATIONS_PROP: [c.model_dump_json() for c in document.citations],
-    }
+# `apoc.create.removeLabels` n'est pas garanti (pas d'APOC en prod) : on retire les
+# labels connus par `REMOVE`. Neo4j ignore silencieusement le retrait d'un label absent
+# — la liste couvre donc tous les labels métier sans avoir à savoir lequel ce nœud
+# portait.
+_DEHYDRATE_NODE = (
+    "MATCH (n {identifier: $identifier, owner_id: $owner_id})"
+    f" REMOVE n:{':'.join(_KNOWN_LABELS)}"
+    f" SET n:{PENDING_LABEL}"
+    " REMOVE n.title, n.source, n.schema_version, n.citations"
+)
 
 
 class Neo4jGraphRepository:
@@ -112,52 +95,15 @@ class Neo4jGraphRepository:
         quel que soit son label, PUIS on pose le label réel.
 
         Les **citations** (cibles décrites) sont posées ici, en propriété du nœud, et non
-        en arêtes vers des placeholders : voir ``_citation_props``.
+        en arêtes vers des placeholders : voir ``node_properties.CITATIONS_PROP``.
         """
-        # Déduire le label depuis l'identifier
-        label = "Document"
-        if hasattr(document.identifier, "document_type"):
-            doc_type = document.identifier.document_type
-            if doc_type and doc_type != "inconnu":
-                label = doc_type.capitalize()
-
-        identifier_value = document.identifier.serialize()
-
-        query = (
-            "MERGE (d {identifier: $identifier, owner_id: $owner_id})"
-            " SET d:$($label)"
-            # Le document est là : il n'est plus attendu. Neo4j ignore le retrait d'un
-            # label absent, donc c'est sûr sur un nœud qui vient d'être créé.
-            f" REMOVE d:{PENDING_LABEL}"
-            " SET d += $props"
-            " RETURN d"
-        )
-
-        props: dict[str, Any] = {
-            "title": document.title,
-            "source": document.source.value,
-            "schema_version": document.schema_version,
-            **_citation_props(document),
-        }
-
-        # L'hydratation de dev (ADR-022 §2). Les clés chemin-complet des métadonnées ne
-        # peuvent pas percuter les props de base — elles joignent ≥ 2 segments par `_`.
-        # `SET d += $props` n'efface pas les props d'un run précédent : en dev, c'est
-        # `nuke_all` qui repart de zéro (les données sont jetables en v0).
-        if self._hydration.metadata:
-            props.update(document.metadata)
-        if self._hydration.include_content and document.content:
-            props["_text_content"] = document.content
-        if self._hydration.include_path and document.source_files:
-            props["source_files"] = list(document.source_files)
-
         async with self._driver.session() as session:
             await session.run(
-                query,
-                identifier=identifier_value,
+                _MERGE_NODE,
+                identifier=document.identifier.serialize(),
                 owner_id=document.owner_id,
-                label=label,
-                props=props,
+                label=node_label(document),
+                props=node_props(document, self._hydration),
             )
 
     async def upsert_relations(
@@ -308,43 +254,16 @@ class Neo4jGraphRepository:
         """
         identifier_value = identifier.serialize()
         async with self._driver.session() as session:
-            record = await (
-                await session.run(
-                    "MATCH (n {identifier: $identifier, owner_id: $owner_id})"
-                    " OPTIONAL MATCH (n)<-[incoming]-()"
-                    " RETURN count(incoming) AS entrantes",
-                    identifier=identifier_value,
-                    owner_id=owner_id,
-                )
-            ).single()
-
+            result = await session.run(
+                _COUNT_INCOMING, identifier=identifier_value, owner_id=owner_id
+            )
+            record = await result.single()
             # Le nœud n'existe pas (la saga a échoué AVANT le merge du nœud) : rien à
             # défaire. La compensation est idempotente — c'est ce que la saga attend.
             if record is None:
                 return
-
-            if record["entrantes"] == 0:
-                await session.run(
-                    "MATCH (n {identifier: $identifier, owner_id: $owner_id})"
-                    " DETACH DELETE n",
-                    identifier=identifier_value,
-                    owner_id=owner_id,
-                )
-                return
-
-            # `apoc.create.removeLabels` n'est pas garanti (pas d'APOC en prod) : on
-            # retire les labels connus par `REMOVE`. Neo4j ignore silencieusement le
-            # retrait d'un label absent — la liste couvre donc tous les labels métier
-            # sans avoir à savoir lequel ce nœud portait.
-            removable = ":".join(_KNOWN_LABELS)
-            await session.run(
-                "MATCH (n {identifier: $identifier, owner_id: $owner_id})"
-                f" REMOVE n:{removable}"
-                f" SET n:{PENDING_LABEL}"
-                " REMOVE n.title, n.source, n.schema_version, n.citations",
-                identifier=identifier_value,
-                owner_id=owner_id,
-            )
+            query = _DETACH_DELETE_NODE if record["entrantes"] == 0 else _DEHYDRATE_NODE
+            await session.run(query, identifier=identifier_value, owner_id=owner_id)
 
     async def drop_all(self) -> None:
         """Detach-delete every node and relation. Irreversible — wipes all owners."""

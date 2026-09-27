@@ -16,6 +16,7 @@ from ragcore.adapters.config.settings import EmbeddingRuntimeSettings, InfraSett
 from ragcore.adapters.embedding.local_embedder import LocalEmbedder
 from ragcore.adapters.embedding.noop_embedder import NoopEmbedder
 from ragcore.adapters.embedding.openai_embedder import (
+    EmbeddingTransport,
     OpenAIEmbedder,
     assert_service_serves_model,
 )
@@ -105,11 +106,12 @@ def prepare_embedder(
         case "openai":
             _assert_service_serves_model(embedding_settings, plan, runtime)
             return OpenAIEmbedder(
-                api_key=embedding_settings.api_key,
-                model_name=embedding.model_name,
-                dimension=embedding.dimension,
-                batch_size=embedding_settings.batch_size,
-                base_url=embedding_settings.service_url,
+                embedding,
+                EmbeddingTransport(
+                    base_url=embedding_settings.service_url,
+                    api_key=embedding_settings.api_key,
+                    batch_size=embedding_settings.batch_size,
+                ),
             )
         case "noop":
             _warn_null_vectors(plan.collection)

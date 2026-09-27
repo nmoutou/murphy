@@ -7,10 +7,12 @@ sans raison, et ferait tomber le service bien avant d'être lent.
 import asyncio
 import logging
 import threading
+from dataclasses import dataclass
 from urllib.parse import urlsplit, urlunsplit
 
 import httpx
 
+from ragcore.core.config import EmbeddingConfig
 from ragcore.core.exceptions import EmbeddingModelMismatchError
 from ragcore.core.models.chunk import Chunk, EmbeddedChunk
 
@@ -81,17 +83,22 @@ async def assert_service_serves_model(base_url: str, expected_model: str) -> Non
         )
 
 
+@dataclass(frozen=True)
+class EmbeddingTransport:
+    """Comment joindre le service : de l'infra, qui ne change aucun vecteur (§6)."""
+
+    base_url: str | None
+    api_key: str | None = None
+    batch_size: int = 32
+
+
 class OpenAIEmbedder:
     """Implémentation de ``BaseEmbedder`` via ``POST /embeddings``."""
 
     def __init__(
-        self,
-        model_name: str,
-        dimension: int,
-        api_key: str | None = None,
-        batch_size: int = 32,
-        base_url: str | None = None,
+        self, embedding: EmbeddingConfig, transport: EmbeddingTransport
     ) -> None:
+        base_url = transport.base_url
         if not base_url:
             # L'ancien défaut retombait sur `https://api.openai.com/v1` : un
             # EMBEDDING_SERVICE_URL oublié envoyait SILENCIEUSEMENT tout le corpus chez
@@ -101,10 +108,10 @@ class OpenAIEmbedder:
                 "OpenAIEmbedder exige une `base_url` explicite. Renseigner "
                 "EMBEDDING_SERVICE_URL (p. ex. http://localhost:5001/v1)."
             )
-        self._model_name = model_name
-        self._dimension = dimension
-        self._api_key = api_key
-        self._batch_size = batch_size
+        self._model_name = embedding.model_name
+        self._dimension = embedding.dimension
+        self._api_key = transport.api_key
+        self._batch_size = transport.batch_size
         self._base_url = base_url.rstrip("/")
         # Quels CHUNKS ont dû être raccourcis pour tenir dans la fenêtre du modèle. Non
         # vide = le `chunk_size` configuré n'est PAS compatible avec le modèle, et une part

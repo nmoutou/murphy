@@ -11,7 +11,7 @@ from typing import Any
 
 from kedro.io import DataCatalog, DatasetError
 
-from ragcore.adapters.storage.neo4j.graph_repository import NodeHydration
+from ragcore.adapters.storage.neo4j.node_properties import NodeHydration
 from ragcore.core.config import (
     ChunkingConfig,
     EmbeddingConfig,

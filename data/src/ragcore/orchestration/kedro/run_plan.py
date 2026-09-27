@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from ragcore.adapters.config.settings import InfraSettings
-from ragcore.adapters.storage.neo4j.graph_repository import NodeHydration
+from ragcore.adapters.storage.neo4j.node_properties import NodeHydration
 from ragcore.core.config import WorkflowConfig, collection_name
 from ragcore.core.models.enums import SourceName
 from ragcore.core.models.identifiers import OwnerId

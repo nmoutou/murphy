@@ -12,9 +12,11 @@ import httpx
 import pytest
 
 from ragcore.adapters.embedding.openai_embedder import (
+    EmbeddingTransport,
     OpenAIEmbedder,
     assert_service_serves_model,
 )
+from ragcore.core.config import EmbeddingConfig
 from ragcore.core.exceptions import EmbeddingModelMismatchError
 from ragcore.core.models.chunk import Chunk
 from ragcore.core.models.identifiers import ELI, OwnerId
@@ -133,11 +135,17 @@ def test_une_base_url_absente_est_refusee() -> None:
     """Le défaut retombait sur `https://api.openai.com/v1` : un EMBEDDING_SERVICE_URL
     oublié envoyait tout le corpus chez OpenAI, facturé, avec un autre modèle."""
     with pytest.raises(ValueError, match="base_url"):
-        OpenAIEmbedder(model_name=ATTENDU, dimension=768, base_url=None)
+        OpenAIEmbedder(
+            EmbeddingConfig(model_name=ATTENDU, dimension=768),
+            EmbeddingTransport(base_url=None),
+        )
 
 
 async def test_embed_d_une_liste_vide_ne_touche_pas_au_reseau() -> None:
-    embedder = OpenAIEmbedder(model_name=ATTENDU, dimension=768, base_url=BASE_URL)
+    embedder = OpenAIEmbedder(
+        EmbeddingConfig(model_name=ATTENDU, dimension=768),
+        EmbeddingTransport(base_url=BASE_URL),
+    )
     assert await embedder.embed([]) == []
 
 
@@ -161,7 +169,8 @@ class _ServiceAFenetre:
 
     def embedder(self) -> OpenAIEmbedder:
         emb = OpenAIEmbedder(
-            model_name=ATTENDU, dimension=DIM, batch_size=32, base_url=BASE_URL
+            EmbeddingConfig(model_name=ATTENDU, dimension=DIM),
+            EmbeddingTransport(base_url=BASE_URL, batch_size=32),
         )
         # On câble le transport factice dans le client que l'embedder construira.
         vrai = httpx.AsyncClient

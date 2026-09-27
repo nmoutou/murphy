@@ -6,6 +6,31 @@ dans l'historique git : `git show 9c32a83^:docs/pilotage/corrections/`.
 
 ## Faites
 
+### 2026-09-27 — adaptateurs : Neo4j, index Mongo, embedder (chantier 3, lot 4)
+
+- **Fichiers** : `adapters/storage/neo4j/graph_repository.py`, nouveau
+  `adapters/storage/neo4j/node_properties.py`, `adapters/storage/mongo/schemas.py`,
+  `adapters/embedding/openai_embedder.py`, `adapters/embedding/__init__.py`,
+  `orchestration/kedro/assembly.py`, `run_plan.py`, `run_parameters.py` (sous
+  `data/src/ragcore/`) ; tests `test_openai_embedder.py`, `test_ports_conformance.py`.
+- **Catégorie** : taille de fichier et de fonctions / nombre de paramètres.
+- **Fait** :
+  - Neo4j : `NodeHydration`, les citations, le label (`node_label`) et les propriétés
+    du nœud (`node_props`) passent dans `node_properties.py` ; les requêtes deviennent
+    des constantes nommées (`_MERGE_NODE`, `_COUNT_INCOMING`, `_DETACH_DELETE_NODE`,
+    `_DEHYDRATE_NODE`). `merge_document_node` (34 lignes) et `compensate_document_node`
+    (33) tombent à quelques lignes ; `graph_repository.py` passe de 352 à 268 lignes.
+  - Mongo : les index sont des constantes par collection (`_DATA_INDEXES`,
+    `_META_INDEXES`) posées par une seule boucle ; `ensure_meta_indexes` (55 lignes)
+    tient en une ligne.
+  - `OpenAIEmbedder.__init__` : 5 paramètres → 2, `EmbeddingConfig` (le modèle, hashé)
+    et `EmbeddingTransport` (l'accès au service : URL, clé, lot — de l'infra).
+- **Pourquoi** : deux des fonctions longues, un fichier au-dessus de 300 lignes et un
+  constructeur à 5 paramètres.
+- **Vérification** : `ruff`, `ruff format --check`, `mypy` verts ; 329 tests réussis ;
+  **tests d'intégration** Neo4j et Mongo (testcontainers) : 28 réussis — les requêtes
+  Cypher refactorées se comportent à l'identique sur un vrai serveur.
+
 ### 2026-09-27 — `sources/generic/parser.py` découpé (chantier 3, lot 3)
 
 - **Fichiers** : `sources/generic/parser.py`, nouveaux `tree.py`, `structure.py`,
