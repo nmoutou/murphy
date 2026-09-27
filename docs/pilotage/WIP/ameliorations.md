@@ -6,6 +6,35 @@ dans l'historique git : `git show 9c32a83^:docs/pilotage/corrections/`.
 
 ## Faites
 
+### 2026-09-27 — `sources/generic/parser.py` découpé (chantier 3, lot 3)
+
+- **Fichiers** : `sources/generic/parser.py`, nouveaux `tree.py`, `structure.py`,
+  `unconfigured.py`, `chunking.py` (sous `data/src/ragcore/`) ;
+  `docs/technical/data/reference/sources.md`.
+- **Catégorie** : taille de fichier et de fonctions / complexité / imbrication /
+  nombre de paramètres.
+- **Fait** :
+  - `tree.py` : la relecture de l'arbre transcrit (`walk`, `find_all`, `first`,
+    `text_of`, `holders`…), plus `nested(tree, containers, tags)`, qui aplatit les
+    boucles conteneur → parent → balise → nœud répétées trois fois.
+  - `structure.py` : `read_references` (ex-`_references`, 43 lignes, C901 = 12,
+    cinq niveaux d'imbrication) découpé en `_declared_links`, `_structural_links`,
+    `_version_links` ; `read_context`.
+  - `unconfigured.py` : la cascade des trois portes. `UnconfiguredRouting` porte
+    l'identifiant, les métadonnées et références du document, et les signaux
+    (balises, clés, racines) ; `_route_values` passe de 6 paramètres (`noqa`) à 3, son
+    motif attribut/feuille factorisé dans `_route_value`.
+  - `parser.py` : `parse` délègue à `_interpret` et `_document` ; `_metadata` et
+    `_text_blocks` perdent leurs cinq niveaux d'imbrication (`_meta_leaves`,
+    `_is_collectable`, compréhension).
+  - `chunking._chunk` : 6 paramètres (`noqa`) → 3, via un `_Span`.
+- **Pourquoi** : `parser.py` faisait 540 lignes, avec la seule fonction de `data/` que
+  ruff jugeait trop complexe.
+- **Vérification** : `ruff` (dont `C901` sur `sources/`), `ruff format --check`, `mypy`
+  verts ; 329 tests réussis, dont les golden (`test_legi_corpus`, `test_role_table`,
+  `test_parser`) : mêmes documents, mêmes métadonnées, mêmes références. `parser.py` :
+  540 → 276 lignes ; plus aucune fonction de plus de 30 lignes dans `sources/generic/`.
+
 ### 2026-09-27 — `core/links/extraction.py` découpé (chantier 3, lot 2)
 
 - **Fichiers** : `core/links/extraction.py`, nouveaux `core/links/versions.py`,

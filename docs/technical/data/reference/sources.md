@@ -76,6 +76,11 @@ pas un type). Plus simple que LEGI : un fichier = un document, aucun artefact d'
 texte, aplatir les métadonnées) ne contient aucun mot de LEGI ni de jurisprudence : tout ce
 qui est spécifique vit dans la `RoleTable` de la source.
 
+Le parser délègue à trois modules voisins : `tree.py` (relire l'arbre transcrit par
+`xml_tree.py`), `structure.py` (les liens bruts et les ancêtres déclarés) et
+`unconfigured.py` (la cascade des trois portes pour les balises que la table ne connaît
+pas).
+
 ### La table de rôles (`roles.py`, `role_table.py`)
 
 Chaque balise déclarée porte **un** rôle, parmi quatre :

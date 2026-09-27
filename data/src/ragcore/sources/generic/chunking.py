@@ -24,9 +24,21 @@ plutôt qu'en repartant de zéro — ce qui, en prime, cesse de faire pointer de
 identiques au même endroit.
 """
 
+from dataclasses import dataclass
+
 from ragcore.core.models import Chunk, ParsedDocument
 
 __all__ = ["StructuralChunker"]
+
+
+@dataclass(frozen=True)
+class _Span:
+    """La place d'un chunk dans le document : son chemin, son texte, ses bornes."""
+
+    path: list[str]
+    text: str
+    char_start: int
+    char_end: int
 
 
 class StructuralChunker:
@@ -69,16 +81,8 @@ class StructuralChunker:
 
         for path, text, offset in blocks:
             for start, end in _windows(len(text), self._max_chunk_size, self._overlap):
-                chunks.append(
-                    self._chunk(
-                        document,
-                        ordinal=ordinal,
-                        text=text[start:end],
-                        path=path,
-                        char_start=offset + start,
-                        char_end=offset + end,
-                    )
-                )
+                span = _Span(path, text[start:end], offset + start, offset + end)
+                chunks.append(self._chunk(document, ordinal, span))
                 ordinal += 1
 
         return chunks
@@ -117,16 +121,7 @@ class StructuralChunker:
 
         return blocks or [([], document.content, 0)]
 
-    def _chunk(  # noqa: PLR0913 — l'identité d'un chunk : sa place, son texte, ses bornes
-        self,
-        document: ParsedDocument,
-        *,
-        ordinal: int,
-        text: str,
-        path: list[str],
-        char_start: int,
-        char_end: int,
-    ) -> Chunk:
+    def _chunk(self, document: ParsedDocument, ordinal: int, span: _Span) -> Chunk:
         return Chunk(
             # Le chunk_id DÉRIVE de l'identifiant du parent : c'est ce qui garantit que
             # deux sagas travaillant sur des documents distincts ne peuvent pas se
@@ -136,10 +131,10 @@ class StructuralChunker:
             parent_identifier=document.identifier,
             owner_id=document.owner_id,
             ordinal=ordinal,
-            text=text,
-            tag_path=path,
-            char_start=char_start,
-            char_end=char_end,
+            text=span.text,
+            tag_path=span.path,
+            char_start=span.char_start,
+            char_end=span.char_end,
             metadata=document.metadata,
         )
 
