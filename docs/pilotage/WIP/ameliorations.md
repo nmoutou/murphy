@@ -6,6 +6,23 @@ dans l'historique git : `git show 9c32a83^:docs/pilotage/corrections/`.
 
 ## Faites
 
+### 2026-09-27 — verrou ruff : complexité et nombre de paramètres (chantier 3, lot 6)
+
+- **Fichiers** : `data/pyproject.toml`, `orchestration/kedro/nodes/compute_idempotence.py`
+  et `nuke_all.py` (`noqa` retirés), tests `test_mongo_pending_repository.py` et
+  `test_resolve_relations.py` ; `docs/pilotage/WIP/chantiers.md`.
+- **Catégorie** : outillage.
+- **Fait** : `C901` sélectionné (`max-complexity = 10`) et `lint.pylint.max-args = 4`.
+  Les nœuds Kedro sont exemptés de `PLR0913` par `per-file-ignores` (leur signature est
+  le DAG), ce qui rend leurs `noqa` inutiles ; trois façades gardent un `noqa`
+  justifié (`build_event`, `RunSummary.of`, `WorkerTelemetryFactory.__init__`). Les
+  3 fonctions de test au-delà de 4 paramètres sont corrigées (`first_seen` jamais
+  utilisé retiré de `_pending` ; service construit dans le test plutôt qu'injecté).
+- **Pourquoi** : sans verrou, les fonctions reviennent à 6 paramètres au premier ajout.
+- **Vérification** : `ruff check .` vert ; une fonction d'essai à 5 paramètres est
+  refusée (`PLR0913`) puis retirée ; `mypy` vert ; 329 tests réussis ; intégration Mongo
+  (pendantes) : 8 réussis. Bilan du chantier 3 dans `chantiers.md`.
+
 ### 2026-09-27 — `orchestration/kedro/` : nœuds et pipeline découpés (chantier 3, lot 5)
 
 - **Fichiers** : `orchestration/kedro/nodes/compute_idempotence.py`, `nuke_all.py`,

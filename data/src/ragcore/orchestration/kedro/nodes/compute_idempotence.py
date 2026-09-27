@@ -72,7 +72,7 @@ _PARSE_REJECTION = _Rejection(
 )
 
 
-def compute_idempotence_node(  # noqa: PLR0913 — l'identité d'un nœud Kedro EST sa liste d'inputs ; les grouper les cacherait au DAG
+def compute_idempotence_node(
     raw_documents: list[RawDocument],
     parser: BaseParser,
     manifest_repo: ManifestRepository,

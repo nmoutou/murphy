@@ -103,9 +103,10 @@ async def test_a_resolvable_edge_is_written_and_counted(
 
 
 async def test_an_unresolvable_edge_becomes_a_pending_not_a_silence(
-    service, graph, pending, telemetry, context
+    graph, pending, telemetry, context
 ) -> None:  # noqa: ANN001
     """Le cœur du §12 : la cible n'existe pas, donc rien n'est écrit — et on le DIT."""
+    service = ResolveRelationsService(graph, pending, telemetry)
     await graph.merge_document_node(_doc(A))  # la cible MISSING n'est pas là
 
     outcome = await service.execute([_rel(A, MISSING)], set(), context)
@@ -132,9 +133,10 @@ async def test_nothing_is_lost_between_input_and_output(
 
 
 async def test_a_pending_is_promoted_when_its_target_finally_arrives(
-    service, graph, pending, telemetry, context
+    graph, pending, telemetry, context
 ) -> None:  # noqa: ANN001
     """Le §13 : le corpus s'enrichit, le trou se referme — sans rejouer tout le backlog."""
+    service = ResolveRelationsService(graph, pending, telemetry)
     await graph.merge_document_node(_doc(A))
     await service.execute([_rel(A, B)], set(), context)  # B n'existe pas encore
     assert len(pending.pendings) == 1

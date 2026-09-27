@@ -144,13 +144,27 @@ select = [
     # `except Exception` sans relance : seules les frontières voulues (télémétrie, saga,
     # runner) l'assument, chacune avec un `noqa: BLE001 — <raison>`.
     "BLE",  # flake8-blind-except
+    "C901", # mccabe : complexité cyclomatique
 ]
 ignore = ["E501"]  # Ruff format takes care of line-too-long
+
+[tool.ruff.lint.mccabe]
+max-complexity = 10
+
+[tool.ruff.lint.pylint]
+# Au-delà de 4 paramètres, on passe un objet (règle du CLAUDE.md). Exceptions assumées :
+# les nœuds Kedro (per-file-ignores ci-dessous) et trois façades dont les paramètres
+# nommés SONT les champs qu'elles assemblent (`build_event`, `RunSummary.of`,
+# `WorkerTelemetryFactory.__init__`), chacune avec son `noqa` justifié.
+max-args = 4
 
 [tool.ruff.lint.per-file-ignores]
 # Dans un test, la valeur attendue EST le propos de l'assertion. La remplacer par
 # une constante nommée n'ajoute rien : elle éloigne l'attendu de la vérification.
 "**/tests/**" = ["PLR2004"]
+# La signature d'un nœud Kedro EST sa liste d'inputs dans le DAG (`pipeline.py`) : la
+# regrouper en objet cacherait au DAG ce que le nœud consomme.
+"**/orchestration/kedro/nodes/*.py" = ["PLR0913"]
 
 [tool.mypy]
 # Pas de `python_version` figée : mypy analyse avec la grammaire de l'interpréteur

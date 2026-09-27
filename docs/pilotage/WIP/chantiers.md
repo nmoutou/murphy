@@ -70,52 +70,38 @@ Lot 1 : `bc85996`. Lot 2 : `BLE` ajoutée à `[tool.ruff.lint] select` ; la CI r
 désormais tout nouvel `except Exception` sans relance ni `noqa` justifié. Détail dans
 `ameliorations.md`.
 
-## 3. Fonctions trop longues de `data/`
+## 3. Fonctions trop longues de `data/` — fait (2026-09-27)
 
-### Constat
+Relevé de départ (`data/src`, hors tests) : **20 fonctions de plus de 30 lignes de
+code** (dont `compute_idempotence_node` à 115, `create_ingestion_pipeline` à 84,
+`_version_chain` à 67, `SagaExecutor.execute` à 65), **3 fichiers de plus de 300 lignes**
+(`extraction.py` 544, `parser.py` 540, `graph_repository.py` 352), une fonction au-dessus
+du seuil de complexité (`parser._references`, C901 = 12) et 14 fonctions à plus de
+4 paramètres.
 
-Mon premier relevé visait les fichiers de plus de 300 lignes. La mesure fine montre
-autre chose : `extraction.py` (541 lignes, 267 de code), `parser.py` (540 / 288) et
-`graph_repository.py` (352 / 162) dépassent **à cause de leur documentation**, pas de
-leur code. Le vrai problème, ce sont les **22 fonctions de plus de 30 lignes de code**.
-Hors `hooks.py` (chantier 1), les plus longues :
+| Lot | Commit | Périmètre |
+|---|---|---|
+| 1 | `38ea6be` | `application/` : saga, ingestion d'un document (`IngestionStores`), résolution, runner |
+| 2 | `3a76c67` | `core/links/` : `versions.py`, `subject.py` (`LinkSubject`), `table.py`, `citations.py` ; `extract_links` à 4 paramètres |
+| 3 | `3f73b5a` | `sources/generic/` : `tree.py`, `structure.py`, `unconfigured.py` ; `_chunk` via `_Span` |
+| 4 | `e688090` | adaptateurs : `neo4j/node_properties.py`, index Mongo déclaratifs, `OpenAIEmbedder(EmbeddingConfig, EmbeddingTransport)` |
+| 5 | `01b0c67` | `orchestration/kedro/` : nœuds, pipeline (une fonction par nœud), `WorkloadSteps`, `served_model.py` |
+| 6 | — | verrou ruff : `C901` (complexité ≤ 10), `max-args = 4` |
 
-| Lignes | Fonction |
-|---|---|
-| 115 | `orchestration/kedro/nodes/compute_idempotence.py` : `compute_idempotence_node` |
-| 84 | `orchestration/kedro/pipeline.py` : `create_ingestion_pipeline` |
-| 67 | `core/links/extraction.py` : `_version_chain` |
-| 65 | `application/saga.py` : `SagaExecutor.execute` |
-| 55 | `application/ingest_document.py` : `IngestDocumentUseCase.execute` |
-| 55 | `adapters/storage/mongo/schemas.py` : `ensure_meta_indexes` |
-| 44 | `orchestration/kedro/nodes/nuke_all.py` : `nuke_all_node` |
-| 43 | `sources/generic/parser.py` : `_references` (complexité cyclomatique 12) |
-| 43 | `core/links/extraction.py` : `_from_reference` |
-| 42 | `application/resolve_relations.py` : `ResolveRelationsService.execute` |
-| 30-40 | `_run_shard`, `_promote`, `cleanup_node`, `build_document_workload`, `merge_document_node`, `compensate_document_node`, `parse`, `_route_values`, `connect_node`, `extract_links` |
+**Résultat** : 0 fonction de plus de 30 lignes, 0 fichier de plus de 300 lignes,
+0 fonction au-dessus de la complexité 10 dans `data/src` hors tests. Ruff refuse
+désormais toute fonction à plus de 4 paramètres, sauf les exceptions assumées :
 
-À cela s'ajoutent **14 fonctions à plus de 4 paramètres** : 10 déjà justifiées par un
-`noqa: PLR0913` (au seuil de 5 de ruff), 4 de plus au seuil de 4 fixé par le
-`CLAUDE.md`.
+- les nœuds Kedro (`per-file-ignores` sur `orchestration/kedro/nodes/*.py`) : leur
+  signature est le DAG ;
+- trois façades dont les paramètres nommés sont les champs assemblés, avec leur `noqa`
+  justifié : `build_event`, `RunSummary.of`, `WorkerTelemetryFactory.__init__`.
 
-### Approche
+La longueur des fonctions et des fichiers n'est pas verrouillée par un outil (décision
+du 2026-09-27) : elle reste une convention du CLAUDE.md, à remesurer à chaque chantier.
 
-- **Par fonction, pas par fichier.** Découper un fichier trop documenté éparpillerait sa
-  documentation sans rien simplifier. On extrait les étapes nommées des longues
-  fonctions ; les fichiers repasseront peut-être sous 300 lignes, sinon on tranchera
-  fichier par fichier.
-- Priorité à la logique métier : `compute_idempotence_node` (les branches de rejet
-  « invalidé » et « erreur de parsing » répètent le même bloc télémétrie + manifeste
-  `EXCLUDED`), `_version_chain`, `_from_reference`, `_references`, `saga.execute`
-  (séparer l'exécution de la compensation).
-- **Exceptions assumées** : `create_ingestion_pipeline` et `ensure_meta_indexes` sont des
-  déclarations (liste de nœuds, liste d'index). On les découpe seulement si cela se lit
-  mieux. Les nœuds Kedro gardent leurs paramètres : Kedro les câble par nom, un objet
-  unique les cacherait au DAG, comme le disent déjà les `noqa`.
-- **Verrou** : une fois la liste épuisée, activer `C901` et `lint.pylint.max-args = 4`
-  dans `pyproject.toml`, pour que ruff tienne la règle.
-
-**Taille** : 1 lot par fonction ou par petit groupe, environ 10 lots.
+**Reste à faire, à la main** : un `kedro run --params source=cass` comparé à un bilan
+d'avant les chantiers 1 et 3 (statut, compteurs, nombre d'arêtes).
 
 ## 4. Backend et frontend : derniers écarts, puis verrou ESLint
 
@@ -190,6 +176,6 @@ lots de tests.
 1. ~~Prérequis : `data/` en CI.~~ Fait.
 2. ~~Chantier 2 : `except` (petit, et active `BLE` avant les refactors).~~ Fait.
 3. ~~Chantier 1 : `hooks.py`.~~ Fait.
-4. Chantier 3 : fonctions longues de `data/`.
+4. ~~Chantier 3 : fonctions longues de `data/`.~~ Fait.
 5. Chantier 4 : backend / frontend. Indépendant des autres, il peut passer avant.
 6. Chantier 5 : tests du frontend, après le lot 2 du chantier 4.

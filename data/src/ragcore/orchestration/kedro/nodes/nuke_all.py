@@ -28,7 +28,7 @@ class NukeAllOutsideDevError(RuntimeError):
     """
 
 
-def nuke_all_node(  # noqa: PLR0913 — le nuke touche 3 stores + leurs 3 dépôts ; les grouper cacherait ce qu'il efface
+def nuke_all_node(
     doc_repo: MongoDocumentRepository,
     manifest_repo: MongoManifestRepository,
     graph_repo: Neo4jGraphRepository,

@@ -35,11 +35,7 @@ DB = "MURPHY_META_TEST"
 
 
 def _pending(
-    source: str,
-    target: str,
-    run_id: str,
-    owner: OwnerId = OWNER,
-    first_seen: str | None = None,
+    source: str, target: str, run_id: str, owner: OwnerId = OWNER
 ) -> PendingRelation:
     return PendingRelation(
         owner_id=owner,
@@ -48,7 +44,7 @@ def _pending(
         relation_type=CITES,
         source=SourceName.LEGI,
         metadata={},
-        first_seen_run=RunId(first_seen or run_id),
+        first_seen_run=RunId(run_id),
         last_seen_run=RunId(run_id),
     )
 
