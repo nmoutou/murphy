@@ -41,7 +41,7 @@ normalisés, ASCII), 32 caractères hexadécimaux. Conséquences :
   « parlant » qui redeviendrait fragile.
 
 Le YAML ne fait que **peupler** la `WorkflowConfig`
-(`hooks.py:_build_workflow_config`, seule traduction du dépôt, qui lit désormais la clé
+(`run_parameters.py:build_workflow_config`, seule traduction du dépôt, qui lit désormais la clé
 top-level `workflow:`) ; l'objet est la vérité, le YAML une façon de le remplir. Illisible
 = run arrêté, jamais de défauts silencieux.
 

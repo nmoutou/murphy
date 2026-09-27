@@ -10,7 +10,7 @@ from __future__ import annotations
 import pytest
 
 from ragcore.core.models.enums import SourceName
-from ragcore.orchestration.kedro.hooks import _resolve_sources
+from ragcore.orchestration.kedro.run_parameters import resolve_sources
 from ragcore.sources.registry import all_sources, definition_for
 
 
@@ -20,8 +20,8 @@ def test_bare_run_ingests_every_source() -> None:
     Le défaut historique était `legi` : un `kedro run` nu laissait cinq bases sur six
     intactes, sans le dire, et se terminait « ok ».
     """
-    assert _resolve_sources(None) == all_sources()
-    assert len(_resolve_sources(None)) == 6
+    assert resolve_sources(None) == all_sources()
+    assert len(resolve_sources(None)) == 6
 
 
 def test_default_derives_from_registry_not_from_the_enum() -> None:
@@ -31,7 +31,7 @@ def test_default_derives_from_registry_not_from_the_enum() -> None:
     ferait planter le run nu sur JORF — et le referait planter à chaque *ajout* de
     vocabulaire, punissant le geste qu'on veut rendre anodin.
     """
-    resolved = set(_resolve_sources(None))
+    resolved = set(resolve_sources(None))
 
     assert SourceName.JORF not in resolved
     assert SourceName.UPLOAD not in resolved
@@ -42,33 +42,33 @@ def test_default_derives_from_registry_not_from_the_enum() -> None:
 @pytest.mark.parametrize("value", ["all", "*", "", "  "])
 def test_all_is_the_explicit_name_of_the_default(value: str) -> None:
     """« all » permet de DEMANDER le défaut sans énumérer six sources."""
-    assert _resolve_sources(value) == all_sources()
+    assert resolve_sources(value) == all_sources()
 
 
 def test_single_source_still_works() -> None:
     """La restriction reste ouverte — c'est elle qui rend le rejeu ciblé possible."""
-    assert _resolve_sources("cass") == (SourceName.CASS,)
+    assert resolve_sources("cass") == (SourceName.CASS,)
 
 
 def test_comma_separated_subset() -> None:
     """Kedro passe les `--params` en chaîne : `source=cass,jade` doit marcher."""
-    assert _resolve_sources("cass,jade") == (SourceName.CASS, SourceName.JADE)
+    assert resolve_sources("cass,jade") == (SourceName.CASS, SourceName.JADE)
 
 
 def test_list_from_yaml_config() -> None:
     """Le même paramètre peut venir d'un fichier de conf, en liste."""
-    assert _resolve_sources(["cass", "jade"]) == (SourceName.CASS, SourceName.JADE)
+    assert resolve_sources(["cass", "jade"]) == (SourceName.CASS, SourceName.JADE)
 
 
 def test_order_is_stable() -> None:
     """Un run doit être reproductible jusque dans l'ordre où il lit ses sources."""
-    assert _resolve_sources(None) == _resolve_sources(None)
-    assert _resolve_sources("all")[0] is SourceName.LEGI
+    assert resolve_sources(None) == resolve_sources(None)
+    assert resolve_sources("all")[0] is SourceName.LEGI
 
 
 def test_duplicates_collapse() -> None:
     """`cass,cass` ne lit pas CASS deux fois — ce serait ingérer en double."""
-    assert _resolve_sources("cass,cass") == (SourceName.CASS,)
+    assert resolve_sources("cass,cass") == (SourceName.CASS,)
 
 
 def test_typo_fails_loudly_and_names_the_valid_sources() -> None:
@@ -78,10 +78,10 @@ def test_typo_fails_loudly_and_names_the_valid_sources() -> None:
     silencieux qui ressemble trait pour trait à un corpus vide.
     """
     with pytest.raises(ValueError, match="Source inconnue : 'cas'"):
-        _resolve_sources("cas")
+        resolve_sources("cas")
 
     with pytest.raises(ValueError, match="legi"):
-        _resolve_sources("cas")
+        resolve_sources("cas")
 
 
 def test_a_typo_inside_a_list_does_not_silently_ingest_the_rest() -> None:
@@ -91,7 +91,7 @@ def test_a_typo_inside_a_list_does_not_silently_ingest_the_rest() -> None:
     complet — la faute de frappe deviendrait invisible.
     """
     with pytest.raises(ValueError, match="Source inconnue : 'jde'"):
-        _resolve_sources("cass,jde")
+        resolve_sources("cass,jde")
 
 
 def test_a_source_without_connector_is_refused() -> None:

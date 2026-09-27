@@ -43,7 +43,7 @@ def _resolve_unconfigured_behavior(exportation_params: dict[str, object]) -> str
     Une valeur inconnue (coquille ``skipp``) doit échouer EN NOMMANT les valeurs
     valides, pas retomber en silence sur le défaut : un run qui n'applique pas le
     comportement qu'on croit avoir demandé est un échec silencieux (même règle que
-    ``_resolve_sources`` dans les hooks).
+    ``resolve_sources`` dans ``run_parameters``).
     """
     value = str(exportation_params.get("unconfigured", "ingest")).strip().lower()
     if value not in _UNCONFIGURED_BEHAVIORS:

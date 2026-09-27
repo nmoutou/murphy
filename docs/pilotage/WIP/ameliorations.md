@@ -6,6 +6,23 @@ dans l'historique git : `git show 9c32a83^:docs/pilotage/corrections/`.
 
 ## Faites
 
+### 2026-09-27 — `hooks.py` : paramètres du run extraits (chantier 1, lot 1)
+
+- **Fichiers** : `orchestration/kedro/hooks.py`, nouveau `orchestration/kedro/run_parameters.py`
+  (sous `data/src/ragcore/`) ; imports de `test_load_parameters.py`,
+  `test_resolve_sources.py`, `golden/test_fingerprint.py` ; deux docstrings qui citaient
+  les anciens noms (`compute_idempotence.py`, `graph_repository.py`) ;
+  `docs/technical/data/reference/pipeline.md` et `configuration.md`.
+- **Catégorie** : structure (taille de fichier).
+- **Fait** : déplacement pur de `load_parameters`, `build_workflow_config`,
+  `resolve_embedding_enabled`, `resolve_node_hydration` et `resolve_sources`, devenues
+  publiques (sans `_`) puisqu'importées d'ailleurs. Code et docstrings inchangés.
+- **Pourquoi** : premier des 4 lots qui ramènent `hooks.py` (960 lignes) sous 300 ; ces
+  fonctions pures sur `params` n'ont rien à voir avec le cycle de vie du run.
+- **Vérification** : `ruff`, `ruff format --check`, `mypy` verts ; 313 tests réussis,
+  dont le cliquet `golden/test_fingerprint.py` (collection dérivée inchangée) ;
+  `deepcopy` des `HOOKS` de `data/settings.py` OK. `hooks.py` : 960 → 801 lignes.
+
 ### 2026-09-27 — `data/` : règle ruff `BLE` activée (chantier 2, lot 2)
 
 - **Fichiers** : `data/pyproject.toml`, `adapters/telemetry/registry_aware.py`,

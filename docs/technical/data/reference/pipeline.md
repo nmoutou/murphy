@@ -14,7 +14,7 @@ Le hook est le **point d'assemblage** du run. Dans l'ordre :
 2. **Chargement de `parameters.yml`** — sans fallback : un YAML illisible arrête le run
    (continuer avec les défauts baptiserait la collection Qdrant d'après une config que
    personne n'a choisie).
-3. **Construction de la `WorkflowConfig`** (`_build_workflow_config`) : la seule
+3. **Construction de la `WorkflowConfig`** (`run_parameters.build_workflow_config`) : la seule
    traduction YAML → objet du dépôt. C'est l'objet qui fait foi, pas le YAML.
 4. **Dérivation de la collection Qdrant** : `collection_name(workflow)` = le fingerprint
    blake2b de la config (32 hex). Jamais écrite à la main.
@@ -29,7 +29,7 @@ Le hook est le **point d'assemblage** du run. Dans l'ordre :
    modèle.)
 7. **Clients + index** : clients Mongo/Neo4j/Qdrant du hook, `ensure_data_indexes`
    (LEGIFRANCE) et `ensure_meta_indexes` (MURPHY_META).
-8. **Résolution des sources** (`_resolve_sources`) : `--params source=…` ou `SOURCE` du
+8. **Résolution des sources** (`run_parameters.resolve_sources`) : `--params source=…` ou `SOURCE` du
    `.env`, défaut `all` = les six ingérables. Valeur inconnue = échec au démarrage en
    nommant les valides. Le `PipelineContext` (run_id uuid4-hex, owner_id, source —
    `None` si multi-source, started_at) est créé ici.
@@ -39,8 +39,8 @@ Le hook est le **point d'assemblage** du run. Dans l'ordre :
     `RoutingParser` (un `GenericParser` par source, chacun avec sa table de rôles),
     `StructuralChunker` (size/overlap du workflow), `RoutingRelationExtractor`,
     embedder selon le provider (`local` / `openai` / `noop`).
-11. **Arbitrages dev/prod** : `_resolve_embedding_enabled` (ADR-023 — le flag YAML n'a
-    d'effet qu'en `dev`) et `_resolve_node_hydration` (ADR-022 — nœuds Neo4j maigres hors
+11. **Arbitrages dev/prod** : `run_parameters.resolve_embedding_enabled` (ADR-023 — le flag YAML n'a
+    d'effet qu'en `dev`) et `run_parameters.resolve_node_hydration` (ADR-022 — nœuds Neo4j maigres hors
     `dev`).
 12. **Pool phase 1** (`_build_runner`) : un `IngestionRunner` à 4 workers, armé de
     *fabriques* (runtime, télémétrie, use case) — jamais d'instances partagées.

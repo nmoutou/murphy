@@ -24,7 +24,7 @@ class NodeHydration:
 
     Le défaut est le régime PROD : nœud maigre (``title``, ``source``,
     ``schema_version``), rien d'autre. C'est le constructeur — le hook — qui ouvre les
-    vannes en dev (``_resolve_node_hydration``), jamais ce module : le défaut penche
+    vannes en dev (``resolve_node_hydration``), jamais ce module : le défaut penche
     vers le refus, comme ``nuke_all`` et l'interrupteur d'embedding.
 
     - ``metadata`` : les métadonnées du document en props (clés chemin-complet,

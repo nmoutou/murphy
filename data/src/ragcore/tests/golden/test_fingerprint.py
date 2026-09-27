@@ -30,7 +30,7 @@ from ragcore.core.config import (
     collection_name,
     fingerprint,
 )
-from ragcore.orchestration.kedro.hooks import _build_workflow_config
+from ragcore.orchestration.kedro.run_parameters import build_workflow_config
 from ragcore.sources.generic import NORMALIZATION_VERSION
 
 _CONF_SOURCE = Path(__file__).parents[3].parent / "conf"
@@ -299,7 +299,7 @@ def test_le_yaml_REEL_produit_bien_l_empreinte_figee() -> None:
     déplacé la collection.
     """
     params = _params_reels()
-    depuis_le_yaml = _build_workflow_config(params)
+    depuis_le_yaml = build_workflow_config(params)
 
     assert depuis_le_yaml == _LEGI, (
         "parameters.yml a divergé de la config figée par ce cliquet. "
