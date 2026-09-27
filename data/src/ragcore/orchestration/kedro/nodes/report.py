@@ -5,8 +5,8 @@ des deux outcomes (phase 1 + phase 2) et des documents écartés au parsing.
 
 **Ce nœud est aussi le seul point de remontée des stats des workers.** Il reçoit
 ``ingestion_outcome.stats`` — la fusion des ``RunStats`` de tous les workers — et la
-POUSSE dans le ``RunStatsSink`` (le hook). Sans cela, le hook ne finalisait que *son*
-agrégateur, celui du process principal, qui ne voit **jamais une compensation** : le
+POUSSE dans le ``RunStatsSink`` (l'agrégateur du run, que le hook finalise). Sans
+cela, le hook ne finalisait que les compteurs du process principal, qui ne voit **jamais une compensation** : le
 compteur restait nul et ``_status_from`` rendait **toujours** ``ok``.
 
 Pourquoi ici et pas dans le hook : ``ingestion_outcome`` est un ``MemoryDataset``, et
@@ -38,8 +38,9 @@ __all__ = ["RunStatsSink", "report_node"]
 
 
 class RunStatsSink(Protocol):
-    """Ce qui reçoit l'agrégat des phases. Implémenté par le hook, sans que le node
-    connaisse Kedro : le DAG pousse une donnée, il n'appelle pas un orchestrateur."""
+    """Ce qui reçoit l'agrégat des phases : l'agrégateur du run (``RunStatsAggregator``),
+    posé au catalogue par le hook. Le node ne connaît ni Kedro ni le hook : le DAG pousse
+    une donnée, il n'appelle pas un orchestrateur."""
 
     def absorb(self, stats: RunStats) -> None: ...
 

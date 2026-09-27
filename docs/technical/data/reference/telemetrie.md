@@ -73,7 +73,7 @@ commutative ferait dépendre le bilan de l'ordonnancement). Trois champs :
   (extraction). Vide = la table de rôles a tout couvert.
 
 **La remontée passe par le DAG, pas par le hook** : le node terminal `report` pousse
-`ingestion_outcome.stats` dans le hook (`absorb`) — Kedro libère un `MemoryDataset` dès
+`ingestion_outcome.stats` dans l'agrégat du run (`run_stats_sink`, que le hook finalise) — Kedro libère un `MemoryDataset` dès
 son dernier lecteur, un `catalog.load()` d'après-run tomberait sur du vide. La phase 2
 n'est pas poussée (elle a tourné sur la télémétrie du hook, ses compteurs y sont déjà —
 les pousser les compterait deux fois).

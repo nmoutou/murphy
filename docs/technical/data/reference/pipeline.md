@@ -213,7 +213,7 @@ Sortie : `ResolutionOutcome` (stats, written/pending/promoted/reduced counts).
 Entrées : les deux outcomes, `to_skip`, `run_stats_sink` (le hook lui-même, vu comme un
 protocole).
 
-- **Pousse** `ingestion_outcome.stats` dans le hook (`absorb`). C'est le seul point de
+- **Pousse** `ingestion_outcome.stats` dans l'agrégat du run (`run_stats_sink.absorb`). C'est le seul point de
   remontée des stats des workers : Kedro **libère** un `MemoryDataset` dès son dernier
   lecteur, donc le hook ne pourrait pas le relire après le run — le DAG pousse, le hook ne
   tire pas. La phase 2 n'est PAS poussée : elle a tourné sur la télémétrie du hook, ses

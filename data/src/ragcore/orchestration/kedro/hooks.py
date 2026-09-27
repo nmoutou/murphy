@@ -32,8 +32,7 @@ from ragcore.application.resolve_relations import ResolveRelationsService
 from ragcore.application.run_context import PipelineContext
 from ragcore.core.models.audit import build_event
 from ragcore.core.models.identifiers import RunId
-from ragcore.core.models.run_stats import RunStats
-from ragcore.core.models.run_summary import RunSummary
+from ragcore.core.models.run_summary import RunStatus, RunSummary
 from ragcore.core.ports.embedder import BaseEmbedder
 from ragcore.core.ports.experiment_tracker import ExperimentTracker
 from ragcore.core.services.run_artifacts import run_scoped_filename
@@ -117,17 +116,7 @@ class TelemetryHooks:
 
         for name, value in self._assemble(settings, plan, embedder).items():
             catalog.save(name, value)
-
-        context, telemetry = self._require_started()
-        telemetry.emit(
-            build_event(
-                event_type=PIPELINE_RUN_STARTED,
-                run_id=context.run_id,
-                owner_id=context.owner_id,
-                source=context.source,
-                payload={"pipeline": run_params.get("pipeline_name", "__default__")},
-            )
-        )
+        self._emit_run_event(PIPELINE_RUN_STARTED, run_params)
 
     def _start_tracking(self, settings: InfraSettings, plan: RunPlan) -> None:
         """Ouvre le run d'expérience (§9).
@@ -175,11 +164,12 @@ class TelemetryHooks:
             ),
             "pipeline_context": context,
             "telemetry": telemetry,
-            # L'agrégat du run, injecté comme les autres objets. C'est le node `report`
-            # qui y POUSSE les stats des phases : le hook ne peut pas les tirer du
-            # catalogue après coup, Kedro y libère les MemoryDataset dès leur dernier
-            # lecteur (cf. `absorb`).
-            "run_stats_sink": self,
+            # L'agrégat du run lui-même, que le node `report` alimente des stats des
+            # workers (cf. `RunStatsSink`). Sans cette poussée, le bilan ne verrait que
+            # le process principal — jamais une compensation — et le run serait `ok`
+            # quoi qu'il arrive. Le hook ne peut pas tirer ces stats du catalogue après
+            # coup : Kedro libère un MemoryDataset dès son dernier lecteur.
+            "run_stats_sink": self._aggregator,
             # Le runtime du hook, injecté aux nœuds non parallélisés (maintenance +
             # phase 2) comme pont sync→async — l'équivalent déclaré de l'ancienne
             # globale run_async.
@@ -229,33 +219,6 @@ class TelemetryHooks:
             mongo=MongoAuditTelemetryAdapter(meta.audit, self._runtime),
             aggregate=self._aggregator,
         )
-
-    def _require_started(self) -> tuple[PipelineContext, RegistryAwareTelemetry]:
-        """Le contexte et la télémétrie du run, posés par ``_start_run``."""
-        if self._context is None or self._telemetry is None:
-            msg = "Le run n'est pas démarré : `_start_run` n'a pas été appelé."
-            raise RuntimeError(msg)
-        return self._context, self._telemetry
-
-    def absorb(self, stats: RunStats) -> None:
-        """Reçoit l'agrégat d'une PHASE. **Sans ça, le bilan ment.**
-
-        Chaque worker tient son propre ``RunStats`` (§11) ; ``IngestionRunner`` les réduit
-        et les rend dans ``IngestionOutcome.stats``. Mais ce résultat repartait dans un
-        ``MemoryDataset`` que **personne ne lisait** : le hook finalisait *son* agrégateur,
-        qui n'avait vu que les events du process principal. Le ``document.persisted`` des
-        workers — et surtout leurs **compensations** — n'atteignaient jamais le RunSummary,
-        donc ``_status_from`` rendait *toujours* ``ok``.
-
-        **Pourquoi le DAG POUSSE au lieu que le hook TIRE.** J'ai d'abord fait lire le
-        catalogue au hook en ``after_pipeline_run``. C'était faux, et silencieusement :
-        Kedro **libère** un ``MemoryDataset`` dès son dernier consommateur
-        (``_release_datasets``). ``ingestion_outcome`` meurt donc avec le node ``report``,
-        et le ``load()`` d'après-run échoue. Le catalogue n'est pas un lieu de rendez-vous
-        post-run — c'est un tuyau entre nodes, et il se vide derrière eux.
-        """
-        if self._aggregator is not None:
-            self._aggregator.absorb(stats)
 
     def _declare_truncations(self) -> None:
         """Un chunk raccourci n'est pas une perte, mais ce n'est pas rien : il se DÉCLARE.
@@ -307,7 +270,7 @@ class TelemetryHooks:
         )
 
     def _persist_run_summary(
-        self, status: str, error_message: str | None = None
+        self, status: RunStatus, error_message: str | None = None
     ) -> RunSummary | None:
         """Finalise l'agrégateur et persiste le RunSummary (fichier JSON + Mongo).
 
@@ -321,7 +284,7 @@ class TelemetryHooks:
             or self._summary_repo is None
         ):
             return None
-        summary = self._aggregator.finalize(status=status, error_message=error_message)  # type: ignore[arg-type]
+        summary = self._aggregator.finalize(status=status, error_message=error_message)
         path = self._stats_dir / run_scoped_filename(
             summary.run_id, summary.started_at, ".json"
         )
@@ -361,90 +324,70 @@ class TelemetryHooks:
         finally:
             self._tracker.end_run()
 
-    @hook_impl
-    def after_pipeline_run(self, run_params: dict[str, Any]) -> None:
-        if self._telemetry and self._context:
-            self._telemetry.emit(
-                build_event(
-                    event_type=PIPELINE_RUN_COMPLETED,
-                    run_id=self._context.run_id,
-                    owner_id=self._context.owner_id,
-                    source=self._context.source,
-                    payload={
-                        "pipeline": run_params.get("pipeline_name", "__default__")
-                    },
-                )
+    def _emit_run_event(
+        self,
+        event_type: str,
+        run_params: dict[str, Any],
+        error: Exception | None = None,
+    ) -> None:
+        """Émet un événement de cycle de vie du run (démarré, terminé, échoué)."""
+        if self._telemetry is None or self._context is None:
+            return
+        payload: dict[str, object] = {
+            "pipeline": run_params.get("pipeline_name", "__default__")
+        }
+        if error is not None:
+            payload["error"] = str(error)
+        self._telemetry.emit(
+            build_event(
+                event_type=event_type,
+                run_id=self._context.run_id,
+                owner_id=self._context.owner_id,
+                source=self._context.source,
+                payload=payload,
+                success=error is None,
+                error_message=str(error) if error is not None else None,
             )
-        # Les chunks que l'embedder a dû raccourcir. Le compteur vit sur l'embedder (il
-        # est le seul à voir le refus du service) et il est lu ICI, une fois, en fin de
-        # run. Les WRITES pendant le run viennent de plusieurs workers : l'embedder les
-        # protège lui-même (verrou + ensemble de chunk_ids). La lecture, elle, est
-        # postérieure à tous les workers — et le port `BaseEmbedder` n'a pas à connaître
-        # la télémétrie pour un détail qui ne concerne qu'une de ses implémentations.
+        )
+
+    def _close_run(self, status: RunStatus, error_message: str | None = None) -> None:
+        """Clôt le run, qu'il ait réussi ou cassé : l'ORDRE est tout l'enjeu.
+
+        1. Les chunks que l'embedder a dû raccourcir. Le compteur vit sur l'embedder (il
+           est le seul à voir le refus du service) et il est lu ICI, une fois, après tous
+           les workers. Déclarés AUSSI sur un run cassé : le raccourcissement a bien eu
+           lieu, et il pointe une config à corriger. Émis AVANT le drain, pour que
+           l'événement soit vidé.
+        2. Le drain AVANT le bilan : c'est lui qui révèle les écritures d'audit perdues,
+           et un bilan persisté avant de le savoir déclarerait `ok` un run dont il ne
+           peut plus prouver la complétude. Sur un run cassé, le statut reste `failed`,
+           mais savoir si la trace elle aussi est trouée décide de ce qu'on peut
+           conclure du reste.
+        3. Le bilan, dont le statut se dérive des compteurs — dont ceux que le node
+           `report` a poussés depuis les workers.
+        4. SEULEMENT si le run a réussi, la publication : c'est ce que le serving lira.
+           Elle est la CONSÉQUENCE du bilan, jamais son présupposé.
+        5. Le tracker (§9) reçoit le bilan et le run d'expérience se ferme — toujours,
+           sinon le prochain lancement se grefferait sur un run resté ouvert.
+        """
         self._declare_truncations()
-
-        # Le drain AVANT le bilan, et l'ordre est tout l'enjeu : c'est lui qui révèle
-        # les écritures d'audit perdues, et un bilan persisté avant de le savoir ne peut
-        # pas en tenir compte. Il déclarerait `ok` un run dont il ne peut plus prouver la
-        # complétude — exactement le mensonge qu'on cherche à rendre impossible.
         self._drain_and_declare()
-
-        # Les stats des workers ont déjà été POUSSÉES ici par le node `report` (cf.
-        # `absorb`). `_persist_run_summary` dérive le statut de ces compteurs : sans eux,
-        # pas un seul document perdu ne serait visible, et le run serait `ok` quoi qu'il
-        # arrive.
-        summary = self._persist_run_summary(status="ok")
-
-        # Et SEULEMENT si ce bilan dit `ok`, on publie l'empreinte : c'est ce que le
-        # serving lira. Un run dégradé ne publie pas — le dernier corpus complet reste
-        # en place. La publication est la CONSÉQUENCE du bilan, jamais son présupposé.
-        self._publish(summary)
-
-        # Le bilan part aussi vers le tracker (§9), et le run d'expérience se ferme. En
-        # `noop` c'est sans effet ; en MLflow, c'est ici que le fingerprint devient un
-        # run consultable, paramètres et compteurs en clair.
+        summary = self._persist_run_summary(status, error_message)
+        if status is RunStatus.OK:
+            self._publish(summary)
         self._track_and_close(summary)
-
         self._runtime.close()
 
     @hook_impl
+    def after_pipeline_run(self, run_params: dict[str, Any]) -> None:
+        self._emit_run_event(PIPELINE_RUN_COMPLETED, run_params)
+        self._close_run(RunStatus.OK)
+
+    @hook_impl
     def on_pipeline_error(self, error: Exception, run_params: dict[str, Any]) -> None:
-        if self._telemetry and self._context:
-            self._telemetry.emit(
-                build_event(
-                    event_type=PIPELINE_RUN_FAILED,
-                    run_id=self._context.run_id,
-                    owner_id=self._context.owner_id,
-                    source=self._context.source,
-                    payload={
-                        "pipeline": run_params.get("pipeline_name", "__default__"),
-                        "error": str(error),
-                    },
-                    success=False,
-                    error_message=str(error),
-                )
-            )
-        # Les chunks raccourcis se déclarent AUSSI sur un run cassé. Le raccourcissement a
-        # bien eu lieu (l'embedder a tourné avant l'échec) et il pointe une config à
-        # corriger : le taire parce que le run a cassé plus loin perdrait l'indice. Émis
-        # AVANT le drain, comme dans le chemin nominal, pour que l'événement soit vidé.
-        self._declare_truncations()
-
-        # Drainer AVANT le bilan, ici aussi : le statut restera `failed` de toute façon
-        # (il ne se dérive pas des compteurs), mais le compteur `audit.write.failed`
-        # doit figurer dans le bilan — sur un run qui a cassé, savoir si la trace elle
-        # aussi est trouée décide de ce qu'on peut conclure du reste.
-        self._drain_and_declare()
-
+        self._emit_run_event(PIPELINE_RUN_FAILED, run_params, error)
         # ⚠️ Le bilan sera PAUVRE : les stats des workers ne remontent que par le node
         # `report`, qui est terminal. Un pipeline qui casse avant lui ne persiste que les
         # compteurs du process principal. Le statut `failed` reste vrai — c'est son
         # détail qui manque.
-        summary = self._persist_run_summary(status="failed", error_message=str(error))
-
-        # Même sur un run cassé, le run d'expérience doit être clos — un run MLflow
-        # laissé ouvert verrait le prochain lancement s'y greffer. Le bilan est pauvre
-        # (cf. plus haut), mais son statut `failed` est vrai et mérite d'être tracé.
-        self._track_and_close(summary)
-
-        self._runtime.close()
+        self._close_run(RunStatus.FAILED, error_message=str(error))

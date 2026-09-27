@@ -6,6 +6,31 @@ dans l'historique git : `git show 9c32a83^:docs/pilotage/corrections/`.
 
 ## Faites
 
+### 2026-09-27 — cycle de vie du hook dédoublonné (chantier 1, lot 4)
+
+- **Fichiers** : `orchestration/kedro/hooks.py`, `orchestration/kedro/nodes/report.py`
+  (docstrings), `tests/unit/orchestration/test_summary_absorbs_workers.py` (sous
+  `data/src/ragcore/`) ; `data/conf/base/catalog.yml` (commentaire) ;
+  `docs/technical/data/reference/pipeline.md` et `telemetrie.md`.
+- **Catégorie** : duplication / couplage des tests.
+- **Fait** :
+  - `_emit_run_event` remplace les trois `build_event` quasi identiques (démarré,
+    terminé, échoué ; mêmes charges utiles).
+  - `_close_run(status)` : la séquence de clôture (raccourcis → drain → bilan →
+    publication si `ok` → tracker → runtime) écrite une fois pour `after_pipeline_run`
+    et `on_pipeline_error` ; ses commentaires d'ordre aussi. Statut typé `RunStatus`
+    (un `type: ignore` en moins).
+  - Le `run_stats_sink` du catalogue est l'agrégateur du run lui-même
+    (`RunStatsAggregator.absorb` respecte déjà `RunStatsSink`) : `TelemetryHooks.absorb`
+    disparaît, et les tests passent l'agrégateur à `report_node` au lieu d'écrire
+    `hooks._aggregator`.
+- **Pourquoi** : les deux fins de run répétaient la même séquence et ses justifications ;
+  les tests du fil `report` → bilan dépendaient d'un attribut privé du hook.
+- **Vérification** : `ruff`, `ruff format --check`, `mypy` verts ; 324 tests réussis (le
+  test « hook sans agrégateur » n'a plus d'objet) ; `deepcopy` des `HOOKS` OK.
+  `hooks.py` : 450 → 393 lignes, toutes ses fonctions sous 30 lignes. Encore au-dessus
+  de 300 : l'état du run part dans un `RunSession` au lot 5.
+
 ### 2026-09-27 — assemblage du run extrait du hook (chantier 1, lot 3)
 
 - **Fichiers** : nouveaux `orchestration/kedro/run_plan.py`, `stores.py`, `assembly.py`

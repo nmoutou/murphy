@@ -34,7 +34,6 @@ from ragcore.core.telemetry_events import (
     DOCUMENT_PERSISTED,
     RELATION_PENDING,
 )
-from ragcore.orchestration.kedro.hooks import TelemetryHooks
 from ragcore.orchestration.kedro.nodes.report import report_node
 
 
@@ -267,7 +266,7 @@ def test_a_stray_count_on_a_unitary_event_is_IGNORED() -> None:
 
 
 # --------------------------------------------------------------------------------------
-# LE FIL LUI-MÊME : le node `report` pousse-t-il vraiment dans le hook ?
+# LE FIL LUI-MÊME : le node `report` pousse-t-il vraiment dans l'agrégat du run ?
 #
 # Les tests ci-dessus valident `absorb`. Ils étaient verts AVANT le correctif, parce que
 # la fonction n'a jamais été en cause : c'est le FIL qui manquait.
@@ -299,14 +298,14 @@ def _resolution(stats: RunStats) -> ResolutionOutcome:
     )
 
 
-def test_report_node_pushes_the_worker_stats_into_the_hook() -> None:
+def test_report_node_pushes_the_worker_stats_into_the_run_aggregator() -> None:
     """**LE test du fil.** Le node terminal pousse ; le hook n'a rien à tirer.
 
     C'est le seul endroit qui prouve la remontée de bout en bout : `report_node` est
-    appelé avec un hook réel, et l'on vérifie le `RunSummary` qui en sort.
+    appelé avec l'agrégat que le hook pose au catalogue, et l'on vérifie le
+    `RunSummary` qui en sort.
     """
-    hooks = TelemetryHooks()
-    hooks._aggregator = _aggregator()
+    aggregator = _aggregator()
 
     report_node(
         ingestion_outcome=_ingestion(
@@ -320,9 +319,9 @@ def test_report_node_pushes_the_worker_stats_into_the_hook() -> None:
         ),
         resolution_outcome=_resolution(RunStats(counts={RELATION_PENDING: 19032})),
         to_skip=[],
-        run_stats_sink=hooks,
+        run_stats_sink=aggregator,
     )
-    summary = hooks._aggregator.finalize(status=RunStatus.OK)
+    summary = aggregator.finalize(status=RunStatus.OK)
 
     assert summary.stats.counts[DOCUMENT_PERSISTED] == 1121
     # 3 documents perdus, remontés par les workers ⇒ le run n'a pas le droit de dire `ok`.
@@ -335,41 +334,27 @@ def test_the_phase_two_stats_are_not_double_counted() -> None:
     Mesuré en vrai avant correction : `relation.pending` à 38 064 pour 19 032 réelles.
     Seuls les workers ont un agrégat orphelin ; eux seuls doivent remonter.
     """
-    hooks = TelemetryHooks()
-    hooks._aggregator = _aggregator()
+    aggregator = _aggregator()
 
     report_node(
         ingestion_outcome=_ingestion(RunStats.empty()),
         resolution_outcome=_resolution(RunStats(counts={RELATION_PENDING: 19032})),
         to_skip=[],
-        run_stats_sink=hooks,
+        run_stats_sink=aggregator,
     )
 
-    assert RELATION_PENDING not in hooks._aggregator.snapshot().counts
+    assert RELATION_PENDING not in aggregator.snapshot().counts
 
 
-def test_the_sink_is_the_hook_itself_not_a_copy() -> None:
+def test_the_sink_is_the_run_aggregator_itself_not_a_copy() -> None:
     """`copy_mode: assign` au catalogue — sinon le node pousse dans un CLONE.
 
-    Ce test fige la raison d'être de cette ligne du `catalog.yml` : un hook copié
+    Ce test fige la raison d'être de cette ligne du `catalog.yml` : un agrégat copié
     absorberait parfaitement… dans un objet que personne ne finalise.
     """
-    hooks = TelemetryHooks()
-    hooks._aggregator = _aggregator()
+    aggregator = _aggregator()
 
     catalog = DataCatalog({"run_stats_sink": MemoryDataset(copy_mode="assign")})
-    catalog.save("run_stats_sink", hooks)
+    catalog.save("run_stats_sink", aggregator)
 
-    assert catalog.load("run_stats_sink") is hooks
-
-
-def test_absorbing_into_a_hook_without_aggregator_is_a_no_op() -> None:
-    """Le node ne doit pas exploser si le hook n'a pas démarré (tests, run partiel)."""
-    hooks = TelemetryHooks()  # pas de `before_pipeline_run` : `_aggregator` vaut None
-
-    report_node(
-        ingestion_outcome=_ingestion(RunStats(counts={DOCUMENT_PERSISTED: 1})),
-        resolution_outcome=_resolution(RunStats.empty()),
-        to_skip=[],
-        run_stats_sink=hooks,
-    )  # ne lève pas
+    assert catalog.load("run_stats_sink") is aggregator
