@@ -6,6 +6,23 @@ dans l'historique git : `git show 9c32a83^:docs/pilotage/corrections/`.
 
 ## Faites
 
+### 2026-09-27 — `data/` : règle ruff `BLE` activée (chantier 2, lot 2)
+
+- **Fichiers** : `data/pyproject.toml`, `adapters/telemetry/registry_aware.py`,
+  `application/saga.py`, `application/ingestion_runner.py` (sous `data/src/ragcore/`),
+  `docs/pilotage/WIP/chantiers.md`.
+- **Catégorie** : gestion d'erreurs / outillage.
+- **Fait** : `"BLE"` (flake8-blind-except) ajouté à `[tool.ruff.lint] select`. Les
+  5 frontières voulues portent un `# noqa: BLE001 — <raison>` : les 3 de la télémétrie
+  (une panne de backend ne casse pas le run, elle est comptée), la compensation de la
+  saga (un échec n'interrompt pas les suivantes) et le runner (le document est perdu,
+  pas le run).
+- **Pourquoi** : sans la règle, rien n'empêchait un nouvel `except Exception` aveugle ;
+  les `noqa: BLE001` existants étaient sans effet.
+- **Vérification** : `ruff check .` vert ; un `except Exception: pass` d'essai est
+  refusé (`BLE001`, code de sortie 1) puis retiré. `ruff format --check`, `mypy` verts ;
+  313 tests réussis.
+
 ### 2026-09-27 — `data/` : 4 `except Exception` restreints (chantier 2, lot 1)
 
 - **Fichiers** : `core/links/extraction.py`, `sources/generic/parser.py`,

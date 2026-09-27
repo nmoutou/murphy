@@ -83,35 +83,26 @@ fois la limite.
 - **Taille** : 4 lots, environ 8 fichiers. Le plan détaillé du lot 3 est à valider avant
   de le lancer.
 
-## 2. `except Exception` dans `data/`
+## 2. `except Exception` dans `data/` — fait (2026-09-27)
 
-### Constat
+Onze `except Exception` dans `data/src` (hors tests). Les deux « `except:` nus » du
+premier relevé étaient des faux positifs, dans des commentaires de tests. Les
+`# noqa: BLE001` présents étaient sans effet : `BLE` n'était pas sélectionnée.
 
-Onze `except Exception` dans le code de `data/src` (hors tests). Les deux « `except:`
-nus » du premier relevé étaient des **faux positifs**, dans des commentaires de tests.
-Autre constat : les `# noqa: BLE001` présents sont **sans effet**. La règle `BLE`
-(flake8-blind-except) n'est pas sélectionnée dans `pyproject.toml`, donc ruff ne vérifie
-rien de ce côté.
+| Site | Issue |
+|---|---|
+| `core/links/extraction.py` `_identifier` | Restreint à `pydantic.ValidationError` (lot 1) |
+| `sources/generic/parser.py` `_identifier` | Restreint à `pydantic.ValidationError`, import aliasé (lot 1) |
+| `orchestration/kedro/hooks.py` | Extrait dans `_load_parameters`, restreint à `DatasetError` (lot 1) |
+| `orchestration/kedro/nodes/compute_idempotence.py` | Restreint à `ParseError`, le contrat de `BaseParser` ; une exception hors contrat arrête le run (lot 1) |
+| `sources/generic/parser.py:119`, `application/saga.py:37` | Frontières qui relancent (`raise … from exc`) : `BLE` les accepte, rien à faire |
+| `application/ingestion_runner.py:139` | Frontière voulue, `noqa` justifié (lot 2) |
+| `application/saga.py:64` | Frontière voulue, `noqa` justifié (lot 2) |
+| `adapters/telemetry/registry_aware.py` (×3) | Frontières voulues, `noqa` justifiés (lot 2) |
 
-| Site | Verdict | Action |
-|---|---|---|
-| `core/links/extraction.py:519` (`table.identifier_for`) | À préciser : `identifier_for` (LEGI, JURI) ne lève que la `ValidationError` de pydantic | `except pydantic.ValidationError` |
-| `sources/generic/parser.py:234` (`_build_identifier`) | À préciser, même raison. Attention au conflit de noms avec la `ValidationError` métier du projet | idem, import aliasé |
-| `orchestration/kedro/hooks.py:179` (`catalog.load("parameters")`) | À préciser : Kedro lève `DatasetError` | `except DatasetError` |
-| `orchestration/kedro/nodes/compute_idempotence.py:127` | À examiner : « autre erreur de parsing » après `except ValidationError` ; le parser relaie déjà tout en `ParseError` (`parser.py:119`) | `except ParseError` si le contrat du port le garantit |
-| `sources/generic/parser.py:119` | Frontière du parser : toute panne devient `ParseError`, chaînée | garder, justifier en `noqa` |
-| `application/ingestion_runner.py:139` | Frontière voulue : « le document est perdu, pas le run » | garder |
-| `application/saga.py:37` et `:64` | Frontière voulue : toute panne d'une étape déclenche la compensation | garder, justifier |
-| `adapters/telemetry/registry_aware.py:85`, `:102`, `:147` | Frontière voulue : une panne de télémétrie ne doit pas casser le run | garder, justifier |
-
-### Lots
-
-1. Ajouter `BLE` à `[tool.ruff.lint] select`. Ruff signale alors 5 sites ; chaque frontière
-   voulue reçoit un `# noqa: BLE001 — <raison>`, comme le reste du code.
-2. Préciser les quatre sites « à préciser » ou « à examiner », avec pour chacun un test
-   qui prouve qu'une exception inattendue n'est plus avalée.
-
-**Taille** : 2 lots, environ 7 fichiers.
+Lot 1 : `bc85996`. Lot 2 : `BLE` ajoutée à `[tool.ruff.lint] select` ; la CI refuse
+désormais tout nouvel `except Exception` sans relance ni `noqa` justifié. Détail dans
+`ameliorations.md`.
 
 ## 3. Fonctions trop longues de `data/`
 
@@ -231,7 +222,7 @@ lots de tests.
 ## Ordre proposé
 
 1. ~~Prérequis : `data/` en CI.~~ Fait.
-2. Chantier 2 : `except` (petit, et active `BLE` avant les refactors).
+2. ~~Chantier 2 : `except` (petit, et active `BLE` avant les refactors).~~ Fait.
 3. Chantier 1 : `hooks.py`.
 4. Chantier 3 : fonctions longues de `data/`.
 5. Chantier 4 : backend / frontend. Indépendant des autres, il peut passer avant.

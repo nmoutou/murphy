@@ -82,7 +82,7 @@ class RegistryAwareTelemetry:
         """
         try:
             backend.emit(event)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 — frontière de télémétrie : un backend en panne ne casse pas le run, l'échec est compté (record_audit_failure)
             _LOGGER.warning(
                 "telemetry backend '%s' error on %s: %s", name, event.event_type, exc
             )
@@ -99,7 +99,7 @@ class RegistryAwareTelemetry:
         """
         try:
             self._backends.log.log(level, message, **context)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 — frontière de télémétrie : un log textuel perdu ne fausse aucun compteur, il ne casse pas le run
             _LOGGER.warning("telemetry backend 'log' error on log(): %s", exc)
 
     def record_unknown(self, category: str, value: str) -> None:
@@ -144,7 +144,7 @@ class RegistryAwareTelemetry:
                 continue
             try:
                 closer()
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001 — frontière de télémétrie : un close() raté ne doit pas empêcher de fermer les backends suivants ; l'échec est compté
                 _LOGGER.warning(
                     "telemetry backend '%s' error on close(): %s", name, exc
                 )

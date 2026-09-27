@@ -61,7 +61,7 @@ class SagaExecutor:
             for step in reversed(completed):
                 try:
                     await step.compensate()
-                except Exception as comp_exc:
+                except Exception as comp_exc:  # noqa: BLE001 — une compensation ratée ne doit pas interrompre les suivantes ; l'échec est émis et compté
                     # Une compensation qui rate laisse un écrit partiel derrière elle.
                     # Le `logger.error` seul le rendait invisible au bilan : on émet
                     # donc un événement COMPTÉ (breakdown par `step`), pour que l'état

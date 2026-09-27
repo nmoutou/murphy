@@ -136,7 +136,7 @@ class IngestionRunner:
                 identifier = parsed.identifier.serialize()
                 try:
                     result = self._workload(parsed, operation, runtime, telemetry)
-                except Exception as exc:  # noqa: BLE001
+                except Exception as exc:  # noqa: BLE001 — le document est perdu, pas le run : l'échec est compté par document
                     # Le document est perdu, pas le run. Mais il doit être COMPTÉ : cet
                     # échec partait auparavant en `telemetry.log()`, donc en console
                     # seulement — jamais dans l'agrégat. Résultat : le RunSummary

@@ -141,6 +141,9 @@ select = [
     "UP",  # pyupgrade
     "PL",  # Pylint
     "T201", # Print Statement
+    # `except Exception` sans relance : seules les frontières voulues (télémétrie, saga,
+    # runner) l'assument, chacune avec un `noqa: BLE001 — <raison>`.
+    "BLE",  # flake8-blind-except
 ]
 ignore = ["E501"]  # Ruff format takes care of line-too-long
 
