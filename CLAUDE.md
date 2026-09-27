@@ -21,7 +21,7 @@ One repository (ADR-040). The TypeScript projects are **npm workspaces** (`backe
 
 ## Commands
 
-`npm run check` at the root runs what the CI runs: contract build, backend type-check + lint + tests, frontend type-check + lint + format check + build. `next build` rewrites `frontend/next-env.d.ts`: restore it with `git checkout` afterwards.
+`npm run check` at the root runs what the CI runs for TypeScript: contract build, backend type-check + lint + tests, frontend type-check + lint + format check + build. The CI's `python` job checks `data/` separately (see Ingestion). `next build` rewrites `frontend/next-env.d.ts`: restore it with `git checkout` afterwards.
 
 ### Docker stack
 
@@ -103,6 +103,7 @@ Full documentation: `data/docs/`. Key facts:
 - Qdrant collection names are derived (a fingerprint of the workflow config), never hand-written. The run status (`ok`/`degraded`/`failed`) comes from telemetry counters; only `ok` runs publish the pointer.
 - Tuning: `data/conf/base/workflow/parameters.yml` (chunks of 384 chars, overlap 25, `all-mpnet-base-v2`). `ENVIRONMENT=dev` unlocks `nuke_all`, the embedding switch (ADR-023) and Neo4j node hydration (ADR-022); the default `prod` locks them.
 - Tooling: `kedro run` (`--params source=cass,jade` to restrict), `ruff`, `pytest` (`-m integration` uses testcontainers), `mypy` strict on `src/ragcore`.
+- CI (`python` job, from `data/`): `uv sync --locked --extra dev`, then `uv run --locked` `ruff check .`, `ruff format --check .`, `mypy`, `pytest` (unit tests only: `addopts` excludes `integration`). Needs no `.env.dev` and no database.
 
 ---
 

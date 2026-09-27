@@ -31,6 +31,44 @@ jobs:
       - name: Check
         run: npm run check
 
+  python:
+    name: Python (data)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: data
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          version: '0.10.7'
+          # Same interpreter as the local venv; numpy's stubs break mypy under 3.11
+          python-version: '3.13'
+          enable-cache: true
+          cache-dependency-glob: data/uv.lock
+
+      # --locked fails if uv.lock no longer matches pyproject.toml
+      - name: Install dependencies
+        run: uv sync --locked --extra dev
+
+      - name: Lint
+        run: uv run --locked ruff check .
+
+      - name: Format check
+        run: uv run --locked ruff format --check .
+
+      # Targets src/ragcore ([tool.mypy] files)
+      - name: Type-check
+        run: uv run --locked mypy
+
+      # addopts excludes the testcontainers tests (-m 'not integration')
+      - name: Unit tests
+        run: uv run --locked pytest
+
   docker-build:
     name: Build Docker images
     runs-on: ubuntu-latest

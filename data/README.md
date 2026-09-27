@@ -42,7 +42,12 @@ hashed into the Qdrant collection name; changing one creates a new collection by
 
 ## Develop
 
+What the CI's `python` job runs (`.github/workflows/ci.yml`):
+
 ```bash
-ruff check .     # lint/format
-pytest           # config in pyproject.toml; needs no databases and no .env.dev
+uv sync --locked --extra dev
+uv run --locked ruff check .
+uv run --locked ruff format --check .
+uv run --locked mypy     # strict, on src/ragcore
+uv run --locked pytest   # config in pyproject.toml; excludes -m integration, needs no databases and no .env.dev
 ```

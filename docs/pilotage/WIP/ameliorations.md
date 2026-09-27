@@ -6,6 +6,24 @@ dans l'historique git : `git show 9c32a83^:docs/pilotage/corrections/`.
 
 ## Faites
 
+### 2026-09-27 — `data/` vérifié en CI
+
+- **Fichiers** : `.github/workflows/ci.yml`, `CLAUDE.md`, `data/README.md`,
+  `docs/pilotage/WIP/chantiers.md` ; suppression de `data/lab/` (2 notebooks).
+- **Catégorie** : CI / filet de sécurité.
+- **Fait** : nouveau job `python` (« Python (data) »), en parallèle de `typescript`.
+  `astral-sh/setup-uv` épinglé par SHA (v10.2.0), uv 0.10.7 et Python 3.13 comme en
+  local, cache sur `data/uv.lock`. `uv sync --locked --extra dev` échoue si `uv.lock` ne
+  suit plus `pyproject.toml` ; puis `ruff check .`, `ruff format --check .`, `mypy`
+  (strict, `src/ragcore`) et `pytest` (tests unitaires ; `integration` exclu par
+  `addopts`). Aucun `.env.dev` ni aucune base n'est nécessaire.
+- **Pourquoi** : rien ne vérifiait `data/`, alors que les chantiers 1 à 3 vont le
+  refactorer. `ruff format --check .` échouait sur les notebooks de `data/lab/`,
+  supprimés à cette occasion.
+- **Vérification** : le job simulé sur un clone propre (sans `.venv`, `.env.dev` ni
+  `conf/local`) : ruff 0 erreur, 189 fichiers formatés, mypy 0 erreur sur 127 fichiers,
+  306 tests réussis (34 d'intégration désélectionnés), couverture 86 %.
+
 ### 2026-09-26 — `/completions` soumis au budget de stream par IP
 
 - **Fichiers** : `backend/src/routes/chat.ts`, `backend/src/middleware/streamRateLimiter.ts`,

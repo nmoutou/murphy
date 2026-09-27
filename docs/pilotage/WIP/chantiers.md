@@ -10,19 +10,17 @@ Relevé du 2026-09-26. Les longueurs de fonction sont comptées **hors lignes vi
 commentaires et docstrings** (règle du `CLAUDE.md`) ; les longueurs de fichier, elles,
 sont brutes.
 
-## Prérequis : `data/` n'est pas en CI
+## Prérequis : `data/` en CI — fait (2026-09-27)
 
-- **Constat** : `.github/workflows/ci.yml` ne lance que `npm run check` et le build
-  Docker. Ni `ruff`, ni `mypy`, ni `pytest` ne tournent sur `data/`. Aujourd'hui tout est
-  vert en local (`ruff` : 0 erreur ; `mypy --strict` : 0 sur 127 fichiers ; `pytest -m
-  "not integration"` : 306 tests en 5 s, couverture 86 %) mais rien ne le garantit.
-- **Proposition** : un job `python` dans `ci.yml` (installation de `uv`, `uv sync
-  --frozen`, puis `ruff check`, `ruff format --check`, `mypy src/ragcore`, `pytest -m "not
-  integration"`), avec `working-directory: data`. Les tests `integration`
-  (testcontainers) restent hors CI pour l'instant.
+- **Constat** : `.github/workflows/ci.yml` ne lançait que `npm run check` et le build
+  Docker. Ni `ruff`, ni `mypy`, ni `pytest` ne tournaient sur `data/`.
+- **Fait** : un job `python` dans `ci.yml` (`working-directory: data`, uv 0.10.7,
+  Python 3.13) : `uv sync --locked --extra dev`, puis `ruff check .`,
+  `ruff format --check .`, `mypy` (cible `src/ragcore` via `[tool.mypy] files`) et
+  `pytest` (`addopts` exclut `integration`). Les tests `integration` (testcontainers)
+  restent hors CI. Détail dans `ameliorations.md`.
 - **Pourquoi d'abord** : les chantiers 1 à 3 refactorent `data/`. Sans ce filet, une
   régression passerait inaperçue jusqu'au prochain `kedro run`.
-- **Taille** : 1 lot, 1 fichier.
 
 ## 1. Découper `hooks.py`
 
@@ -232,7 +230,7 @@ lots de tests.
 
 ## Ordre proposé
 
-1. Prérequis : `data/` en CI.
+1. ~~Prérequis : `data/` en CI.~~ Fait.
 2. Chantier 2 : `except` (petit, et active `BLE` avant les refactors).
 3. Chantier 1 : `hooks.py`.
 4. Chantier 3 : fonctions longues de `data/`.
