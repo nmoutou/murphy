@@ -3,7 +3,9 @@
 Référence exhaustive du pipeline d'ingestion. Le DAG vit dans
 `src/ragcore/orchestration/kedro/pipeline.py`, les nœuds dans
 `src/ragcore/orchestration/kedro/nodes/`, le câblage dans
-`src/ragcore/orchestration/kedro/hooks.py`.
+`src/ragcore/orchestration/kedro/hooks.py`, qui délègue à `run_parameters.py` (lecture des
+paramètres), `run_plan.py` (le plan du run), `stores.py` (clients et dépôts) et
+`assembly.py` (embedder, briques, pool de la phase 1).
 
 ## Avant le premier nœud : `TelemetryHooks.before_pipeline_run`
 
@@ -11,45 +13,51 @@ Le hook est le **point d'assemblage** du run. Dans l'ordre :
 
 1. **Chargement des settings** : `InfraSettings` + `EmbeddingRuntimeSettings`, lues du
    `.env.dev` **racine** (chemin absolu, jamais le CWD). Fichier absent = levée immédiate.
-2. **Chargement de `parameters.yml`** — sans fallback : un YAML illisible arrête le run
-   (continuer avec les défauts baptiserait la collection Qdrant d'après une config que
-   personne n'a choisie).
-3. **Construction de la `WorkflowConfig`** (`run_parameters.build_workflow_config`) : la seule
-   traduction YAML → objet du dépôt. C'est l'objet qui fait foi, pas le YAML.
-4. **Dérivation de la collection Qdrant** : `collection_name(workflow)` = le fingerprint
-   blake2b de la config (32 hex). Jamais écrite à la main.
-5. **Ouverture du run de tracking** (`noop` par défaut, MLflow en option) — le run-id
+2. **Chargement de `parameters.yml`** (`run_parameters.load_parameters`) — sans fallback :
+   un YAML illisible arrête le run (continuer avec les défauts baptiserait la collection
+   Qdrant d'après une config que personne n'a choisie).
+3. **Le plan du run** (`run_plan.plan_run`), une donnée figée dérivée une seule fois :
+   - la `WorkflowConfig` (`run_parameters.build_workflow_config`), seule traduction
+     YAML → objet du dépôt. C'est l'objet qui fait foi, pas le YAML ;
+   - la collection Qdrant : `collection_name(workflow)` = le fingerprint blake2b de la
+     config (32 hex). Jamais écrite à la main ;
+   - les sources (`run_parameters.resolve_sources`) : `--params source=…` ou `SOURCE` du
+     `.env`, défaut `all` = les six ingérables. Valeur inconnue = échec au démarrage en
+     nommant les valides, **avant** qu'aucun client ni tracker ne soit ouvert ;
+   - l'`owner_id` (`--params owner_id=…` prime sur `OWNER_ID`) ;
+   - les arbitrages dev/prod : `run_parameters.resolve_embedding_enabled` (ADR-023 — le
+     flag YAML n'a d'effet qu'en `dev`) et `run_parameters.resolve_node_hydration`
+     (ADR-022 — nœuds Neo4j maigres hors `dev`).
+4. **Ouverture du run de tracking** (`noop` par défaut, MLflow en option) — le run-id
    MLflow **est** le nom de collection : les deux sortent du même calcul et ne peuvent
    pas diverger.
-6. **Précondition TEI** (si `EMBEDDING_PROVIDER=openai`) : `assert_service_serves_model`
-   interroge `GET /info` du service et compare au modèle du workflow. TEI ignore le champ
-   `model` des requêtes ; sans cette vérification, une divergence conteneur/YAML écrirait
-   les vecteurs d'un modèle dans la collection nommée d'après un autre — en silence.
-   (`noop` déclenche un avertissement : vecteurs NULS écrits dans la collection du vrai
-   modèle.)
-7. **Clients + index** : clients Mongo/Neo4j/Qdrant du hook, `ensure_data_indexes`
-   (LEGIFRANCE) et `ensure_meta_indexes` (MURPHY_META).
-8. **Résolution des sources** (`run_parameters.resolve_sources`) : `--params source=…` ou `SOURCE` du
-   `.env`, défaut `all` = les six ingérables. Valeur inconnue = échec au démarrage en
-   nommant les valides. Le `PipelineContext` (run_id uuid4-hex, owner_id, source —
-   `None` si multi-source, started_at) est créé ici.
-9. **Pile de télémétrie** : registre construit depuis `EVENT_CATALOG`, backends JSONL
-   (`data/08_reporting/events/`), audit Mongo, agrégateur `RunStats`.
-10. **Briques de traitement** : `CompositeConnector` (un connecteur par source, routé),
-    `RoutingParser` (un `GenericParser` par source, chacun avec sa table de rôles),
-    `StructuralChunker` (size/overlap du workflow), `RoutingRelationExtractor`,
-    embedder selon le provider (`local` / `openai` / `noop`).
-11. **Arbitrages dev/prod** : `run_parameters.resolve_embedding_enabled` (ADR-023 — le flag YAML n'a
-    d'effet qu'en `dev`) et `run_parameters.resolve_node_hydration` (ADR-022 — nœuds Neo4j maigres hors
-    `dev`).
-12. **Pool phase 1** (`_build_runner`) : un `IngestionRunner` à 4 workers, armé de
-    *fabriques* (runtime, télémétrie, use case) — jamais d'instances partagées.
-13. **Service phase 2** : `ResolveRelationsService` (dépôts du hook, non parallélisé).
-14. Tout est posé au catalogue (`catalog.save(...)`), l'événement `pipeline.run.started`
+5. **L'embedder** (`assembly.prepare_embedder`), une seule branche sur le provider :
+   - `openai` : précondition TEI d'abord. `assert_service_serves_model` interroge
+     `GET /info` du service et compare au modèle du workflow. TEI ignore le champ `model`
+     des requêtes ; sans cette vérification, une divergence conteneur/YAML écrirait les
+     vecteurs d'un modèle dans la collection nommée d'après un autre — en silence ;
+   - `noop` : avertissement (vecteurs NULS écrits dans la collection du vrai modèle) ;
+   - `local` : `LocalEmbedder`, qui charge le modèle au premier usage.
+6. **Clients, index et dépôts du hook** (`stores.open_clients`, `ensure_indexes`,
+   `open_document_stores`, `open_meta_stores`) : `ensure_data_indexes` (LEGIFRANCE) et
+   `ensure_meta_indexes` (MURPHY_META).
+7. **Le run démarre** : le `PipelineContext` (run_id uuid4-hex, owner_id, source —
+   `None` si multi-source, started_at), la pile de télémétrie (registre construit depuis
+   `EVENT_CATALOG`, backends JSONL `data/08_reporting/events/`, audit Mongo, agrégateur
+   `RunStats`) et le `CollectionPublisher` qui publiera en fin de run.
+8. **Briques de traitement** (`assembly.build_processing_stack`) : `CompositeConnector`
+   (un connecteur par source, routé), `RoutingParser` (un `GenericParser` par source,
+   chacun avec sa table de rôles), `StructuralChunker` (size/overlap du workflow),
+   `RoutingRelationExtractor`, et l'embedder.
+9. **Pool phase 1** (`assembly.build_runner`) : un `IngestionRunner` à 4 workers, armé de
+   *fabriques* (runtime, télémétrie, use case) — jamais d'instances partagées.
+10. **Service phase 2** : `ResolveRelationsService` (dépôts du hook, non parallélisé).
+11. Tout est posé au catalogue (`catalog.save(...)`), l'événement `pipeline.run.started`
     est émis.
 
 Pourquoi des fabriques : un client Motor/Neo4j/Qdrant est lié à la boucle asyncio qui le
-touche en premier. Chaque worker construit donc **ses** clients sur **sa** boucle ; ceux
+touche en premier. Chaque worker construit donc **ses** clients sur **sa** boucle (le même
+`stores.open_clients` que le hook : le code est partagé, pas les instances) ; ceux
 du hook servent les nœuds non parallélisés (maintenance, phase 2).
 
 ## 1. `cleanup`
@@ -137,7 +145,7 @@ Entrées : `to_process`, `runner`, contexte. Le nœud est mince : il lance
   (Jamais `hash()` natif : randomisé par `PYTHONHASHSEED`, il rendrait la partition non
   reproductible.)
 - **Un worker = une boucle + ses clients + sa télémétrie + son agrégat local.** Rien de
-  partagé, donc rien à verrouiller. 4 workers (`_WORKER_COUNT`, hooks.py) — mesuré : en
+  partagé, donc rien à verrouiller. 4 workers (`_WORKER_COUNT`, assembly.py) — mesuré : en
   augmenter le nombre ne gagne rien, ~99,9 % du temps d'un document part dans l'embedding
   et le mur est le GPU (parse 0,9 ms, chunk 0,1 ms, embed ~1 364 ms).
 - **Un échec de document ne casse pas le run** : l'exception est attrapée, comptée

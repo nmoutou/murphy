@@ -11,63 +11,31 @@ from kedro.framework.hooks import hook_impl
 from kedro.io import DataCatalog
 
 from ragcore.adapters.config.settings import (
+    InfraSettings,
     get_embedding_runtime_settings,
     get_infra_settings,
 )
-from ragcore.adapters.embedding.local_embedder import LocalEmbedder
-from ragcore.adapters.embedding.noop_embedder import NoopEmbedder
-from ragcore.adapters.embedding.openai_embedder import (
-    OpenAIEmbedder,
-    assert_service_serves_model,
-)
 from ragcore.adapters.runtime import AsyncioRuntime, AsyncioRuntimeFactory
-from ragcore.adapters.storage.mongo.audit_repository import MongoAuditRepository
-from ragcore.adapters.storage.mongo.client import create_mongo_client
-from ragcore.adapters.storage.mongo.document_repository import MongoDocumentRepository
-from ragcore.adapters.storage.mongo.manifest_repository import MongoManifestRepository
-from ragcore.adapters.storage.mongo.pending_repository import (
-    MongoPendingRelationRepository,
-)
-from ragcore.adapters.storage.mongo.published_collection_repository import (
-    MongoPublishedCollectionRepository,
-)
 from ragcore.adapters.storage.mongo.run_summary_repository import (
     MongoRunSummaryRepository,
 )
-from ragcore.adapters.storage.mongo.schemas import (
-    ensure_data_indexes,
-    ensure_meta_indexes,
-)
-from ragcore.adapters.storage.neo4j.client import create_neo4j_driver
-from ragcore.adapters.storage.neo4j.graph_repository import (
-    Neo4jGraphRepository,
-    NodeHydration,
-)
-from ragcore.adapters.storage.qdrant.client import create_qdrant_client
-from ragcore.adapters.storage.qdrant.vector_repository import QdrantVectorRepository
 from ragcore.adapters.telemetry import (
     JsonlFileTelemetry,
     MongoAuditTelemetryAdapter,
     RunStatsAggregator,
 )
-from ragcore.adapters.telemetry.factory import (
-    WorkerTelemetryFactory,
-    assemble_telemetry,
-)
+from ragcore.adapters.telemetry.factory import assemble_telemetry
 from ragcore.adapters.telemetry.registry_aware import RegistryAwareTelemetry
 from ragcore.adapters.tracking import build_experiment_tracker
-from ragcore.application.ingest_document import IngestDocumentUseCase
-from ragcore.application.ingestion_runner import IngestionRunner
 from ragcore.application.publish_collection import CollectionPublisher
 from ragcore.application.resolve_relations import ResolveRelationsService
 from ragcore.application.run_context import PipelineContext
-from ragcore.core.config import WorkflowConfig, collection_name
 from ragcore.core.models.audit import build_event
-from ragcore.core.models.identifiers import OwnerId, RunId
+from ragcore.core.models.identifiers import RunId
 from ragcore.core.models.run_stats import RunStats
 from ragcore.core.models.run_summary import RunSummary
+from ragcore.core.ports.embedder import BaseEmbedder
 from ragcore.core.ports.experiment_tracker import ExperimentTracker
-from ragcore.core.ports.telemetry import WorkerTelemetry
 from ragcore.core.services.run_artifacts import run_scoped_filename
 from ragcore.core.services.telemetry_registry import TelemetryRegistry
 from ragcore.core.telemetry_events import (
@@ -77,38 +45,23 @@ from ragcore.core.telemetry_events import (
     PIPELINE_RUN_FAILED,
     PIPELINE_RUN_STARTED,
 )
-from ragcore.orchestration.kedro.run_parameters import (
-    build_workflow_config,
-    load_parameters,
-    resolve_embedding_enabled,
-    resolve_node_hydration,
-    resolve_sources,
+from ragcore.orchestration.kedro.assembly import (
+    ReportsTruncations,
+    build_processing_stack,
+    build_runner,
+    prepare_embedder,
 )
-from ragcore.orchestration.kedro.workload import build_document_workload
-from ragcore.sources.composite import (
-    CompositeConnector,
-    RoutingParser,
-    RoutingRelationExtractor,
+from ragcore.orchestration.kedro.run_parameters import load_parameters
+from ragcore.orchestration.kedro.run_plan import RunPlan, plan_run
+from ragcore.orchestration.kedro.stores import (
+    MetaStores,
+    ensure_indexes,
+    open_clients,
+    open_document_stores,
+    open_meta_stores,
 )
-from ragcore.sources.generic import (
-    GenericParser,
-    GenericRelationExtractor,
-    StructuralChunker,
-)
-from ragcore.sources.registry import all_sources, definition_for
 
 logger = logging.getLogger(__name__)
-
-# Le pool de la phase 1. Un jour un paramètre ; pour l'instant une constante nommée,
-# et non un « 4 » nu perdu dans le constructeur du runner.
-#
-# **Ne pas l'augmenter en espérant un gain : c'est mesuré, ça n'en donne pas.** 99,9 % du
-# temps d'un document part dans l'embedding (parse 0,9 ms, chunk 0,1 ms, embed 1364 ms),
-# et le mur est le GPU lui-même, pas le nombre de requêtes qu'on lui envoie. Un banc
-# d'essai isolé promettait ×4 en passant à 16 workers ; le run réel n'a rien gagné
-# (751 s → 738 s). Le seul levier réel est de calculer MOINS de vecteurs, c.-à-d.
-# `chunk_size` (cf. la note de perf dans ETAT.md).
-_WORKER_COUNT = 4
 
 
 class TelemetryHooks:
@@ -120,7 +73,7 @@ class TelemetryHooks:
         self._summary_repo: MongoRunSummaryRepository | None = None
         self._publisher: CollectionPublisher | None = None
         """Publie l'empreinte du run en fin de run, si le bilan dit `ok` (ADR-039)."""
-        self._embedder: object | None = None
+        self._embedder: BaseEmbedder | None = None
         self._runtime_instance: AsyncioRuntime | None = None
         self._tracker: ExperimentTracker | None = None
         """Le tracker d'expériences (§9). Ouvert en tête de run, fermé en fin — dans
@@ -147,383 +100,142 @@ class TelemetryHooks:
         return self._runtime_instance
 
     @hook_impl
-    def before_pipeline_run(  # noqa: PLR0915 — pur câblage : construire les clients puis POSER chaque objet au catalogue est un inventaire, pas de la logique ; le fractionner disperserait l'assemblage
+    def before_pipeline_run(
         self, run_params: dict[str, Any], catalog: DataCatalog
     ) -> None:
+        """Assemble le run et le POSE au catalogue : le DAG nomme, le hook fournit."""
         settings = get_infra_settings()
-        embedding_settings = get_embedding_runtime_settings()
-
-        params = load_parameters(catalog)
-
-        # La config de workflow — LA référence (§9). `parameters.yml` n'est qu'une façon
-        # de la peupler : c'est ici que Kedro cesse d'être la vérité et redevient un
-        # shell. Un CLI ou un test construit le même objet sans qu'aucun YAML n'existe.
-        workflow = build_workflow_config(params)
-
-        # La collection Qdrant est DÉRIVÉE, plus configurée (§6). Elle porte l'empreinte
-        # de ce qui produit les vecteurs : changer le chunk_size crée mécaniquement une
-        # collection neuve, et les deux coexistent — c'est ce qui rend l'A/B possible.
-        # Un `collection:` écrit à la main dans le YAML permettait au contraire d'écraser
-        # les vecteurs d'une stratégie avec ceux d'une autre, sans que rien ne le signale.
-        qdrant_collection = collection_name(workflow)
-        logger.info(
-            "Collection Qdrant dérivée de la config de workflow : %s", qdrant_collection
+        plan = plan_run(load_parameters(catalog), settings, run_params)
+        self._start_tracking(settings, plan)
+        embedder = prepare_embedder(
+            get_embedding_runtime_settings(), plan, self._runtime
         )
-
-        # Le tracking d'expériences (§9). Le run-id EST le nom de collection — donc le
-        # fingerprint du workflow — parce que `collection_name` n'est rien d'autre que
-        # `fingerprint` : les deux ne peuvent pas diverger, ils sortent du même calcul.
-        # C'est ce qui lie le run MLflow à sa collection Qdrant, et lève l'opacité du
-        # hash en portant la `WorkflowConfig` en clair. `noop` par défaut : aucun serveur
-        # requis, aucune dépendance ajoutée au chemin critique.
-        self._tracker = build_experiment_tracker(settings)
-        self._tracker.start_run(RunId(qdrant_collection), workflow)
-
-        # Le modèle qui vient de BAPTISER la collection est-il celui que le service SERT ?
-        #
-        # TEI ne sert qu'un modèle — celui de son `--model-id` — et ignore le champ `model`
-        # de la requête. Si le conteneur et `parameters.yml` divergent, on écrit les
-        # vecteurs d'un modèle dans la collection nommée d'après un autre : rien ne lève,
-        # rien ne loggue, et ça ne se voit qu'à la recherche.
-        #
-        # C'est une PRÉCONDITION du run, et c'est pourquoi elle est ici et pas dans
-        # l'embedder : `SagaExecutor` attrape `Exception` pour compenser, donc levée dans
-        # un worker elle deviendrait un échec par document — compensé N fois, avec un run
-        # qui conclut « ok ». Vérifier N fois quel modèle le service sert n'aurait de toute
-        # façon aucun sens : il n'en sert qu'un, et il le dit une fois pour toutes.
-        if embedding_settings.provider == "openai":
-            self._runtime.run(
-                assert_service_serves_model(
-                    embedding_settings.service_url or "",
-                    workflow.embedding.model_name,
-                )
-            )
-        elif embedding_settings.provider == "noop":
-            # `provider` n'entre PAS dans l'empreinte (§6) : deux façons d'atteindre le
-            # même modèle produisent les mêmes vecteurs. Mais `noop` n'atteint aucun
-            # modèle — il produit des vecteurs NULS, et les écrit dans la collection du
-            # vrai modèle, où plus rien ne les distingue ensuite. La doctrine assume la
-            # verrue ; elle n'exige pas qu'elle soit muette.
-            logger.warning(
-                "EMBEDDING_PROVIDER=noop : les vecteurs seront NULS et seront écrits dans "
-                "la collection %s — celle du vrai modèle, où rien ne les distinguera. "
-                "Hygiène de test uniquement : pour un vrai run, EMBEDDING_PROVIDER=openai.",
-                qdrant_collection,
-            )
-
-        # Infrastructure clients
-        mongo_client = create_mongo_client(settings.mongodb_uri)
-        neo4j_driver = create_neo4j_driver(
-            settings.neo4j_uri,
-            settings.neo4j_username,
-            settings.neo4j_password.get_secret_value(),
-        )
-        qdrant_client = create_qdrant_client(
-            settings.qdrant_url,
-            settings.qdrant_api_key.get_secret_value()
-            if settings.qdrant_api_key
-            else None,
-        )
-
-        # Créer les indexes MongoDB
-        data_db = settings.mongodb_data_db_name
-        meta_db = settings.mongodb_meta_db_name
-        self._runtime.run(ensure_data_indexes(mongo_client[data_db]))
-        self._runtime.run(ensure_meta_indexes(mongo_client[meta_db]))
-
-        # Repositories du HOOK — posés sur SA boucle (self._runtime). Ils servent les
-        # nœuds de maintenance (nukeAll, connect, computeIdempotence) et la phase 2,
-        # qui ne sont pas parallélisés. Les WORKERS de la phase 1 fabriquent LES LEURS
-        # (cf. use_case_factory plus bas) : un dépôt Mongo est lié à la boucle qui l'a
-        # touché en premier, donc partager ceux-ci avec les workers ferait revenir la
-        # globale ``_LOOP`` sous un autre nom (§11).
-        # L'hydratation des nœuds Neo4j (ADR-022 §2, toggles redéfinis) : résolue UNE
-        # fois, partagée entre le dépôt du hook et ceux des workers — deux résolutions
-        # seraient deux occasions de diverger.
-        node_hydration = resolve_node_hydration(params, settings.environment)
-
-        doc_repo = MongoDocumentRepository(mongo_client, data_db)
-        manifest_repo = MongoManifestRepository(mongo_client, data_db)
-        audit_repo = MongoAuditRepository(mongo_client, meta_db)
-        summary_repo = MongoRunSummaryRepository(mongo_client, meta_db)
-        published_repo = MongoPublishedCollectionRepository(mongo_client, meta_db)
-        pending_repo = MongoPendingRelationRepository(mongo_client, meta_db)
-        graph_repo = Neo4jGraphRepository(neo4j_driver, node_hydration)
-        vector_repo = QdrantVectorRepository(
-            qdrant_client, qdrant_collection, workflow.embedding.dimension
-        )
-
-        # Pipeline context (created early so telemetry adapters can use the run_id)
-        # Les `--params` de la ligne de commande. Kedro 1.x les passe sous
-        # `runtime_params` ; l'ancienne clé `extra_params` n'existe plus, et la lire
-        # faisait ignorer `--params source=…` en silence.
-        extra = run_params.get("runtime_params") or {}
-        owner_id = extra.get("owner_id", settings.owner_id)
-
-        # Les SOURCES du run. Un run nu les ingère TOUTES ; on peut le restreindre :
-        #
-        #     kedro run                          → les six sources
-        #     kedro run --params source=cass     → CASS seule
-        #     kedro run --params source=cass,jade → CASS et JADE
-        #
-        # **Ce que ça change, et qu'il faut assumer.** L'ancienne règle « une seule source
-        # par run » protégeait la lisibilité du bilan : un run qui mélange deux sources doit
-        # pouvoir dire *laquelle* a échoué.
-        #
-        # ⚠️ DETTE OUVERTE : il ne le peut pas encore. `RunStats.breakdowns` ne ventile que
-        # `reason` et `operation` (cf. `adapters/telemetry/aggregator.py`), PAS la source.
-        # Un run à six sources rend donc un bilan agrégé où l'échec est anonyme quant à sa
-        # provenance. La restriction par paramètre garde la voie du rejeu ciblé ouverte,
-        # mais le bilan ne dit pas encore *quoi* rejouer.
-        sources = resolve_sources(extra.get("source", settings.source))
-        is_full_run = set(sources) == set(all_sources())
-        definitions = {source: definition_for(source) for source in sources}
-
-        # `source=None` dans le contexte signifie « ce run n'est pas mono-source ». Le
-        # modèle le prévoyait déjà (`SourceName | None`) : la porte était ouverte, on ne
-        # force rien. Un run mono-source garde SA source dans le contexte — les événements
-        # qu'il émet restent donc attribuables exactement comme avant.
-        self._context = PipelineContext.create(
-            owner_id=OwnerId(owner_id),
-            source=sources[0] if len(sources) == 1 else None,
-        )
-        logger.info(
-            "Sources du run (%d) : %s",
-            len(sources),
-            ", ".join(s.value for s in sources),
-        )
-
-        # Telemetry stack — configurable par registry
-        meta_root = Path(settings.meta_jsonl_dir)
-
-        # Registry construit depuis le catalogue Python — source de vérité unique
-        registry = TelemetryRegistry.from_catalog(EVENT_CATALOG)
-
-        jsonl_telemetry = JsonlFileTelemetry(
-            events_dir=meta_root / "events",
-            run_id=self._context.run_id,
-            started_at=self._context.started_at,
-        )
-        self._stats_dir = meta_root / "stats"
-        self._stats_dir.mkdir(parents=True, exist_ok=True)
-        self._summary_repo = summary_repo
-        self._publisher = CollectionPublisher(
-            published_repo, qdrant_collection, is_full_run=is_full_run
-        )
-        self._aggregator = RunStatsAggregator(
-            run_id=self._context.run_id,
-            owner_id=self._context.owner_id,
-            source=self._context.source,
-            started_at=self._context.started_at,
-        )
-        self._telemetry = assemble_telemetry(
-            registry,
-            jsonl=jsonl_telemetry,
-            mongo=MongoAuditTelemetryAdapter(audit_repo, self._runtime),
-            aggregate=self._aggregator,
-        )
-
-        # **Aucun nom de source ici.** Le parser, le chunker et l'extracteur sont
-        # génériques (§3) ; les connecteurs viennent du registre. Ce bloc est identique
-        # pour LEGI et pour les cinq juri — c'est très exactement la mesure du succès :
-        # ajouter une source n'a demandé aucune ligne dans le hook.
-        #
-        # Une brique PAR source (chacune a sa table de rôles — elles sont quatre
-        # distinctes), et un routeur au-dessus qui aiguille sur `document.source`. Les
-        # nœuds, eux, ne voient qu'un connecteur et qu'un parser : les routeurs respectent
-        # les mêmes ports, donc le DAG ignore qu'il y a six sources derrière.
-        #
-        # Purs (chunker, parser, extracteur) ou créant leur client à l'appel (embedder) :
-        # partageables entre workers sans risque.
-        xml_root = Path(settings.xml_source_path)
-        connector = CompositeConnector(
-            {
-                source: definition.connector(xml_root / definition.subdirectory)
-                for source, definition in definitions.items()
-            }
-        )
-        parser = RoutingParser(
-            {
-                source: GenericParser(definition.table, source)
-                for source, definition in definitions.items()
-            }
-        )
-        chunker = StructuralChunker(
-            max_chunk_size=workflow.chunking.size, overlap=workflow.chunking.overlap
-        )
-        relation_extractor = RoutingRelationExtractor(
-            {
-                source: GenericRelationExtractor(definition.table, source)
-                for source, definition in definitions.items()
-            }
-        )
-
-        # Embedding : le MODÈLE et la DIMENSION viennent du workflow (ils décident des
-        # vecteurs, donc ils sont hashés) ; le PROVIDER et son transport viennent de
-        # l'infra (ils ne changent aucun vecteur). La couture passe exactement ici.
-        embedding = workflow.embedding
-        if embedding_settings.provider == "local":
-            embedder: object = LocalEmbedder(
-                model_name=embedding.model_name,
-                dimension=embedding.dimension,
-            )
-        elif embedding_settings.provider == "noop":
-            embedder = NoopEmbedder(dimension=embedding.dimension)
-        else:
-            embedder = OpenAIEmbedder(
-                api_key=embedding_settings.api_key,
-                model_name=embedding.model_name,
-                dimension=embedding.dimension,
-                batch_size=embedding_settings.batch_size,
-                base_url=embedding_settings.service_url,
-            )
         # Gardé pour l'interroger en fin de run : un chunk qu'il a dû raccourcir pour tenir
         # dans la fenêtre du modèle est un chunk dont la fin n'est PAS indexée. Le document
         # est sauvé, le run est complet — mais le bilan doit le dire.
         self._embedder = embedder
 
-        # L'interrupteur d'embedding (dev, ADR-023). Lu du YAML, mais ARBITRÉ par
-        # l'environnement : en dehors de `dev`, on embarque TOUJOURS, quoi que dise le
-        # flag. Un flag oublié à `false` dans un `parameters.yml` ne doit pas pouvoir
-        # produire une collection Qdrant vide en prod — même logique de garde que
-        # `nuke_all` (le défaut penche vers le comportement sûr, pas vers l'économie).
-        embedding_enabled = resolve_embedding_enabled(params, settings.environment)
-        if not embedding_enabled:
-            logger.warning(
-                "EMBEDDING COUPÉ (dev, ADR-023) : aucun vecteur ne sera calculé ni écrit "
-                "dans Qdrant. Mongo et Neo4j sont peuplés normalement — régime d'itération "
-                "sur le modèle de données. La collection %s restera vide pour ce run.",
-                qdrant_collection,
-            )
+        for name, value in self._assemble(settings, plan, embedder).items():
+            catalog.save(name, value)
 
-        # --- Le pool de la phase 1 : des FABRIQUES, pas des instances (§11) ---------
-        runner = self._build_runner(
-            chunker,
-            embedder,
-            relation_extractor,
-            qdrant_collection,
-            workflow,
-            embedding_enabled,
-            node_hydration,
-        )
-
-        # --- La phase 2 : un service unique, sur la boucle DU HOOK (pas parallélisé) -
-        resolve_service = ResolveRelationsService(
-            graph_repo=graph_repo,
-            pending_repo=pending_repo,
-            telemetry=self._telemetry,
-        )
-
-        # Populate catalog for node injection
-        catalog.save("connector", connector)
-        catalog.save("parser", parser)
-        catalog.save("manifest_repo", manifest_repo)
-        catalog.save("doc_repo", doc_repo)
-        catalog.save("graph_repo", graph_repo)
-        catalog.save("vector_repo", vector_repo)
-        catalog.save("runner", runner)
-        catalog.save("resolve_service", resolve_service)
-        catalog.save("pipeline_context", self._context)
-        catalog.save("telemetry", self._telemetry)
-        # L'agrégat du run, injecté comme les autres objets. C'est le node `report` qui y
-        # POUSSE les stats des phases : le hook ne peut pas les tirer du catalogue après
-        # coup, Kedro y libère les MemoryDataset dès leur dernier lecteur (cf. `absorb`).
-        catalog.save("run_stats_sink", self)
-        # Le runtime du hook, injecté aux nœuds non parallélisés (maintenance + phase 2)
-        # comme pont sync→async — l'équivalent déclaré de l'ancienne globale run_async.
-        catalog.save("pipeline_runtime", self._runtime)
-
-        self._telemetry.emit(
+        context, telemetry = self._require_started()
+        telemetry.emit(
             build_event(
                 event_type=PIPELINE_RUN_STARTED,
-                run_id=self._context.run_id,
-                owner_id=self._context.owner_id,
-                source=self._context.source,
+                run_id=context.run_id,
+                owner_id=context.owner_id,
+                source=context.source,
                 payload={"pipeline": run_params.get("pipeline_name", "__default__")},
             )
         )
 
-    def _build_runner(  # noqa: PLR0913 — chaque argument est une pièce du pool ; les grouper cacherait ce qu'on assemble
-        self,
-        chunker: StructuralChunker,
-        embedder: object,
-        extractor: RoutingRelationExtractor,
-        qdrant_collection: str,
-        workflow: WorkflowConfig,
-        embedding_enabled: bool,
-        node_hydration: NodeHydration,
-    ) -> IngestionRunner:
-        """Assemble le pool de la phase 1 : deux fabriques + un use case PAR worker.
+    def _start_tracking(self, settings: InfraSettings, plan: RunPlan) -> None:
+        """Ouvre le run d'expérience (§9).
 
-        Extrait de ``before_pipeline_run`` pour tenir en un bloc cohérent — c'est ici
-        que se joue tout le §11. ``self._context`` est déjà posé quand cette méthode
-        est appelée. ``qdrant_collection`` est **dérivé du ``workflow``** (§6) et DOIT
-        être celui du ``vector_repo`` du hook — d'où le passage explicite plutôt qu'un
-        second appel à ``collection_name`` : deux dérivations, c'est deux occasions de
-        diverger, et workers et phase 2 écriraient alors dans deux collections.
+        Le run-id EST le nom de collection — donc le fingerprint du workflow — parce que
+        `collection_name` n'est rien d'autre que `fingerprint` : les deux ne peuvent pas
+        diverger, ils sortent du même calcul. C'est ce qui lie le run MLflow à sa
+        collection Qdrant, et lève l'opacité du hash en portant la `WorkflowConfig` en
+        clair. `noop` par défaut : aucun serveur requis, aucune dépendance ajoutée au
+        chemin critique.
         """
-        settings = get_infra_settings()
-        data_db = settings.mongodb_data_db_name
-        meta_db = settings.mongodb_meta_db_name
-        events_dir = Path(settings.meta_jsonl_dir) / "events"
-        context = self._context
-        assert context is not None  # posé en tête de before_pipeline_run
+        self._tracker = build_experiment_tracker(settings)
+        self._tracker.start_run(RunId(plan.collection), plan.workflow)
 
-        runtime_factory = AsyncioRuntimeFactory()
-        telemetry_factory = WorkerTelemetryFactory(
+    def _assemble(
+        self, settings: InfraSettings, plan: RunPlan, embedder: BaseEmbedder
+    ) -> dict[str, object]:
+        """Ouvre les dépôts, démarre la télémétrie et rend les entrées du catalogue.
+
+        Les dépôts du HOOK — posés sur SA boucle (self._runtime) — servent les nœuds de
+        maintenance (nukeAll, connect, computeIdempotence) et la phase 2, qui ne sont pas
+        parallélisés. Les WORKERS de la phase 1 fabriquent LES LEURS (``build_runner``) :
+        un dépôt Mongo est lié à la boucle qui l'a touché en premier, donc partager
+        ceux-ci avec les workers ferait revenir la globale ``_LOOP`` sous un autre nom
+        (§11).
+        """
+        clients = open_clients(settings)
+        ensure_indexes(clients, settings, self._runtime)
+        stores = open_document_stores(clients, settings, plan)
+        meta = open_meta_stores(clients, settings)
+        context, telemetry = self._start_run(settings, plan, meta)
+        stack = build_processing_stack(plan, Path(settings.xml_source_path), embedder)
+        return {
+            "connector": stack.connector,
+            "parser": stack.parser,
+            "manifest_repo": stores.manifest,
+            "doc_repo": stores.documents,
+            "graph_repo": stores.graph,
+            "vector_repo": stores.vectors,
+            # Le pool de la phase 1 : des FABRIQUES, pas des instances (§11).
+            "runner": build_runner(settings, plan, context, stack),
+            # La phase 2 : un service unique, sur la boucle DU HOOK (pas parallélisé).
+            "resolve_service": ResolveRelationsService(
+                graph_repo=stores.graph, pending_repo=meta.pending, telemetry=telemetry
+            ),
+            "pipeline_context": context,
+            "telemetry": telemetry,
+            # L'agrégat du run, injecté comme les autres objets. C'est le node `report`
+            # qui y POUSSE les stats des phases : le hook ne peut pas les tirer du
+            # catalogue après coup, Kedro y libère les MemoryDataset dès leur dernier
+            # lecteur (cf. `absorb`).
+            "run_stats_sink": self,
+            # Le runtime du hook, injecté aux nœuds non parallélisés (maintenance +
+            # phase 2) comme pont sync→async — l'équivalent déclaré de l'ancienne
+            # globale run_async.
+            "pipeline_runtime": self._runtime,
+        }
+
+    def _start_run(
+        self, settings: InfraSettings, plan: RunPlan, meta: MetaStores
+    ) -> tuple[PipelineContext, RegistryAwareTelemetry]:
+        """Ouvre le contexte du run, sa télémétrie, et le publieur qui tirera la
+        conséquence de son bilan."""
+        context = PipelineContext.create(
+            owner_id=plan.owner_id, source=plan.context_source
+        )
+        self._context = context
+        self._summary_repo = meta.summaries
+        self._publisher = CollectionPublisher(
+            meta.published, plan.collection, is_full_run=plan.is_full_run
+        )
+        self._telemetry = self._start_telemetry(
+            Path(settings.meta_jsonl_dir), context, meta
+        )
+        return context, self._telemetry
+
+    def _start_telemetry(
+        self, meta_root: Path, context: PipelineContext, meta: MetaStores
+    ) -> RegistryAwareTelemetry:
+        """Monte la pile de télémétrie du run et l'agrégat qui fera son bilan.
+
+        Le registre est construit depuis le catalogue Python — source de vérité unique.
+        """
+        self._stats_dir = meta_root / "stats"
+        self._stats_dir.mkdir(parents=True, exist_ok=True)
+        self._aggregator = RunStatsAggregator(
             run_id=context.run_id,
             owner_id=context.owner_id,
             source=context.source,
             started_at=context.started_at,
-            events_dir=events_dir,
-            audit_repo_factory=lambda runtime: MongoAuditRepository(
-                create_mongo_client(settings.mongodb_uri), meta_db
+        )
+        return assemble_telemetry(
+            TelemetryRegistry.from_catalog(EVENT_CATALOG),
+            jsonl=JsonlFileTelemetry(
+                events_dir=meta_root / "events",
+                run_id=context.run_id,
+                started_at=context.started_at,
             ),
+            mongo=MongoAuditTelemetryAdapter(meta.audit, self._runtime),
+            aggregate=self._aggregator,
         )
 
-        def use_case_factory(telemetry: WorkerTelemetry) -> IngestDocumentUseCase:
-            """Un use case PAR worker, sur des dépôts NEUFS et sa propre télémétrie.
-
-            Les clients sont recréés ici : un client Motor/Neo4j/Qdrant est lié à la
-            boucle du worker qui l'appelle en premier. Réutiliser ceux du hook les
-            lierait à la boucle du hook, et tous les workers échoueraient sauf un.
-            """
-            worker_mongo = create_mongo_client(settings.mongodb_uri)
-            worker_neo4j = create_neo4j_driver(
-                settings.neo4j_uri,
-                settings.neo4j_username,
-                settings.neo4j_password.get_secret_value(),
-            )
-            worker_qdrant = create_qdrant_client(
-                settings.qdrant_url,
-                settings.qdrant_api_key.get_secret_value()
-                if settings.qdrant_api_key
-                else None,
-            )
-            return IngestDocumentUseCase(
-                document_repo=MongoDocumentRepository(worker_mongo, data_db),
-                graph_repo=Neo4jGraphRepository(worker_neo4j, node_hydration),
-                vector_repo=QdrantVectorRepository(
-                    worker_qdrant, qdrant_collection, workflow.embedding.dimension
-                ),
-                manifest_repo=MongoManifestRepository(worker_mongo, data_db),
-                telemetry=telemetry,
-            )
-
-        workload = build_document_workload(
-            chunker=chunker,
-            embedder=embedder,  # type: ignore[arg-type]
-            extractor=extractor,
-            use_case_factory=use_case_factory,
-            context=context,
-            embedding_enabled=embedding_enabled,
-        )
-        return IngestionRunner(
-            workload=workload,
-            runtime_factory=runtime_factory,
-            telemetry_factory=telemetry_factory,
-            worker_count=_WORKER_COUNT,
-        )
+    def _require_started(self) -> tuple[PipelineContext, RegistryAwareTelemetry]:
+        """Le contexte et la télémétrie du run, posés par ``_start_run``."""
+        if self._context is None or self._telemetry is None:
+            msg = "Le run n'est pas démarré : `_start_run` n'a pas été appelé."
+            raise RuntimeError(msg)
+        return self._context, self._telemetry
 
     def absorb(self, stats: RunStats) -> None:
         """Reçoit l'agrégat d'une PHASE. **Sans ça, le bilan ment.**
@@ -553,7 +265,9 @@ class TelemetryHooks:
         **le `chunk_size` configuré n'est pas compatible avec la fenêtre du modèle**. Le
         run est sauvé ; la configuration, elle, est à corriger.
         """
-        truncations = getattr(self._embedder, "truncations", 0)
+        if not isinstance(self._embedder, ReportsTruncations):
+            return
+        truncations = self._embedder.truncations
         if not truncations or self._telemetry is None or self._context is None:
             return
         self._telemetry.emit(

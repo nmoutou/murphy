@@ -6,6 +6,39 @@ dans l'historique git : `git show 9c32a83^:docs/pilotage/corrections/`.
 
 ## Faites
 
+### 2026-09-27 — assemblage du run extrait du hook (chantier 1, lot 3)
+
+- **Fichiers** : nouveaux `orchestration/kedro/run_plan.py`, `stores.py`, `assembly.py`
+  (sous `data/src/ragcore/`) ; `orchestration/kedro/hooks.py` ; docstring de
+  `workload.py` ; nouveaux `tests/unit/orchestration/test_run_plan.py` et
+  `test_assembly.py` ; `docs/technical/data/reference/pipeline.md`.
+- **Catégorie** : structure / duplication / typage.
+- **Fait** :
+  - `run_plan.plan_run` rend un `RunPlan` figé (workflow, collection, sources, owner,
+    hydratation Neo4j, interrupteur d'embedding ; `is_full_run` et `context_source` en
+    propriétés) : ce que le hook dérivait en plusieurs endroits, dérivé une fois.
+  - `stores.open_clients` est la seule création des clients Mongo/Neo4j/Qdrant ; le hook
+    et chaque worker l'appellent (le code est partagé, pas les instances, §11). Les
+    dépôts sont regroupés en `DocumentStores` (ce que l'ingestion écrit, hook et
+    workers) et `MetaStores`.
+  - `assembly.prepare_embedder` : **une seule** branche `match` sur le provider (vérifier
+    puis construire), au lieu de deux. `build_processing_stack` et `build_runner`
+    (4 paramètres au lieu de 7, sans `noqa: PLR0913` ni `assert`).
+  - Embedder typé `BaseEmbedder` ; le `getattr(…, "truncations", 0)` devient un
+    `isinstance` sur le Protocol `ReportsTruncations` ; le `type: ignore[arg-type]` du
+    workload disparaît.
+  - `before_pipeline_run` : 180 lignes de code et un `noqa: PLR0915` → 5 méthodes de
+    moins de 30 lignes ; le catalogue est rempli par une boucle sur un dict.
+- **Effet de bord voulu** : une source inconnue (`--params source=cas`) échoue désormais
+  avant l'ouverture du tracker et des clients, et non après.
+- **Pourquoi** : `before_pipeline_run` enchaînait douze responsabilités ; la création des
+  clients et le choix de l'embedder étaient écrits deux fois.
+- **Vérification** : `ruff`, `ruff format --check`, `mypy` verts ; 325 tests réussis
+  (10 nouveaux, sans base ni réseau : le client Qdrant, qui interroge la version du
+  serveur dès sa construction, est remplacé) ; `deepcopy` des `HOOKS` et
+  `kedro registry list` OK. `hooks.py` : 736 → 450 lignes ; plus aucune fonction de plus
+  de 30 lignes dans `hooks.py`, `run_plan.py`, `stores.py`, `assembly.py`.
+
 ### 2026-09-27 — publication du pointeur extraite du hook (chantier 1, lot 2)
 
 - **Fichiers** : nouveau `application/publish_collection.py`, `orchestration/kedro/hooks.py`

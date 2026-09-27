@@ -74,7 +74,7 @@ def build_document_workload(  # noqa: PLR0913 — chaque argument est une pièce
     l'embedding n'écrit rien du tout. Le flag est hors du hash de collection (§6) : ne
     pas produire de vecteurs n'invalide aucun vecteur — c'est une décision de régime,
     pas de workflow. La garde ``ENVIRONMENT != dev ⇒ toujours embarquer`` vit dans le
-    hook (`_build_runner`), pas ici : ce booléen arrive déjà arbitré.
+    plan du run (`run_plan.plan_run`), pas ici : ce booléen arrive déjà arbitré.
     """
 
     # Le use case d'un worker, mémorisé. La fabrique crée TROIS clients (Mongo, Neo4j,
