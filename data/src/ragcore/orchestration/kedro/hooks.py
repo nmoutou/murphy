@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from kedro.framework.hooks import hook_impl
-from kedro.io import DataCatalog
+from kedro.io import DataCatalog, DatasetError
 
 from ragcore.adapters.config.settings import (
     get_embedding_runtime_settings,
@@ -167,22 +167,7 @@ class TelemetryHooks:
         settings = get_infra_settings()
         embedding_settings = get_embedding_runtime_settings()
 
-        # Charger les paramètres Kedro (parameters.yml). PAS de fallback silencieux
-        # vers `{}` : `_build_workflow_config({})` produirait la config par DÉFAUT
-        # (chunk_size=128…), donc un `collection_name` par défaut — et le run
-        # écrirait tout le corpus dans une collection nommée d'après une stratégie
-        # que l'utilisateur n'a pas choisie, en écrasant potentiellement l'A/B d'un
-        # autre run. Un config illisible n'est pas un run par défaut : c'est un run
-        # qu'on ARRÊTE, avec une erreur claire (fail-fast, cf. doctrine du projet).
-        try:
-            params = catalog.load("parameters")
-        except Exception as exc:
-            raise RuntimeError(
-                "Impossible de charger `parameters.yml` : le run est interrompu. "
-                "Continuer avec les défauts baptiserait la collection Qdrant d'après "
-                "une config que personne n'a choisie — une perte silencieuse de la "
-                "stratégie d'ingestion."
-            ) from exc
+        params = _load_parameters(catalog)
 
         # La config de workflow — LA référence (§9). `parameters.yml` n'est qu'une façon
         # de la peupler : c'est ici que Kedro cesse d'être la vérité et redevient un
@@ -815,6 +800,32 @@ class TelemetryHooks:
         self._track_and_close(summary)
 
         self._runtime.close()
+
+
+def _load_parameters(catalog: DataCatalog) -> dict[str, Any]:
+    """Charge ``parameters.yml`` depuis le catalogue — ou ARRÊTE le run.
+
+    PAS de fallback silencieux vers ``{}`` : ``_build_workflow_config({})`` produirait la
+    config par DÉFAUT (chunk_size=128…), donc un ``collection_name`` par défaut — et le
+    run écrirait tout le corpus dans une collection nommée d'après une stratégie que
+    l'utilisateur n'a pas choisie, en écrasant potentiellement l'A/B d'un autre run. Une
+    config illisible n'est pas un run par défaut : c'est un run qu'on ARRÊTE, avec une
+    erreur claire (fail-fast, cf. doctrine du projet).
+
+    Seule la ``DatasetError`` de Kedro (dont ``DatasetNotFoundError``) est traduite :
+    c'est ainsi que le catalogue signale un chargement raté. Toute autre exception est
+    un bug, et remonte telle quelle.
+    """
+    try:
+        params: dict[str, Any] = catalog.load("parameters")
+    except DatasetError as exc:
+        raise RuntimeError(
+            "Impossible de charger `parameters.yml` : le run est interrompu. "
+            "Continuer avec les défauts baptiserait la collection Qdrant d'après "
+            "une config que personne n'a choisie — une perte silencieuse de la "
+            "stratégie d'ingestion."
+        ) from exc
+    return params
 
 
 def _build_workflow_config(params: dict[str, Any]) -> WorkflowConfig:

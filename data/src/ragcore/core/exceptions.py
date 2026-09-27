@@ -41,5 +41,5 @@ class ParseError(RagCoreError):
 
 # ParseError et ValidationError sont sœurs, jamais l'une sous l'autre :
 # compute_idempotence discrimine `reason="validation_error"` de `reason="parse_error"`
-# par un `except ValidationError` placé avant le `except Exception`. Une relation
+# par un `except ValidationError` placé avant le `except ParseError`. Une relation
 # d'héritage entre elles rendrait l'une des deux branches inatteignable.

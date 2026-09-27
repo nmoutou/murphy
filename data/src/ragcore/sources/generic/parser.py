@@ -32,6 +32,8 @@ import re
 from collections.abc import Iterator, Sequence
 from typing import Any
 
+from pydantic import ValidationError as PydanticValidationError
+
 from ragcore.core.exceptions import ParseError, ValidationError
 from ragcore.core.links import HEURISTIC_KIND, VERSION_KIND
 from ragcore.core.models import ParsedDocument, RawDocument, SourceName
@@ -229,9 +231,7 @@ class GenericParser:
             raw_id = node["text"].strip()
             try:
                 return self._build_identifier(raw_id)
-            except ValidationError:
-                raise
-            except Exception as exc:
+            except PydanticValidationError as exc:
                 # Sans ce relais, la pydantic.ValidationError échapperait au
                 # `except ValidationError` des appelants et se ferait compter comme une
                 # erreur de parsing — un refus métier maquillé en panne de lecture.

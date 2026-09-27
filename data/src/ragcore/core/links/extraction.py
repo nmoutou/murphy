@@ -27,6 +27,8 @@ from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
+from pydantic import ValidationError as PydanticValidationError
+
 from ..models.citation import Citation
 from ..models.enums import SourceName
 from ..models.identifiers import OwnerId, SourceIdentifier
@@ -516,10 +518,11 @@ def _identifier(
         return None
     try:
         return table.identifier_for(raw_id)
-    except Exception:
+    except PydanticValidationError:
         # `@id` présent mais illisible : la source a écrit une référence qu'on ne sait
         # pas transformer. La taire ferait disparaître l'arête en silence ; on la
-        # DÉCLARE, pour que le bilan la porte et que la table apprenne.
+        # DÉCLARE, pour que le bilan la porte et que la table apprenne. Toute autre
+        # exception est un bug de la table, pas un défaut du corpus : elle remonte.
         declare_unknown(unknowns, CATEGORY_IDENTIFIER, raw_id)
         return None
 

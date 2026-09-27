@@ -6,6 +6,36 @@ dans l'historique git : `git show 9c32a83^:docs/pilotage/corrections/`.
 
 ## Faites
 
+### 2026-09-27 — `data/` : 4 `except Exception` restreints (chantier 2, lot 1)
+
+- **Fichiers** : `core/links/extraction.py`, `sources/generic/parser.py`,
+  `orchestration/kedro/hooks.py`, `orchestration/kedro/nodes/compute_idempotence.py`,
+  `core/exceptions.py` (commentaire) ; tests : `sources/legi/tests/test_relations.py`,
+  `sources/legi/tests/test_parser.py`, `tests/unit/core/test_exceptions.py`
+  (docstring), nouveaux `tests/unit/orchestration/test_load_parameters.py` et
+  `test_compute_idempotence.py` (chemins relatifs à `data/src/ragcore/`).
+- **Catégorie** : gestion d'erreurs.
+- **Fait** :
+  - `extraction._identifier` : `except pydantic.ValidationError`. Seul un id mal formé
+    est déclaré `identifiant` inconnu ; un bug de `identifier_for` remonte.
+  - `GenericParser._identifier` : `except PydanticValidationError` (import aliasé, le nom
+    est pris par l'erreur métier) relayé en `ValidationError` métier ; le
+    `except ValidationError: raise` devenu inutile disparaît. Un bug de la table devient
+    une `ParseError` via la frontière de `parse`, plus un refus métier.
+  - `hooks.py` : le chargement de `parameters.yml` passe dans `_load_parameters`, qui ne
+    traduit que la `DatasetError` de Kedro. Testable sans `.env.dev` ; prépare le
+    chantier 1.
+  - `compute_idempotence_node` : `except ParseError`, le contrat de `BaseParser`.
+    **Changement de comportement** : une exception hors contrat (le `ValueError` de
+    `RoutingParser` pour un document non routable) arrête le run au lieu d'exclure le
+    document en `parse_error`. C'est ce qu'annonçait la docstring de
+    `composite._unroutable` (« il faut le savoir tout de suite »).
+- **Pourquoi** : ces captures déguisaient des bugs en cas prévus (id illisible, refus
+  métier, config illisible, document illisible).
+- **Vérification** : 7 nouveaux tests, dont 4 qui échouaient avant le correctif
+  (vérifié). `ruff`, `ruff format --check`, `mypy` verts ; 313 tests réussis.
+  `ruff --select BLE` ne signale plus que les 4 frontières voulues.
+
 ### 2026-09-27 — `data/` vérifié en CI
 
 - **Fichiers** : `.github/workflows/ci.yml`, `CLAUDE.md`, `data/README.md`,

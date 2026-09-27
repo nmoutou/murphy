@@ -12,7 +12,7 @@ import logging
 from datetime import UTC, datetime
 
 from ragcore.application.run_context import PipelineContext
-from ragcore.core.exceptions import ValidationError
+from ragcore.core.exceptions import ParseError, ValidationError
 from ragcore.core.models.audit import build_event
 from ragcore.core.models.document import ParsedDocument, RawDocument
 from ragcore.core.models.enums import Operation
@@ -124,8 +124,10 @@ def compute_idempotence_node(  # noqa: PLR0913 — l'identité d'un nœud Kedro 
             )
             to_skip.append(raw.source_document_id)
             continue
-        except Exception as exc:  # noqa: BLE001
-            # Autre erreur de parsing
+        except ParseError as exc:
+            # Document illisible. Toute autre exception sort du contrat de BaseParser :
+            # c'est un bug du run (un document qu'aucun parser ne sait router), pas un
+            # document à exclure — elle remonte et arrête le run.
             logger.warning(
                 "Erreur parsing document %s — rejeté", raw.source_document_id
             )

@@ -1,5 +1,6 @@
 """Le parser : ce qu'il interprète, et ce qu'il refuse d'inventer."""
 
+from dataclasses import replace
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -317,6 +318,36 @@ def test_un_identifiant_mal_forme_leve_ValidationError() -> None:
 
     with pytest.raises(ValidationError, match="Identifiant invalide"):
         GenericParser(LEGI_ROLE_TABLE, _SN.LEGI).parse(
+            RawDocument(
+                source=SourceName.LEGI,
+                source_document_id="x",
+                payload={"content": [tree]},
+                fetched_at=datetime.now(UTC),
+                owner_id=OWNER,
+            )
+        )
+
+
+def test_un_BUG_de_la_table_d_identifiants_est_une_ParseError() -> None:
+    """Seul un identifiant mal formé (``pydantic.ValidationError``) est un refus métier.
+
+    Une autre exception levée par ``identifier_for`` est un bug, pas un document
+    irrecevable : elle traverse ``_identifier`` et la frontière de ``parse`` la range en
+    ``ParseError``, au lieu d'accuser le document d'un identifiant invalide.
+    """
+
+    def _buggy_identifier_for(raw_id: str) -> object:
+        raise RuntimeError(f"bug de table sur {raw_id}")
+
+    assert LEGI_ROLE_TABLE.links is not None
+    buggy_table = replace(
+        LEGI_ROLE_TABLE,
+        links=replace(LEGI_ROLE_TABLE.links, identifier_for=_buggy_identifier_for),
+    )
+    tree = to_tree(ET.fromstring("<ARTICLE><ID>LEGIARTI000000000001</ID></ARTICLE>"))
+
+    with pytest.raises(ParseError, match="bug de table"):
+        GenericParser(buggy_table, _SN.LEGI).parse(
             RawDocument(
                 source=SourceName.LEGI,
                 source_document_id="x",

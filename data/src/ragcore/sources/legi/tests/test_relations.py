@@ -5,10 +5,13 @@ tombaient dans un ``except ValueError: continue``. Ces tests sont ce qui empêch
 silence de revenir.
 """
 
+from dataclasses import replace
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 from xml.etree import ElementTree as ET
+
+import pytest
 
 from ragcore.core.links import (
     CITES,
@@ -334,6 +337,37 @@ def test_un_id_PRESENT_mais_illisible_est_DECLARE_pas_jete() -> None:
 
     assert result.relations == [], "l'arête n'est pas inventée : la cible est illisible"
     assert result.unknowns == {CATEGORY_IDENTIFIER: ["GARBAGE"]}
+
+
+def test_un_BUG_de_la_table_d_identifiants_n_est_pas_un_id_illisible() -> None:
+    """Seule la ``pydantic.ValidationError`` d'un identifiant mal formé fait un inconnu.
+
+    Une autre exception levée par ``identifier_for`` est un bug de la table : la
+    déclarer en ``identifiant`` la ferait passer pour un défaut du corpus, et le bilan
+    accuserait la source d'une faute du code.
+    """
+
+    def _buggy_identifier_for(raw_id: str) -> ELI:
+        raise RuntimeError(f"bug de table sur {raw_id}")
+
+    assert LEGI_ROLE_TABLE.links is not None
+    buggy_table = replace(
+        LEGI_ROLE_TABLE,
+        links=replace(LEGI_ROLE_TABLE.links, identifier_for=_buggy_identifier_for),
+    )
+    document = _document_with_references(
+        [
+            {
+                "kind": "LIEN",
+                "id": "LEGIARTI000000000002",
+                "typelien": "CITATION",
+                "sens": "source",
+            }
+        ]
+    )
+
+    with pytest.raises(RuntimeError, match="bug de table"):
+        GenericRelationExtractor(buggy_table, SourceName.LEGI).extract(document)
 
 
 def test_une_mort_nee_saccroche_en_branche_LATERALE_hors_chaine() -> None:
