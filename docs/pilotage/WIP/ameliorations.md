@@ -6,6 +6,33 @@ dans l'historique git : `git show 9c32a83^:docs/pilotage/corrections/`.
 
 ## Faites
 
+### 2026-09-27 — l'état du run dans une `RunSession` (chantier 1, lot 5)
+
+- **Fichiers** : nouveau `orchestration/kedro/run_session.py`, `orchestration/kedro/hooks.py`
+  (sous `data/src/ragcore/`) ; nouveau `tests/unit/orchestration/test_run_session.py` ;
+  trois docstrings qui citaient `hooks.py` (`adapters/config/settings.py`,
+  `test_ports_conformance.py`, `test_run_summary.py`) ;
+  `docs/technical/data/reference/pipeline.md`, `docs/pilotage/WIP/chantiers.md`.
+- **Catégorie** : structure / typage.
+- **Fait** : `RunSession`, dataclass figée sans champ optionnel (contexte, télémétrie,
+  agrégat, dossier des stats, dépôt des bilans, publieur, tracker, embedder, runtime),
+  porte `emit_lifecycle_event` et `close(status)` (raccourcis → drain → bilan →
+  publication si `ok` → tracker). Le hook ne garde que son runtime et
+  `_session: RunSession | None` : ses sept attributs optionnels et leurs vérifications
+  `is None` disparaissent ; sans session (assemblage raté), la fin de run ne fait que
+  fermer le runtime.
+- **Effet de bord voulu** : le run de tracking s'ouvre avec la session, après la
+  vérification du modèle servi par TEI et la création des index. Un TEI qui ne sert pas
+  le bon modèle n'ouvre donc plus de run MLflow que rien ne refermerait.
+- **Pourquoi** : `hooks.py` restait à 393 lignes après le lot 4, dont l'essentiel en état
+  du run et vérifications de `None`.
+- **Vérification** : `ruff`, `ruff format --check`, `mypy` verts ; 329 tests réussis
+  (5 nouveaux sur la clôture : run complet persisté/publié/tracé, run cassé non publié,
+  audit perdu au drain ⇒ `degraded` et pas de publication, raccourcis déclarés sur un
+  run cassé, tracker refermé même si `log_summary` échoue) ; `deepcopy` des `HOOKS` et
+  `kedro registry list` OK. `hooks.py` : 393 → 210 lignes ; `run_session.py` : 227.
+  Chantier 1 terminé.
+
 ### 2026-09-27 — cycle de vie du hook dédoublonné (chantier 1, lot 4)
 
 - **Fichiers** : `orchestration/kedro/hooks.py`, `orchestration/kedro/nodes/report.py`

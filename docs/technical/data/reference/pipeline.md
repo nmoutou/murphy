@@ -5,7 +5,8 @@ Référence exhaustive du pipeline d'ingestion. Le DAG vit dans
 `src/ragcore/orchestration/kedro/nodes/`, le câblage dans
 `src/ragcore/orchestration/kedro/hooks.py`, qui délègue à `run_parameters.py` (lecture des
 paramètres), `run_plan.py` (le plan du run), `stores.py` (clients et dépôts) et
-`assembly.py` (embedder, briques, pool de la phase 1).
+`assembly.py` (embedder, briques, pool de la phase 1) et `run_session.py` (l'état du
+run et sa clôture).
 
 ## Avant le premier nœud : `TelemetryHooks.before_pipeline_run`
 
@@ -28,31 +29,31 @@ Le hook est le **point d'assemblage** du run. Dans l'ordre :
    - les arbitrages dev/prod : `run_parameters.resolve_embedding_enabled` (ADR-023 — le
      flag YAML n'a d'effet qu'en `dev`) et `run_parameters.resolve_node_hydration`
      (ADR-022 — nœuds Neo4j maigres hors `dev`).
-4. **Ouverture du run de tracking** (`noop` par défaut, MLflow en option) — le run-id
-   MLflow **est** le nom de collection : les deux sortent du même calcul et ne peuvent
-   pas diverger.
-5. **L'embedder** (`assembly.prepare_embedder`), une seule branche sur le provider :
+4. **L'embedder** (`assembly.prepare_embedder`), une seule branche sur le provider :
    - `openai` : précondition TEI d'abord. `assert_service_serves_model` interroge
      `GET /info` du service et compare au modèle du workflow. TEI ignore le champ `model`
      des requêtes ; sans cette vérification, une divergence conteneur/YAML écrirait les
      vecteurs d'un modèle dans la collection nommée d'après un autre — en silence ;
    - `noop` : avertissement (vecteurs NULS écrits dans la collection du vrai modèle) ;
    - `local` : `LocalEmbedder`, qui charge le modèle au premier usage.
-6. **Clients, index et dépôts du hook** (`stores.open_clients`, `ensure_indexes`,
+5. **Clients, index et dépôts du hook** (`stores.open_clients`, `ensure_indexes`,
    `open_document_stores`, `open_meta_stores`) : `ensure_data_indexes` (LEGIFRANCE) et
    `ensure_meta_indexes` (MURPHY_META).
-7. **Le run démarre** : le `PipelineContext` (run_id uuid4-hex, owner_id, source —
-   `None` si multi-source, started_at), la pile de télémétrie (registre construit depuis
-   `EVENT_CATALOG`, backends JSONL `data/08_reporting/events/`, audit Mongo, agrégateur
-   `RunStats`) et le `CollectionPublisher` qui publiera en fin de run.
-8. **Briques de traitement** (`assembly.build_processing_stack`) : `CompositeConnector`
+6. **La session du run** (`run_session.RunSession`) : le `PipelineContext` (run_id
+   uuid4-hex, owner_id, source — `None` si multi-source, started_at), la pile de
+   télémétrie (registre construit depuis `EVENT_CATALOG`, backends JSONL
+   `data/08_reporting/events/`, audit Mongo, agrégateur `RunStats`), le
+   `CollectionPublisher` qui publiera en fin de run, et le run de tracking (`noop` par
+   défaut, MLflow en option) — dont le run-id **est** le nom de collection : les deux
+   sortent du même calcul et ne peuvent pas diverger.
+7. **Briques de traitement** (`assembly.build_processing_stack`) : `CompositeConnector`
    (un connecteur par source, routé), `RoutingParser` (un `GenericParser` par source,
    chacun avec sa table de rôles), `StructuralChunker` (size/overlap du workflow),
    `RoutingRelationExtractor`, et l'embedder.
-9. **Pool phase 1** (`assembly.build_runner`) : un `IngestionRunner` à 4 workers, armé de
+8. **Pool phase 1** (`assembly.build_runner`) : un `IngestionRunner` à 4 workers, armé de
    *fabriques* (runtime, télémétrie, use case) — jamais d'instances partagées.
-10. **Service phase 2** : `ResolveRelationsService` (dépôts du hook, non parallélisé).
-11. Tout est posé au catalogue (`catalog.save(...)`), l'événement `pipeline.run.started`
+9. **Service phase 2** : `ResolveRelationsService` (dépôts du hook, non parallélisé).
+10. Tout est posé au catalogue (`catalog.save(...)`), l'événement `pipeline.run.started`
     est émis.
 
 Pourquoi des fabriques : un client Motor/Neo4j/Qdrant est lié à la boucle asyncio qui le
@@ -227,7 +228,8 @@ remontent pas — le run est `failed` (vrai), mais son bilan est pauvre.
 
 ## Après le dernier nœud : `after_pipeline_run` / `on_pipeline_error`
 
-Chemin nominal (`after_pipeline_run`), dans l'ordre — et l'ordre est l'enjeu :
+Les deux chemins passent par `RunSession.close(status)` (`run_session.py`). Chemin
+nominal (`after_pipeline_run`), dans l'ordre — et l'ordre est l'enjeu :
 
 1. `pipeline.run.completed` émis.
 2. **Déclaration des troncatures** : le compteur `truncations` de l'embedder (chunks
@@ -236,7 +238,7 @@ Chemin nominal (`after_pipeline_run`), dans l'ordre — et l'ordre est l'enjeu :
 3. **Drain avant bilan** : les écritures d'audit encore en vol sont attendues ; celles qui
    ont échoué entrent dans l'agrégat (`audit.write.failed`). Un bilan persisté avant de le
    savoir déclarerait `ok` un run dont il ne peut plus prouver la complétude.
-4. **Persistance du bilan** (`_persist_run_summary("ok")`) : le statut annoncé est
+4. **Persistance du bilan** (statut demandé : `ok`) : le statut annoncé est
    **re-dérivé des compteurs** (`RunSummary.of` → `_status_from`) — voir
    [telemetrie.md](telemetrie.md#le-statut-dun-run). Écrit en JSON
    (`data/08_reporting/stats/`) et upsert Mongo (`meta_run_summaries`).
@@ -246,8 +248,10 @@ Chemin nominal (`after_pipeline_run`), dans l'ordre — et l'ordre est l'enjeu :
 6. **Tracking** : le bilan part au tracker (MLflow le cas échéant), et le run d'expérience
    est fermé — `end_run` en `finally`, pour qu'un backend injoignable ne laisse pas un run
    MLflow ouvert que le lancement suivant polluerait.
-7. `runtime.close()`.
+7. Le hook ferme son runtime.
 
-Chemin d'erreur (`on_pipeline_error`) : `pipeline.run.failed` émis, puis les **mêmes
-étapes 2-3** (les troncatures et le drain valent aussi sur un run cassé), bilan persisté
-en `failed` (avec le message d'erreur), tracking fermé, runtime fermé.
+Chemin d'erreur (`on_pipeline_error`) : `pipeline.run.failed` émis, puis la **même
+clôture** (les troncatures et le drain valent aussi sur un run cassé), bilan persisté en
+`failed` (avec le message d'erreur), **sans publication**, tracking fermé, runtime fermé.
+Si l'assemblage a échoué avant que la session existe, le hook ne fait que fermer son
+runtime.

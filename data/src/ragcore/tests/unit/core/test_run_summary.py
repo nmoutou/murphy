@@ -65,7 +65,7 @@ def test_status_accepts_the_literals_the_hooks_pass(
 
 
 def test_summary_is_json_serializable() -> None:
-    """hooks.py écrit summary.model_dump(mode="json") dans un fichier."""
+    """RunSession écrit summary.model_dump(mode="json") dans un fichier."""
     summary = RunSummary.of(
         RunStats(unknowns={"relation_type": ["titre_tm", "lien_art"]}),
         context_run_id=RUN,

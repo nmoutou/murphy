@@ -7,7 +7,7 @@ depuis un conteneur, passe de 4 à 8 workers : les vecteurs produits sont identi
 et ils doivent atterrir dans la **même** collection. C'est tout le point de la
 scission — voir ``core/config/fingerprint.py``.
 
-La forme de ces modèles est **dictée par ses appelants**. ``hooks.py`` appelle
+La forme de ces modèles est **dictée par ses appelants**. ``orchestration/kedro/stores.py`` appelle
 ``.get_secret_value()`` sur le mot de passe Neo4j et la clé Qdrant : ce sont donc des
 ``SecretStr``, et le typage l'impose au lieu de l'espérer. Un secret qui traîne en
 ``str`` finit dans un log le jour où quelqu'un journalise l'objet entier.

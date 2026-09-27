@@ -22,66 +22,32 @@ sont brutes.
 - **Pourquoi d'abord** : les chantiers 1 à 3 refactorent `data/`. Sans ce filet, une
   régression passerait inaperçue jusqu'au prochain `kedro run`.
 
-## 1. Découper `hooks.py`
+## 1. Découper `hooks.py` — fait (2026-09-27)
 
-`data/src/ragcore/orchestration/kedro/hooks.py` : **949 lignes** (568 de code), trois
-fois la limite.
+`data/src/ragcore/orchestration/kedro/hooks.py` faisait **960 lignes**, avec un
+`before_pipeline_run` de 182 lignes de code (`noqa: PLR0915`), un `_build_runner` qui
+recopiait la création des clients, deux branches sur le fournisseur d'embedding, un
+embedder typé `object`, et des tests qui écrivaient ses attributs privés.
 
-### Constat
-
-- `TelemetryHooks.before_pipeline_run` fait **182 lignes de code**. Il enchaîne au moins
-  douze responsabilités : charger `parameters.yml`, dériver la collection, ouvrir le
-  tracker, vérifier que TEI sert le bon modèle, créer les clients Mongo / Neo4j / Qdrant,
-  poser les index, instancier six dépôts, résoudre les sources et le contexte, monter la
-  pile de télémétrie, assembler connecteur / parser / chunker / extracteur, choisir
-  l'embedder, construire le runner et le service de résolution, puis faire douze
-  `catalog.save`. Un `# noqa: PLR0915` le justifie comme « pur câblage ».
-- `_build_runner` fait 63 lignes et recrée, pour chaque worker, les mêmes trois clients
-  que `before_pipeline_run`, avec le même code.
-- **Le choix de l'embedder est écrit deux fois** : une première branche sur
-  `embedding_settings.provider` pour vérifier le modèle servi (l. 223-230), une seconde
-  pour instancier l'embedder (l. 393-398).
-- **Un trou de typage** : `self._embedder: object | None`, puis `getattr(self._embedder,
-  "truncations", 0)`. Le port `core/ports/embedder.py` existe mais n'est pas utilisé.
-- La classe mêle trois domaines : l'assemblage du run, le cycle de vie du run (bilan,
-  drain, tracker) et la **publication du pointeur de collection** (ADR-039), qui est une
-  règle métier.
-- Les tests sont couplés aux attributs privés : `test_publish_condition.py` et
-  `test_summary_absorbs_workers.py` écrivent directement `hooks._published_repo`,
-  `hooks._qdrant_collection`, `hooks._is_full_run` et `hooks._aggregator`.
-
-### Découpage proposé
-
-| Nouveau module (`orchestration/kedro/`) | Contenu | Origine |
+| Module (`orchestration/kedro/` sauf mention) | Contenu | Lot |
 |---|---|---|
-| `run_parameters.py` | `build_workflow_config`, `resolve_embedding_enabled`, `resolve_node_hydration`, `resolve_sources` : fonctions pures sur `params` | l. 820-949 |
-| `assembly.py` | La racine de composition : `build_embedder` (une seule branche sur le fournisseur), `build_stores` (clients + dépôts, réutilisé par les workers), `build_source_stack`, `build_runner`. Rend une dataclass figée `IngestionAssembly` dont les champs sont les entrées du catalogue | `before_pipeline_run`, `_build_runner` |
-| `publication.py` | `publish_if_complete(...)` : la condition de publication (statut `ok` + `may_publish`) comme fonction, testable sans instancier les hooks | `_publish_collection`, `_contract_allows_publication` |
-| `hooks.py` | Le cycle de vie Kedro seul : `before_pipeline_run` appelle `assembly` puis sauve dans le catalogue ; `after_pipeline_run` / `on_pipeline_error` ; `absorb`, drain, bilan, tracker | ce qui reste |
+| `run_parameters.py` | Lecture de `parameters.yml` et des `--params` : fonctions pures | 1 (`b099369`) |
+| `application/publish_collection.py` | `CollectionPublisher` : la règle de publication (ADR-039), hors de Kedro | 2 (`433ec2c`) |
+| `run_plan.py` | `RunPlan` figé : ce que le run écrit, dérivé une fois | 3 (`ccc0681`) |
+| `stores.py` | `open_clients` (seule création des clients, hook et workers), dépôts | 3 |
+| `assembly.py` | `prepare_embedder` (une branche), `build_processing_stack`, `build_runner` | 3 |
+| `hooks.py` | Émission et clôture dédoublonnées ; l'agrégateur devient le `run_stats_sink` | 4 (`4256e41`) |
+| `run_session.py` | `RunSession` : l'état du run sans `None`, `emit_lifecycle_event`, `close` | 5 |
 
-### Lots
+Résultat : `hooks.py` fait 210 lignes (cycle de vie Kedro seul, deux attributs), aucun
+module du dossier ne dépasse 300 lignes, aucune de leurs fonctions ne dépasse
+30 lignes de code (hors `pipeline.py` et `workload.py`, chantier 3), et plus aucun
+`noqa` ni `type: ignore` dans les modules du hook (reste le `noqa: PLR0913` de
+`build_document_workload`, chantier 3). Les tests ne touchent plus
+d'attribut privé du hook. Détail par lot dans `ameliorations.md`.
 
-1. Extraire `run_parameters.py` (déplacement pur ; mettre à jour les imports de
-   `test_resolve_sources.py` et `golden/test_fingerprint.py`).
-2. Extraire `publication.py` et réécrire `test_publish_condition.py` contre la fonction
-   plutôt que contre les attributs privés.
-3. Extraire `assembly.py` : dédoublonner le choix de l'embedder et la création des
-   clients, typer l'embedder par son port, retirer le `noqa: PLR0915`.
-4. Relire `hooks.py` restant, qui devrait passer sous 300 lignes, et
-   `test_summary_absorbs_workers.py`.
-
-### Points d'attention
-
-- `settings.py` instancie `TelemetryHooks()` à l'import et Kedro le `deepcopy`. Rien
-  d'allouant ne doit remonter dans `__init__`. La docstring de `_runtime` explique le
-  piège.
-- Les longs commentaires de justification (fail-fast, ADR-039, mesures de perf de
-  `_WORKER_COUNT`) suivent le code qu'ils justifient. On ne les supprime pas.
-- **Vérification** : `pytest` unitaire, puis un `kedro run --params source=cass` sur la
-  stack `ingest`, pour comparer le bilan (statut, compteurs, collection publiée) avant et
-  après.
-- **Taille** : 4 lots, environ 8 fichiers. Le plan détaillé du lot 3 est à valider avant
-  de le lancer.
+**Reste à faire, à la main** : un `kedro run --params source=cass` sur la stack `ingest`,
+comparé à un bilan d'avant le chantier (statut, compteurs, collection publiée).
 
 ## 2. `except Exception` dans `data/` — fait (2026-09-27)
 
@@ -223,7 +189,7 @@ lots de tests.
 
 1. ~~Prérequis : `data/` en CI.~~ Fait.
 2. ~~Chantier 2 : `except` (petit, et active `BLE` avant les refactors).~~ Fait.
-3. Chantier 1 : `hooks.py`.
+3. ~~Chantier 1 : `hooks.py`.~~ Fait.
 4. Chantier 3 : fonctions longues de `data/`.
 5. Chantier 4 : backend / frontend. Indépendant des autres, il peut passer avant.
 6. Chantier 5 : tests du frontend, après le lot 2 du chantier 4.

@@ -120,7 +120,7 @@ class TestStorageAdapters:
 
 
 class TestEmbedders:
-    """Les trois providers sur lesquels ``hooks.py`` branche."""
+    """Les trois providers sur lesquels ``assembly.prepare_embedder`` branche."""
 
     def test_noop_embedder(self) -> None:
         assert isinstance(NoopEmbedder(dimension=768), BaseEmbedder)
