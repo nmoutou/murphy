@@ -17,6 +17,7 @@ from .extraction import (
     STILLBORN_SUFFIX,
     VERSION_KIND,
     ExtractedLinks,
+    LinkSubject,
     LinkTable,
     extract_links,
 )
@@ -49,6 +50,7 @@ __all__ = [
     "SUCCEEDED_BY",
     "VERSION_KIND",
     "ExtractedLinks",
+    "LinkSubject",
     "LinkTable",
     "RelationVerb",
     "TranslationTable",

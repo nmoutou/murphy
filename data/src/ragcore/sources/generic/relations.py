@@ -10,14 +10,15 @@ extracteur.
 
 **Pourquoi il existe encore, alors qu'il ne fait presque rien.** Le port
 ``BaseRelationExtractor`` (``extract(document) -> ExtractionResult``) est ce que le worker
-appelle. ``core/links.extract_links`` a une signature plus riche (elle prend la table, le
-propriétaire, la source). Ce module est l'adaptateur entre les deux — et c'est un rôle
-réel : il évite que le worker ait à connaître la table de la source qu'il traite.
+appelle. ``core/links.extract_links`` a une signature plus riche (elle prend la table et
+le sujet : document, propriétaire, source). Ce module est l'adaptateur entre les deux — et
+c'est un rôle réel : il évite que le worker ait à connaître la table de la source qu'il
+traite.
 """
 
 from __future__ import annotations
 
-from ragcore.core.links import extract_links
+from ragcore.core.links import LinkSubject, extract_links
 from ragcore.core.models import ParsedDocument, SourceName
 from ragcore.core.ports.relation_extractor import ExtractionResult
 
@@ -49,9 +50,11 @@ class GenericRelationExtractor:
             references=document.structure.get("references", []),
             ancestors=document.structure.get("context", []),
             table=links,
-            current=document.identifier,
-            owner_id=document.owner_id,
-            source=self._source,
+            subject=LinkSubject(
+                current=document.identifier,
+                owner_id=document.owner_id,
+                source=self._source,
+            ),
         )
         return ExtractionResult(
             relations=extracted.relations,

@@ -12,7 +12,7 @@ from pathlib import Path
 
 import pytest
 
-from ragcore.core.links import CITES, extract_links
+from ragcore.core.links import CITES, LinkSubject, extract_links
 from ragcore.core.models.enums import SourceName
 from ragcore.core.models.identifiers import DecisionId, OwnerId
 from ragcore.sources.generic import GenericParser
@@ -64,9 +64,9 @@ def test_une_citation_decrite_devient_un_CHAMP_jamais_une_arete() -> None:
         references=document.structure["references"],
         ancestors=document.structure["context"],
         table=JURI_LINK_TABLE,
-        current=document.identifier,
-        owner_id=OWNER,
-        source=SourceName.CASS,
+        subject=LinkSubject(
+            current=document.identifier, owner_id=OWNER, source=SourceName.CASS
+        ),
     )
 
     assert not links.relations, (

@@ -6,6 +6,33 @@ dans l'historique git : `git show 9c32a83^:docs/pilotage/corrections/`.
 
 ## Faites
 
+### 2026-09-27 — `core/links/extraction.py` découpé (chantier 3, lot 2)
+
+- **Fichiers** : `core/links/extraction.py`, nouveaux `core/links/versions.py`,
+  `subject.py`, `table.py`, `citations.py`, `core/links/__init__.py` (sous
+  `data/src/ragcore/`) ; `sources/generic/relations.py` ;
+  `sources/juri/tests/test_juri.py`.
+- **Catégorie** : taille de fichier et de fonctions / nombre de paramètres.
+- **Fait** :
+  - `versions.py` : la chaîne temporelle (`version_chain`, ex-`_version_chain` de
+    67 lignes, découpée en `_living_sorted`, `_neighbour_edges`, `_stillborn_branches`,
+    `_edge_if_stillborn`), avec `VERSION_KIND` et `STILLBORN_SUFFIX` (toujours exportés
+    par `core.links`).
+  - `subject.py` : `LinkSubject` (ex-`_Subject`, désormais public) porte la seule
+    fabrique de `Relation` (`relation(source, target, verb, metadata)`, ex-`_relation`
+    à 5 paramètres).
+  - `extraction.py` : un `_Extraction(table, subject, unknowns)` porte `identifier`,
+    `from_reference` (ex-43 lignes et `noqa: PLR0911`, découpé en `_heuristic` et
+    `_typed`) et `from_ancestor`. `extract_links(references, ancestors, table, subject)`
+    passe de 6 paramètres (`noqa: PLR0913`) à 4.
+  - `table.py` (`LinkTable`) et `citations.py` (`citation_from`) sortent pour ramener
+    `extraction.py` de 544 à 300 lignes.
+- **Pourquoi** : le plus gros fichier de `data/` et deux des fonctions les plus longues.
+- **Vérification** : `ruff`, `ruff format --check`, `mypy` verts ; 329 tests réussis,
+  dont les golden sur le corpus de fixtures (`test_legi_corpus`, `test_relations`) :
+  mêmes arêtes, mêmes inconnus, mêmes citations. Plus aucune fonction de plus de
+  30 lignes dans `core/links/`.
+
 ### 2026-09-27 — `application/` : fonctions longues découpées (chantier 3, lot 1)
 
 - **Fichiers** : `application/saga.py`, `ingest_document.py`, `resolve_relations.py`,
