@@ -10,6 +10,7 @@ après que tous les nœuds du run existent (ResolveRelationsService). Cette atte
 n'est pas un ``join()`` caché dans du code applicatif : c'est une arête du DAG.
 """
 
+from dataclasses import dataclass
 from datetime import UTC, datetime
 
 from ragcore.core.models import (
@@ -36,19 +37,26 @@ from .saga import SagaExecutor, SagaStep
 TARGETS_WRITTEN = ["mongo", "qdrant", "neo4j:node"]
 
 
+@dataclass(frozen=True)
+class IngestionStores:
+    """Les quatre dépôts qu'écrit l'ingestion d'un document — typés par leurs ports.
+
+    Le hook en ouvre un jeu (maintenance, phase 2) et chaque worker de la phase 1 le sien
+    (§11) : ``orchestration/kedro/stores.open_document_stores`` les fabrique.
+    """
+
+    documents: DocumentRepository
+    manifest: ManifestRepository
+    graph: GraphRepository
+    vectors: VectorRepository
+
+
 class IngestDocumentUseCase:
-    def __init__(
-        self,
-        document_repo: DocumentRepository,
-        graph_repo: GraphRepository,
-        vector_repo: VectorRepository,
-        manifest_repo: ManifestRepository,
-        telemetry: TelemetryPort,
-    ) -> None:
-        self._document_repo = document_repo
-        self._graph_repo = graph_repo
-        self._vector_repo = vector_repo
-        self._manifest_repo = manifest_repo
+    def __init__(self, stores: IngestionStores, telemetry: TelemetryPort) -> None:
+        self._document_repo = stores.documents
+        self._graph_repo = stores.graph
+        self._vector_repo = stores.vectors
+        self._manifest_repo = stores.manifest
         self._telemetry = telemetry
 
     async def execute(
@@ -58,27 +66,37 @@ class IngestDocumentUseCase:
         operation: Operation,
         context: PipelineContext,
     ) -> None:
-        saga = SagaExecutor(self._telemetry)
+        # La saga peut lever — le manifest n'est alors PAS écrit.
+        await SagaExecutor(self._telemetry).execute(
+            self._saga_steps(parsed, embedded_chunks), context
+        )
+        await self._record(parsed, operation, context)
 
-        # Compensation Mongo et le « trou » de l'UPDATE — la vérité, écrite ici.
-        # Le forward Mongo (`document_repo.upsert`) remplace en place ATOMIQUEMENT
-        # (`replace_one upsert=True`) : il ne détruit plus rien de lui-même, donc il n'y a
-        # plus de fenêtre à vide créée par notre propre code. La compensation
-        # `document_repo.delete` est le rollback JUSTE d'un INSERT (rien avant → supprimer).
-        # Sur un UPDATE, elle supprime au lieu de restaurer l'ancien — mais ce chemin n'est
-        # atteint que si un step ULTÉRIEUR (Qdrant, Neo4j) échoue, et il ne survient jamais
-        # après un `nuke_all` (manifest effacé → tout est INSERT). Ce résiduel n'existe donc
-        # que sur le run INCRÉMENTAL — un chemin v1 — et retombe sur l'at-least-once (§13) :
-        # le run suivant re-traite le document (le manifest ne l'a pas enregistré). Le vrai
-        # rollback versionné (snapshoter l'ancien pour le réinsérer) est un choix EXPLICITE
-        # de v1 : il paie un store de versions et une compensation qui peut elle-même
-        # échouer, pour fermer un trou qu'aucun run v0 n'emprunte.
-        #
-        # Neo4j en dernier : c'est le store le moins librement compensable (ses arêtes
-        # entrantes viennent d'autres documents). En position terminale, sa compensation
-        # n'est appelée que si LUI échoue — mais elle existe désormais (§8) : conditionnelle
-        # (DETACH DELETE si orphelin, dé-hydratation en `:Pending` si cité), plus un `_noop`.
-        steps = [
+    def _saga_steps(
+        self, parsed: ParsedDocument, embedded_chunks: list[EmbeddedChunk]
+    ) -> list[SagaStep]:
+        """Mongo → Qdrant → nœud Neo4j, chacun avec sa compensation.
+
+        Compensation Mongo et le « trou » de l'UPDATE — la vérité, écrite ici.
+        Le forward Mongo (`document_repo.upsert`) remplace en place ATOMIQUEMENT
+        (`replace_one upsert=True`) : il ne détruit plus rien de lui-même, donc il n'y a
+        plus de fenêtre à vide créée par notre propre code. La compensation
+        `document_repo.delete` est le rollback JUSTE d'un INSERT (rien avant → supprimer).
+        Sur un UPDATE, elle supprime au lieu de restaurer l'ancien — mais ce chemin n'est
+        atteint que si un step ULTÉRIEUR (Qdrant, Neo4j) échoue, et il ne survient jamais
+        après un `nuke_all` (manifest effacé → tout est INSERT). Ce résiduel n'existe donc
+        que sur le run INCRÉMENTAL — un chemin v1 — et retombe sur l'at-least-once (§13) :
+        le run suivant re-traite le document (le manifest ne l'a pas enregistré). Le vrai
+        rollback versionné (snapshoter l'ancien pour le réinsérer) est un choix EXPLICITE
+        de v1 : il paie un store de versions et une compensation qui peut elle-même
+        échouer, pour fermer un trou qu'aucun run v0 n'emprunte.
+
+        Neo4j en dernier : c'est le store le moins librement compensable (ses arêtes
+        entrantes viennent d'autres documents). En position terminale, sa compensation
+        n'est appelée que si LUI échoue — mais elle existe désormais (§8) : conditionnelle
+        (DETACH DELETE si orphelin, dé-hydratation en `:Pending` si cité), plus un `_noop`.
+        """
+        return [
             SagaStep(
                 name="mongo_upsert",
                 forward=lambda: self._document_repo.upsert(parsed),
@@ -107,11 +125,11 @@ class IngestDocumentUseCase:
             ),
         ]
 
-        # La saga peut lever — le manifest n'est alors PAS écrit.
-        await saga.execute(steps, context)
-
-        # Manifest uniquement après succès total. Append-only : on ajoute, jamais
-        # on ne met à jour.
+    async def _record(
+        self, parsed: ParsedDocument, operation: Operation, context: PipelineContext
+    ) -> None:
+        """Manifest uniquement après succès total. Append-only : on ajoute, jamais on
+        ne met à jour."""
         await self._manifest_repo.append(
             ManifestEntry(
                 identifier=parsed.identifier,
@@ -123,7 +141,6 @@ class IngestDocumentUseCase:
                 processed_at=datetime.now(UTC),
             )
         )
-
         self._telemetry.emit(
             build_event(
                 event_type=DOCUMENT_PERSISTED,

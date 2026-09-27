@@ -35,11 +35,11 @@ from ragcore.adapters.storage.neo4j.client import create_neo4j_driver
 from ragcore.adapters.storage.neo4j.graph_repository import Neo4jGraphRepository
 from ragcore.adapters.storage.qdrant.client import create_qdrant_client
 from ragcore.adapters.storage.qdrant.vector_repository import QdrantVectorRepository
+from ragcore.application.ingest_document import IngestionStores
 from ragcore.core.ports.runtime import AsyncRuntime
 from ragcore.orchestration.kedro.run_plan import RunPlan
 
 __all__ = [
-    "DocumentStores",
     "InfraClients",
     "MetaStores",
     "ensure_indexes",
@@ -54,17 +54,6 @@ class InfraClients:
     mongo: MongoClient
     neo4j: neo4j.AsyncDriver
     qdrant: AsyncQdrantClient
-
-
-@dataclass(frozen=True)
-class DocumentStores:
-    """Ce que l'ingestion écrit : le hook en a un jeu (maintenance, phase 2), chaque
-    worker de la phase 1 le sien."""
-
-    documents: MongoDocumentRepository
-    manifest: MongoManifestRepository
-    graph: Neo4jGraphRepository
-    vectors: QdrantVectorRepository
 
 
 @dataclass(frozen=True)
@@ -103,10 +92,13 @@ def ensure_indexes(
 
 def open_document_stores(
     clients: InfraClients, settings: InfraSettings, plan: RunPlan
-) -> DocumentStores:
-    """Les dépôts que l'ingestion écrit, sur la collection et l'hydratation du plan."""
+) -> IngestionStores:
+    """Les dépôts que l'ingestion écrit, sur la collection et l'hydratation du plan.
+
+    Le hook en ouvre un jeu (maintenance, phase 2), chaque worker de la phase 1 le sien.
+    """
     data_db = settings.mongodb_data_db_name
-    return DocumentStores(
+    return IngestionStores(
         documents=MongoDocumentRepository(clients.mongo, data_db),
         manifest=MongoManifestRepository(clients.mongo, data_db),
         graph=Neo4jGraphRepository(clients.neo4j, plan.node_hydration),

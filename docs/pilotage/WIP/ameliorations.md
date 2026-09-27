@@ -6,6 +6,28 @@ dans l'historique git : `git show 9c32a83^:docs/pilotage/corrections/`.
 
 ## Faites
 
+### 2026-09-27 — `application/` : fonctions longues découpées (chantier 3, lot 1)
+
+- **Fichiers** : `application/saga.py`, `ingest_document.py`, `resolve_relations.py`,
+  `ingestion_runner.py`, `orchestration/kedro/stores.py`, `assembly.py` (sous
+  `data/src/ragcore/`) ; tests `test_ingest_document.py`, `test_workload.py`.
+- **Catégorie** : taille des fonctions / nombre de paramètres.
+- **Fait** :
+  - `SagaExecutor.execute` (65 lignes) → `_announce`, `_compensate_all`,
+    `_compensate_one`, `_report` ; l'exception d'origine est relancée par un `raise` nu.
+  - `IngestDocumentUseCase.execute` (55) → `_saga_steps` (qui garde le commentaire sur
+    le trou de l'UPDATE, en docstring) et `_record`. `__init__` passe de 5 à 2
+    paramètres : `IngestionStores` (4 dépôts typés par leurs ports) remplace aussi
+    `orchestration/kedro/stores.DocumentStores`, son jumeau concret.
+  - `ResolveRelationsService.execute` (42) et `_promote` (36) → `_record_pending`,
+    `_announce_written`, `_emit_promoted`.
+  - `IngestionRunner._run_shard` (40, trois niveaux d'imbrication) → `_process`,
+    `_declare_failure`, `_close_worker` (avec son commentaire d'ordre) ; un
+    `_ShardResult` remplace le tuple à 4 éléments.
+- **Pourquoi** : 4 des 20 fonctions de plus de 30 lignes de `data/`.
+- **Vérification** : `ruff`, `ruff format --check`, `mypy` verts ; 329 tests réussis ;
+  plus aucune fonction de plus de 30 lignes dans `application/`.
+
 ### 2026-09-27 — l'état du run dans une `RunSession` (chantier 1, lot 5)
 
 - **Fichiers** : nouveau `orchestration/kedro/run_session.py`, `orchestration/kedro/hooks.py`

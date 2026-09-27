@@ -84,30 +84,12 @@ class ResolveRelationsService:
         result = await self._graph_repo.upsert_relations(relations, context.run_id)
 
         # 2. Les trous sont une donnée : ils vont au cache, et on le DIT.
+        await self._record_pending(result.pending, context)
         if result.pending:
-            await self._pending_repo.upsert_many(
-                [
-                    PendingRelation.from_relation(relation, context.run_id)
-                    for relation in result.pending
-                ]
-            )
-            for relation in result.pending:
-                self._emit_relation(RELATION_PENDING, relation, context)
-                stats = stats.with_count(RELATION_PENDING)
+            stats = stats.with_count(RELATION_PENDING, len(result.pending))
 
         if result.written:
-            # `count` porte enfin les arêtes RÉUSSIES. Il portait auparavant les
-            # relations tentées : un MATCH raté n'émettait rien, et la relation
-            # disparaissait sans laisser de trace dans les compteurs.
-            self._telemetry.emit(
-                build_event(
-                    event_type=RELATION_UPSERTED,
-                    run_id=context.run_id,
-                    owner_id=context.owner_id,
-                    source=context.source,
-                    payload={"count": len(result.written)},
-                )
-            )
+            self._announce_written(result.written, context)
             stats = stats.with_count(RELATION_UPSERTED)
 
         # 3. Rejeu ciblé : on ne retente QUE les pendantes dont la cible vient
@@ -153,21 +135,57 @@ class ResolveRelationsService:
 
         await self._pending_repo.delete_many([c.key for c in promoted])
         for candidate in promoted:
-            self._telemetry.emit(
-                build_event(
-                    event_type=RELATION_PROMOTED,
-                    run_id=context.run_id,
-                    owner_id=candidate.owner_id,
-                    source=candidate.source,
-                    document_id=candidate.source_id,
-                    payload={
-                        "target_id": candidate.target_id,
-                        "relation_type": candidate.relation_type,
-                        "first_seen_run": candidate.first_seen_run,
-                    },
-                )
-            )
+            self._emit_promoted(candidate, context)
         return len(promoted)
+
+    async def _record_pending(
+        self, pending: list[Relation], context: PipelineContext
+    ) -> None:
+        """Les arêtes différées vont au registre des pendantes, chacune DÉCLARÉE."""
+        if not pending:
+            return
+        await self._pending_repo.upsert_many(
+            [
+                PendingRelation.from_relation(relation, context.run_id)
+                for relation in pending
+            ]
+        )
+        for relation in pending:
+            self._emit_relation(RELATION_PENDING, relation, context)
+
+    def _announce_written(
+        self, written: list[Relation], context: PipelineContext
+    ) -> None:
+        """`count` porte les arêtes RÉUSSIES. Il portait auparavant les relations
+        tentées : un MATCH raté n'émettait rien, et la relation disparaissait sans
+        laisser de trace dans les compteurs."""
+        self._telemetry.emit(
+            build_event(
+                event_type=RELATION_UPSERTED,
+                run_id=context.run_id,
+                owner_id=context.owner_id,
+                source=context.source,
+                payload={"count": len(written)},
+            )
+        )
+
+    def _emit_promoted(
+        self, candidate: PendingRelation, context: PipelineContext
+    ) -> None:
+        self._telemetry.emit(
+            build_event(
+                event_type=RELATION_PROMOTED,
+                run_id=context.run_id,
+                owner_id=candidate.owner_id,
+                source=candidate.source,
+                document_id=candidate.source_id,
+                payload={
+                    "target_id": candidate.target_id,
+                    "relation_type": candidate.relation_type,
+                    "first_seen_run": candidate.first_seen_run,
+                },
+            )
+        )
 
     def _emit_relation(
         self, event_type: str, relation: Relation, context: PipelineContext

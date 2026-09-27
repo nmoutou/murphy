@@ -17,7 +17,10 @@ Deux propriétés se prouvent ici, et aucune autre ne comptait autant dans les l
 
 from __future__ import annotations
 
-from ragcore.application.ingest_document import IngestDocumentUseCase
+from ragcore.application.ingest_document import (
+    IngestDocumentUseCase,
+    IngestionStores,
+)
 from ragcore.application.run_context import PipelineContext
 from ragcore.core.links import CITES
 from ragcore.core.models.chunk import Chunk, EmbeddedChunk
@@ -120,11 +123,13 @@ def _use_case_factory(
 
     def factory(telemetry) -> IngestDocumentUseCase:  # noqa: ANN001
         return IngestDocumentUseCase(
-            document_repo=InMemoryDocumentRepository(),
-            graph_repo=graph,
-            vector_repo=vectors,
-            manifest_repo=InMemoryManifestRepository(),
-            telemetry=telemetry,
+            IngestionStores(
+                documents=InMemoryDocumentRepository(),
+                manifest=InMemoryManifestRepository(),
+                graph=graph,
+                vectors=vectors,
+            ),
+            telemetry,
         )
 
     return factory

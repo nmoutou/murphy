@@ -237,13 +237,7 @@ def _use_case_factory(settings: InfraSettings, plan: RunPlan) -> UseCaseFactory:
         à la boucle du hook, et tous les workers échoueraient sauf un.
         """
         stores = open_document_stores(open_clients(settings), settings, plan)
-        return IngestDocumentUseCase(
-            document_repo=stores.documents,
-            graph_repo=stores.graph,
-            vector_repo=stores.vectors,
-            manifest_repo=stores.manifest,
-            telemetry=telemetry,
-        )
+        return IngestDocumentUseCase(stores, telemetry)
 
     return use_case_factory
 

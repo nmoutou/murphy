@@ -11,7 +11,7 @@ from datetime import UTC, datetime
 
 import pytest
 
-from ragcore.application.ingest_document import IngestDocumentUseCase
+from ragcore.application.ingest_document import IngestDocumentUseCase, IngestionStores
 from ragcore.application.run_context import PipelineContext
 from ragcore.core.models.document import ParsedDocument
 from ragcore.core.models.enums import Operation, SourceName
@@ -57,6 +57,18 @@ def stores() -> dict:
     }
 
 
+def _use_case(stores: dict) -> IngestDocumentUseCase:
+    return IngestDocumentUseCase(
+        IngestionStores(
+            documents=stores["document_repo"],
+            manifest=stores["manifest_repo"],
+            graph=stores["graph_repo"],
+            vectors=stores["vector_repo"],
+        ),
+        stores["telemetry"],
+    )
+
+
 @pytest.fixture
 def context() -> PipelineContext:
     return PipelineContext.create(owner_id=OWNER, source=SourceName.LEGI)
@@ -64,7 +76,7 @@ def context() -> PipelineContext:
 
 async def test_phase_one_writes_the_node_and_never_an_edge(stores, context) -> None:  # noqa: ANN001
     """Le retrait qui définit le lot 2 : plus une seule arête dans cette saga."""
-    use_case = IngestDocumentUseCase(**stores)
+    use_case = _use_case(stores)
 
     await use_case.execute(_doc(), [], Operation.INSERT, context)
 
@@ -76,7 +88,7 @@ async def test_phase_one_writes_the_node_and_never_an_edge(stores, context) -> N
 
 async def test_the_manifest_records_a_node_not_a_full_graph(stores, context) -> None:  # noqa: ANN001
     """``neo4j:node``, pas ``neo4j`` : le manifest ne doit pas promettre les arêtes."""
-    use_case = IngestDocumentUseCase(**stores)
+    use_case = _use_case(stores)
 
     await use_case.execute(_doc(), [], Operation.INSERT, context)
 
@@ -93,7 +105,7 @@ async def test_a_failed_saga_leaves_no_manifest_entry(stores, context) -> None: 
         raise RuntimeError("qdrant est tombé")
 
     stores["vector_repo"].upsert = boom
-    use_case = IngestDocumentUseCase(**stores)
+    use_case = _use_case(stores)
 
     with pytest.raises(RuntimeError, match="qdrant est tombé"):
         await use_case.execute(_doc(), [], Operation.INSERT, context)
@@ -109,7 +121,7 @@ async def test_a_failed_saga_compensates_what_it_had_written(stores, context) ->
         raise RuntimeError("qdrant est tombé")
 
     stores["vector_repo"].upsert = boom
-    use_case = IngestDocumentUseCase(**stores)
+    use_case = _use_case(stores)
 
     with pytest.raises(RuntimeError):
         await use_case.execute(_doc(), [], Operation.INSERT, context)
@@ -134,7 +146,7 @@ async def test_a_failed_compensation_is_counted_and_told_truthfully(
 
     stores["vector_repo"].upsert = boom  # déclenche la compensation
     stores["document_repo"].delete = boom_rollback  # …dont le rollback rate
-    use_case = IngestDocumentUseCase(**stores)
+    use_case = _use_case(stores)
 
     with pytest.raises(RuntimeError, match="qdrant est tombé"):
         await use_case.execute(_doc(), [], Operation.INSERT, context)
@@ -164,7 +176,7 @@ async def test_an_update_replaces_in_place_without_a_preceding_delete(
     ne se remplit que par une compensation, qui n'a pas lieu ici). Le document neuf est
     en place, seul sous son identifiant.
     """
-    use_case = IngestDocumentUseCase(**stores)
+    use_case = _use_case(stores)
 
     await use_case.execute(_doc(), [], Operation.UPDATE, context)
 
@@ -180,7 +192,7 @@ async def test_the_node_survives_a_later_failure(stores, context) -> None:  # no
     nœud n'a jamais à être compensé — ce qui préserve les arêtes entrantes que
     d'autres documents ont écrites vers lui.
     """
-    use_case = IngestDocumentUseCase(**stores)
+    use_case = _use_case(stores)
 
     async def boom(*args, **kwargs):  # noqa: ANN002, ANN003, ANN202
         raise RuntimeError("manifest indisponible")

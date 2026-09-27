@@ -71,6 +71,16 @@ class IngestionOutcome:
     Un document perdu n'arrête pas le corpus ; il n'est pas perdu en silence."""
 
 
+@dataclass
+class _ShardResult:
+    """Ce qu'UN worker rapporte de son lot de documents."""
+
+    relations: list[Relation] = field(default_factory=list)
+    written_node_ids: set[str] = field(default_factory=set)
+    failures: list[tuple[str, str]] = field(default_factory=list)
+    stats: RunStats = field(default_factory=RunStats.empty)
+
+
 class IngestionRunner:
     def __init__(
         self,
@@ -102,19 +112,13 @@ class IngestionRunner:
                 )
             )
 
-        relations: list[Relation] = []
-        written_node_ids: set[str] = set()
-        failures: list[tuple[str, str]] = []
-        for shard_relations, shard_nodes, shard_failures, _ in results:
-            relations.extend(shard_relations)
-            written_node_ids |= shard_nodes
-            failures.extend(shard_failures)
-
         return IngestionOutcome(
-            stats=RunStats.reduce(shard_stats for *_, shard_stats in results),
-            relations=relations,
-            written_node_ids=written_node_ids,
-            failures=failures,
+            stats=RunStats.reduce(shard.stats for shard in results),
+            relations=[r for shard in results for r in shard.relations],
+            written_node_ids=set().union(
+                *(shard.written_node_ids for shard in results)
+            ),
+            failures=[f for shard in results for f in shard.failures],
         )
 
     def _run_shard(
@@ -122,68 +126,36 @@ class IngestionRunner:
         worker_id: int,
         shard: list[tuple[ParsedDocument, Operation]],
         context: PipelineContext,
-    ) -> tuple[list[Relation], set[str], list[tuple[str, str]], RunStats]:
+    ) -> _ShardResult:
         """Le travail d'UN worker : sa boucle, ses backends, son agrégat."""
         runtime = self._runtime_factory.build(worker_id)
         telemetry = self._telemetry_factory.build(worker_id, runtime)
-
-        relations: list[Relation] = []
-        written_node_ids: set[str] = set()
-        failures: list[tuple[str, str]] = []
-
         try:
-            for parsed, operation in shard:
-                identifier = parsed.identifier.serialize()
-                try:
-                    result = self._workload(parsed, operation, runtime, telemetry)
-                except Exception as exc:  # noqa: BLE001 — le document est perdu, pas le run : l'échec est compté par document
-                    # Le document est perdu, pas le run. Mais il doit être COMPTÉ : cet
-                    # échec partait auparavant en `telemetry.log()`, donc en console
-                    # seulement — jamais dans l'agrégat. Résultat : le RunSummary
-                    # annonçait « ok » sur un run qui avait perdu 98 documents.
-                    #
-                    # La `reason` est le TYPE de l'exception, pas son message : le message
-                    # porte des identifiants et des chiffres, il ferait exploser le
-                    # breakdown en autant de clés que d'échecs. Le type, lui, regroupe —
-                    # et c'est ce qu'on veut lire : « 98 fuites, toutes sur le même mur ».
-                    telemetry.emit(
-                        build_event(
-                            event_type=DOCUMENT_FAILED,
-                            run_id=context.run_id,
-                            owner_id=context.owner_id,
-                            source=parsed.source,
-                            document_id=identifier,
-                            payload={"reason": type(exc).__name__, "error": str(exc)},
-                            success=False,
-                            error_message=str(exc),
-                        )
-                    )
-                    failures.append((identifier, str(exc)))
-                    continue
-                relations.extend(result.relations)
-                written_node_ids.add(identifier)
+            result = self._process(shard, runtime, telemetry, context)
         finally:
-            # L'ordre est un invariant, pas une préférence :
-            #
-            #   1. `drain()` — attend les écritures d'audit en vol ET dit combien ont
-            #      levé. Avant, ce compte était jeté : une écriture ratée en contexte
-            #      async ne produisait rien, pas même un log.
-            #   2. `record_audit_failure` — le compte entre dans l'agrégat, donc dans
-            #      le `snapshot()` rendu ligne suivante, donc dans le bilan du run.
-            #      Il DOIT passer avant `telemetry.close()` : après, la pile est morte.
-            #   3. `telemetry.close()` — vide les backends (le JSONL sur disque).
-            #   4. `runtime.close()` — ferme la boucle, qui n'a plus rien à porter.
-            #
-            # Drainer après avoir fermé la télémétrie « marcherait » (l'agrégat vit en
-            # mémoire, son close() ne fait rien) — mais ce serait s'appuyer sur un
-            # détail d'implémentation pour un invariant de correction.
-            report = runtime.drain()
-            if report.failed:
-                telemetry.record_audit_failure("drain", report.failed)
-            telemetry.close()
-            runtime.close()
+            _close_worker(runtime, telemetry)
+        result.stats = telemetry.snapshot()
+        return result
 
-        return relations, written_node_ids, failures, telemetry.snapshot()
+    def _process(
+        self,
+        shard: list[tuple[ParsedDocument, Operation]],
+        runtime: AsyncRuntime,
+        telemetry: WorkerTelemetry,
+        context: PipelineContext,
+    ) -> _ShardResult:
+        result = _ShardResult()
+        for parsed, operation in shard:
+            identifier = parsed.identifier.serialize()
+            try:
+                outcome = self._workload(parsed, operation, runtime, telemetry)
+            except Exception as exc:  # noqa: BLE001 — le document est perdu, pas le run : l'échec est compté par document
+                _declare_failure(telemetry, parsed, exc, context)
+                result.failures.append((identifier, str(exc)))
+                continue
+            result.relations.extend(outcome.relations)
+            result.written_node_ids.add(identifier)
+        return result
 
     @staticmethod
     def partition(
@@ -209,3 +181,57 @@ class IngestionRunner:
 def _shard_of(identifier: str, worker_count: int) -> int:
     digest = blake2b(identifier.encode("utf-8"), digest_size=8).digest()
     return int.from_bytes(digest, "big") % worker_count
+
+
+def _declare_failure(
+    telemetry: WorkerTelemetry,
+    parsed: ParsedDocument,
+    exc: Exception,
+    context: PipelineContext,
+) -> None:
+    """Le document est perdu, pas le run. Mais il doit être COMPTÉ.
+
+    Cet échec partait auparavant en `telemetry.log()`, donc en console seulement —
+    jamais dans l'agrégat. Résultat : le RunSummary annonçait « ok » sur un run qui avait
+    perdu 98 documents.
+
+    La `reason` est le TYPE de l'exception, pas son message : le message porte des
+    identifiants et des chiffres, il ferait exploser le breakdown en autant de clés que
+    d'échecs. Le type, lui, regroupe — et c'est ce qu'on veut lire : « 98 fuites, toutes
+    sur le même mur ».
+    """
+    telemetry.emit(
+        build_event(
+            event_type=DOCUMENT_FAILED,
+            run_id=context.run_id,
+            owner_id=context.owner_id,
+            source=parsed.source,
+            document_id=parsed.identifier.serialize(),
+            payload={"reason": type(exc).__name__, "error": str(exc)},
+            success=False,
+            error_message=str(exc),
+        )
+    )
+
+
+def _close_worker(runtime: AsyncRuntime, telemetry: WorkerTelemetry) -> None:
+    """Ferme un worker. L'ordre est un invariant, pas une préférence :
+
+    1. `drain()` — attend les écritures d'audit en vol ET dit combien ont levé. Avant,
+       ce compte était jeté : une écriture ratée en contexte async ne produisait rien,
+       pas même un log.
+    2. `record_audit_failure` — le compte entre dans l'agrégat, donc dans le
+       `snapshot()` que le worker rend ensuite, donc dans le bilan du run. Il DOIT
+       passer avant `telemetry.close()` : après, la pile est morte.
+    3. `telemetry.close()` — vide les backends (le JSONL sur disque).
+    4. `runtime.close()` — ferme la boucle, qui n'a plus rien à porter.
+
+    Drainer après avoir fermé la télémétrie « marcherait » (l'agrégat vit en mémoire,
+    son close() ne fait rien) — mais ce serait s'appuyer sur un détail d'implémentation
+    pour un invariant de correction.
+    """
+    report = runtime.drain()
+    if report.failed:
+        telemetry.record_audit_failure("drain", report.failed)
+    telemetry.close()
+    runtime.close()
