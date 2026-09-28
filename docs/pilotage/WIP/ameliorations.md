@@ -6,6 +6,24 @@ dans l'historique git : `git show 9c32a83^:docs/pilotage/corrections/`.
 
 ## Faites
 
+### 2026-09-28 — composants du frontend sous 30 lignes (chantier 4, lot 2)
+
+- **Fichiers** : `frontend/src/components/ChatBox.tsx`, `frontend/src/hooks/useChatInput.ts`
+  (nouveau), `frontend/src/components/ui/Modal.tsx`, `frontend/src/components/MainPanel.tsx` ;
+  `docs/technical/frontend/ARCHITECTURE.md`.
+- **Catégorie** : lisibilité (taille des fonctions).
+- **Fait** :
+  - `ChatBox` (53 → 23 lignes) : la saisie et la soumission passent dans
+    `useChatInput` ; les boutons deviennent deux petits composants du même fichier,
+    `ChatBoxAttach` (pièce jointe, inerte pendant un stream) et `ChatBoxAction`
+    (Annuler pendant un stream, Envoyer sinon) ;
+  - `Modal` (38) : l'ouverture et la fermeture du `<dialog>` et la touche Échap passent
+    dans un hook local `useModalDialog`, gardé dans `Modal.tsx` (un seul utilisateur) ;
+  - `MainPanel` (31) : le `ChatBox` est construit une fois (`isDocked={hasMessages}`) au
+    lieu d'être écrit deux fois ; le `useCallback` autour de `sendMessage` est retiré
+    (`ChatBox` n'est pas mémoïsé).
+- **Comportement** : même DOM, mêmes classes, mêmes libellés. `npm run check` vert.
+
 ### 2026-09-28 — validation complète des messages de chat, sans `as` (chantier 4, lot 1)
 
 - **Fichiers** : `backend/src/validation/chatRequest.ts`, `backend/src/routes/chat.ts`,

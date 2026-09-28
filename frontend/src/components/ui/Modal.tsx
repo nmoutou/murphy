@@ -15,9 +15,9 @@ interface ModalProps {
  * A dialog over the page, whose background is greyed and inert (ADR-041). Mounted means
  * open: the parent decides when to show it, and hears Escape through `onClose`.
  */
-export default function Modal({ title, titleIcon, onClose, children }: ModalProps) {
+/** Opens the native dialog on mount, closes it on unmount, and routes Escape to `onClose` */
+function useModalDialog(onClose: () => void) {
   const dialogRef = useRef<HTMLDialogElement>(null);
-  const titleId = useId();
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -29,6 +29,13 @@ export default function Modal({ title, titleIcon, onClose, children }: ModalProp
     event.preventDefault();
     onClose();
   };
+
+  return { dialogRef, handleCancel };
+}
+
+export default function Modal({ title, titleIcon, onClose, children }: ModalProps) {
+  const { dialogRef, handleCancel } = useModalDialog(onClose);
+  const titleId = useId();
 
   return (
     <dialog

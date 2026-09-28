@@ -63,7 +63,8 @@ l'arrivée.
 ```
 src/
 ├── app/                    # App Router : layout.tsx, page.tsx, error.tsx (Error Boundary)
-├── hooks/useRagChat.ts     # l'état du chat, l'erreur à afficher
+├── hooks/                  # useRagChat.ts (l'état du chat, l'erreur à afficher),
+│                           # useChatInput.ts (la question en cours de saisie)
 ├── lib/                    # webSocketChatTransport.ts, chatSocketUrl.ts (adresse du
 │                           # WebSocket), chatErrorStage.ts, messageText.ts
 ├── components/
@@ -86,4 +87,4 @@ src/
 - **Icônes** : `Icon` et `AnimatedIcon` sont décoratives (`alt=""`). Un bouton-icône
   porte son nom accessible (`ButtonIcon`, prop `label` → `aria-label`).
 - **Saisie** : le `ChatBox` est un `<form>`. « Entrée » soumet depuis le champ, et une
-  question vide n'est pas envoyée.
+  question vide n'est pas envoyée (`hooks/useChatInput.ts`).
