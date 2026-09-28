@@ -6,6 +6,29 @@ dans l'historique git : `git show 9c32a83^:docs/pilotage/corrections/`.
 
 ## Faites
 
+### 2026-09-28 — verrou ESLint sur la taille et la forme du code (chantier 4, lot 3)
+
+- **Fichiers** : `backend/eslint.config.mjs`, `frontend/eslint.config.mjs` ;
+  `backend/src/utils/httpStatus.ts` (nouveau) et ses utilisateurs (`app.ts`,
+  `middleware/errorHandler.ts`, `requestLogger.ts`, `security.ts`,
+  `streamRateLimiter.ts`, `routes/chat.ts`, `routes/health.ts`) ; frontend
+  `SourceItem.tsx`, `Logo.tsx`, `ChatLayout.tsx` ; `CLAUDE.md`, READMEs du backend et du
+  frontend, `chantiers.md`.
+- **Catégorie** : outillage.
+- **Fait** :
+  - règles ajoutées aux deux configs : `max-lines` 300 (200 pour les `.tsx` du
+    frontend), `max-lines-per-function` 30 (hors lignes vides et commentaires),
+    `max-depth` 3, `max-params` 4, `complexity` 10, `no-magic-numbers` (sauf 0, 1, -1,
+    index de tableau et valeurs par défaut). Les tests sont exemptés de la longueur de
+    fonction et des nombres magiques ;
+  - les codes HTTP, redéfinis dans cinq fichiers (`HTTP_TOO_MANY_REQUESTS` deux fois,
+    `INTERNAL_ERROR_STATUS` et `HTTP_SERVER_ERROR` pour le même 500), sont nommés une fois
+    dans `HTTP_STATUS` ;
+  - frontend : `PERCENT` (et le calcul du score sorti du JSX), `EXCHANGE_LENGTH` (une
+    question et sa réponse), les proportions du logo.
+- **Vérification** : `npm run check` vert. Un fichier d'essai (fonction de 34 lignes,
+  fonction à 5 paramètres, nombre `42`) est refusé par les deux lints, puis supprimé.
+
 ### 2026-09-28 — composants du frontend sous 30 lignes (chantier 4, lot 2)
 
 - **Fichiers** : `frontend/src/components/ChatBox.tsx`, `frontend/src/hooks/useChatInput.ts`

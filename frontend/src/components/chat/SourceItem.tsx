@@ -2,11 +2,15 @@
 
 import type { DocumentChunk } from '@murphy/contract/messages';
 
+const PERCENT = 100;
+
 interface SourceItemProps {
   chunk: DocumentChunk;
 }
 
 export default function SourceItem({ chunk }: SourceItemProps) {
+  const scorePercent = `${(chunk.score * PERCENT).toFixed(0)}%`;
+
   return (
     <div className="source-item">
       <div className="flex justify-between gap-2">
@@ -15,9 +19,7 @@ export default function SourceItem({ chunk }: SourceItemProps) {
           <div className="text-xs opacity-70">{chunk.chunkId}</div>
           {chunk.type && <div className="text-xs opacity-60">{chunk.type}</div>}
         </div>
-        <div className="font-semibold whitespace-nowrap">
-          {`${(chunk.score * 100).toFixed(0)}%`}
-        </div>
+        <div className="font-semibold whitespace-nowrap">{scorePercent}</div>
       </div>
     </div>
   );

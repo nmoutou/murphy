@@ -86,7 +86,7 @@ du seuil de complexité (`parser._references`, C901 = 12) et 14 fonctions à plu
 | 3 | `3f73b5a` | `sources/generic/` : `tree.py`, `structure.py`, `unconfigured.py` ; `_chunk` via `_Span` |
 | 4 | `e688090` | adaptateurs : `neo4j/node_properties.py`, index Mongo déclaratifs, `OpenAIEmbedder(EmbeddingConfig, EmbeddingTransport)` |
 | 5 | `01b0c67` | `orchestration/kedro/` : nœuds, pipeline (une fonction par nœud), `WorkloadSteps`, `served_model.py` |
-| 6 | — | verrou ruff : `C901` (complexité ≤ 10), `max-args = 4` |
+| 6 | `5c03fd5` | verrou ruff : `C901` (complexité ≤ 10), `max-args = 4` |
 
 **Résultat** : 0 fonction de plus de 30 lignes, 0 fichier de plus de 300 lignes,
 0 fonction au-dessus de la complexité 10 dans `data/src` hors tests. Ruff refuse
@@ -103,41 +103,37 @@ du 2026-09-27) : elle reste une convention du CLAUDE.md, à remesurer à chaque 
 **Reste à faire, à la main** : un `kedro run --params source=cass` comparé à un bilan
 d'avant les chantiers 1 et 3 (statut, compteurs, nombre d'arêtes).
 
-## 4. Backend et frontend : derniers écarts, puis verrou ESLint
+## 4. Backend et frontend : derniers écarts, puis verrou ESLint — fait (2026-09-28)
 
-### Constat
+Relevé de départ, mesuré avec ESLint : aucun écart de taille dans le backend ; une
+assertion `as AppUIMessage[]` à la frontière (`validation/chatRequest.ts`), qui ne
+vérifiait que le rôle et les `parts` ; trois composants du frontend au-delà de 30 lignes
+(`ChatBox` 53, `Modal` 38, `MainPanel` 31) ; 10 nombres magiques (6 codes HTTP dans le
+backend, 4 dans le frontend). Aucune de ces règles n'était outillée.
 
-Le premier relevé était trop pessimiste. Les « 2 `any` et 3 `as` » étaient presque tous
-des mots dans des commentaires. Mesure par le compilateur TypeScript :
+| Lot | Commit | Périmètre |
+|---|---|---|
+| 1 | `83b5c5c` | `parseChatRequest` via `safeValidateUIMessages` (schémas `data-*` et métadonnées du contrat), sans `as` |
+| 2 | `f8210ad` | `ChatBox` (`useChatInput`, `ChatBoxAttach`, `ChatBoxAction`), `Modal` (`useModalDialog`), `MainPanel` |
+| 3 | — | verrou ESLint dans les deux projets ; `backend/src/utils/httpStatus.ts` ; nombres nommés du frontend |
 
-- **Backend** : aucune fonction au-delà de 30 lignes, aucune imbrication au-delà de 3
-  niveaux, aucun fichier au-delà de 300 lignes (le plus long est `config.ts`, 232).
-- **Une seule assertion `as`** : `backend/src/validation/chatRequest.ts:51`
-  (`checkedMessages as AppUIMessage[]`). Seuls le rôle et les `parts` sont vérifiés ; le
-  reste de la forme du message est supposé.
-- **Frontend** : trois composants dépassent 30 lignes, `ChatBox` (53), `Modal` (38) et
-  `MainPanel` (31). Aucun ne dépasse 200 lignes.
-- **Aucune de ces règles n'est outillée** : les configs ESLint (`backend/`, `frontend/`)
-  n'activent ni `max-lines`, ni `max-lines-per-function`, ni `max-depth`, ni
-  `max-params`, ni `no-magic-numbers`. La conformité actuelle ne tient qu'à la vigilance.
+**Résultat** : les deux configs ESLint refusent désormais un fichier de plus de
+300 lignes (200 pour un `.tsx`), une fonction de plus de 30 lignes (hors lignes vides et
+commentaires), une imbrication au-delà de 3, plus de 4 paramètres, une complexité
+au-delà de 10 et les nombres magiques. Les tests sont exemptés de la longueur de fonction
+(un `describe` est une liste de cas) et des nombres magiques. `npm run check`, donc la
+CI, applique ces règles.
 
-### Lots
+Deux pièges de l'AI SDK relevés au lot 1 : le schéma de métadonnées s'applique aussi aux
+messages `user` (qui n'en ont pas : le backend le rend `.optional()`), et le message
+d'une `TypeValidationError` recopie toute la valeur reçue (les erreurs sont reconstruites
+depuis les issues zod).
 
-1. **Supprimer le `as`** : valider les messages avec `safeValidateUIMessages` de l'AI
-   SDK (v6, déjà installé), en lui passant les `dataPartSchemas` et le
-   `messageMetadataSchema` de `@murphy/contract/messages`. La validation à la frontière
-   devient complète, sans assertion. Point d'attention : la fonction est asynchrone, donc
-   `parseChatRequest` et ses deux appelants (HTTP, WebSocket) changent de signature.
-2. **Découper `ChatBox`** : sortir la logique du formulaire dans un hook et ne garder que
-   le JSX. Relire `Modal` et `MainPanel`, où quelques lignes de plus en JSX peuvent être
-   acceptables.
-3. **Verrouiller** : ajouter aux deux configs ESLint `max-lines` (300 ; 200 pour les
-   `.tsx`), `max-lines-per-function` (30, sans lignes vides ni commentaires),
-   `max-depth` (3) et `max-params` (4). Les tests peuvent en être exemptés. Pour
-   `no-magic-numbers`, mesurer d'abord : si le bruit est trop fort, garder le relevé
-   manuel.
-
-**Taille** : 3 lots, environ 8 fichiers.
+**Reste à faire, à la main** :
+- sur la stack `serve`, deux questions de suite : la seconde renvoie la première réponse
+  et ses sources, qui doivent passer la validation ;
+- à l'écran, vérifier que rien n'a bougé : accueil puis champ ancré en bas, Entrée,
+  champ vide, Annuler pendant le stream, modale d'erreur fermée par Échap ou « Fermer ».
 
 ## 5. Tests du frontend
 
@@ -177,5 +173,5 @@ lots de tests.
 2. ~~Chantier 2 : `except` (petit, et active `BLE` avant les refactors).~~ Fait.
 3. ~~Chantier 1 : `hooks.py`.~~ Fait.
 4. ~~Chantier 3 : fonctions longues de `data/`.~~ Fait.
-5. Chantier 4 : backend / frontend. Indépendant des autres, il peut passer avant.
+5. ~~Chantier 4 : backend / frontend.~~ Fait.
 6. Chantier 5 : tests du frontend, après le lot 2 du chantier 4.

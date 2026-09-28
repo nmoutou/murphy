@@ -41,6 +41,12 @@ npm run format:check  # le contrôle lancé par la CI
 
 Alias de chemin TS : `@/*` → `src/*`.
 
+Le lint (`eslint.config.mjs`) vérifie les limites du CLAUDE.md : 300 lignes par fichier,
+200 pour un composant (`.tsx`), 30 lignes par fonction (hors lignes vides et
+commentaires), imbrication 3, 4 paramètres, complexité 10, pas de nombre magique. Les
+fichiers `*.test.ts(x)` sont exemptés des règles de longueur de fonction et de nombres
+magiques.
+
 **Un changement de CSS ne s'affiche pas en dev ?** Le cache de Turbopack dans le
 conteneur (`.next/dev`) peut rester périmé, même après un redémarrage. Il faut le
 vider : `docker exec frontend rm -rf /app/frontend/.next/dev && docker restart frontend`.

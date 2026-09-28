@@ -5,12 +5,15 @@ import UserMessage from '@/components/chat/UserMessage';
 import AIMessage from '@/components/chat/AIMessage';
 import type { AppUIMessage } from '@murphy/contract/messages';
 
+/** A question and its answer */
+const EXCHANGE_LENGTH = 2;
+
 interface ChatLayoutProps {
   messages: Array<AppUIMessage>;
 }
 
 export default function ChatLayout({ messages }: ChatLayoutProps) {
-  const hasHistory = messages.length > 2;
+  const hasHistory = messages.length > EXCHANGE_LENGTH;
 
   const lastUserRef = useRef<HTMLDivElement | null>(null);
   const lastMessage = messages[messages.length - 1];

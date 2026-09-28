@@ -23,6 +23,8 @@ One repository (ADR-040). The TypeScript projects are **npm workspaces** (`backe
 
 `npm run check` at the root runs what the CI runs for TypeScript: contract build, backend type-check + lint + tests, frontend type-check + lint + format check + build. The CI's `python` job checks `data/` separately (see Ingestion). `next build` rewrites `frontend/next-env.d.ts`: restore it with `git checkout` afterwards.
 
+Both ESLint configs enforce the size limits of the rules below: 300 lines per file (200 per frontend `.tsx`), 30 lines per function (blank lines and comments excluded), depth 3, 4 parameters, complexity 10, and `no-magic-numbers`. Tests are exempt from the function length and magic number rules. Shared HTTP statuses live in `backend/src/utils/httpStatus.ts`.
+
 ### Docker stack
 
 The root scripts wrap Docker Compose and need `.env.dev` at the root (gitignored). It is the **only** env file of the system: Compose feeds it to the stack, and `data/` reads it by absolute path.

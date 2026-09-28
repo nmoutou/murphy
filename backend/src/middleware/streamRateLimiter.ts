@@ -10,8 +10,8 @@ import { Request, Response } from 'express';
 import { logger } from '../utils/logger';
 import { buildApiResponse } from '../utils/response';
 import { config } from '../config';
+import { HTTP_STATUS } from '../utils/httpStatus';
 
-const HTTP_TOO_MANY_REQUESTS = 429;
 
 const streamQuotaStore = new MemoryStore();
 
@@ -25,7 +25,7 @@ export const streamRateLimiter = rateLimit({
   store: streamQuotaStore,
   handler: (req: Request, res: Response) => {
     logger.warn({ ip: req.ip, endpoint: req.originalUrl }, 'Stream rate limit exceeded');
-    res.status(HTTP_TOO_MANY_REQUESTS).json(buildApiResponse(HTTP_TOO_MANY_REQUESTS, 'STREAM_RATE_LIMIT_EXCEEDED'));
+    res.status(HTTP_STATUS.TOO_MANY_REQUESTS).json(buildApiResponse(HTTP_STATUS.TOO_MANY_REQUESTS, 'STREAM_RATE_LIMIT_EXCEEDED'));
   },
   standardHeaders: true,
   legacyHeaders: false,

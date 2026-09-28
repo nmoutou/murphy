@@ -17,16 +17,15 @@ import type { AppUIMessage } from '@murphy/contract/messages';
 import type { ChatError } from '@murphy/contract/errors';
 import { parseChatError } from '@murphy/contract/errors';
 import { toChatError } from '../types/rag';
+import { HTTP_STATUS } from '../utils/httpStatus';
 
 const logger = rootLogger.child({ context: 'chatRoutes' });
 const router = express.Router();
 
-const HTTP_BAD_REQUEST = 400;
-const HTTP_SERVER_ERROR = 500;
 const CHAT_STREAM_ERROR = 'CHAT_STREAM_ERROR';
 
 const sendValidationError = (res: Response, issues: readonly ValidationIssue[]): void => {
-  res.status(HTTP_BAD_REQUEST).json({ ...buildApiResponse(HTTP_BAD_REQUEST, 'VALIDATION_ERROR'), errors: issues });
+  res.status(HTTP_STATUS.BAD_REQUEST).json({ ...buildApiResponse(HTTP_STATUS.BAD_REQUEST, 'VALIDATION_ERROR'), errors: issues });
 };
 
 /** Raised when the client leaves: the pipeline stops, the LLM included (ADR-041) */
@@ -80,7 +79,7 @@ router.post(
       });
     } catch (error) {
       logger.error({ err: error }, 'Chat stream error');
-      res.status(HTTP_SERVER_ERROR).json(buildApiResponse(HTTP_SERVER_ERROR, CHAT_STREAM_ERROR, toChatError(error)));
+      res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(buildApiResponse(HTTP_STATUS.INTERNAL_SERVER_ERROR, CHAT_STREAM_ERROR, toChatError(error)));
     }
   })
 );
@@ -101,13 +100,13 @@ router.post(
     try {
       const { text, chatError } = await drainAnswer(await createChatStream(request.messages, abortOnClose(res)));
       if (chatError) {
-        res.status(HTTP_SERVER_ERROR).json(buildApiResponse(HTTP_SERVER_ERROR, CHAT_STREAM_ERROR, chatError));
+        res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(buildApiResponse(HTTP_STATUS.INTERNAL_SERVER_ERROR, CHAT_STREAM_ERROR, chatError));
         return;
       }
-      res.json(buildApiResponse(200, 'OK', { role: 'assistant', parts: [{ type: 'text', text }] }));
+      res.json(buildApiResponse(HTTP_STATUS.OK, 'OK', { role: 'assistant', parts: [{ type: 'text', text }] }));
     } catch (error) {
       logger.error({ err: error }, 'Chat completions error');
-      res.status(HTTP_SERVER_ERROR).json(buildApiResponse(HTTP_SERVER_ERROR, CHAT_STREAM_ERROR, toChatError(error)));
+      res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(buildApiResponse(HTTP_STATUS.INTERNAL_SERVER_ERROR, CHAT_STREAM_ERROR, toChatError(error)));
     }
   })
 );

@@ -1,8 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
 import { logger } from '../utils/logger';
 import { buildApiResponse } from '../utils/response';
+import { HTTP_STATUS } from '../utils/httpStatus';
 
-const INTERNAL_ERROR_STATUS = 500;
 const INTERNAL_ERROR_CODE = 'INTERNAL_ERROR';
 
 /**
@@ -28,17 +28,17 @@ export const errorHandler = (
   logger.error({
     err: error,
     code: INTERNAL_ERROR_CODE,
-    statusCode: INTERNAL_ERROR_STATUS,
+    statusCode: HTTP_STATUS.INTERNAL_SERVER_ERROR,
     path: req.path,
     method: req.method,
   }, 'Request error');
 
-  res.status(INTERNAL_ERROR_STATUS).json(buildApiResponse(INTERNAL_ERROR_STATUS, INTERNAL_ERROR_CODE));
+  res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(buildApiResponse(HTTP_STATUS.INTERNAL_SERVER_ERROR, INTERNAL_ERROR_CODE));
 };
 
 /**
  * 404 Not Found handler
  */
 export const notFoundHandler = (_req: Request, res: Response): void => {
-  res.status(404).json(buildApiResponse(404, 'NOT_FOUND'));
+  res.status(HTTP_STATUS.NOT_FOUND).json(buildApiResponse(HTTP_STATUS.NOT_FOUND, 'NOT_FOUND'));
 };

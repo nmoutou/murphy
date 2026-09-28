@@ -13,7 +13,7 @@ builds the shared contract (`packages/contract`). Then, from this directory:
 npm run dev         # Turbopack
 npm run build
 npm run type-check
-npm run lint        # eslint, no warning allowed
+npm run lint        # eslint, no warning allowed; enforces the size limits of CLAUDE.md
 npm run format      # prettier --write src (format:check runs in CI)
 ```
 

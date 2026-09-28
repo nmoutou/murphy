@@ -6,6 +6,7 @@ import { buildApiResponse } from './utils/response';
 import { config } from './config';
 import chatRouter from './routes/chat';
 import healthRouter from './routes/health';
+import { HTTP_STATUS } from './utils/httpStatus';
 
 // No reverse proxy in front of the backend yet (not deployed, TR-03): `req.ip`
 // is the socket address, so a forged `X-Forwarded-For` cannot dodge the rate
@@ -29,7 +30,7 @@ app.use(express.urlencoded({ extended: true }));
 
 // Routes
 app.get('/api/v1', (_req, res) => {
-  res.json(buildApiResponse(200, 'OK', {
+  res.json(buildApiResponse(HTTP_STATUS.OK, 'OK', {
     name: 'Murphy API',
     version: '1.0.0',
     env: config.server.nodeEnv,

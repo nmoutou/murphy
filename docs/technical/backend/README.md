@@ -45,12 +45,18 @@ npm run dev          # ts-node src/server.ts
 npm run dev:watch    # nodemon + ts-node (auto-restart)
 npm run build        # tsc -> dist/
 npm run type-check   # tsc --noEmit
-npm run lint         # eslint src
+npm run lint         # eslint src (règles de taille : voir ci-dessous)
 npm test             # jest (ne mesure pas la couverture)
 npx jest --coverage  # vérifie les seuils : lines/statements 65 %, functions 60 %, branches 40 %
 npx jest chemin/du/fichier.test.ts    # un fichier
 npx jest -t "nom du test"             # par nom
 ```
+
+Le lint (`eslint.config.mjs`) vérifie les limites du CLAUDE.md : 300 lignes par fichier,
+30 lignes par fonction (hors lignes vides et commentaires), imbrication 3, 4 paramètres,
+complexité 10, pas de nombre magique. Les tests (`src/__tests__/`) sont exemptés des
+règles de longueur de fonction et de nombres magiques. Les codes HTTP sont nommés une fois,
+dans `utils/httpStatus.ts`.
 
 ### Configuration
 

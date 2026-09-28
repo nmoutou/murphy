@@ -1,5 +1,6 @@
 import pinoHttp from 'pino-http';
 import { logger } from '../utils/logger';
+import { HTTP_STATUS } from '../utils/httpStatus';
 
 /**
  * HTTP request logging middleware using Pino
@@ -10,8 +11,8 @@ export const requestLogger = pinoHttp({
   
   // Custom log message
   customLogLevel: function (_req, res, _err) {
-    if (res.statusCode >= 500) return 'error';
-    if (res.statusCode >= 400) return 'warn';
+    if (res.statusCode >= HTTP_STATUS.INTERNAL_SERVER_ERROR) return 'error';
+    if (res.statusCode >= HTTP_STATUS.BAD_REQUEST) return 'warn';
     return 'info';
   },
 

@@ -9,6 +9,7 @@ import { getInfraClients } from '../infra/clients';
 import { asyncHandler } from '../middleware/errorHandler';
 import { buildApiResponse } from '../utils/response';
 import { config } from '../config';
+import { HTTP_STATUS } from '../utils/httpStatus';
 
 const logger = rootLogger.child({ context: 'healthRoutes' });
 const router = express.Router();
@@ -30,8 +31,6 @@ interface GlobalHealth {
 }
 
 const HEALTH_CHECK_TIMEOUT_MS = 3000;
-const HTTP_OK = 200;
-const HTTP_SERVICE_UNAVAILABLE = 503;
 const MIN_DOWN_FOR_GLOBAL_DOWN = 2;
 
 /**
@@ -98,10 +97,10 @@ async function measureLatency(check: () => Promise<ServiceHealth>): Promise<Serv
 
 function resolveGlobalHealth(services: ServiceHealth[]): GlobalHealth {
   const downCount = services.filter((service) => service.status === 'down').length;
-  if (downCount === 0) return { globalStatus: 'ok', httpStatus: HTTP_OK, statusMsg: 'OK' };
+  if (downCount === 0) return { globalStatus: 'ok', httpStatus: HTTP_STATUS.OK, statusMsg: 'OK' };
 
   const globalStatus = downCount >= MIN_DOWN_FOR_GLOBAL_DOWN ? 'down' : 'degraded';
-  return { globalStatus, httpStatus: HTTP_SERVICE_UNAVAILABLE, statusMsg: 'UPSTREAM_UNAVAILABLE' };
+  return { globalStatus, httpStatus: HTTP_STATUS.SERVICE_UNAVAILABLE, statusMsg: 'UPSTREAM_UNAVAILABLE' };
 }
 
 /**

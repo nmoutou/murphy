@@ -1,7 +1,10 @@
 import Image from 'next/image';
 import Link from 'next/link';
 
-const LOGO_RATIO = 3 / 14;
+// The image's proportions: 14 units wide for 3 high
+const LOGO_WIDTH_UNITS = 14;
+const LOGO_HEIGHT_UNITS = 3;
+const LOGO_RATIO = LOGO_HEIGHT_UNITS / LOGO_WIDTH_UNITS;
 const LOGO_DEFAULT_WIDTH = 355;
 
 interface LogoProps {
