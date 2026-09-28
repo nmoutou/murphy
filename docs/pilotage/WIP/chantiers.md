@@ -115,7 +115,7 @@ backend, 4 dans le frontend). Aucune de ces règles n'était outillée.
 |---|---|---|
 | 1 | `83b5c5c` | `parseChatRequest` via `safeValidateUIMessages` (schémas `data-*` et métadonnées du contrat), sans `as` |
 | 2 | `f8210ad` | `ChatBox` (`useChatInput`, `ChatBoxAttach`, `ChatBoxAction`), `Modal` (`useModalDialog`), `MainPanel` |
-| 3 | — | verrou ESLint dans les deux projets ; `backend/src/utils/httpStatus.ts` ; nombres nommés du frontend |
+| 3 | `cb39648` | verrou ESLint dans les deux projets ; `backend/src/utils/httpStatus.ts` ; nombres nommés du frontend |
 
 **Résultat** : les deux configs ESLint refusent désormais un fichier de plus de
 300 lignes (200 pour un `.tsx`), une fonction de plus de 30 lignes (hors lignes vides et
@@ -135,37 +135,26 @@ depuis les issues zod).
 - à l'écran, vérifier que rien n'a bougé : accueil puis champ ancré en bas, Entrée,
   champ vide, Annuler pendant le stream, modale d'erreur fermée par Échap ou « Fermer ».
 
-## 5. Tests du frontend
+## 5. Tests du frontend — en cours
 
-### Constat
+Relevé de départ : aucun runner de test dans `frontend/`. Le contrat de stream est
+validé par zod des deux côtés, mais la logique propre au frontend (transport WebSocket,
+lecture des erreurs de l'ADR-041, retrait de la bulle d'une réponse échouée, saisie)
+n'était vérifiée par rien.
 
-Aucun runner de test dans `frontend/`. Le journal (`ameliorations.md`) l'avait écarté
-comme « chantier dédié ». Le contrat de stream est validé par zod des deux côtés, mais la
-logique propre au frontend n'est vérifiée par rien.
+Outillage : Vitest 5 (sur Vite, hors du build Next), Testing Library, jsdom 29. Tests
+dans `frontend/src/__tests__/`, qui reprend l'arborescence de `src/`, comme dans le
+backend. Pas de seuil de couverture tant qu'il n'y a que quelques tests.
 
-### Cibles, par valeur
+| Lot | Commit | Périmètre |
+|---|---|---|
+| 1 | — | installation, `npm test -w frontend` dans `check` ; `FakeWebSocket` ; transport WebSocket et `getChatSocketUrl` |
+| 2 | | `readErrorStage` et `ErrorDialog` (ADR-041), modale fermée par Échap ou « Fermer » |
+| 3 | | `useRagChat` : transport et schémas dans `useChat`, bulle retirée sur erreur |
+| 4 | | `ChatBox` : envoi, champ vide, Annuler pendant le stream |
 
-1. `lib/webSocketChatTransport.ts` (83 lignes) : la logique la plus risquée (fermeture du
-   socket, parties terminales, abort). Testable avec un faux `WebSocket`, sans DOM.
-2. `components/chat/ErrorDialog.tsx` : la lecture d'un `ChatError` (`{ stage, code }`) et
-   le nom de l'étape affiché (ADR-041), y compris sur un `errorText` malformé.
-3. `hooks/useRagChat.ts` : le branchement du transport et des schémas dans `useChat`.
-4. `ChatBox` : envoi, champ vide, état « en cours ». Plus simple une fois le hook extrait
-   (chantier 4, lot 2).
-
-### Lots
-
-1. Installer Vitest + Testing Library + jsdom dans `frontend/` (`vitest.config.ts`, alias
-   `@/*`), ajouter `npm test -w frontend` à `npm run check`, donc à la CI. Premier test :
-   le transport.
-2. Un lot par cible suivante.
-
-**Points d'attention** : la version de Vitest doit être compatible avec React 19, et
-Vitest ne doit pas passer par le build Next. Ne pas fixer de seuil de couverture tant
-qu'il n'y a que quelques tests.
-
-**Taille** : 1 lot d'installation (config, dépendances, `package-lock.json`, CI), puis 3
-lots de tests.
+Chaque lot prouve que ses tests mordent : une mutation d'un comportement clé les fait
+échouer, puis elle est annulée.
 
 ## Ordre proposé
 
@@ -174,4 +163,4 @@ lots de tests.
 3. ~~Chantier 1 : `hooks.py`.~~ Fait.
 4. ~~Chantier 3 : fonctions longues de `data/`.~~ Fait.
 5. ~~Chantier 4 : backend / frontend.~~ Fait.
-6. Chantier 5 : tests du frontend, après le lot 2 du chantier 4.
+6. Chantier 5 : tests du frontend (en cours).

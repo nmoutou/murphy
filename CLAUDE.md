@@ -21,7 +21,7 @@ One repository (ADR-040). The TypeScript projects are **npm workspaces** (`backe
 
 ## Commands
 
-`npm run check` at the root runs what the CI runs for TypeScript: contract build, backend type-check + lint + tests, frontend type-check + lint + format check + build. The CI's `python` job checks `data/` separately (see Ingestion). `next build` rewrites `frontend/next-env.d.ts`: restore it with `git checkout` afterwards.
+`npm run check` at the root runs what the CI runs for TypeScript: contract build, backend type-check + lint + tests, frontend type-check + lint + tests + format check + build. The CI's `python` job checks `data/` separately (see Ingestion). `next build` rewrites `frontend/next-env.d.ts`: restore it with `git checkout` afterwards.
 
 Both ESLint configs enforce the size limits of the rules below: 300 lines per file (200 per frontend `.tsx`), 30 lines per function (blank lines and comments excluded), depth 3, 4 parameters, complexity 10, and `no-magic-numbers`. Tests are exempt from the function length and magic number rules. Shared HTTP statuses live in `backend/src/utils/httpStatus.ts`.
 
@@ -57,7 +57,9 @@ Coverage thresholds (`jest.config.js`: lines/statements 65 %, functions 60 %, br
 
 ### Frontend (from `frontend/`)
 
-`npm run dev` (Turbopack), `build`, `type-check`, `lint` (`--max-warnings=0`), `format` (Prettier; `format:check` runs in `check`). Path alias `@/*` → `src/*`.
+`npm run dev` (Turbopack), `build`, `type-check`, `lint` (`--max-warnings=0`), `test` (Vitest + Testing Library, jsdom), `format` (Prettier; `format:check` runs in `check`). Path alias `@/*` → `src/*`.
+
+Tests live in `src/__tests__/`, mirroring `src/`; `vitest.config.mts` runs them on Vite, outside Next. `src/__tests__/fakeWebSocket.ts` plays the backend's side of the chat socket (`stubWebSocket()`).
 
 ## Serving: the RAG request flow
 

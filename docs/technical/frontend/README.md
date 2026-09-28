@@ -35,6 +35,7 @@ npm run build       # next build --turbopack
 npm run start       # next start (après build)
 npm run type-check  # tsc --noEmit
 npm run lint        # eslint, zéro avertissement toléré
+npm test            # vitest run (Testing Library, jsdom)
 npm run format      # prettier --write src
 npm run format:check  # le contrôle lancé par la CI
 ```
@@ -46,6 +47,12 @@ Le lint (`eslint.config.mjs`) vérifie les limites du CLAUDE.md : 300 lignes par
 commentaires), imbrication 3, 4 paramètres, complexité 10, pas de nombre magique. Les
 fichiers `*.test.ts(x)` sont exemptés des règles de longueur de fonction et de nombres
 magiques.
+
+Les tests (`vitest.config.mts`) tournent sur Vite, hors de Next, dans `src/__tests__/`
+qui reprend l'arborescence de `src/`. `src/__tests__/fakeWebSocket.ts` joue le backend
+côté socket : `stubWebSocket()` remplace le `WebSocket` global, puis le test ouvre le
+socket, envoie des parties, le fait échouer ou le ferme. `npm run check`, donc la CI,
+lance les tests. Pas de seuil de couverture pour l'instant.
 
 **Un changement de CSS ne s'affiche pas en dev ?** Le cache de Turbopack dans le
 conteneur (`.next/dev`) peut rester périmé, même après un redémarrage. Il faut le

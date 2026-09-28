@@ -6,6 +6,33 @@ dans l'historique git : `git show 9c32a83^:docs/pilotage/corrections/`.
 
 ## Faites
 
+### 2026-09-28 — Vitest dans le frontend, et le transport WebSocket testé (chantier 5, lot 1)
+
+- **Fichiers** : `frontend/package.json`, `package-lock.json`,
+  `frontend/vitest.config.mts`, `frontend/src/__tests__/` (`setup.ts`,
+  `fakeWebSocket.ts`, `lib/webSocketChatTransport.test.ts`, `lib/chatSocketUrl.test.ts`) ;
+  `package.json` racine (`check`), commentaire de `ci.yml` ; `CLAUDE.md`, READMEs du
+  frontend, `chantiers.md`.
+- **Catégorie** : tests, outillage.
+- **Fait** :
+  - `vitest` 5, `jsdom` 29, `@testing-library/react`, `dom`, `user-event` et `jest-dom`
+    en dépendances de dev ; `npm test -w frontend` dans `npm run check`, donc la CI ;
+  - pas de globals Vitest (imports explicites, aucun type global pour `tsc`), d'où le
+    `cleanup` de Testing Library appelé dans `setup.ts` ; pas de plugin React (Vite
+    compile le JSX de `tsconfig`) ; config en `.mts`, le `package.json` du frontend
+    n'étant pas en ESM ;
+  - `FakeWebSocket` joue le backend (ouvrir, envoyer une partie, échouer, fermer) et,
+    comme un vrai socket, ne signale `close` qu'une fois, quel que soit le côté qui
+    ferme ;
+  - 10 tests du transport : envoi de la conversation à l'ouverture, parties dans
+    l'ordre, fin propre après `finish` ou `error`, erreur de connexion sur une coupure ou
+    une erreur du socket, partie illisible, abort, annulation par le lecteur ; 4 tests
+    de `getChatSocketUrl`.
+- **Vérification** : `npm run check` vert. Retirer le `socket.close()` qui suit la partie
+  finale fait échouer 2 tests ; code restauré.
+- **Écarté** : `jsdom` 30 exige Node ≥ 24.15 (poste en 24.13) ; `@vitejs/plugin-react`
+  n'apporte que le Fast Refresh.
+
 ### 2026-09-28 — verrou ESLint sur la taille et la forme du code (chantier 4, lot 3)
 
 - **Fichiers** : `backend/eslint.config.mjs`, `frontend/eslint.config.mjs` ;
@@ -432,9 +459,6 @@ dans l'historique git : `git show 9c32a83^:docs/pilotage/corrections/`.
 
 ## Pistes écartées
 
-- **Tests du frontend** (aucun runner aujourd'hui) : forte valeur, mais installer un
-  runner (Vitest + Testing Library) touche la config, les dépendances et la CI ; à
-  traiter comme un chantier dédié.
 - **`readLines` (`infra/llm.ts`) perd une dernière ligne sans saut de ligne final** :
   comportement documenté ; le SSE termine chaque événement par une ligne vide, donc sans
   effet avec un fournisseur conforme.

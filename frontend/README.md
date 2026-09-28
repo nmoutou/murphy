@@ -14,6 +14,7 @@ npm run dev         # Turbopack
 npm run build
 npm run type-check
 npm run lint        # eslint, no warning allowed; enforces the size limits of CLAUDE.md
+npm test            # vitest run: src/__tests__/, Testing Library on jsdom
 npm run format      # prettier --write src (format:check runs in CI)
 ```
 

@@ -27,7 +27,7 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # Contract build, backend type-check + lint + tests, frontend type-check + lint + format + build.
+      # Contract build, backend type-check + lint + tests, frontend type-check + lint + tests + format + build.
       - name: Check
         run: npm run check
 
