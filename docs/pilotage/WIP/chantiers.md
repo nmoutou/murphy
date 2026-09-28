@@ -149,8 +149,8 @@ backend. Pas de seuil de couverture tant qu'il n'y a que quelques tests.
 | Lot | Commit | Périmètre |
 |---|---|---|
 | 1 | `f0124f0` | installation, `npm test -w frontend` dans `check` ; `FakeWebSocket` ; transport WebSocket et `getChatSocketUrl` |
-| 2 | — | `readErrorStage` et `ErrorDialog` (ADR-041), modale fermée par Échap ou « Fermer » |
-| 3 | | `useRagChat` : transport et schémas dans `useChat`, bulle retirée sur erreur |
+| 2 | `112b629` | `readErrorStage` et `ErrorDialog` (ADR-041), modale fermée par Échap ou « Fermer » |
+| 3 | — | `useRagChat` : réponse, erreurs, `stop()` ; parties `data-*` validées par le transport |
 | 4 | | `ChatBox` : envoi, champ vide, Annuler pendant le stream |
 
 Chaque lot prouve que ses tests mordent : une mutation d'un comportement clé les fait

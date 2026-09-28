@@ -18,9 +18,17 @@ const QUESTION: AppUIMessage = {
   role: 'user',
   parts: [{ type: 'text', text: 'Quel délai de prescription ?' }],
 };
+const PASSAGE = {
+  chunkId: 'c-1',
+  identifier: 'LEGIARTI000006419280',
+  highlightStart: 0,
+  highlightEnd: 12,
+  score: 0.8,
+};
 const ANSWER_PARTS: UIMessageChunk[] = [
   { type: 'start', messageId: ANSWER_ID },
   { type: 'text-start', id: ANSWER_ID },
+  { type: 'data-document', data: PASSAGE },
   { type: 'text-delta', id: ANSWER_ID, delta: 'Cinq ans.' },
   { type: 'text-end', id: ANSWER_ID },
 ];
@@ -112,6 +120,15 @@ describe('webSocketChatTransport', () => {
   it.each([
     ['text that is not JSON', (socket: FakeWebSocket) => socket.receiveRaw('pas du JSON')],
     ['a part without type', (socket: FakeWebSocket) => socket.receive({ delta: 'Cinq ans.' })],
+    [
+      'a data part that breaks its schema',
+      (socket: FakeWebSocket) =>
+        socket.receive({ type: 'data-document', data: { ...PASSAGE, score: 'haut' } }),
+    ],
+    [
+      'a data part the contract does not declare',
+      (socket: FakeWebSocket) => socket.receive({ type: 'data-inconnue', data: {} }),
+    ],
   ])('errors the stream and closes the socket on %s', async (_case, sendInvalid) => {
     const { stream, socket } = await askQuestion();
 

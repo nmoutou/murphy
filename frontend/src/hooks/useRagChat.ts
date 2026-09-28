@@ -1,6 +1,6 @@
 import { useChat } from '@ai-sdk/react';
 import type { AppUIMessage } from '@murphy/contract/messages';
-import { appDataPartSchemas, appMessageMetadataSchema } from '@murphy/contract/messages';
+import { appMessageMetadataSchema } from '@murphy/contract/messages';
 import { webSocketChatTransport } from '@/lib/webSocketChatTransport';
 import { readErrorStage } from '@/lib/chatErrorStage';
 
@@ -8,8 +8,7 @@ export function useRagChat() {
   const { messages, sendMessage, stop, status, error, clearError, setMessages } =
     useChat<AppUIMessage>({
       transport: webSocketChatTransport,
-      // The socket is an external boundary: a part that breaks the contract is rejected here
-      dataPartSchemas: appDataPartSchemas,
+      // The transport checks the data parts; the metadata of the answer is checked here
       messageMetadataSchema: appMessageMetadataSchema,
       onError: (chatError) => console.error('Chat request failed:', chatError),
       // A failed answer leaves no bubble behind: the question stays, the modal says why (ADR-041)

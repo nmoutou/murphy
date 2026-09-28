@@ -73,7 +73,7 @@ The pipeline is `backend/src/services/chatService.ts:createChatStream(messages, 
 6. **Stream the LLM** — only the passage texts go into the system prompt (`config.llm.systemPrompt`, overridable by `SYSTEM_PROMPT`); tokens become `text-delta` parts.
 7. **Finish** — a `finish` part with the `ragTiming` metadata.
 
-The stream contract is `AppUIMessage` (`@murphy/contract/messages`): the backend compiles against it, the frontend validates incoming parts with the same zod schemas (`useChat({ dataPartSchemas, messageMetadataSchema })`). A change breaks both compilations at once.
+The stream contract is `AppUIMessage` (`@murphy/contract/messages`): the backend compiles against it, the frontend validates incoming parts with the same zod schemas: the `data-*` parts in `lib/webSocketChatTransport.ts` (ai 6.0.x never applies `useChat`'s `dataPartSchemas`: it looks them up by part type, `data-document`, not by name), the metadata in `useChat({ messageMetadataSchema })`. A change breaks both compilations at once.
 
 One stream, three transports — change `createChatStream` once:
 - **WebSocket** `/api/v1/chat/ws` (`routes/chatWebSocket.ts`), the one the frontend uses (`hooks/useRagChat.ts` plugs `lib/webSocketChatTransport.ts` into `useChat`);

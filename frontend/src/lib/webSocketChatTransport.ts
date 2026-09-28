@@ -1,5 +1,6 @@
 import type { ChatTransport, UIMessageChunk } from 'ai';
 import type { AppUIMessage } from '@murphy/contract/messages';
+import { appDataPartSchemas } from '@murphy/contract/messages';
 import { getChatSocketUrl } from '@/lib/chatSocketUrl';
 import { CONNECTION_ERROR_MESSAGE } from '@/lib/chatErrorStage';
 
@@ -19,14 +20,34 @@ interface SocketBinding {
 
 /** The backend closes the socket after these parts: any other close drops the answer */
 const FINAL_CHUNK_TYPES: ReadonlySet<string> = new Set(['finish', 'error']);
+const DATA_PART_PREFIX = 'data-';
+
+type DataPartName = keyof typeof appDataPartSchemas;
 
 const isMessageChunk = (value: unknown): value is UIMessageChunk =>
   typeof value === 'object' && value !== null && 'type' in value && typeof value.type === 'string';
 
-/** The socket is a system boundary: a part must at least carry its type */
+const isDataPartName = (name: string): name is DataPartName =>
+  Object.hasOwn(appDataPartSchemas, name);
+
+/**
+ * `useChat` looks its `dataPartSchemas` up by part type (`data-document`) while they are
+ * keyed by name (`document`): ai 6.0.x never applies them, so the contract is checked here
+ */
+const breaksDataContract = (chunk: UIMessageChunk): boolean => {
+  if (!chunk.type.startsWith(DATA_PART_PREFIX)) return false;
+  const name = chunk.type.slice(DATA_PART_PREFIX.length);
+  if (!isDataPartName(name) || !('data' in chunk)) return true;
+  return !appDataPartSchemas[name].safeParse(chunk.data).success;
+};
+
+/** The socket is a system boundary: a part carries its type, and a data part its contract */
 const parseChunk = (data: unknown): UIMessageChunk => {
   const value: unknown = typeof data === 'string' ? JSON.parse(data) : undefined;
   if (!isMessageChunk(value)) throw new Error('The chat socket sent a part without a type');
+  if (breaksDataContract(value)) {
+    throw new Error(`The chat socket sent a ${value.type} part that breaks the contract`);
+  }
   return value;
 };
 

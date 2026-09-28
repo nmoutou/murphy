@@ -6,6 +6,42 @@ dans l'historique git : `git show 9c32a83^:docs/pilotage/corrections/`.
 
 ## Faites
 
+### 2026-09-28 — `useRagChat` testé, parties `data-*` enfin validées (chantier 5, lot 3)
+
+- **Fichiers** : `frontend/src/__tests__/hooks/useRagChat.test.ts` (nouveau),
+  `lib/webSocketChatTransport.test.ts`, `setup.ts` ; `frontend/src/lib/webSocketChatTransport.ts`,
+  `frontend/src/hooks/useRagChat.ts` ; `CLAUDE.md`, `ARCHITECTURE.md` du frontend,
+  `chantiers.md`.
+- **Catégorie** : correctif, tests.
+- **Constat** : `useChat` ne validait **aucune** partie `data-*` du stream. Dans
+  `processUIMessageStream` (ai 6.0.291, et encore 6.0.295, dernière v6), le schéma est
+  cherché par `dataPartSchemas[chunk.type]`, soit `'data-document'`, alors que le type des
+  options les indexe par nom (`document`) et que `useRagChat` les passait ainsi. Une
+  source hors contrat était donc affichée telle quelle ; seules les métadonnées étaient
+  vérifiées. Le test de `useRagChat` l'a révélé : la partie invalide passait, et le chat
+  attendait la suite.
+- **Fait** :
+  - le transport, déjà frontière du socket, valide chaque partie `data-*` avec
+    `appDataPartSchemas` ; une partie invalide ou non déclarée par le contrat met le
+    flux en erreur (étape affichée : `internal`), comme le fait le backend à l'entrée ;
+  - `dataPartSchemas` retiré de `useChat`, où il n'avait aucun effet ;
+    `messageMetadataSchema` reste ;
+  - `useRagChat` (6 tests), contre un `FakeWebSocket` qui envoie les parties de
+    `chatService.ts` dans son ordre : réponse complète (texte, sources, `ragTiming`),
+    partie `data-document` ou métadonnées hors contrat (`internal`), partie `error` du
+    backend (`retrieval`), socket coupé (`connection`, puis `clearError`), `stop()` ;
+    la bulle d'une réponse échouée est retirée, la question reste ;
+  - transport : 2 cas de plus (partie `data-*` hors schéma, partie non déclarée) ;
+  - les tests attendent la fin d'une réponse par `waitFor` sur le statut, jamais dans
+    un `act` : une réponse qui ne se termine pas échoue seule, sans bloquer les tests
+    suivants ; `setup.ts` restaure les espions (`vi.restoreAllMocks`).
+- **Vérification** : `npm run check` vert. Trois mutations, annulées ensuite : sans la
+  validation du transport, 3 tests échouent ; sans le filtre de `onFinish`, 4 ; sans
+  `messageMetadataSchema`, 1.
+- **Non modifié** : l'ADR-040 décrit encore `useChat({ dataPartSchemas, … })` ; c'est
+  l'état de la décision à sa date, le `CLAUDE.md` et l'architecture du frontend portent
+  le mécanisme actuel.
+
 ### 2026-09-28 — lecture des erreurs et modale testées (chantier 5, lot 2)
 
 - **Fichiers** : `frontend/src/__tests__/lib/chatErrorStage.test.ts`,

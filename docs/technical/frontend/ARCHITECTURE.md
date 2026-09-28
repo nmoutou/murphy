@@ -46,9 +46,16 @@ Le chemin d'une erreur, du backend jusqu'à l'écran :
 
 `AppUIMessage` vient de `@murphy/contract/messages` (`packages/contract/`, ADR-040),
 partagé avec le backend : une modification casse la compilation des deux côtés à la
-fois. `useRagChat` passe ses schémas zod à `useChat` (`dataPartSchemas`,
-`messageMetadataSchema`) : une part qui ne respecte pas le contrat est rejetée à
-l'arrivée.
+fois. Une part qui ne respecte pas le contrat est rejetée à l'arrivée, avec les mêmes
+schémas zod :
+
+- les parts `data-*`, par le transport (`lib/webSocketChatTransport.ts`), qui met alors
+  le flux en erreur. `useChat` accepte bien des `dataPartSchemas`, mais ai 6.0.x ne les
+  applique jamais : il les cherche par type de part (`data-document`), alors qu'ils sont
+  indexés par nom (`document`) ;
+- les métadonnées, par `useChat` (`messageMetadataSchema`, passé par `useRagChat`).
+
+Le flux reçu :
 
 - parts `text-delta` : les tokens du LLM ;
 - parts custom `data-parentDocument` `{ parentDocument: ParentDocument }` : le document
