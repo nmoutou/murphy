@@ -6,6 +6,32 @@ dans l'historique git : `git show 9c32a83^:docs/pilotage/corrections/`.
 
 ## Faites
 
+### 2026-09-28 — validation complète des messages de chat, sans `as` (chantier 4, lot 1)
+
+- **Fichiers** : `backend/src/validation/chatRequest.ts`, `backend/src/routes/chat.ts`,
+  `backend/src/routes/chatWebSocket.ts`,
+  `backend/src/__tests__/validation/chatRequest.test.ts`,
+  `docs/technical/backend/ARCHITECTURE.md`.
+- **Catégorie** : validation à la frontière / typage.
+- **Fait** : `parseChatRequest` passe par `safeValidateUIMessages` de l'AI SDK, avec les
+  `appDataPartSchemas` et `appMessageMetadataSchema` du contrat. Toute la forme du message
+  est vérifiée (id, chaque type de partie, parties `data-*`, métadonnées `ragTiming`), et
+  le type `AppUIMessage[]` sort de la validation : l'assertion `as` disparaît. La fonction
+  devient asynchrone ; ses trois appelants l'attendent.
+- **Deux pièges du SDK, contournés** :
+  - le schéma de métadonnées est appliqué à *tous* les messages, et un message `user`
+    n'en a pas. Passé tel quel, il rejetait toute requête : le backend le rend
+    `.optional()` ;
+  - le message d'une `TypeValidationError` recopie toute la valeur reçue, donc la
+    conversation. Les problèmes sont reconstruits depuis les issues zod de la cause
+    (champ + message du schéma). Un test vérifie que la question n'apparaît dans aucune
+    erreur.
+- **Tests** : 6 cas ajoutés (conversation de suivi avec sources, message sans `id`,
+  score non numérique, partie `data-*` non déclarée, métadonnées invalides, pas d'écho).
+  `npm run check` vert : backend 17 suites, 122 tests.
+- **Reste à faire, à la main** : sur la stack `serve`, poser deux questions de suite.
+  La seconde renvoie la première réponse et ses sources, qui doivent passer.
+
 ### 2026-09-27 — verrou ruff : complexité et nombre de paramètres (chantier 3, lot 6)
 
 - **Fichiers** : `data/pyproject.toml`, `orchestration/kedro/nodes/compute_idempotence.py`

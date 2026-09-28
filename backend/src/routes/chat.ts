@@ -66,7 +66,7 @@ router.post(
   '/streams',
   streamRateLimiter,
   asyncHandler(async (req: Request, res: Response) => {
-    const request = parseChatRequest(req.body);
+    const request = await parseChatRequest(req.body);
     if (!request.isValid) {
       sendValidationError(res, request.issues);
       return;
@@ -93,7 +93,7 @@ router.post(
   '/completions',
   streamRateLimiter,
   asyncHandler(async (req: Request, res: Response) => {
-    const request = parseChatRequest(req.body);
+    const request = await parseChatRequest(req.body);
     if (!request.isValid) {
       sendValidationError(res, request.issues);
       return;

@@ -63,7 +63,7 @@ const handleChatMessage = async (ws: WebSocket, raw: RawData, remoteAddress: str
     return;
   }
 
-  const request = parseChatRequest(payload);
+  const request = await parseChatRequest(payload);
   if (!request.isValid) {
     logger.warn({ issues: request.issues }, 'Invalid chat request');
     sendErrorAndClose(ws, INVALID_REQUEST_ERROR);
