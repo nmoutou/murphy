@@ -135,7 +135,7 @@ depuis les issues zod).
 - à l'écran, vérifier que rien n'a bougé : accueil puis champ ancré en bas, Entrée,
   champ vide, Annuler pendant le stream, modale d'erreur fermée par Échap ou « Fermer ».
 
-## 5. Tests du frontend — en cours
+## 5. Tests du frontend — fait (2026-09-28)
 
 Relevé de départ : aucun runner de test dans `frontend/`. Le contrat de stream est
 validé par zod des deux côtés, mais la logique propre au frontend (transport WebSocket,
@@ -150,11 +150,24 @@ backend. Pas de seuil de couverture tant qu'il n'y a que quelques tests.
 |---|---|---|
 | 1 | `f0124f0` | installation, `npm test -w frontend` dans `check` ; `FakeWebSocket` ; transport WebSocket et `getChatSocketUrl` |
 | 2 | `112b629` | `readErrorStage` et `ErrorDialog` (ADR-041), modale fermée par Échap ou « Fermer » |
-| 3 | — | `useRagChat` : réponse, erreurs, `stop()` ; parties `data-*` validées par le transport |
-| 4 | | `ChatBox` : envoi, champ vide, Annuler pendant le stream |
+| 3 | `22c813b` | `useRagChat` : réponse, erreurs, `stop()` ; parties `data-*` validées par le transport |
+| 4 | — | `ChatBox` : Entrée et bouton d'envoi, champ vide ou blanc, Annuler pendant le stream |
 
 Chaque lot prouve que ses tests mordent : une mutation d'un comportement clé les fait
 échouer, puis elle est annulée.
+
+**Résultat** : 46 tests dans 6 fichiers, lancés par `npm run check`, donc par la CI, en
+environ une seconde. Les quatre cibles sont couvertes : transport, lecture des erreurs
+et modale, `useRagChat`, `ChatBox`.
+
+Deux défauts trouvés en chemin, corrigés dans le lot qui les a révélés :
+- deux copies de React dans l'arbre (19.2.4 dans `frontend/`, 19.3.0 à la racine),
+  masquées par le React embarqué de Next (lot 2) ;
+- `useChat` n'appliquait jamais ses `dataPartSchemas` (ai 6.0.x les cherche par type
+  de partie) : les sources n'étaient pas validées à l'arrivée ; c'est désormais le
+  transport qui les valide (lot 3).
+
+Pas de seuil de couverture : à fixer si la suite grandit.
 
 ## Ordre proposé
 
@@ -163,4 +176,4 @@ Chaque lot prouve que ses tests mordent : une mutation d'un comportement clé le
 3. ~~Chantier 1 : `hooks.py`.~~ Fait.
 4. ~~Chantier 3 : fonctions longues de `data/`.~~ Fait.
 5. ~~Chantier 4 : backend / frontend.~~ Fait.
-6. Chantier 5 : tests du frontend (en cours).
+6. ~~Chantier 5 : tests du frontend.~~ Fait.

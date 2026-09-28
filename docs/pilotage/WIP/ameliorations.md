@@ -6,6 +6,23 @@ dans l'historique git : `git show 9c32a83^:docs/pilotage/corrections/`.
 
 ## Faites
 
+### 2026-09-28 — `ChatBox` testé (chantier 5, lot 4)
+
+- **Fichiers** : `frontend/src/__tests__/components/ChatBox.test.tsx` (nouveau) ;
+  `chantiers.md`.
+- **Catégorie** : tests.
+- **Fait** : 6 tests, qui trouvent les éléments par leur nom accessible (ce qui vérifie
+  aussi les `label` des boutons icônes) :
+  - Entrée envoie la question et vide le champ ; le bouton « Envoyer la question » aussi ;
+  - un champ vide ou blanc n'envoie rien ;
+  - pendant le stream, le champ est désactivé, « Annuler » remplace l'envoi et appelle
+    `onCancel` ;
+  - une question tapée avant le stream n'est pas envoyée pendant celui-ci, et reste
+    dans le champ.
+- **Vérification** : `npm run check` vert. Quatre mutations, chacune détectée par un
+  test puis annulée : sans le `trim()`, sans la garde `disabled` de `useChatInput`, sans
+  le vidage du champ, avec le bouton d'envoi pendant le stream.
+
 ### 2026-09-28 — `useRagChat` testé, parties `data-*` enfin validées (chantier 5, lot 3)
 
 - **Fichiers** : `frontend/src/__tests__/hooks/useRagChat.test.ts` (nouveau),
