@@ -6,6 +6,35 @@ dans l'historique git : `git show 9c32a83^:docs/pilotage/corrections/`.
 
 ## Faites
 
+### 2026-09-28 — lecture des erreurs et modale testées (chantier 5, lot 2)
+
+- **Fichiers** : `frontend/src/__tests__/lib/chatErrorStage.test.ts`,
+  `frontend/src/__tests__/components/chat/ErrorDialog.test.tsx` (nouveaux),
+  `frontend/src/__tests__/setup.ts` ; `frontend/package.json`, `package-lock.json` ;
+  README technique du frontend, `chantiers.md`.
+- **Catégorie** : tests, dépendances.
+- **Fait** :
+  - `readErrorStage` (9 tests) : `connection` sur une erreur du socket, chaque étape
+    de `CHAT_ERROR_STAGES` relue telle que le backend la sérialise, `internal` sur un
+    texte non JSON, un JSON sans `stage` ou une étape inconnue ;
+  - `ErrorDialog` (9 tests) : ouvert et nommé par son titre, le message de chacune des
+    six étapes avec l'invite à réessayer, « Fermer » et Échap (`cancel`) qui préviennent
+    le parent sans que le dialogue se ferme seul, fermeture du `<dialog>` natif au
+    démontage ;
+  - `setup.ts` simule `showModal` et `close`, absents de jsdom, uniquement s'ils
+    manquent ;
+  - **deux copies de React** : le lockfile gardait `react`/`react-dom` 19.2.4 dans
+    `frontend/node_modules` et 19.3.0 à la racine, installés comme pairs de `next`,
+    `swr` (via `@ai-sdk/react`), `react-markdown` et Testing Library. Next rend l'app
+    avec son React embarqué et masquait l'écart ; Vitest chargeait les deux copies
+    (« Cannot read properties of null (reading 'useRef') »). Le frontend passe à
+    `^19.3.0` : une seule copie, 3 paquets retirés du lockfile.
+- **Vérification** : `npm run check` vert. Trois mutations, chacune détectée puis
+  annulée : sans le `preventDefault` du `cancel`, sans le `close()` au démontage, sans
+  la branche `connection` de `readErrorStage`.
+- **Écarté** : `npm dedupe` sur tout le dépôt échoue sur un conflit de pairs de jest
+  dans le backend, et toucherait bien plus que React.
+
 ### 2026-09-28 — Vitest dans le frontend, et le transport WebSocket testé (chantier 5, lot 1)
 
 - **Fichiers** : `frontend/package.json`, `package-lock.json`,

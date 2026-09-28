@@ -52,7 +52,9 @@ Les tests (`vitest.config.mts`) tournent sur Vite, hors de Next, dans `src/__tes
 qui reprend l'arborescence de `src/`. `src/__tests__/fakeWebSocket.ts` joue le backend
 côté socket : `stubWebSocket()` remplace le `WebSocket` global, puis le test ouvre le
 socket, envoie des parties, le fait échouer ou le ferme. `npm run check`, donc la CI,
-lance les tests. Pas de seuil de couverture pour l'instant.
+lance les tests. Pas de seuil de couverture pour l'instant. jsdom n'implémente pas
+`<dialog>` : `src/__tests__/setup.ts` simule `showModal` et `close`, qui posent et
+retirent l'attribut `open`.
 
 **Un changement de CSS ne s'affiche pas en dev ?** Le cache de Turbopack dans le
 conteneur (`.next/dev`) peut rester périmé, même après un redémarrage. Il faut le

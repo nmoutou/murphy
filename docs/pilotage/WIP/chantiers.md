@@ -148,8 +148,8 @@ backend. Pas de seuil de couverture tant qu'il n'y a que quelques tests.
 
 | Lot | Commit | Périmètre |
 |---|---|---|
-| 1 | — | installation, `npm test -w frontend` dans `check` ; `FakeWebSocket` ; transport WebSocket et `getChatSocketUrl` |
-| 2 | | `readErrorStage` et `ErrorDialog` (ADR-041), modale fermée par Échap ou « Fermer » |
+| 1 | `f0124f0` | installation, `npm test -w frontend` dans `check` ; `FakeWebSocket` ; transport WebSocket et `getChatSocketUrl` |
+| 2 | — | `readErrorStage` et `ErrorDialog` (ADR-041), modale fermée par Échap ou « Fermer » |
 | 3 | | `useRagChat` : transport et schémas dans `useChat`, bulle retirée sur erreur |
 | 4 | | `ChatBox` : envoi, champ vide, Annuler pendant le stream |
 
