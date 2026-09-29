@@ -52,6 +52,15 @@ const parseChunk = (data: unknown): UIMessageChunk => {
 };
 
 /**
+ * The backend is stateless and reads only the last question: past answers, which carry
+ * whole documents, would only swell the request past its size limit
+ */
+const selectQuestion = (messages: readonly AppUIMessage[]): AppUIMessage[] => {
+  const question = messages.findLast((message) => message.role === 'user');
+  return question ? [question] : [];
+};
+
+/**
  * Pipes the socket into the stream `useChat` reads. The stream settles once: closed after
  * the final part or an abort, errored when the socket fails or drops before the end.
  */
@@ -75,7 +84,7 @@ const bindSocket = ({ socket, controller, state, options }: SocketBinding): void
     if (hasFinalChunk || state.isSettled) socket.close();
   };
 
-  socket.onopen = () => socket.send(JSON.stringify({ messages: options.messages }));
+  socket.onopen = () => socket.send(JSON.stringify({ messages: selectQuestion(options.messages) }));
   socket.onmessage = handleMessage;
   socket.onerror = () => settle(new Error(CONNECTION_ERROR_MESSAGE));
   socket.onclose = () => settle(hasFinalChunk ? undefined : new Error(CONNECTION_ERROR_MESSAGE));

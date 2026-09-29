@@ -14,7 +14,9 @@ question envoyée sur
 `/api/v1/chat/ws` (l'adresse est déduite de `NEXT_PUBLIC_API_URL` par
 `src/lib/chatSocketUrl.ts`), un flux de parts JSON reçu (format
 UI-message-stream du Vercel AI SDK), socket fermée en fin de réponse. Pas d'historique
-côté serveur : le backend est stateless, la conversation vit dans l'état du client.
+côté serveur : le backend est stateless, la conversation vit dans l'état du client, et
+le transport n'envoie que la dernière question (les réponses passées portent le texte
+intégral des documents, que le backend ne relit pas).
 
 Le flux lu par `useChat` se règle **une seule fois** :
 - il est fermé après la part `finish` ou `error`, ou sur un arrêt ;

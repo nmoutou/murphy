@@ -33,6 +33,21 @@ const ANSWER_PARTS: UIMessageChunk[] = [
   { type: 'text-end', id: ANSWER_ID },
 ];
 const FINISH: UIMessageChunk = { type: 'finish' };
+/** A past turn: its answer carries whole documents, which the backend never reads back */
+const PREVIOUS_TURN: AppUIMessage[] = [
+  { id: 'question-0', role: 'user', parts: [{ type: 'text', text: 'Qui juge ?' }] },
+  {
+    id: 'answer-0',
+    role: 'assistant',
+    parts: [
+      {
+        type: 'data-parentDocument',
+        data: { identifier: PASSAGE.identifier, title: 'Article 2224', content: 'Les actions…' },
+      },
+      { type: 'text', text: 'Le tribunal.' },
+    ],
+  },
+];
 
 interface StreamOutcome {
   readonly parts: UIMessageChunk[];
@@ -60,18 +75,26 @@ describe('webSocketChatTransport', () => {
     sockets = stubWebSocket();
   });
 
-  const askQuestion = async (abortSignal?: AbortSignal) => {
+  const askQuestion = async (abortSignal?: AbortSignal, messages: AppUIMessage[] = [QUESTION]) => {
     const stream = await webSocketChatTransport.sendMessages({
       trigger: 'submit-message',
       chatId: 'chat-1',
       messageId: undefined,
-      messages: [QUESTION],
+      messages,
       abortSignal,
     });
     return { stream, socket: sockets[0] };
   };
 
-  it('opens the chat socket and sends the conversation once it is open', async () => {
+  it('sends only the last question: the backend is stateless', async () => {
+    const { socket } = await askQuestion(undefined, [...PREVIOUS_TURN, QUESTION]);
+
+    socket.open();
+
+    expect(socket.sent.map((data) => JSON.parse(data))).toEqual([{ messages: [QUESTION] }]);
+  });
+
+  it('opens the chat socket and sends the question once it is open', async () => {
     const { socket } = await askQuestion();
     expect(socket.url).toMatch(/\/api\/v1\/chat\/ws$/);
     expect(socket.sent).toEqual([]);
