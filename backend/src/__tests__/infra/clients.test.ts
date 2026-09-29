@@ -37,7 +37,7 @@ describe('infrastructure clients', () => {
     expect(resolveCollection).toHaveBeenCalledWith({
       mongoClient: 'driver-client',
       metaDatabase: 'MURPHY_META',
-      qdrantUrl: 'http://qdrant.test',
+      qdrant: config.qdrant,
     });
   });
 

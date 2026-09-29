@@ -5,11 +5,14 @@
 
 import { QdrantClient } from '@qdrant/qdrant-js';
 import type { EmbeddingVector, RagFailure, RetrievedChunk } from '../types/rag';
-import { logger } from '../utils/logger';
+import { logger as rootLogger } from '../utils/logger';
 import { contractViolation, toRagError } from '../types/rag';
+
+const logger = rootLogger.child({ context: 'qdrant' });
 
 export interface QdrantVectorClientOptions {
   readonly url: string;
+  readonly timeoutMs: number;
   /** The collection published by the last `ok` ingestion run (`infra/collectionPointer.ts`) */
   readonly collection: string;
   readonly minScore: number;
@@ -60,7 +63,7 @@ export class QdrantVectorClient {
   private readonly client: QdrantClient;
 
   constructor(private readonly options: QdrantVectorClientOptions) {
-    this.client = new QdrantClient({ url: options.url });
+    this.client = new QdrantClient({ url: options.url, timeout: options.timeoutMs });
   }
 
   /**

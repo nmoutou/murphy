@@ -126,8 +126,10 @@ l'initialisation ; `closeInfraClients()` ferme Mongo au shutdown gracieux. Ne ja
 en `RagError { stage, code }`. Le code vaut `TIMEOUT` quand le **type** de l'erreur se
 termine par `TimeoutError` (`AbortSignal.timeout`, `QdrantClientTimeoutError`,
 `MongoNetworkTimeoutError`…), sinon le code propre au client (`NETWORK`,
-`SEARCH_FAILED`, `DB_FETCH_FAILED`, `API_ERROR`). Le délai du LLM ne couvre que
-l'attente de la réponse, pas le streaming qui suit.
+`SEARCH_FAILED`, `DB_FETCH_FAILED`, `API_ERROR`). Délais par défaut : TEI et Mongo 10 s,
+Qdrant 10 s (`QDRANT_TIMEOUT`, pour la recherche comme pour la vérification au boot ; le
+client seul attendrait 300 s), LLM 30 s. Le délai du LLM ne couvre que l'attente de la
+réponse, pas le streaming qui suit.
 
 ## Conventions transverses
 

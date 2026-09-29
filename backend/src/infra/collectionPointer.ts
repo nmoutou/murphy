@@ -15,6 +15,7 @@
 
 import { QdrantClient } from '@qdrant/qdrant-js';
 import type { MongoClient } from 'mongodb';
+import type { QdrantConfig } from '../config';
 import { logger } from '../utils/logger';
 
 const log = logger.child({ context: 'collectionPointer' });
@@ -44,7 +45,7 @@ export interface CollectionSources {
   readonly mongoClient: MongoClient;
   /** The database holding the pointer — not the data database */
   readonly metaDatabase: string;
-  readonly qdrantUrl: string;
+  readonly qdrant: QdrantConfig;
 }
 
 /**
@@ -71,7 +72,7 @@ export async function readPublishedCollection(
  */
 export async function resolveCollection(sources: CollectionSources): Promise<string> {
   const collection = await readServableCollection(sources);
-  await assertCollectionExists(sources.qdrantUrl, collection);
+  await assertCollectionExists(sources.qdrant, collection);
   return collection;
 }
 
@@ -125,12 +126,12 @@ function assertContractVersion(published: PublishedCollection): void {
  * Une collection nommée mais absente est un MENSONGE — et il vaut mieux le découvrir au
  * boot que sur la première question d'un utilisateur.
  */
-async function assertCollectionExists(qdrantUrl: string, collection: string): Promise<void> {
-  const client = new QdrantClient({ url: qdrantUrl });
+async function assertCollectionExists(qdrant: QdrantConfig, collection: string): Promise<void> {
+  const client = new QdrantClient({ url: qdrant.url, timeout: qdrant.timeoutMs });
 
   const exists = await client.collectionExists(collection).catch((error) => {
     throw new Error(
-      `Qdrant injoignable (${qdrantUrl}) : impossible de vérifier la collection ` +
+      `Qdrant injoignable (${qdrant.url}) : impossible de vérifier la collection ` +
         `« ${collection} ». Cause : ${String(error)}`
     );
   });

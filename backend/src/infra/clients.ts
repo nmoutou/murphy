@@ -34,12 +34,12 @@ export const initInfraClients = async (config: AppConfig): Promise<void> => {
   const collection = await resolveCollection({
     mongoClient: mongo.getClient(),
     metaDatabase: config.mongo.metaDatabase,
-    qdrantUrl: config.qdrant.url,
+    qdrant: config.qdrant,
   });
 
   clients = {
     mongo,
-    qdrant: new QdrantVectorClient({ url: config.qdrant.url, collection, minScore: config.retrieval.minScore }),
+    qdrant: new QdrantVectorClient({ ...config.qdrant, collection, minScore: config.retrieval.minScore }),
     embedding: new EmbeddingClient(config.embedding),
     llm: new LLMProvider(config.llm),
   };

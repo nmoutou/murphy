@@ -6,11 +6,16 @@
 import { QdrantVectorClient } from '../../infra/qdrant';
 
 const mockSearch = jest.fn();
+const mockQdrantClientConstructor = jest.fn();
 
 // A class, not a `jest.fn`: `restoreMocks` would reset its implementation between tests
 jest.mock('@qdrant/qdrant-js', () => ({
   QdrantClient: class {
     search = mockSearch;
+
+    constructor(args: unknown) {
+      mockQdrantClientConstructor(args);
+    }
   },
 }));
 jest.mock('../../utils/logger', () => {
@@ -18,7 +23,7 @@ jest.mock('../../utils/logger', () => {
   return { logger: silentLogger };
 });
 
-const OPTIONS = { url: 'http://qdrant.test', collection: 'collection-test', minScore: 0.5 };
+const OPTIONS = { url: 'http://qdrant.test', timeoutMs: 2500, collection: 'collection-test', minScore: 0.5 };
 const VECTOR = [0.1, 0.2, 0.3];
 const TOP_K = 3;
 /** `type_document` is optional in the contract */
@@ -31,6 +36,14 @@ const PAYLOAD_WITHOUT_TYPE = {
   num: 'L2122-22',
 };
 const CONTRACT_PAYLOAD = { ...PAYLOAD_WITHOUT_TYPE, type_document: 'article' };
+
+describe('QdrantVectorClient', () => {
+  it('gives the Qdrant client its timeout, in milliseconds', () => {
+    new QdrantVectorClient(OPTIONS);
+
+    expect(mockQdrantClientConstructor).toHaveBeenCalledWith({ url: 'http://qdrant.test', timeout: 2500 });
+  });
+});
 
 describe('QdrantVectorClient.searchVectors', () => {
   it('searches the configured collection and reads the contract fields of each point', async () => {

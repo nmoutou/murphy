@@ -38,6 +38,8 @@ export interface MongoConfig {
 /** The collection itself is read from the pointer published by the ingestion (`infra/collectionPointer.ts`) */
 export interface QdrantConfig {
   readonly url: string;
+  /** Per request; the client's own default is 300 s */
+  readonly timeoutMs: number;
 }
 
 export interface EmbeddingConfig {
@@ -97,6 +99,7 @@ const DEFAULT_MONGODB_DATABASE = 'LEGIFRANCE';
 const DEFAULT_MONGODB_META_DATABASE = 'MURPHY_META';
 const DEFAULT_MONGODB_TIMEOUT_MS = 10_000;
 const DEFAULT_QDRANT_URL = 'http://qdrant:6333';
+const DEFAULT_QDRANT_TIMEOUT_MS = 10_000;
 const DEFAULT_EMBEDDING_SERVICE_URL = 'http://embedding-service:80';
 const DEFAULT_EMBEDDING_MODEL_NAME = 'all-mpnet-base-v2';
 const DEFAULT_EMBEDDING_TIMEOUT_MS = 10_000;
@@ -186,6 +189,7 @@ const readMongoConfig = (reader: EnvReader): MongoConfig => ({
 
 const readQdrantConfig = (reader: EnvReader): QdrantConfig => ({
   url: reader.optional('QDRANT_URL') ?? DEFAULT_QDRANT_URL,
+  timeoutMs: reader.integer('QDRANT_TIMEOUT', DEFAULT_QDRANT_TIMEOUT_MS),
 });
 
 const readEmbeddingConfig = (reader: EnvReader): EmbeddingConfig => ({

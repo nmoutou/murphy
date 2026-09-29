@@ -9,11 +9,16 @@ import { resolveCollection, SERVING_CONTRACT_VERSION } from '../../infra/collect
 
 const mockCollectionExists = jest.fn();
 const mockGetCollection = jest.fn();
+const mockQdrantClientConstructor = jest.fn();
 
 jest.mock('@qdrant/qdrant-js', () => ({
   QdrantClient: class {
     collectionExists = mockCollectionExists;
     getCollection = mockGetCollection;
+
+    constructor(args: unknown) {
+      mockQdrantClientConstructor(args);
+    }
   },
 }));
 jest.mock('../../utils/logger', () => {
@@ -40,7 +45,7 @@ const mongoClientFinding = (findOne: () => Promise<unknown>): MongoClient => {
 const sourcesWith = (findOne: () => Promise<unknown>) => ({
   mongoClient: mongoClientFinding(findOne),
   metaDatabase: 'MURPHY_META',
-  qdrantUrl: 'http://qdrant.test',
+  qdrant: { url: 'http://qdrant.test', timeoutMs: 2500 },
 });
 
 beforeEach(() => {
@@ -52,6 +57,7 @@ describe('resolveCollection', () => {
   it('serves the collection published by the last ok run', async () => {
     await expect(resolveCollection(sourcesWith(async () => PUBLISHED))).resolves.toBe('9424808d');
     expect(mockCollectionExists).toHaveBeenCalledWith('9424808d');
+    expect(mockQdrantClientConstructor).toHaveBeenCalledWith({ url: 'http://qdrant.test', timeout: 2500 });
   });
 
   it.each([

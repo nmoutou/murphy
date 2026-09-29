@@ -65,7 +65,15 @@ seulement lu dans le code.
   limite de 100 ko serait vite atteinte (voir aussi le point 2).
 - **Piste** : n'envoyer que le dernier message `user`.
 
-## 🟠 4. Qdrant sans timeout
+## ✅ 4. Qdrant sans timeout — traité
+
+> **Traité le 2026-09-29.** `QDRANT_TIMEOUT` (ms, 10 000 par défaut, nommé comme les autres
+> délais) est passé aux deux clients Qdrant : la recherche (`infra/qdrant.ts`) et la
+> vérification de la collection au boot (`infra/collectionPointer.ts`, qui aurait pu
+> bloquer le démarrage 300 s). L'erreur réelle est bien `QdrantClientTimeoutError`, donc
+> `TIMEOUT` (sonde en Node : 53 ms pour un délai de 50). Ce n'est pas testable sous Jest :
+> l'`AbortError` de `fetch` vient d'un autre realm, `instanceof Error` échoue dans le
+> client et l'erreur n'est pas convertie. Les tests vérifient que le délai est transmis.
 
 - **Où** : `backend/src/infra/qdrant.ts` (constructeur de `QdrantVectorClient`),
   `backend/src/config.ts` (`QdrantConfig`).
