@@ -171,7 +171,18 @@ seulement lu dans le code.
 - `services/ragService.ts` : `buildContextString` renvoie une phrase anglaise (« No relevant
   documents found. ») dans un prompt système français.
 
-## 🟡 9. `forceExit` masque des handles ouverts dans les tests backend
+## ✅ 9. `forceExit` masque des handles ouverts dans les tests backend — vérifié, traité
+
+> **Traité le 2026-09-29.** Aucun handle ne fuyait : sans `forceExit`, les tests s'arrêtent
+> seuls en parallèle, en `--runInBand`, avec `--coverage`, et `--detectOpenHandles` ne
+> signale rien (les fermetures du point 1 y sont pour beaucoup). `forceExit` et
+> `detectOpenHandles` sont retirés de `jest.config.js`. Une fuite future se voit, vérifié
+> avec un `setInterval` jamais nettoyé dans un test jetable :
+> - en parallèle, l'avertissement « A worker process has failed to exit gracefully »
+>   s'affiche, mais le code de sortie reste 0 ;
+> - en série, Jest affiche « Jest did not exit one second after the test run » et ne rend
+>   pas la main. Le job CI `typescript` (environ 75 s) est donc coupé à 10 min
+>   (`timeout-minutes`), au lieu des 6 h par défaut de GitHub.
 
 - **Où** : `backend/jest.config.js` (`forceExit: true`, `detectOpenHandles: false`).
 - **Constat** : chaque `npm test` affiche « Force exiting Jest ». Un timer ou une
