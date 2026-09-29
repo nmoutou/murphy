@@ -7,7 +7,7 @@ points déjà traités dans les chantiers précédents ne sont pas repris.
 Classement : 🔴 critique, 🟠 important, 🟡 mineur. « Vérifié » = reproduit, pas
 seulement lu dans le code.
 
-## 🔴 1. Une trame WebSocket malformée arrête le backend — vérifié
+## ✅ 1. Une trame WebSocket malformée arrête le backend — vérifié, traité
 
 > **Traité le 2026-09-29.** `attachChatWebSocket` (`routes/chatWebSocket.ts`) : écouteur
 > `error` par socket (journalisé en `warn`), `maxPayload` de 100 ko partagé avec
@@ -35,7 +35,14 @@ seulement lu dans le code.
   limite HTTP ; `verifyClient` sur `config.http.corsOrigins` ; délai avant le premier
   message. Test de non-régression : la trame non masquée ne doit pas lever.
 
-## 🟠 2. JSON malformé ou corps trop gros → 500 au lieu de 400 / 413 — vérifié
+## ✅ 2. JSON malformé ou corps trop gros → 500 au lieu de 400 / 413 — vérifié, traité
+
+> **Traité le 2026-09-29.** `errorHandler` rend leur statut 4xx aux erreurs `http-errors`
+> marquées `expose` (`INVALID_JSON` 400, `PAYLOAD_TOO_LARGE` 413, sinon
+> `INVALID_REQUEST_BODY`), en `warn` ; une erreur interne qui porte un `status` sans
+> `expose` reste un 500. `express.urlencoded()` retiré d'`app.ts` (aucune route ne lit de
+> formulaire). Tests : JSON tronqué (rouge avant le correctif), corps trop gros, `status`
+> sans `expose`.
 
 - **Où** : `backend/src/middleware/errorHandler.ts` (`errorHandler`).
 - **Constat** : toute erreur devient `500 INTERNAL_ERROR`, journalisée comme erreur
@@ -45,7 +52,7 @@ seulement lu dans le code.
   corps `{"messages":` et un corps de 200 ko renvoient tous deux `500`.
 - **Piste** : respecter le `status` 4xx des erreurs de body-parser, journalisé en `warn`.
 
-## 🟠 3. Le frontend renvoie tout l'historique, documents intégraux compris
+## ✅ 3. Le frontend renvoie tout l'historique, documents intégraux compris — traité
 
 > **Traité le 2026-09-29**, avec le point 1 (la limite de 100 ko l'exigeait) : le
 > transport n'envoie que le dernier message `user`.

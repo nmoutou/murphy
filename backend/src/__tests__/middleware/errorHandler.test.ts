@@ -6,6 +6,8 @@
 import express, { Express } from 'express';
 import request from 'supertest';
 import { asyncHandler, errorHandler, notFoundHandler } from '../../middleware/errorHandler';
+import { logger } from '../../utils/logger';
+import { MAX_REQUEST_BODY_BYTES } from '../../utils/requestLimits';
 
 jest.mock('../../utils/logger', () => {
   const silentLogger = { info: jest.fn(), debug: jest.fn(), warn: jest.fn(), error: jest.fn(), child: () => silentLogger };
@@ -24,6 +26,12 @@ beforeEach(() => {
   }));
   app.get('/sync-failure', () => {
     throw new Error('Sync failure');
+  });
+  app.get('/status-without-expose', () => {
+    throw Object.assign(new Error('Internal failure carrying a status'), { status: 404 });
+  });
+  app.post('/echo', express.json({ limit: MAX_REQUEST_BODY_BYTES }), (req, res) => {
+    res.json(req.body);
   });
   app.use(notFoundHandler);
   app.use(errorHandler);
@@ -51,6 +59,39 @@ describe('errorHandler', () => {
 
     expect(response.status).toBe(500);
     expect(response.body.status).toEqual({ code: 500, message: 'INTERNAL_ERROR' });
+  });
+
+  it('keeps an internal error carrying a status without `expose` a 500', async () => {
+    const response = await request(app).get('/status-without-expose');
+
+    expect(response.status).toBe(500);
+    expect(response.body.status).toEqual({ code: 500, message: 'INTERNAL_ERROR' });
+  });
+});
+
+describe('errorHandler, request body errors', () => {
+  it('answers a malformed JSON body with a 400 INVALID_JSON, logged as a warning', async () => {
+    const response = await request(app)
+      .post('/echo')
+      .set('Content-Type', 'application/json')
+      .send('{"messages":');
+
+    expect(response.status).toBe(400);
+    expect(response.body.status).toEqual({ code: 400, message: 'INVALID_JSON' });
+    expect(logger.warn).toHaveBeenCalled();
+    expect(logger.error).not.toHaveBeenCalled();
+  });
+
+  it('answers a body over the size limit with a 413 PAYLOAD_TOO_LARGE', async () => {
+    const oversizedBody = JSON.stringify('x'.repeat(MAX_REQUEST_BODY_BYTES + 1));
+
+    const response = await request(app)
+      .post('/echo')
+      .set('Content-Type', 'application/json')
+      .send(oversizedBody);
+
+    expect(response.status).toBe(413);
+    expect(response.body.status).toEqual({ code: 413, message: 'PAYLOAD_TOO_LARGE' });
   });
 });
 

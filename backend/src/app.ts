@@ -27,7 +27,6 @@ app.use(limiter);
 // Body parsing middleware
 app.use(originParser);
 app.use(express.json({ limit: MAX_REQUEST_BODY_BYTES }));
-app.use(express.urlencoded({ extended: true }));
 
 // Routes
 app.get('/api/v1', (_req, res) => {

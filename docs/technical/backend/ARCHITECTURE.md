@@ -137,7 +137,11 @@ l'attente de la réponse, pas le streaming qui suit.
 - **Logs** : Pino structuré (`utils/logger.ts`), un logger enfant par module
   (`rootLogger.child({ context: 'moduleName' })`).
 - **Erreurs** : handlers async enveloppés par `middleware/errorHandler.ts:asyncHandler` ;
-  `errorHandler` + `notFoundHandler` enregistrés en dernier dans `app.ts`.
+  `errorHandler` + `notFoundHandler` enregistrés en dernier dans `app.ts`. `errorHandler`
+  rend leur statut 4xx aux erreurs `http-errors` marquées `expose`, celles du parseur
+  JSON (`INVALID_JSON` 400, `PAYLOAD_TOO_LARGE` 413, sinon `INVALID_REQUEST_BODY`),
+  journalisées en `warn` ; toute autre erreur est un `500 INTERNAL_ERROR`. Le message
+  brut n'est jamais renvoyé. Seul `express.json()` parse les corps (pas de formulaires).
 - **Ordre des middlewares** (`app.ts`) : requestLogger → helmet / rate-limit / CORS
   (`middleware/security.ts`) → body parsing → routes → handlers d'erreur. Les routes
   `/streams` et `/completions` ajoutent `streamRateLimiter`. Les trois transports valident
