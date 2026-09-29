@@ -16,9 +16,9 @@
 import { QdrantClient } from '@qdrant/qdrant-js';
 import type { MongoClient } from 'mongodb';
 import type { QdrantConfig } from '../config';
-import { logger } from '../utils/logger';
+import { logger as rootLogger } from '../utils/logger';
 
-const log = logger.child({ context: 'collectionPointer' });
+const logger = rootLogger.child({ context: 'collectionPointer' });
 
 const POINTER_COLLECTION = 'meta_published_collection';
 const POINTER_KEY = 'current';
@@ -91,7 +91,7 @@ async function readServableCollection(sources: CollectionSources): Promise<strin
   }
   assertContractVersion(published);
 
-  log.info(
+  logger.info(
     {
       collection: published.collection_name,
       runId: published.run_id,
@@ -144,12 +144,12 @@ async function assertCollectionExists(qdrant: QdrantConfig, collection: string):
   }
 
   const info = await client.getCollection(collection);
-  log.info(
+  logger.info(
     { collection, vectors: info.points_count },
     'Collection Qdrant vérifiée — elle existe et contient des vecteurs'
   );
 
   if (!info.points_count) {
-    log.warn({ collection }, 'La collection existe mais est VIDE : aucune source ne remontera');
+    logger.warn({ collection }, 'La collection existe mais est VIDE : aucune source ne remontera');
   }
 }

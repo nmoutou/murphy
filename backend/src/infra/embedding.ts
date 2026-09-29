@@ -5,8 +5,10 @@
 
 import type { EmbeddingConfig } from '../config';
 import type { EmbeddingVector, RagFailure } from '../types/rag';
-import { logger } from '../utils/logger';
+import { logger as rootLogger } from '../utils/logger';
 import { toRagError } from '../types/rag';
+
+const logger = rootLogger.child({ context: 'embedding' });
 
 interface TEIEmbeddingRequest {
   model: string;

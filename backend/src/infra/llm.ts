@@ -5,8 +5,10 @@
 
 import type { LlmConfig } from '../config';
 import type { RagFailure } from '../types/rag';
-import { logger } from '../utils/logger';
+import { logger as rootLogger } from '../utils/logger';
 import { toRagError } from '../types/rag';
+
+const logger = rootLogger.child({ context: 'llm' });
 
 export interface ChatMessage {
   role: 'system' | 'user' | 'assistant';

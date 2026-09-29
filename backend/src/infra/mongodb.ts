@@ -6,8 +6,10 @@
 import { MongoClient, Db, MongoClientOptions } from 'mongodb';
 import type { MongoConfig } from '../config';
 import type { DocumentKey, RagFailure, StoredDocument } from '../types/rag';
-import { logger } from '../utils/logger';
+import { logger as rootLogger } from '../utils/logger';
 import { contractViolation, serializeDocumentKey, toRagError } from '../types/rag';
+
+const logger = rootLogger.child({ context: 'mongodb' });
 
 const MONGO_MAX_POOL_SIZE = 10;
 /** Written by the ingestion, one whole document per `(identifier, owner_id)` (ADR-039 §2) */
