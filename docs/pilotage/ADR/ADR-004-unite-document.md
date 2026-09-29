@@ -1,11 +1,11 @@
 # ADR-004 — Définition de l'unité « document »
 
-**Statut** : acté (chantier 4, 17 juillet 2026)
+**Statut** : acté (17 juillet 2026)
 
 ## Contexte
 
-L'évaluation à deux niveaux (passage + document) exige une définition
-stable de l'unité « document » (`CADRAGE_evaluation` §2, §9). Candidats :
+L'identité canonique et le contrat entre ingestion et serving (ADR-039)
+reposent sur une définition stable de l'unité « document ». Candidats :
 arrêt entier, article, section, fichier XML.
 
 ## Décision
@@ -24,10 +24,9 @@ suivantes : *ce qu'un juriste cite*.
 
 ## Conséquences
 
-- Métriques document rapportées **par base** en plus de l'agrégé.
 - L'identité canonique doit exposer un **`doc_id` stable à ce niveau** —
   point ouvert : à vérifier côté pipeline LEGI pour l'article.
 
 ## Références
 
-ADR-006 (agrégation) · ADR-007 (métriques) · ADR-018 (identité)
+ADR-018 (identité) · ADR-039 (contrat ingestion / serving)

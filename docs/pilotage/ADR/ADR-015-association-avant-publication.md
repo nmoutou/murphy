@@ -1,6 +1,6 @@
 # ADR-015 — Association entre beta et publication
 
-**Statut** : rétro-documenté (décision implicite antérieure au chantier 4)
+**Statut** : rétro-documenté (décision implicite antérieure au 17 juillet 2026)
 
 ## Contexte
 
@@ -24,10 +24,6 @@ l'ouverture publique.
 ## Conséquences
 
 - Déclenche les chantiers non techniques : statuts, IP, modèle
-  d'exploitation, conformité renforcée (voir `INSTITUTIONNEL.md`).
+  d'exploitation, conformité renforcée.
 - Le **cadrage** institutionnel, lui, démarre dès maintenant : ses
   exigences sont des critères d'entrée beta/publication.
-
-## Références
-
-`INSTITUTIONNEL.md` · `VERSIONS.md` (jalon association)

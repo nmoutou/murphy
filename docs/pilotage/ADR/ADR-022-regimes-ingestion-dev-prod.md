@@ -4,11 +4,11 @@
 interrupteurs `exportation.<store>.enabled` sont remplacés par un unique
 interrupteur d'embedding en dev) · **§7 amendé par ADR-024** (le
 paramètre d'échantillonnage du connecteur est retiré : sans objet sur le
-corpus réel ; le corpus témoin de B-02 relève de `source=` + B-02)
+corpus réel ; le corpus témoin relève de `--params source=`)
 
 ## Contexte
 
-La préparation de B-01 (vérification d'identité croisée) a révélé que
+La préparation de la vérification d'identité croisée a révélé que
 l'état des BDD n'est pas vérifiable en l'état : nœuds Neo4j maigres
 (3 propriétés : `title`, `source`, `schema_version`), balises XML non
 mappées reléguées dans un champ `unknowns` visible seulement dans
@@ -16,8 +16,8 @@ MongoDB, collisions de clés de métadonnées silencieuses (premier
 arrivé gagne), conf morte (`field_mappings` sans consommateur),
 champs superflus persistés (`parsed_at`, `structure["references"]`).
 
-Or l'itération sur le modèle de données (P1, exigences E-P1-02 et
-E-P1-04) exige de **voir toutes les données** — Neo4j étant l'outil
+Or l'itération sur le modèle de données exige de **voir toutes les
+données** — Neo4j étant l'outil
 d'inspection privilégié. Le comportement sélectif actuel, défendable
 en prod, est un obstacle en dev, particulièrement en v0.
 
@@ -57,7 +57,7 @@ mode jetable.
    `parameters.yml`.
 7. **Échantillonnage de corpus** : paramètre de restriction du
    connecteur (en plus du `--params source=` existant), partagé entre
-   l'itération dev et le corpus témoin exigé par E-P1-03 (B-02).
+   l'itération dev et un corpus témoin de ré-ingestion.
 
 ## Alternatives rejetées
 
@@ -72,9 +72,6 @@ mode jetable.
 
 ## Conséquences
 
-- B-01, B-02 et B-03 sont bloqués par l'implémentation (B-00) : on ne
-  vérifie pas l'état de données dont le processus de génération va
-  changer.
 - Le `SCHEMA_VERSION` bump impose une ré-ingestion complète — groupée,
   une seule fois.
 - La doctrine « rien n'entre en silence » de `ragcore` est amendée :
@@ -83,5 +80,4 @@ mode jetable.
 
 ## Références
 
-ADR-004 · ADR-018 · ADR-020 · E-P1-02/03/04 (`EXIGENCES_v0.md`) ·
-`BACKLOG.md` B-00
+ADR-004 · ADR-018 · ADR-020 · ADR-023 · ADR-024

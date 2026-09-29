@@ -1,6 +1,6 @@
 # ADR-019 — Rejet d'Akoma Ntoso comme format de travail
 
-**Statut** : rétro-documenté (décision implicite antérieure au chantier 4)
+**Statut** : rétro-documenté (décision implicite antérieure au 17 juillet 2026)
 
 ## Contexte
 

@@ -1,12 +1,12 @@
 # ADR-002 — Périmètre jurisprudentiel de la v0
 
-**Statut** : acté — décision **constatée** (chantier 4, 17 juillet 2026)
+**Statut** : acté — décision **constatée** (17 juillet 2026)
 
 ## Contexte
 
-`PROGRAM.md` §4 laissait ouvert : ingérer les 5 bases de jurisprudence
-DILA, ou un sous-ensemble couvrant les deux ordres (p. ex. CASS + JADE),
-suffisant pour prouver la réplicabilité de la méthode.
+Restait ouvert : ingérer les 5 bases de jurisprudence DILA, ou un
+sous-ensemble couvrant les deux ordres (p. ex. CASS + JADE), suffisant
+pour prouver la réplicabilité de la méthode.
 
 ## Décision
 
@@ -24,10 +24,9 @@ pour l'alpha.
 
 ## Conséquences
 
-- DoD v0 applicable aux 5 bases : identité canonique vérifiée sur les
-  3 BDD pour chacune.
-- Métriques rapportées **par base** (cf. ADR-004).
+- Pour chacune des 5 bases, l'identité canonique est vérifiée sur les
+  3 bases de données.
 
 ## Références
 
-`VERSIONS.md` (v0) · ADR-003 (séquençage) · ADR-004 (unité document)
+ADR-003 (séquençage) · ADR-004 (unité document)

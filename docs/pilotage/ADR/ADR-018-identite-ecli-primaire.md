@@ -1,6 +1,6 @@
 # ADR-018 — Identité : ECLI primaire
 
-**Statut** : rétro-documenté (décision implicite antérieure au chantier 4)
+**Statut** : rétro-documenté (décision implicite antérieure au 17 juillet 2026)
 
 ## Contexte
 
@@ -26,12 +26,10 @@ dans Qdrant, Neo4j et MongoDB.
 
 ## Conséquences
 
-- Sans cette couche d'identité, ni l'évaluation agnostique ni la boucle
-  experts ne sont possibles.
 - Point ouvert (ADR-004) : `doc_id` stable au niveau article pour LEGI.
 - Sous-document : schéma d'identifiant sous l'ECLI non résolu (index
   simple suffisant à ce stade).
 
 ## Références
 
-`VISION.md` §2 · ADR-004 · ADR-020
+ADR-004 · ADR-020

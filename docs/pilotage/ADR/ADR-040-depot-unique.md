@@ -1,17 +1,16 @@
 # ADR-040 — Un seul dépôt : fin des sous-modules, contrat du flux dans un paquet partagé
 
-**Statut** : ✅ Accepté (25 septembre 2026, corrections TR-04 et TR-07,
-[`corrections/transverse.md`](../archives/corrections/transverse.md))
+**Statut** : ✅ Accepté (25 septembre 2026)
 
 ## Contexte
 
-Le 27 juin 2026, le monodépôt d'origine a été découpé : un dépôt parent (infra, docs,
-`eval/`) et trois sous-modules git, `murphy-backend`, `murphy-frontend` et `murphy-data`.
+Le 27 juin 2026, le monodépôt d'origine a été découpé : un dépôt parent (infra, docs)
+et trois sous-modules git, `murphy-backend`, `murphy-frontend` et `murphy-data`.
 
 Trois mois plus tard, ce découpage coûte plus qu'il ne rapporte :
 
 - **Les changements traversent les dépôts.** L'ADR-039 a touché `data/`, `backend/`,
-  la doc du parent, et devait encore toucher `frontend/` (TR-04). Chaque dépôt demande
+  la doc du parent, et devait encore toucher `frontend/`. Chaque dépôt demande
   son commit, puis le parent un commit de pointeur. Rien ne garantit qu'ils partent
   ensemble.
 - **Le contrat du flux existe en deux copies.** `backend/src/types/messages.ts` et
@@ -35,8 +34,8 @@ historique, réécrit sous leur préfixe par `git filter-repo`, si bien que
 Compose, les chemins absolus vers `.env.dev` et les liens de doc restent valides.
 
 **npm workspaces** pour le TypeScript : `backend`, `frontend` et `packages/*`, avec un
-seul `package-lock.json` à la racine. `data/` et `eval/` sont des projets Python posés à
-côté, hors workspaces.
+seul `package-lock.json` à la racine. `data/` est un projet Python posé à côté, hors
+workspaces.
 
 **`packages/` accueille uniquement ce qui franchit une frontière d'exécution entre deux
 workspaces.** Premier paquet : `@murphy/contract`, le contrat du flux.
@@ -54,7 +53,7 @@ workspaces.** Premier paquet : `@murphy/contract`, le contrat du flux.
   ignorent `exports` (ts-jest).
 
 **Docker et CI suivent.** Le contexte de build devient la racine, et un `.dockerignore`
-racine en exclut `.env*`, les `node_modules`, `data/`, `eval/` et `docs/`. En dev, seules
+racine en exclut `.env*`, les `node_modules`, `data/` et `docs/`. En dev, seules
 les sources sont montées. Une seule CI tourne à la racine (`npm run check`, puis le build
 des deux images).
 
@@ -77,12 +76,6 @@ des deux images).
 - La migration a produit quatre commits : le retrait des sous-modules, puis une fusion
   par dossier. Les dépôts `left-eyebr0w/murphy-{backend,frontend,data}` sont à archiver,
   avec un renvoi vers le dépôt unique.
-- **ADR-026 et ADR-027** justifiaient leurs choix en partie par la « frontière des
-  submodules ». Cette frontière devient une frontière de dossiers. Les décisions tiennent
-  pour leur raison propre, le couplage : `eval/` n'importe pas `ragcore`, et
-  `conf/workflow/` n'est pas partagé physiquement.
-- L'**extraction d'`eval/` en sous-module**, différée par B-04 (BACKLOG), est
-  abandonnée : `eval/` reste un dossier.
 - Le **contrat Python ↔ TypeScript** (payload Qdrant, `documents`, pointeur ; ADR-039)
   ne peut pas passer par un paquet npm. Il reste répliqué et versionné
   (`SERVING_CONTRACT_VERSION` des deux côtés, refus de démarrer sur une autre version).
@@ -90,14 +83,10 @@ des deux images).
   modèles pydantic, dont les types TypeScript sont générés).
 - **Changer le contrat, une dépendance ou une config d'app demande de reconstruire les
   images de dev** (`npm run serve:build`), puisque seules les sources sont montées. En
-  contrepartie, plus aucun `node_modules` appartenant à root n'apparaît sur l'hôte
-  (TR-06).
+  contrepartie, plus aucun `node_modules` appartenant à root n'apparaît sur l'hôte.
 - Le lockfile unique a été reconstruit en gardant, pour chaque dépendance directe, la
   version exacte que verrouillaient les anciens lockfiles.
 
 ## Références
 
-ADR-026 (restructuration de la configuration) · ADR-027 (plateforme end-to-end) ·
-ADR-039 (contrat ingestion ↔ serving) ·
-[`corrections/transverse.md`](../archives/corrections/transverse.md) (TR-01, TR-04,
-TR-06, TR-07) · `packages/contract/src/messages.ts`
+ADR-039 (contrat ingestion ↔ serving) · `packages/contract/src/messages.ts`

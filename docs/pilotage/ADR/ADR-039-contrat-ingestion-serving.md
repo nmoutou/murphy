@@ -1,7 +1,6 @@
 # ADR-039 — Contrat ingestion ↔ serving : le texte d'un passage vit dans Mongo, désigné par ses offsets
 
-**Statut** : ✅ Accepté (25 septembre 2026, correction TR-01,
-[`corrections/transverse.md`](../archives/corrections/transverse.md) §1)
+**Statut** : ✅ Accepté (25 septembre 2026)
 
 ## Contexte
 
@@ -126,7 +125,7 @@ retrouvé. Le flux porte donc **deux types de parts**, chacun envoyé une fois :
   des arrêts longs remontent en plusieurs passages, il faudrait défaire ce mélange sur un
   contrat déjà consommé.
 - **Texte entier servi par une route à la demande** (`GET /documents/:id`). Ajoute un
-  aller-retour par source affichée et rouvre une route supprimée (BE-04) ; le flux porte
+  aller-retour par source affichée et rouvre une route supprimée ; le flux porte
   déjà tout ce que la réponse a utilisé.
 - **Contrôle par point à la requête** (écarter les points incomplets et journaliser).
   Rattrape une collection mêlée, mais l'utilisateur reçoit une réponse appauvrie sans le
@@ -140,23 +139,22 @@ retrouvé. Le flux porte donc **deux types de parts**, chacun envoyé une fois :
 
 - **Réingestion complète**, une fois. Le fingerprint ne change pas : la collection
   `9424808d…` est réécrite en place, puisqu'un run retraite tous les documents (pas de
-  SKIP). `transverse.md` annonçait à tort une nouvelle collection pour l'option « texte
-  dans Qdrant » ; c'est vrai d'aucune des trois options.
+  SKIP).
 - **Côté `data/`** : `QdrantVectorRepository.upsert` écrit `char_start` et `char_end` ; une
   constante `SERVING_CONTRACT_VERSION` est publiée avec le pointeur ; la publication
-  applique la règle du run restreint (§3) ; `docs/reference/modele-de-donnees.md` décrit
+  applique la règle du run restreint (§3) ; `docs/technical/data/reference/modele-de-donnees.md` décrit
   le contrat.
 - **Côté `backend/`** : `collectionPointer.ts` vérifie la version et perd son repli ;
   `mongodb.ts` lit `documents` par `(identifier, owner_id)` et découpe les passages ;
-  `chatService.ts` suit les §4 et §5, ce qui débloque BE-15. `MONGODB_COLLECTION` et
+  `chatService.ts` suit les §4 et §5. `MONGODB_COLLECTION` et
   `QDRANT_COLLECTION` disparaissent de la configuration. Le type `Document` est renommé
-  d'après ce qu'il est désormais, un document parent (BE-11). `types/messages.ts` gagne
+  d'après ce qu'il est désormais, un document parent. `types/messages.ts` gagne
   `ParentDocument` et les champs de §5 ; la ligne « le contenu n'est jamais envoyé au
   client » de `CLAUDE.md` et d'`ARCHITECTURE.md` devient fausse et doit être réécrite.
 - **Côté `frontend/`** : **aucun changement d'affichage imposé**. Le client actuel lit
   `data-document` et ses champs `chunkId`, `title`, `type`, `score`, tous conservés ; il
   ignore la part `data-parentDocument` et les champs ajoutés. Sa copie de
-  `types/messages.ts` doit néanmoins être alignée (TR-04), pour que l'affichage du texte
+  `types/messages.ts` doit néanmoins être alignée, pour que l'affichage du texte
   surligné n'ait plus qu'à lire ce qui arrive déjà. Le titre d'un article LEGI est son
   numéro (`L2122-22`) : un titre plus parlant est une évolution à part.
 - **Poids des réponses** : chaque réponse transporte le texte entier des documents
@@ -166,12 +164,10 @@ retrouvé. Le flux porte donc **deux types de parts**, chacun envoyé une fois :
   Qdrant (saga, steps 1 et 2), les anciens offsets d'un document désignent son nouveau
   `content`. Si ce passage reste dans les bornes, rien ne le détecte. La fenêtre est celle
   d'un document, hors du chemin `nuke_all` ; elle rejoint les résiduels déjà assumés de
-  la saga (`data/docs/reference/idempotence-et-publication.md`). Une empreinte du
+  la saga (`docs/technical/data/reference/idempotence-et-publication.md`). Une empreinte du
   `content` dans le payload la fermerait, si elle devient un problème.
 
 ## Références
 
 ADR-004 (unité document) · ADR-016 (découplage récupération/génération) · ADR-020
-(tri-base, fail-fast) · ADR-022 §4 (épuration Mongo) ·
-[`corrections/transverse.md`](../archives/corrections/transverse.md) §1 (TR-01) ·
-[`corrections/backend.md`](../archives/corrections/backend.md) (BE-11, BE-15)
+(tri-base, fail-fast) · ADR-022 §4 (épuration Mongo)

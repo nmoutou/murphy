@@ -1,6 +1,6 @@
-# ADR-020 — Architecture tri-base + P3 stateless/fail-fast
+# ADR-020 — Architecture tri-base + serving stateless/fail-fast
 
-**Statut** : rétro-documenté (décision implicite antérieure au chantier 4)
+**Statut** : rétro-documenté (décision implicite antérieure au 17 juillet 2026)
 
 ## Contexte
 
@@ -16,7 +16,7 @@ confidentialité structurelle.
 - **Neo4j** : nœuds/arêtes typés — **références, pas de texte**.
 - **Qdrant** : embeddings + métadonnées, recherche hybride.
 
-**P3** : **stateless** (aucun historique serveur, seule la dernière
+**Serving** : **stateless** (aucun historique serveur, seule la dernière
 question compte), **fail-fast** (pas de retry/fallback LLM, erreur
 claire), **aucune analyse du contenu** des requêtes.
 
@@ -36,4 +36,4 @@ claire), **aucune analyse du contenu** des requêtes.
 
 ## Références
 
-`VISION.md` §2 · ADR-018 · `STATUS.md`
+ADR-018

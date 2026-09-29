@@ -1,12 +1,11 @@
 # ADR-041 — Erreurs du chat : une modale, l'étape en cause, un arrêt propagé au backend
 
-**Statut** : ✅ Accepté (26 septembre 2026, corrections FE-03 et FE-09,
-[`corrections/frontend.md`](../archives/corrections/frontend.md))
+**Statut** : ✅ Accepté (26 septembre 2026)
 
 ## Contexte
 
 Quand une étape du pipeline échoue (TEI, Qdrant, Mongo ou le LLM), l'utilisateur ne voit
-rien : la bulle de l'IA reste vide et `…` cesse de clignoter (FE-03). Le backend envoie
+rien : la bulle de l'IA reste vide et `…` cesse de clignoter. Le backend envoie
 bien une part `{ type: 'error', errorText }`, que `useChat` convertit en `error`, mais
 `useRagChat` ne l'expose pas.
 
@@ -59,7 +58,7 @@ d'arrêt du `ChatBox` en bénéficie aussi.
 
 ## Alternatives rejetées
 
-- **Afficher l'erreur sous le dernier message**, première forme de la décision FE-03 :
+- **Afficher l'erreur sous le dernier message**, première forme de la décision :
   écartée par le porteur au profit d'une modale.
 - **Une bibliothèque de dialogue** (Radix, Headless UI) : `<dialog>` couvre le besoin
   sans dépendance.
@@ -83,15 +82,13 @@ d'arrêt du `ChatBox` en bénéficie aussi.
   l'arrêt entre les étapes.
 - **Frontend** : `components/ui/Modal.tsx` et `ErrorDialog.tsx` apparaissent,
   `ErrorMessage.tsx` et la détection du préfixe « ❌ » disparaissent. `useRagChat`
-  expose l'erreur et fiabilise le transport (FE-09). Les couleurs dont la modale a
-  besoin sont déclarées dans le `@theme` de `globals.css`, premier pas de FE-08, pour
-  ne pas écrire un nouveau composant en styles inline.
+  expose l'erreur et fiabilise le transport. Les couleurs dont la modale a
+  besoin sont déclarées dans le `@theme` de `globals.css`, pour ne pas
+  écrire un nouveau composant en styles inline.
 - Deux défauts du backend sont ouverts et réglés par ce lot : l'arrêt non propagé et le
   message brut envoyé au client.
 
 ## Références
 
-ADR-040 (dépôt unique, contrat partagé) ·
-[`corrections/frontend.md`](../archives/corrections/frontend.md) (FE-03, FE-08,
-FE-09, FE-10) · `backend/src/types/rag.ts` (`RagError`) ·
+ADR-040 (dépôt unique, contrat partagé) · `backend/src/types/rag.ts` (`RagError`) ·
 `packages/contract/src/messages.ts`

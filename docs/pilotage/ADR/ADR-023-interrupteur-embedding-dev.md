@@ -7,18 +7,17 @@
 ADR-022 §5 prévoyait des « interrupteurs de génération »
 `exportation.<store>.enabled` pour MongoDB, Qdrant et Neo4j, avec pour
 **unique cas d'usage nommé** `qdrant.enabled: false` en dev, motivé par
-un seul fait : *l'embedding est ~99,9 % du temps d'un run* (mesure
-consignée, cf. `hooks.py` et la note de perf). Le but réel n'a jamais
+un seul fait : *l'embedding est ~99,9 % du temps d'un run* (mesuré). Le but réel n'a jamais
 été de choisir dans quels stores écrire — c'était d'éviter de payer le
 GPU en itérant sur le modèle de données.
 
-En préparant l'implémentation (B-00), deux constats :
+En préparant l'implémentation d'ADR-022, deux constats :
 
 1. **Aucun cas d'usage pour Mongo et Neo4j désactivés.** Neo4j *est*
    l'outil d'inspection privilégié de la v0 (ADR-022, contexte) ;
    Mongo porte le contenu de travail. Les désactiver irait à l'exact
-   opposé du but de B-00. La règle « pas de tâche au cas où »
-   (`PILOTAGE.md` §2) proscrit un échafaudage sans cas d'usage.
+   opposé du but d'ADR-022. La règle « pas de tâche au cas où »
+   proscrit un échafaudage sans cas d'usage.
 2. **Le « toggle Qdrant » était un toggle d'embedding déguisé.**
    L'embedding se déclenche dans le workload (`workload.py`), *en amont*
    de l'écriture Qdrant (un step de la saga). Un simple no-op sur le
@@ -60,8 +59,8 @@ l'ADR-022.
 ## Conséquences
 
 - ADR-022 §5 est **amendé** : `exportation.<store>.enabled` n'est plus
-  implémenté ; le point 5 de B-00 devient « un interrupteur
-  d'embedding ». Les autres points de B-00 (fin des unknowns,
+  implémenté ; le point 5 devient « un interrupteur d'embedding ». Les
+  autres points d'ADR-022 (fin des unknowns,
   hydratation Neo4j, aplatissement, épuration Mongo, nettoyage,
   échantillonnage) sont inchangés.
 - Le régime dev/prod (ADR-022 §1-2, différencié par `ENVIRONMENT`)
@@ -73,5 +72,4 @@ l'ADR-022.
 
 ## Références
 
-ADR-022 (§5 amendé) · ADR-020 · `BACKLOG.md` B-00 ·
-`workload.py` · note de perf (embedding = 99,9 % du run)
+ADR-022 (§5 amendé) · ADR-020 · `workload.py`

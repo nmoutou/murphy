@@ -1,6 +1,6 @@
 # ADR-003 — Séquençage d'ingestion DILA
 
-**Statut** : acté (chantier 4, 17 juillet 2026) — clôture vague 2 différée
+**Statut** : acté (17 juillet 2026) — clôture vague 2 différée
 
 ## Contexte
 
@@ -21,15 +21,14 @@ principe de versions par capacités mesurables (ADR-012).
 
 ## Alternatives rejetées
 
-- **Séquence figée dès maintenant** (JORF + KALI, proposition initiale
-  de `PROGRAM.md` §4) : fige un arbitrage que l'alpha informera mieux.
+- **Séquence figée dès maintenant** (JORF + KALI, proposition
+  initiale) : fige un arbitrage que l'alpha informera mieux.
 
 ## Conséquences
 
-- `PROGRAM.md` §4 mis à jour en conséquence.
 - Un **mini-ADR de clôture** du choix de la vague 2 sera rédigé à
   l'issue de l'alpha.
 
 ## Références
 
-`VERSIONS.md` (séquençage) · ADR-012 · ADR-014
+ADR-012 · ADR-014
