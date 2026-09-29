@@ -1,7 +1,7 @@
 {
   "name": "murphy",
   "private": true,
-  "description": "Murphy RAG system, one repository: backend, frontend and the shared contract are npm workspaces; data/ and eval/ are Python projects beside them. The scripts below wrap the Docker Compose stack.",
+  "description": "Murphy RAG system, one repository: backend, frontend and the shared contract are npm workspaces; data/ is a Python project beside them. The scripts below wrap the Docker Compose stack.",
   "workspaces": [
     "backend",
     "frontend",
