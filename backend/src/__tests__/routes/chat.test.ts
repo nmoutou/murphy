@@ -117,4 +117,14 @@ describe('POST /api/v1/chat/streams', () => {
     expect(response.text).toContain('data: {"type":"text-delta","id":"message-1","delta":"ans."}');
     expect(createChatStream).toHaveBeenCalledWith(VALID_BODY.messages, expect.any(AbortSignal));
   });
+
+  it('answers 500 with the stage and code when the pipeline cannot start', async () => {
+    jest.mocked(createChatStream).mockRejectedValue(new RagError('request', 'NO_QUESTION', 'No question provided'));
+
+    const response = await request(app).post('/api/v1/chat/streams').send(VALID_BODY);
+
+    expect(response.status).toBe(500);
+    expect(response.body.status.message).toBe('CHAT_STREAM_ERROR');
+    expect(response.body.data).toEqual({ stage: 'request', code: 'NO_QUESTION' });
+  });
 });

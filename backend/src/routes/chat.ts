@@ -28,6 +28,12 @@ const sendValidationError = (res: Response, issues: readonly ValidationIssue[]):
   res.status(HTTP_STATUS.BAD_REQUEST).json({ ...buildApiResponse(HTTP_STATUS.BAD_REQUEST, 'VALIDATION_ERROR'), errors: issues });
 };
 
+const sendChatError = (res: Response, chatError: ChatError): void => {
+  res
+    .status(HTTP_STATUS.INTERNAL_SERVER_ERROR)
+    .json(buildApiResponse(HTTP_STATUS.INTERNAL_SERVER_ERROR, CHAT_STREAM_ERROR, chatError));
+};
+
 /** Raised when the client leaves: the pipeline stops, the LLM included (ADR-041) */
 const abortOnClose = (res: Response): AbortSignal => {
   const abortController = new AbortController();
@@ -79,7 +85,7 @@ router.post(
       });
     } catch (error) {
       logger.error({ err: error }, 'Chat stream error');
-      res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(buildApiResponse(HTTP_STATUS.INTERNAL_SERVER_ERROR, CHAT_STREAM_ERROR, toChatError(error)));
+      sendChatError(res, toChatError(error));
     }
   })
 );
@@ -100,13 +106,13 @@ router.post(
     try {
       const { text, chatError } = await drainAnswer(await createChatStream(request.messages, abortOnClose(res)));
       if (chatError) {
-        res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(buildApiResponse(HTTP_STATUS.INTERNAL_SERVER_ERROR, CHAT_STREAM_ERROR, chatError));
+        sendChatError(res, chatError);
         return;
       }
       res.json(buildApiResponse(HTTP_STATUS.OK, 'OK', { role: 'assistant', parts: [{ type: 'text', text }] }));
     } catch (error) {
       logger.error({ err: error }, 'Chat completions error');
-      res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(buildApiResponse(HTTP_STATUS.INTERNAL_SERVER_ERROR, CHAT_STREAM_ERROR, toChatError(error)));
+      sendChatError(res, toChatError(error));
     }
   })
 );
