@@ -1,5 +1,5 @@
 # The build context is the repository root (npm workspaces, ADR-040):
-# secrets, installed dependencies, build outputs and the Python projects stay out.
+# secrets, installed dependencies, build outputs and the Python project stay out.
 .git
 .env*
 .claude
@@ -10,5 +10,4 @@
 **/*.tsbuildinfo
 **/*.log
 data
-eval
 docs

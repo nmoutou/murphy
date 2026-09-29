@@ -34,8 +34,8 @@ from ragcore.orchestration.kedro.run_parameters import build_workflow_config
 from ragcore.sources.generic import NORMALIZATION_VERSION
 
 _CONF_SOURCE = Path(__file__).parents[3].parent / "conf"
-"""Le VRAI répertoire de config de production (partition ADR-026 : `base/workflow/`,
-`base/ingestion/`, `base/evaluation/`). Le charger via le VRAI loader Kedro — et non un
+"""Le VRAI répertoire de config de production (partition ADR-026 : `base/workflow/`
+et `base/ingestion/`). Le charger via le VRAI loader Kedro — et non un
 ``yaml.safe_load`` — est tout l'objet des deux derniers cliquets : c'est la fusion
 multi-fichiers réelle qui doit reproduire l'empreinte figée, pas une lecture ad hoc."""
 
@@ -293,7 +293,7 @@ def test_le_yaml_REEL_produit_bien_l_empreinte_figee() -> None:
     **personne ne fait tourner**.
 
     Ce test charge la VRAIE config via le VRAI loader Kedro (fusion multi-fichiers de la
-    partition `workflow/ingestion/evaluation` — ADR-026), la passe par la vraie fonction
+    partition `workflow/ingestion` — ADR-026), la passe par la vraie fonction
     du hook, et exige la même empreinte. Il est la couture entre ce qui est figé et ce qui
     est exécuté — et, depuis ADR-026, la preuve que la restructuration de `conf/` n'a pas
     déplacé la collection.
