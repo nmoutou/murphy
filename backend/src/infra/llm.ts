@@ -17,7 +17,6 @@ interface ChatCompletionPayload {
   model: string;
   messages: ChatMessage[];
   temperature: number;
-  max_tokens: number;
   stream: boolean;
 }
 
@@ -89,7 +88,7 @@ export class LLMProvider {
    * @throws Error (plain) on timeout, HTTP error or missing body — `stream` wraps it
    */
   private async openStream(messages: ChatMessage[], abortSignal?: AbortSignal): Promise<NonNullable<Response['body']>> {
-    const { apiUrl, apiKey, model, temperature, maxTokens, timeoutMs } = this.settings;
+    const { apiUrl, apiKey, model, temperature, timeoutMs } = this.settings;
     const controller = new AbortController();
     const timeoutId = setTimeout(
       () => controller.abort(new DOMException(`LLM API did not answer within ${timeoutMs} ms`, TIMEOUT_ERROR_NAME)),
@@ -100,7 +99,7 @@ export class LLMProvider {
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-        body: JSON.stringify({ model, messages, temperature, max_tokens: maxTokens, stream: true } satisfies ChatCompletionPayload),
+        body: JSON.stringify({ model, messages, temperature, stream: true } satisfies ChatCompletionPayload),
         signal: abortSignal ? AbortSignal.any([controller.signal, abortSignal]) : controller.signal,
       });
 

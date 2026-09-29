@@ -72,7 +72,7 @@ Critiques (erreur logguée si absentes, sans bloquer) : `LLM_API_ENDPOINT`, `LLM
 `MONGODB_URI`. Principales optionnelles : `PORT` (5000), `MONGODB_DATABASE` (LEGIFRANCE),
 `MONGODB_META_DB_NAME` (MURPHY_META — le pointeur de collection), `QDRANT_URL`, `QDRANT_TIMEOUT` (10000 ms),
 `EMBEDDING_SERVICE_URL`, `EMBEDDING_MODEL_NAME`, `RETRIEVAL_TOP_K` (5), `RETRIEVAL_MIN_SCORE` (0.5),
-`LLM_TEMPERATURE`/`MAX_TOKENS`/`TIMEOUT`, `SYSTEM_PROMPT`, les rate limits et
+`LLM_TEMPERATURE`/`TIMEOUT`, `SYSTEM_PROMPT`, les rate limits et
 `CORS_ORIGIN`.
 
 ### Santé

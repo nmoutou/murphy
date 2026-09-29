@@ -133,7 +133,14 @@ seulement lu dans le code.
   écart y induit en erreur.
 - **Piste** : aligner la section « Repository layout » et les renvois sur l'arborescence.
 
-## 🟡 7. Réponse tronquée non signalée
+## ✅ 7. Réponse tronquée non signalée — traité
+
+> **Traité le 2026-09-29**, autrement que la piste : la limite est supprimée plutôt que
+> signalée. `LLM_MAX_TOKENS` disparaît (`config.ts`, `docker-compose.base.yml`,
+> `.env.example`) et la requête au LLM (`infra/llm.ts`) ne porte plus de `max_tokens` :
+> la réponse a la longueur que le modèle produit. Seul le plafond du fournisseur (en
+> général la fenêtre de contexte) peut encore couper, et `finishReason: 'stop'` redevient
+> juste. Test : le corps envoyé au LLM ne contient aucune limite.
 
 - **Où** : `backend/src/infra/llm.ts` (`extractToken`), `services/chatService.ts`
   (`writeFinish`).
@@ -160,18 +167,3 @@ seulement lu dans le code.
   connexion non fermée dans un test passe inaperçu.
 - **Piste** : un passage avec `--detectOpenHandles`, fermer ce qui reste, retirer
   `forceExit`.
-
-## 🟡 10. Les sources n'affichent pas le passage cité (produit)
-
-- **Où** : `frontend/src/components/chat/SourceItem.tsx`, `AIMessage.tsx`.
-- **Constat** : le backend transmet le texte intégral des documents
-  (`data-parentDocument`) et les bornes de surlignage, mais le frontend n'affiche que
-  `chunkId`, le type et le score. Les renvois `[n]` du prompt ne sont pas reliés aux
-  sources.
-- **Piste** : afficher l'extrait (`content.slice(highlightStart, highlightEnd)`) dans
-  chaque source ; à défaut, ne plus transmettre `content` tant qu'il n'est pas lu.
-
-## Ordre proposé
-
-1 à 6 sont traités (le 5 sans reverse proxy, qui attend une décision de déploiement).
-Restent 7, 8, 9 ; le 10 est une évolution produit.

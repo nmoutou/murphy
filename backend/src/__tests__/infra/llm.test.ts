@@ -37,7 +37,6 @@ const createProvider = (): LLMProvider =>
     apiKey: 'test-key',
     model: 'test-model',
     temperature: 0.7,
-    maxTokens: 1000,
     timeoutMs: 30_000,
   });
 
@@ -47,6 +46,15 @@ describe('LLMProvider.stream', () => {
     jest.spyOn(global, 'fetch').mockResolvedValue(responseOf(new TextEncoder().encode(body)));
 
     await expect(collectTokens(createProvider().stream(MESSAGES))).resolves.toEqual(['Cinq ', 'ans.']);
+  });
+
+  it('sends no token limit, so that the answer is never truncated', async () => {
+    const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValue(responseOf(new TextEncoder().encode(sseLine('ok'))));
+
+    await collectTokens(createProvider().stream(MESSAGES));
+
+    const payload = JSON.parse(String(fetchSpy.mock.calls[0]?.[1]?.body));
+    expect(payload).toEqual({ model: 'test-model', messages: MESSAGES, temperature: 0.7, stream: true });
   });
 
   it('reads only delta.content: other fields and null contents yield nothing', async () => {

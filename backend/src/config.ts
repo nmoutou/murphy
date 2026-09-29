@@ -53,7 +53,6 @@ export interface LlmConfig {
   readonly apiKey: string;
   readonly model: string;
   readonly temperature: number;
-  readonly maxTokens: number;
   readonly timeoutMs: number;
   readonly systemPrompt: string;
 }
@@ -104,7 +103,6 @@ const DEFAULT_EMBEDDING_SERVICE_URL = 'http://embedding-service:80';
 const DEFAULT_EMBEDDING_MODEL_NAME = 'all-mpnet-base-v2';
 const DEFAULT_EMBEDDING_TIMEOUT_MS = 10_000;
 const DEFAULT_LLM_TEMPERATURE = 0.7;
-const DEFAULT_LLM_MAX_TOKENS = 1000;
 const DEFAULT_LLM_TIMEOUT_MS = 30_000;
 const DEFAULT_RETRIEVAL_TOP_K = 5;
 const DEFAULT_RETRIEVAL_MIN_SCORE = 0.5;
@@ -203,7 +201,6 @@ const readLlmConfig = (reader: EnvReader): LlmConfig => ({
   apiKey: reader.required('LLM_API_KEY'),
   model: reader.required('LLM_MODEL'),
   temperature: reader.number('LLM_TEMPERATURE', DEFAULT_LLM_TEMPERATURE),
-  maxTokens: reader.integer('LLM_MAX_TOKENS', DEFAULT_LLM_MAX_TOKENS),
   timeoutMs: reader.integer('LLM_TIMEOUT', DEFAULT_LLM_TIMEOUT_MS),
   systemPrompt: reader.optional('SYSTEM_PROMPT') ?? DEFAULT_SYSTEM_PROMPT,
 });
