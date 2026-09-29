@@ -5,7 +5,7 @@
   --font-mono: var(--font-geist-mono);
 }
 
-/* The dark theme as Tailwind colors: bg-secondary, text-tertiary… (FE-08) */
+/* The dark theme as Tailwind colors: bg-secondary, text-tertiary… */
 @theme {
   --color-primary: #0e0d11;
   --color-secondary: #2a292d;

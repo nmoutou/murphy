@@ -11,7 +11,7 @@ SCHEMA_VERSION = 3
 """v3 (18 juil. 2026) : ``citations`` ajouté — les cibles décrites (``<LIEN>`` à ``@id``
 vide) deviennent un champ du document au lieu de nœuds ``:Unknown`` dans le graphe.
 
-v2 (ADR-022, B-00) : ``unknowns`` et ``parsed_at`` retirés, ``source_files`` ajouté,
+v2 (ADR-022) : ``unknowns`` et ``parsed_at`` retirés, ``source_files`` ajouté,
 clés de métadonnées au CHEMIN COMPLET. Un bump = une ré-ingestion complète, groupée."""
 
 

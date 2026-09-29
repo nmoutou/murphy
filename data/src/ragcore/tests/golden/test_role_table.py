@@ -11,7 +11,7 @@ liens pendant des mois.
 
 Avec lui, la balise ressort dans ``ParseResult.unconfigured_tags``, ce test échoue, et
 quelqu'un doit **décider** de son rôle. La décision peut être « c'est du bruit, rôle
-META » — mais elle est prise, et écrite. Depuis le cadrage « trois portes » (B-00-d),
+META » — mais elle est prise, et écrite. Depuis la cascade des « trois portes »,
 la donnée de la balise n'attend plus la décision : elle entre en métadonnée (clé
 chemin-complet) ou en lien (heuristique DILA) — le signal, lui, réclame toujours la
 décision.
@@ -70,7 +70,7 @@ def test_aucune_balise_du_corpus_ne_reste_sans_role() -> None:
     table ne connaît pas*. La réponse n'est jamais de contourner le test — c'est de lire
     la balise, de décider de son rôle, et de l'écrire dans ``LEGI_ROLE_TABLE``.
 
-    Depuis le cadrage « trois portes » (B-00-d), une balise non-configurée n'est plus un
+    Depuis la cascade des « trois portes », une balise non-configurée n'est plus un
     ``unknown`` dans la donnée : elle est ROUTÉE (metadata ou lien) et SIGNALÉE dans le
     ``ParseResult``. Le cliquet lit désormais le signal — il garde exactement la même
     chose : sur les fixtures saturées, il doit être vide.

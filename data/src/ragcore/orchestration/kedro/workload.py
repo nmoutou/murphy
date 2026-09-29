@@ -8,7 +8,7 @@ qu'en creux avant ce module, et il les rend concrètes toutes les trois :
    (``extraction.unknowns``) — jamais par une télémétrie, car il ne tourne pas dans le
    worker qui réduit ``RunStats``. Le workload, LUI, tient une ``WorkerTelemetry`` :
    c'est donc lui qui les *déclare* (``record_unknown``). Les inconnus de PARSE
-   n'existent plus (cadrage B-00-d) : les balises non-configurées sont routées par la
+   n'existent plus : les balises non-configurées sont routées par la
    cascade et signalées au site de parse (``computeIdempotence``).
 
 2. **Le seul appelant de ``extract()`` hors tests.** L'extraction descend dans le
@@ -100,7 +100,7 @@ def build_document_workload(
     ) -> WorkloadResult:
         # Plus d'inconnus de PARSE ici : les balises non-configurées sont ROUTÉES par la
         # cascade du parser (metadata ou lien) et SIGNALÉES au site de parse
-        # (computeIdempotence, `tag.unconfigured`) — cadrage B-00-d. Ne restent que les
+        # (computeIdempotence, `tag.unconfigured`). Ne restent que les
         # inconnus d'EXTRACTION (typelien/sens/identifiant), déclarés par `_extract`.
         parsed, extraction = _extract(steps.extractor, parsed, telemetry)
 

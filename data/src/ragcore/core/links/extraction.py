@@ -57,7 +57,7 @@ __all__ = [
 
 
 HEURISTIC_KIND = "unconfigured:dila_id"
-"""Le ``kind`` des références produites par la CASCADE du parser (cadrage B-00-d).
+"""Le ``kind`` des références produites par la CASCADE du parser.
 
 Une balise NON-CONFIGURÉE dont la valeur a la forme d'un identifiant DILA (et n'est pas
 le document lui-même) est une donnée qui *pointe* : elle passe la porte « liens », pas

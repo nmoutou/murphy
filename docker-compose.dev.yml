@@ -19,7 +19,7 @@ services:
     build:
       target: development
     # Sources only: dependencies live in the image, and no root-owned node_modules
-    # appears on the host (TR-06)
+    # appears on the host
     volumes:
       - ./backend/src:/app/backend/src:cached
     command: npm run dev:watch

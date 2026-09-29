@@ -73,7 +73,7 @@ def _run() -> dict:
             relations.extend(extracted.relations)
             chunks += len(chunker.chunk(parsed))
 
-            # Côté parse, l'inconnu n'existe plus (cadrage B-00-d) : la balise
+            # Côté parse, l'inconnu n'existe plus : la balise
             # non-configurée est ROUTÉE (metadata/lien) et SIGNALÉE. Le cliquet agrège
             # le signal sous sa catégorie de bilan, `tag.unconfigured` — la même que
             # celle que computeIdempotence déclare en télémétrie.
@@ -263,7 +263,7 @@ def test_les_inconnus_sont_DECLARES_et_pas_jetes() -> None:
     """
     result = _run()
 
-    # « balise » est devenu « tag.unconfigured » (cadrage B-00-d) : ZORG n'est plus un
+    # « balise » est devenu « tag.unconfigured » (cascade des trois portes) : ZORG n'est plus un
     # inconnu dans la donnée — sa valeur est en métadonnée, et LE SIGNAL le déclare.
     assert result["unknowns"] == {
         "typelien": ["ZORGLUB"],

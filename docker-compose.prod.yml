@@ -11,7 +11,7 @@ services:
   backend:
     build:
       target: production
-    # The browser calls the backend directly: no reverse proxy until a deployment (TR-03).
+    # The browser calls the backend directly: no reverse proxy until a deployment.
     # CORS_ORIGIN must be the frontend's public origin.
     ports:
       - "5000:5000"

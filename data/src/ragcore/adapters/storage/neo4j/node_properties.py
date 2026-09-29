@@ -26,7 +26,7 @@ class NodeHydration:
     - ``include_path`` : les chemins des FICHIERS source (``document.source_files``).
       Un chemin absolu du poste d'ingestion n'a de sens qu'en dev.
     - ``include_content`` : le texte du document, sous la prop ``_text_content``
-      (convention ``_text_`` du cadrage B-00-d). Les sections n'ont pas de prop à
+      (convention ``_text_``). Les sections n'ont pas de prop à
       elles : chaque section est un morceau LITTÉRAL de ``content`` (invariant du
       parser) — ``_text_content`` les contient toutes.
     """

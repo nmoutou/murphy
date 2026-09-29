@@ -88,8 +88,8 @@ def compute_idempotence_node(
     Les documents rejetés (ValidationError) sont tracés dans le manifest avec
     l'opération EXCLUDED et un message de raison.
 
-    C'est aussi le SITE DE PARSE — donc le site du signal et du curseur (cadrage
-    B-00-d) : le parser est pur et rend ses constats dans ``ParseResult`` ; ce nœud,
+    C'est aussi le SITE DE PARSE — donc le site du signal et du curseur : le
+    parser est pur et rend ses constats dans ``ParseResult`` ; ce nœud,
     qui tient la télémétrie, déclare les balises non-configurées (``tag.unconfigured``,
     TOUJOURS), puis applique le curseur ``exportation.unconfigured`` — ``skip`` retire
     les métadonnées non-configurées du document juste avant qu'il parte vers

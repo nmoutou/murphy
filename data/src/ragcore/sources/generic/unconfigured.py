@@ -1,4 +1,4 @@
-"""La cascade des trois portes : ce que la table de rôles ne sait pas ranger (B-00-d).
+"""La cascade des trois portes : ce que la table de rôles ne sait pas ranger.
 
 Il n'y a plus d'« unknown » : une balise que la table ne connaît pas est une donnée dont
 on n'a pas encore promu le nom, et elle a une DESTINATION —
@@ -35,7 +35,7 @@ _DILA_ID = re.compile(r"[A-Z]{8}[0-9]{12}\Z")
 """La forme d'un identifiant DILA (``LEGIARTI000006219120``) — le même motif que
 ``importation.validation.format_regex`` dans ``parameters.yml``.
 
-C'est le déclencheur de la règle 4 de la cascade (cadrage B-00-d) : du duck-typing sur
+C'est le déclencheur de la règle 4 de la cascade : du duck-typing sur
 la VALEUR, jamais sur le nom d'attribut. Mesuré sur le corpus : ``origine="LEGI"`` ne
 matche pas (à raison), et les porteurs légitimes hors liens (``VERSION``, ``TITRE_TM``,
 l'auto-``cid`` de ``TEXTE``) sont tous des balises CONNUES de la table — ils n'arrivent

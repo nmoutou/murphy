@@ -123,7 +123,8 @@ seulement lu dans le code.
 > - `CLAUDE.md` suit l'arborescence réelle ; la recopie des règles globales en est retirée ;
 > - les ADR des volets Évaluation et Ontologie sont supprimés, les autres perdent leurs
 >   renvois morts (tickets, exigences, documents absents) ; l'INDEX est réécrit ;
-> - les liens des docs techniques et des README visent `docs/technical/`.
+> - les liens des docs techniques et des README visent `docs/technical/` ;
+> - les identifiants de tickets sont retirés des commentaires du code.
 
 - **Constat** : il cite `eval/`, `docs/product/` (ADR compris) et `data/docs/`, absents.
   Les ADR sont dans `docs/pilotage/ADR/`, la documentation des projets dans

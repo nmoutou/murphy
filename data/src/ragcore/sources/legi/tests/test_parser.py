@@ -207,7 +207,7 @@ def test_le_contexte_porte_la_fermeture_des_ancetres(fixtures_dir: Path) -> None
 
 
 def test_une_balise_non_configuree_est_ROUTEE_et_SIGNALEE(fixtures_dir: Path) -> None:
-    """La cascade des trois portes (cadrage B-00-d) : plus d'« unknown ».
+    """La cascade des trois portes : plus d'« unknown ».
 
     Le corpus réel ne déclenche AUCUNE balise non-configurée — le vocabulaire est
     saturé, et c'est le résultat attendu. C'est précisément pourquoi il ne peut pas

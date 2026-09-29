@@ -51,7 +51,7 @@ EXCLUSION_REASONS = {
     # supposé du parser.
     "unreadable",
 }
-# « balise » est devenu « tag.unconfigured » (ADR-022 §1, cadrage trois portes) : ce
+# « balise » est devenu « tag.unconfigured » (ADR-022 §1, cascade des trois portes) : ce
 # n'est plus un inconnu dans la donnée, c'est le SIGNAL de la vigie de dérive DILA —
 # émis au site de parse, que la balise soit ingérée (metadata) ou retirée (skip).
 # Renommage SCIEMMENT acté ici : c'est tout l'objet du cliquet.

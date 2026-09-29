@@ -167,7 +167,7 @@ def test_les_inconnus_de_lextraction_sont_DECLARES() -> None:
 
     ``extraction.unknowns`` vient de l'extracteur, qui ne tient pas la télémétrie.
     C'est le workload qui les déclare — et ``snapshot()`` est la preuve que le tuyau
-    coule. Les inconnus de PARSE n'existent plus (cadrage B-00-d) : les balises
+    coule. Les inconnus de PARSE n'existent plus : les balises
     non-configurées sont routées par la cascade et signalées au site de parse
     (``computeIdempotence``, ``tag.unconfigured``), jamais ici.
     """

@@ -295,7 +295,7 @@ def test_le_yaml_REEL_produit_bien_l_empreinte_figee() -> None:
     Ce test charge la VRAIE config via le VRAI loader Kedro (fusion multi-fichiers de la
     partition `workflow/ingestion/evaluation` — ADR-026), la passe par la vraie fonction
     du hook, et exige la même empreinte. Il est la couture entre ce qui est figé et ce qui
-    est exécuté — et, depuis B-14, la preuve que la restructuration de `conf/` n'a pas
+    est exécuté — et, depuis ADR-026, la preuve que la restructuration de `conf/` n'a pas
     déplacé la collection.
     """
     params = _params_reels()

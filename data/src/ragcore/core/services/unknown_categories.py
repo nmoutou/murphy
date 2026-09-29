@@ -22,7 +22,7 @@ CATEGORY_UNCONFIGURED_TAG = "tag.unconfigured"
 """Une balise XML NON-CONFIGURÉE — la vigie de dérive DILA (ADR-022 §1 amendé).
 
 Ce n'est plus un « unknown » dans la donnée : la balise a été ROUTÉE (porte metadata ou
-porte liens, cadrage « trois portes ») et ce compteur est le signal qui survit au
+porte liens, cascade des « trois portes ») et ce compteur est le signal qui survit au
 routage. Émis au site de parse, TOUJOURS — que le curseur ``exportation.unconfigured``
 soit à ``ingest`` ou ``skip``. On compte d'abord, on filtre ensuite.
 """

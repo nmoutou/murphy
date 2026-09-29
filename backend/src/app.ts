@@ -9,7 +9,7 @@ import healthRouter from './routes/health';
 import { HTTP_STATUS } from './utils/httpStatus';
 import { MAX_REQUEST_BODY_BYTES } from './utils/requestLimits';
 
-// No reverse proxy in front of the backend yet (not deployed, TR-03): `req.ip`
+// No reverse proxy in front of the backend yet (not deployed): `req.ip`
 // is the socket address, so a forged `X-Forwarded-For` cannot dodge the rate
 // limits. Behind a proxy, set the number of proxy hops here.
 const TRUST_PROXY = false;
