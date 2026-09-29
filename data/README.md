@@ -11,7 +11,7 @@ backend never calls into it. The two only share databases, no code.
 > `ragcore` package, **vendored in this repo** at `src/ragcore/`. `src/data/` is a thin
 > Kedro shell that delegates to it.
 
-**Full documentation lives in [`docs/`](docs/README.md)** — architecture, node-by-node
+**Full documentation lives in [`docs/technical/data/`](../docs/technical/data/README.md)** — architecture, node-by-node
 pipeline reference, data model, configuration, telemetry.
 
 ## Run
@@ -37,8 +37,9 @@ if they were two variables they could diverge, and a divergence writes the *wron
 vectors into the collection named after the *right* one — silently. They are now the same
 variable, and the pipeline additionally checks TEI's `GET /info` before writing anything.
 
-Tuning surface: `conf/base/parameters.yml` (chunking, normalization, embedding — these are
-hashed into the Qdrant collection name; changing one creates a new collection by design).
+Tuning surface: `conf/base/workflow/parameters.yml` (chunking, normalization, embedding —
+these are hashed into the Qdrant collection name; changing one creates a new collection by
+design).
 
 ## Develop
 

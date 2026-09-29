@@ -1,8 +1,8 @@
 # Critiques de qualité
 
-Relevé du 2026-09-28, après la clôture des chantiers 1 à 5. État de départ : `npm run
-check` vert, couverture backend 95 % (lignes), `data/` 90 % (329 tests unitaires). Les
-points déjà traités dans les chantiers précédents ne sont pas repris.
+Relevé du 2026-09-28. État de départ : `npm run check` vert, couverture backend 95 %
+(lignes), `data/` 90 % (329 tests unitaires). Les points déjà traités auparavant ne sont
+pas repris.
 
 Classement : 🔴 critique, 🟠 important, 🟡 mineur. « Vérifié » = reproduit, pas
 seulement lu dans le code.
@@ -86,7 +86,7 @@ seulement lu dans le code.
 ## ✅ 5. La configuration de production n'est pas fonctionnelle — vérifié, traité
 
 > **Traité le 2026-09-29** (option B minimale : images et Compose corrigés, reverse proxy
-> reporté au déploiement, TR-03). `NEXT_PUBLIC_API_URL` est un argument de build du
+> reporté au déploiement). `NEXT_PUBLIC_API_URL` est un argument de build du
 > frontend ; le backend publie `5000` en prod ; les deux images de production tournent
 > en `node` (`.next` copié en `--chown`, car `next start` y écrit son cache). La
 > vérification a trouvé quatre autres défauts :
@@ -114,10 +114,16 @@ seulement lu dans le code.
   - en prod, aucun port n'est publié pour le backend : le navigateur ne peut pas le
     joindre sans proxy ;
   - les images de production tournent en `root` (pas de `USER node`).
-- **Piste** : si c'est assumé tant que rien n'est déployé (TR-03), l'écrire ; sinon
+- **Piste** : si c'est assumé tant que rien n'est déployé, l'écrire ; sinon
   `ARG`/`ENV` au build, proxy ou port publié, `USER node`.
 
-## 🟡 6. `CLAUDE.md` décrit un dépôt qui n'existe plus
+## ✅ 6. `CLAUDE.md` décrit un dépôt qui n'existe plus — traité
+
+> **Traité le 2026-09-29**, et étendu à toute la documentation :
+> - `CLAUDE.md` suit l'arborescence réelle ; la recopie des règles globales en est retirée ;
+> - les ADR des volets Évaluation et Ontologie sont supprimés, les autres perdent leurs
+>   renvois morts (tickets, exigences, documents absents) ; l'INDEX est réécrit ;
+> - les liens des docs techniques et des README visent `docs/technical/`.
 
 - **Constat** : il cite `eval/`, `docs/product/` (ADR compris) et `data/docs/`, absents.
   Les ADR sont dans `docs/pilotage/ADR/`, la documentation des projets dans
@@ -165,6 +171,5 @@ seulement lu dans le code.
 
 ## Ordre proposé
 
-1, 2, 3 d'abord (sécurité et robustesse, périmètre étroit), puis 4 et 6 (une
-variable, une mise à jour de doc), puis 7, 8, 9. Le 5 est traité sans reverse proxy,
-qui attend une décision de déploiement ; le 10 est une évolution produit.
+1 à 6 sont traités (le 5 sans reverse proxy, qui attend une décision de déploiement).
+Restent 7, 8, 9 ; le 10 est une évolution produit.

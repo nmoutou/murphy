@@ -7,11 +7,10 @@ pipeline :
 |---|---|---|
 | **Workflow** (`WorkflowConfig`) | `conf/base/workflow/parameters.yml` | « En changer la valeur invalide-t-il les vecteurs déjà produits ? » → oui |
 | **Infra d'ingestion** | `conf/base/ingestion/parameters.yml` | → non (tokenizing, relations, timeout/batch/enabled, exportation, maintenance) |
-| **Runtime de récupération** (bloc R) | `conf/base/evaluation/parameters.yml` | → sans objet côté ingestion — consommé par P2 (placeholder, B-13) |
 | **Infra** (`InfraSettings`, `EmbeddingRuntimeSettings`) | `.env.dev` à la **racine du dépôt** | → non (le *où* et le *comment*, jamais le *quoi*) |
 
-Depuis **ADR-026** (B-14), cette frontière n'est plus qu'une convention de
-commentaires : c'est une partition **physique**, en trois fichiers sous
+Depuis **ADR-026**, cette frontière n'est plus une simple convention de
+commentaires : c'est une partition **physique**, en deux fichiers sous
 `conf/base/`, fusionnés par le glob par défaut de Kedro (`parameters*`, qui
 descend récursivement) en un seul dict de `parameters` — sans aucune
 modification du loader (`CONFIG_LOADER_ARGS` dans `settings.py` est

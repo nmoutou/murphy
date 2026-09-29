@@ -8,10 +8,10 @@ Documentation technique du frontend de Murphy : l'interface de chat Next.js 16
 | Document | Contenu |
 |---|---|
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Vue d'ensemble : le transport WebSocket, le contrat de messages, l'arborescence des composants. **Commencer ici.** |
-| `reference/` | Références détaillées — *à écrire ; même ossature que `data/docs/reference/`.* |
+| `reference/` | Références détaillées — *à écrire ; même ossature que [`data/reference/`](../data/reference/).* |
 
-La vue système globale (serving + ingestion + bases partagées) vit à la racine du dépôt :
-[`docs/technical/ARCHITECTURE.md`](../../docs/technical/ARCHITECTURE.md).
+La vue système globale (serving + ingestion + bases partagées) est dans
+[`docs/technical/ARCHITECTURE.md`](../ARCHITECTURE.md).
 
 ---
 

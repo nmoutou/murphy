@@ -1,11 +1,11 @@
 # Architecture système — Murphy
 
-Vue d'ensemble du système complet. **La documentation technique détaillée vit au plus près
-du code, dans le `docs/` de chaque projet** :
+Vue d'ensemble du système complet. **La documentation technique détaillée a un dossier
+par projet**, à côté de ce document :
 
-- [`backend/docs/`](../../backend/docs/README.md) — le serving (API RAG Express/TS)
-- [`frontend/docs/`](../../frontend/docs/README.md) — l'UI de chat (Next.js)
-- [`data/docs/`](../../data/docs/README.md) — l'ingestion (Kedro + ragcore)
+- [`backend/`](backend/README.md) — le serving (API RAG Express/TS)
+- [`frontend/`](frontend/README.md) — l'UI de chat (Next.js)
+- [`data/`](data/README.md) — l'ingestion (Kedro + ragcore)
 
 Ce document ne couvre que ce qu'aucun projet ne peut dire seul : comment les deux
 moitiés du système s'articulent.
@@ -41,10 +41,10 @@ flowchart TB
 
 - **Ingestion** (`data/`) : un pipeline Kedro qui tourne à la demande, sur l'hôte, hors
   de la stack Docker. Il lit le corpus XML, le parse, le découpe, l'embarque et peuple
-  les trois bases. Détails : [`data/docs/ARCHITECTURE.md`](../../data/docs/ARCHITECTURE.md).
+  les trois bases. Détails : [`data/ARCHITECTURE.md`](data/ARCHITECTURE.md).
 - **Serving** (`backend/` + `frontend/` + compose) : stateless, chaque requête recompute
   le pipeline embed → retrieve → fetch → stream LLM. Détails :
-  [`backend/docs/ARCHITECTURE.md`](../../backend/docs/ARCHITECTURE.md).
+  [`backend/ARCHITECTURE.md`](backend/ARCHITECTURE.md).
 
 ## Les contrats entre les deux
 
@@ -93,7 +93,7 @@ avec les mêmes options).
 - **Ports publiés** : frontend `3000` et backend `5000`, car le navigateur appelle le
   backend directement. `CORS_ORIGIN` doit valoir l'origine publique du frontend. Les
   bases et TEI restent sur le réseau interne.
-- **Pas de reverse proxy** tant que rien n'est déployé (TR-03) : ni TLS, ni `trust
+- **Pas de reverse proxy** tant que rien n'est déployé : ni TLS, ni `trust
   proxy` (`TRUST_PROXY` dans `backend/src/app.ts`).
 - Les images tournent en utilisateur `node` ; `NODE_ENV` vient de la cible de build.
 - TEI met environ 4 min à être prêt après la création du conteneur (mesuré sur une RTX
@@ -104,14 +104,14 @@ avec les mêmes options).
 
 | Emplacement | Contenu |
 |---|---|
-| `docs/pilotage/` | Pilotage PM² : backlog, exigences, risques, statut |
-| `docs/product/` | Vision, versions, programme, **ADRs** (les décisions d'architecture citées partout : ADR-022 régimes dev/prod, ADR-023 interrupteur d'embedding, …) |
-| `docs/technical/` | Ce document — la vue système, et rien d'autre |
-| `backend/`, `frontend/`, `data/`, `eval/` | Les projets — code + leur propre `docs/`. `backend` et `frontend` sont des npm workspaces (un seul lockfile à la racine) ; `data` et `eval` sont en Python |
+| `docs/pilotage/ADR/` | Les **ADR** (les décisions d'architecture citées partout : ADR-022 régimes dev/prod, ADR-023 interrupteur d'embedding, …), indexés dans `INDEX.md` |
+| `docs/pilotage/WIP/` | Le travail en cours (critiques, plans) |
+| `docs/technical/` | Ce document — la vue système —, puis la documentation de chaque projet |
+| `backend/`, `frontend/`, `data/` | Les projets. `backend` et `frontend` sont des npm workspaces (un seul lockfile à la racine) ; `data` est en Python |
 | `packages/contract/` | `@murphy/contract` : le contrat du flux backend ↔ frontend (schémas zod, types déduits), compilé, partagé par les deux workspaces. Une modification casse la compilation des deux côtés à la fois |
 | `docker-compose.*.yml` | La stack de serving |
 
-Convention de documentation : chaque projet porte un `docs/README.md` (index +
-opérations), un `docs/ARCHITECTURE.md` (vue d'ensemble du sous-système) et un
-`docs/reference/` (les références détaillées). `docs/` à la racine ne documente que le
-transversal.
+Convention de documentation : chaque projet a son dossier `docs/technical/<projet>/`,
+avec un `README.md` (index + opérations) et un `ARCHITECTURE.md` (vue d'ensemble du
+sous-système) ; `data/` y ajoute `reference/` (les références détaillées). Le
+`README.md` à la racine de chaque projet est un accueil qui renvoie à ce dossier.

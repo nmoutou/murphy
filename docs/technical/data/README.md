@@ -16,20 +16,15 @@ Docker de serving ; il ne partage avec le backend que les bases de données.
 | [reference/idempotence-et-publication.md](reference/idempotence-et-publication.md) | Le manifest, INSERT/UPDATE/EXCLUDED, la saga et ses compensations, `nuke_all`, et la publication du pointeur de collection. |
 | [reference/telemetrie.md](reference/telemetrie.md) | Le catalogue d'événements, les backends (console/JSONL/Mongo/agrégat), l'équation de complétude et le statut `ok`/`degraded`/`failed`, MLflow. |
 
-Autres matériaux du dépôt : les fichiers `*.html` à la racine de `data/` sont des documents
-de **cadrage historiques** (doctrine ragcore, migration, lots) — utiles pour comprendre le
-*pourquoi*, mais ce sont les fichiers de cette documentation qui font foi sur le *quoi*.
-`lab/` contient des notebooks d'exploration, jamais importés par le pipeline.
-
 ---
 
 ## Opérations
 
 ### Prérequis
 
-- Python ≥ 3.11 (venv dans `data/.venv`), le paquet installé en editable (`pip install -e .`).
-- Les bases (Mongo, Qdrant, Neo4j) et le service d'embedding TEI, déclarés **dans le repo
-  parent** : `npm run up` depuis la racine les démarre (TEI exige un GPU NVIDIA ; le
+- Python ≥ 3.11 (venv dans `data/.venv`), installé par `uv sync --extra dev`, comme en CI.
+- Les bases (Mongo, Qdrant, Neo4j) et le service d'embedding TEI, déclarés à la **racine du
+  dépôt** : `npm run ingest:up` depuis la racine (ou `npm run up` depuis `data/`) les démarre (TEI exige un GPU NVIDIA ; le
   premier boot télécharge le modèle — patience, ce n'est pas un blocage).
 - Le corpus XML DILA sous `XML_SOURCE_PATH` (chemin **absolu**, hors dépôt — défaut
   `/mnt/data/Murphy/src`), avec un sous-répertoire par source : `LEGI/`, `CAPP/`, `CASS/`,

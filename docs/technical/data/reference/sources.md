@@ -105,7 +105,7 @@ lieu de s'évaporer.
 
 ### La cascade des balises non-configurées
 
-Une balise absente de la table est **routée**, pas jetée (cadrage B-00-d) :
+Une balise absente de la table est **routée**, pas jetée :
 
 - sa valeur a la forme d'un identifiant DILA (`^[A-Z]{8}[0-9]{12}$`, duck-typing sur la
   **valeur**, jamais sur le nom d'attribut) → traitée comme un **lien** ;

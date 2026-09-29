@@ -23,4 +23,4 @@ Requires reachable MongoDB, Qdrant, and a TEI embedding service (see env vars in
 repository root.
 
 The stream contract (`AppUIMessage`) is imported from `@murphy/contract/messages`,
-shared with the frontend: see [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+shared with the frontend: see [`docs/technical/backend/ARCHITECTURE.md`](../docs/technical/backend/ARCHITECTURE.md).

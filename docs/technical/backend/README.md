@@ -8,10 +8,10 @@ orchestre le pipeline RAG à la requête (embed → retrieve → fetch → strea
 | Document | Contenu |
 |---|---|
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Vue d'ensemble : le pipeline RAG, les trois transports, les clients d'infrastructure, les conventions transverses. **Commencer ici.** |
-| `reference/` | Références détaillées (contrat de messages, API, configuration) — *à écrire ; même ossature que `data/docs/reference/`.* |
+| `reference/` | Références détaillées (contrat de messages, API, configuration) — *à écrire ; même ossature que [`data/reference/`](../data/reference/).* |
 
-La vue système globale (serving + ingestion + bases partagées) vit à la racine du dépôt :
-[`docs/technical/ARCHITECTURE.md`](../../docs/technical/ARCHITECTURE.md).
+La vue système globale (serving + ingestion + bases partagées) est dans
+[`docs/technical/ARCHITECTURE.md`](../ARCHITECTURE.md).
 
 ---
 

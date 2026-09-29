@@ -12,7 +12,7 @@ les bases.
 
 ```
 data/
-├── conf/base/            # workflow/ingestion/evaluation (partition ADR-026), catalog.yml (objets runtime)
+├── conf/base/            # workflow/ingestion (partition ADR-026), catalog.yml (objets runtime)
 ├── src/data/             # le SHELL Kedro : délègue tout à ragcore
 │   ├── pipeline_registry.py   →  ragcore.orchestration.kedro.pipeline_registry
 │   └── settings.py            →  enregistre ragcore…hooks.TelemetryHooks + structlog
@@ -119,5 +119,5 @@ Déroulé détaillé nœud par nœud : [reference/pipeline.md](reference/pipelin
 | Graphe | Neo4j (nœuds + arêtes typées par verbe) | pas encore câblé côté serving |
 
 Le modèle d'embedding et sa dimension (`all-mpnet-base-v2`, 768, Cosine) doivent être les
-mêmes des deux côtés — c'est pour ça qu'il n'y a qu'**un** `.env.dev`, à la racine du repo
-parent, partagé par le pipeline et le conteneur TEI.
+mêmes des deux côtés — c'est pour ça qu'il n'y a qu'**un** `.env.dev`, à la racine du dépôt,
+partagé par le pipeline et le conteneur TEI.

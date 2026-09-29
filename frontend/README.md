@@ -22,4 +22,4 @@ Set `NEXT_PUBLIC_API_URL` to the backend base URL (default `http://localhost:500
 the chat WebSocket URL is derived from it (`src/lib/chatSocketUrl.ts`).
 
 The stream contract (`AppUIMessage`) is imported from `@murphy/contract/messages`,
-shared with the backend: see [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+shared with the backend: see [`docs/technical/frontend/ARCHITECTURE.md`](../docs/technical/frontend/ARCHITECTURE.md).
