@@ -10,6 +10,9 @@ jobs:
   typescript:
     name: TypeScript (contract, backend, frontend)
     runs-on: ubuntu-latest
+    # About 75 s today. Jest no longer forces its exit: a leaked handle would hang it
+    # until GitHub's 6 h default
+    timeout-minutes: 10
 
     steps:
       - name: Checkout code
