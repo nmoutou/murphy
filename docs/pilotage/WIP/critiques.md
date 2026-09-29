@@ -149,7 +149,18 @@ seulement lu dans le code.
   pour complète.
 - **Piste** : remonter la raison de fin jusqu'à la partie `finish`, et l'afficher.
 
-## 🟡 8. Écarts de style avec les règles du `CLAUDE.md`
+## ✅ 8. Écarts de style avec les règles du `CLAUDE.md` et les règles globales — traité
+
+> **Traité le 2026-09-29.** La règle des fonctions fléchées ne figure plus dans le
+> `CLAUDE.md` depuis le point 6 : elle vient des règles globales TypeScript.
+> - `embedding`, `mongodb` et `llm` ont leur logger enfant (`qdrant` l'avait déjà) ;
+>   `collectionPointer` nomme le sien `logger` et non plus `log` ;
+> - toutes les déclarations `function` du backend sont converties, y compris
+>   `createChatStream` (`services/chatService.ts`) et `start` (`server.ts`), qui manquaient
+>   à la liste ;
+> - `routes/chat.ts` : `sendChatError` écrit le 500. Nouveau test du 500 de `/streams`, le
+>   seul chemin d'erreur non couvert ;
+> - `buildContextString` renvoie « Aucun document pertinent trouvé. » (`NO_PASSAGE_CONTEXT`).
 
 - `infra/llm.ts`, `infra/embedding.ts`, `infra/qdrant.ts`, `infra/mongodb.ts`
   utilisent le logger racine au lieu d'un `rootLogger.child({ context })`.
