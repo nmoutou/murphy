@@ -25,23 +25,23 @@ export interface PassageFetchResult {
   docFetchMs: number;
 }
 
-export async function embedQuestion(question: string): Promise<EmbedResult> {
+export const embedQuestion = async (question: string): Promise<EmbedResult> => {
   const start = Date.now();
   const embedding = await getInfraClients().embedding.embedText(question);
   return { embedding, embeddingMs: Date.now() - start };
-}
+};
 
-export async function retrieveChunks(embedding: number[], topK: number): Promise<RetrievalResult> {
+export const retrieveChunks = async (embedding: number[], topK: number): Promise<RetrievalResult> => {
   const start = Date.now();
   const chunks = await getInfraClients().qdrant.searchVectors(embedding, topK);
   return { chunks, retrievalMs: Date.now() - start };
-}
+};
 
 /**
  * Reads the parent documents of the chunks, then cuts each passage out of its parent
  * @throws RagError with stage='retrieval', `CONTRACT_VIOLATION` when a parent or its offsets do not match
  */
-export async function fetchPassages(chunks: readonly RetrievedChunk[]): Promise<PassageFetchResult> {
+export const fetchPassages = async (chunks: readonly RetrievedChunk[]): Promise<PassageFetchResult> => {
   if (chunks.length === 0) {
     logger.warn('No passage to fetch: the search found no chunk');
     return { passages: [], docFetchMs: 0 };
@@ -49,13 +49,13 @@ export async function fetchPassages(chunks: readonly RetrievedChunk[]): Promise<
   const start = Date.now();
   const documents = await getInfraClients().mongo.fetchParentDocuments(chunks);
   return { passages: assemblePassages(chunks, documents), docFetchMs: Date.now() - start };
-}
+};
 
 /** The LLM reads the passage alone, not its whole document (ADR-039 §4) */
-export function buildContextString(passages: readonly Passage[]): string {
+export const buildContextString = (passages: readonly Passage[]): string => {
   if (passages.length === 0) {
     return 'No relevant documents found.';
   }
 
   return passages.map((passage, idx) => `[${idx + 1}] ${passage.document.title}\n${passage.text}`).join('\n\n');
-}
+};

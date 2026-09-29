@@ -5,17 +5,13 @@ interface ApiMeta {
   traceId: string;
 }
 
-function buildMeta(): ApiMeta {
-  return {
-    timestamp: new Date().toISOString(),
-    traceId: crypto.randomUUID(),
-  };
-}
+const buildMeta = (): ApiMeta => ({
+  timestamp: new Date().toISOString(),
+  traceId: crypto.randomUUID(),
+});
 
-export function buildApiResponse<T>(code: number, message: string, data?: T) {
-  return {
-    status: { code, message },
-    ...(data !== undefined ? { data } : {}),
-    meta: buildMeta(),
-  };
-}
+export const buildApiResponse = <T>(code: number, message: string, data?: T) => ({
+  status: { code, message },
+  ...(data !== undefined ? { data } : {}),
+  meta: buildMeta(),
+});

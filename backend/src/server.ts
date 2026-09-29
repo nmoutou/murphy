@@ -13,7 +13,7 @@ const server = http.createServer(app);
 
 attachChatWebSocket({ server, allowedOrigins: config.http.corsOrigins });
 
-async function start() {
+const start = async () => {
   checkEnvironment(environmentReport);
   logger.info(`Environment: ${config.server.nodeEnv}`);
 
@@ -24,7 +24,7 @@ async function start() {
 
   await new Promise<void>((resolve) => server.listen(config.server.port, resolve));
   logger.info(`Server started on http://localhost:${config.server.port}`);
-}
+};
 
 start().catch((error) => {
   logger.error({ err: error }, 'Failed to start server');

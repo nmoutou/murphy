@@ -117,10 +117,10 @@ const isAbortedByClient = (abortSignal: AbortSignal): boolean => {
  * @param abortSignal raised when the client leaves: the pipeline stops before or during the LLM
  * @throws RagError with stage='request' when the last user message has no text
  */
-export async function createChatStream(
+export const createChatStream = async (
   uiMessages: AppUIMessage[],
   abortSignal: AbortSignal,
-): Promise<ReadableStream<InferUIMessageChunk<AppUIMessage>>> {
+): Promise<ReadableStream<InferUIMessageChunk<AppUIMessage>>> => {
   const question = extractQuestionFromMessages(uiMessages);
   if (!question.trim()) {
     throw new RagError('request', 'NO_QUESTION', 'No question provided');
@@ -148,4 +148,4 @@ export async function createChatStream(
       return serializeChatError(toChatError(err));
     },
   });
-}
+};

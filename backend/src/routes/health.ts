@@ -36,7 +36,7 @@ const MIN_DOWN_FOR_GLOBAL_DOWN = 2;
 /**
  * Generic HTTP service health check
  */
-async function checkHttpService(name: string, url: string): Promise<ServiceHealth> {
+const checkHttpService = async (name: string, url: string): Promise<ServiceHealth> => {
   try {
     const response = await fetch(url, { method: 'GET', signal: AbortSignal.timeout(HEALTH_CHECK_TIMEOUT_MS) });
 
@@ -52,7 +52,7 @@ async function checkHttpService(name: string, url: string): Promise<ServiceHealt
     logger.warn({ service: name, url, error: message }, `${name} health check error`);
     return { status: 'down', message };
   }
-}
+};
 
 const checkTei = () =>
   checkHttpService('tei', `${config.embedding.serviceUrl}/health`);
@@ -63,7 +63,7 @@ const checkQdrant = () =>
 /**
  * Pings MongoDB, giving up after `HEALTH_CHECK_TIMEOUT_MS`
  */
-async function pingMongoDB(): Promise<void> {
+const pingMongoDB = async (): Promise<void> => {
   const mongoDb = getInfraClients().mongo.getDb();
   let timeoutId: NodeJS.Timeout | undefined;
   const timeout = new Promise<never>((_, reject) => {
@@ -75,9 +75,9 @@ async function pingMongoDB(): Promise<void> {
   } finally {
     clearTimeout(timeoutId);
   }
-}
+};
 
-async function checkMongoDB(): Promise<ServiceHealth> {
+const checkMongoDB = async (): Promise<ServiceHealth> => {
   try {
     await pingMongoDB();
     logger.debug({ service: 'mongodb' }, 'MongoDB health check OK');
@@ -87,21 +87,21 @@ async function checkMongoDB(): Promise<ServiceHealth> {
     logger.warn({ service: 'mongodb', error: message }, 'MongoDB health check error');
     return { status: 'down', message };
   }
-}
+};
 
-async function measureLatency(check: () => Promise<ServiceHealth>): Promise<ServiceHealth & { latencyMs: number }> {
+const measureLatency = async (check: () => Promise<ServiceHealth>): Promise<ServiceHealth & { latencyMs: number }> => {
   const start = Date.now();
   const health = await check();
   return { ...health, latencyMs: Date.now() - start };
-}
+};
 
-function resolveGlobalHealth(services: ServiceHealth[]): GlobalHealth {
+const resolveGlobalHealth = (services: ServiceHealth[]): GlobalHealth => {
   const downCount = services.filter((service) => service.status === 'down').length;
   if (downCount === 0) return { globalStatus: 'ok', httpStatus: HTTP_STATUS.OK, statusMsg: 'OK' };
 
   const globalStatus = downCount >= MIN_DOWN_FOR_GLOBAL_DOWN ? 'down' : 'degraded';
   return { globalStatus, httpStatus: HTTP_STATUS.SERVICE_UNAVAILABLE, statusMsg: 'UPSTREAM_UNAVAILABLE' };
-}
+};
 
 /**
  * GET /api/v1/health (and its alias /api/v1/health/services)

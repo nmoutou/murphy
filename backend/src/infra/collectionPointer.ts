@@ -52,10 +52,10 @@ export interface CollectionSources {
  * Lit le pointeur publié par le dernier run `ok`. `null` = aucun run n'a encore publié —
  * ce n'est pas une erreur, c'est un système qui n'a pas encore ingéré.
  */
-export async function readPublishedCollection(
+export const readPublishedCollection = async (
   mongoClient: MongoClient,
   metaDatabase: string
-): Promise<PublishedCollection | null> {
+): Promise<PublishedCollection | null> => {
   // Le pointeur vit dans la base de MÉTA, pas dans celle des DONNÉES (LEGIFRANCE) :
   // on passe donc par le client, qui seul permet de changer de base.
   const doc = await mongoClient
@@ -63,20 +63,20 @@ export async function readPublishedCollection(
     .collection<PublishedCollection>(POINTER_COLLECTION)
     .findOne({ key: POINTER_KEY });
   return doc ?? null;
-}
+};
 
 /**
  * Résout la collection à interroger, et REFUSE de démarrer si elle n'est pas servable :
  * pas de pointeur, une version du contrat inconnue, ou une collection absente de Qdrant.
  * Mieux vaut le découvrir au boot que sur la première question d'un utilisateur.
  */
-export async function resolveCollection(sources: CollectionSources): Promise<string> {
+export const resolveCollection = async (sources: CollectionSources): Promise<string> => {
   const collection = await readServableCollection(sources);
   await assertCollectionExists(sources.qdrant, collection);
   return collection;
-}
+};
 
-async function readServableCollection(sources: CollectionSources): Promise<string> {
+const readServableCollection = async (sources: CollectionSources): Promise<string> => {
   const published = await readPublishedCollection(sources.mongoClient, sources.metaDatabase).catch((error) => {
     throw new Error(
       `Pointeur de collection illisible (${sources.metaDatabase}.${POINTER_COLLECTION}). Cause : ${String(error)}`
@@ -102,13 +102,13 @@ async function readServableCollection(sources: CollectionSources): Promise<strin
     'Collection résolue depuis le pointeur publié'
   );
   return published.collection_name;
-}
+};
 
 /**
  * Une version plus ancienne se corrige en réingérant, une plus récente en mettant le
  * backend à jour. Un pointeur sans version date d'avant le contrat : réingérer.
  */
-function assertContractVersion(published: PublishedCollection): void {
+const assertContractVersion = (published: PublishedCollection): void => {
   const version = published.serving_contract_version;
   if (version === SERVING_CONTRACT_VERSION) return;
 
@@ -120,13 +120,13 @@ function assertContractVersion(published: PublishedCollection): void {
     `La collection publiée « ${published.collection_name} » suit le contrat de serving ` +
       `v${version ?? '(aucune)'}, ce backend lit la v${SERVING_CONTRACT_VERSION} (ADR-039). ${remedy}`
   );
-}
+};
 
 /**
  * Une collection nommée mais absente est un MENSONGE — et il vaut mieux le découvrir au
  * boot que sur la première question d'un utilisateur.
  */
-async function assertCollectionExists(qdrant: QdrantConfig, collection: string): Promise<void> {
+const assertCollectionExists = async (qdrant: QdrantConfig, collection: string): Promise<void> => {
   const client = new QdrantClient({ url: qdrant.url, timeout: qdrant.timeoutMs });
 
   const exists = await client.collectionExists(collection).catch((error) => {
@@ -152,4 +152,4 @@ async function assertCollectionExists(qdrant: QdrantConfig, collection: string):
   if (!info.points_count) {
     logger.warn({ collection }, 'La collection existe mais est VIDE : aucune source ne remontera');
   }
-}
+};
