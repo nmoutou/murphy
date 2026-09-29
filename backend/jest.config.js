@@ -26,12 +26,8 @@ module.exports = {
   // Clear mocks between tests
   clearMocks: true,
   restoreMocks: true,
-  
-  // Handle async cleanup
-  forceExit: true,
-  detectOpenHandles: false,
-  
-  // Coverage thresholds (optional)
+
+  // Checked only by `jest --coverage`
   coverageThreshold: {
     global: {
       branches: 40,
