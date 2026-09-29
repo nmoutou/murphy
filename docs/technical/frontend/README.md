@@ -64,4 +64,4 @@ vider : `docker exec frontend rm -rf /app/frontend/.next/dev && docker restart f
 
 | Variable | Défaut | Rôle |
 |---|---|---|
-| `NEXT_PUBLIC_API_URL` | `http://localhost:5000` | URL de base du backend. L'adresse du WebSocket de chat en est déduite (`ws:`/`wss:` + `/api/v1/chat/ws`) |
+| `NEXT_PUBLIC_API_URL` | `http://localhost:5000` | URL de base du backend. L'adresse du WebSocket de chat en est déduite (`ws:`/`wss:` + `/api/v1/chat/ws`). Inlinée dans le bundle client : lue au démarrage par `next dev`, mais au **build** par `next build` (argument de build de l'image de production ; la changer demande de reconstruire l'image) |

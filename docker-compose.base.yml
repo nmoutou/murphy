@@ -40,8 +40,8 @@ services:
       dockerfile: backend/Dockerfile
     networks:
       - backend
+    # NODE_ENV comes from the build target (development / production), not from .env.dev
     environment:
-      - NODE_ENV=${NODE_ENV}
       - PORT=${PORT}
       - LOG_LEVEL=${LOG_LEVEL}
       - CORS_ORIGIN=${CORS_ORIGIN}
@@ -80,9 +80,6 @@ services:
       dockerfile: frontend/Dockerfile
     networks:
       - backend
-    environment:
-      - NODE_ENV=${NODE_ENV}
-      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3000"]
       interval: 10s
@@ -100,6 +97,14 @@ services:
       - hf_cache:/data
     environment:
       - CUDA_VISIBLE_DEVICES=0
+    # CUDA image: both profiles need the GPU
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ['0']
+              capabilities: [gpu]
 
 networks:
   backend:

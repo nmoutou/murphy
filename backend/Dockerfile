@@ -68,4 +68,5 @@ EXPOSE 5000
 ENV NODE_ENV=production
 
 # Start server
+USER node
 CMD ["node", "dist/server.js"]

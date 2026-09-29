@@ -30,6 +30,9 @@ services:
   frontend:
     build:
       target: development
+    # `next dev` reads it at startup; production inlines it at build time instead
+    environment:
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
     volumes:
       - ./frontend/src:/app/frontend/src:cached
       - ./frontend/public:/app/frontend/public:cached
@@ -42,10 +45,3 @@ services:
     ports:
       - "5001:80"
     restart: "no"
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              device_ids: ['0']
-              capabilities: [gpu]

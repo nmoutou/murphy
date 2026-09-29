@@ -83,7 +83,28 @@ seulement lu dans le code.
 - **Piste** : `QDRANT_TIMEOUT_MS` dans `config.ts` (et `docker-compose.base.yml`),
   passé au client ; vérifier que l'erreur produite finit en `TIMEOUT` via `toRagError`.
 
-## 🟠 5. La configuration de production n'est pas fonctionnelle
+## ✅ 5. La configuration de production n'est pas fonctionnelle — vérifié, traité
+
+> **Traité le 2026-09-29** (option B minimale : images et Compose corrigés, reverse proxy
+> reporté au déploiement, TR-03). `NEXT_PUBLIC_API_URL` est un argument de build du
+> frontend ; le backend publie `5000` en prod ; les deux images de production tournent
+> en `node` (`.next` copié en `--chown`, car `next start` y écrit son cache). La
+> vérification a trouvé quatre autres défauts :
+> - `NODE_ENV=${NODE_ENV}` (base) passait `development` depuis `.env.dev` et écrasait la
+>   cible de build : retiré ;
+> - la réservation GPU de TEI n'existait qu'en dev : déplacée dans base ;
+> - la prod publiait le port 5001 de TEI : retiré ;
+> - `mem_limit: 2g` empêchait TEI de démarrer (plus de 4 Go pendant le chargement, qui
+>   dure environ 4 min) : retiré.
+>
+> Vérifié :
+> - image construite avec une URL de test : elle est dans `.next/static`, et
+>   `localhost:5000` n'y est plus ;
+> - uid 1000 et `NODE_ENV=production` dans les deux conteneurs ;
+> - stack de prod : santé `ok`, question par WebSocket jusqu'au `finish` (5 documents,
+>   5 passages), page frontend en 200.
+>
+> Documenté dans `docs/technical/ARCHITECTURE.md` (§ Production).
 
 - **Où** : `frontend/Dockerfile`, `docker-compose.prod.yml`, `backend/Dockerfile`.
 - **Constat** :
@@ -145,5 +166,5 @@ seulement lu dans le code.
 ## Ordre proposé
 
 1, 2, 3 d'abord (sécurité et robustesse, périmètre étroit), puis 4 et 6 (une
-variable, une mise à jour de doc), puis 7, 8, 9. Le 5 attend une décision de
-déploiement ; le 10 est une évolution produit.
+variable, une mise à jour de doc), puis 7, 8, 9. Le 5 est traité sans reverse proxy,
+qui attend une décision de déploiement ; le 10 est une évolution produit.

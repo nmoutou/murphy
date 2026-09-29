@@ -81,6 +81,25 @@ npm run up | watch | logs | status | down | build
 Ports dev : frontend `3000`, backend `5000`, Qdrant `6333`, Mongo `27017`, Neo4j
 `7474`/`7687`, TEI `5001→80`.
 
+### Production
+
+Aucun script ne l'enveloppe : `docker compose -f docker-compose.base.yml -f
+docker-compose.prod.yml --env-file .env.dev --profile serve up -d --build` (et `down`
+avec les mêmes options).
+
+- **URL du backend fixée au build** : Next inline `NEXT_PUBLIC_API_URL` dans le bundle
+  client. Compose la passe en argument de build ; la changer demande de reconstruire
+  l'image frontend.
+- **Ports publiés** : frontend `3000` et backend `5000`, car le navigateur appelle le
+  backend directement. `CORS_ORIGIN` doit valoir l'origine publique du frontend. Les
+  bases et TEI restent sur le réseau interne.
+- **Pas de reverse proxy** tant que rien n'est déployé (TR-03) : ni TLS, ni `trust
+  proxy` (`TRUST_PROXY` dans `backend/src/app.ts`).
+- Les images tournent en utilisateur `node` ; `NODE_ENV` vient de la cible de build.
+- TEI met environ 4 min à être prêt après la création du conteneur (mesuré sur une RTX
+  3050 : un cœur à 100 %, GPU inactif) et dépasse 4 Go de mémoire pendant ce
+  chargement (1 Go ensuite). Un `mem_limit` de 2 Go l'empêchait de démarrer.
+
 ## Où vit quoi (un seul dépôt, ADR-040)
 
 | Emplacement | Contenu |

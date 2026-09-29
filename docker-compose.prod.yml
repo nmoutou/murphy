@@ -11,12 +11,19 @@ services:
   backend:
     build:
       target: production
+    # The browser calls the backend directly: no reverse proxy until a deployment (TR-03).
+    # CORS_ORIGIN must be the frontend's public origin.
+    ports:
+      - "5000:5000"
     restart: on-failure
     command: npm start
 
   frontend:
     build:
       target: production
+      # Inlined into the client bundle by `next build`: the backend URL the browser uses
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
     ports:
       - "3000:3000"
     restart: on-failure
@@ -29,9 +36,6 @@ services:
 
   embedding-service:
     restart: on-failure
-    mem_limit: 2g
-    ports:
-      - "5001:80"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:80/health"]
       interval: 30s

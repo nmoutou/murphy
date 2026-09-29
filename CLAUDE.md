@@ -39,6 +39,7 @@ npm run down | restart | logs | status   # both profiles
 - `mongo`, `qdrant` and `neo4j` have no profile; `backend`/`frontend` are `serve` only; `embedding-service` (TEI, needs an NVIDIA GPU) is in both.
 - Dev ports: frontend `3000`, backend `5000`, Qdrant `6333`, Mongo `27017`, Neo4j `7474`/`7687`, TEI `5001`.
 - Dev mounts only the sources (`backend/src`, `frontend/src`, `frontend/public`) with hot reload. Dependencies, app configs and the built contract live in the images: run `npm run serve:build` after changing `packages/contract`, a `package.json` or an app config.
+- Production (`docker-compose.prod.yml`, no npm script) is not deployed yet: no reverse proxy (TR-03), so the backend publishes `5000` and `CORS_ORIGIN` must be the frontend's public origin. `NEXT_PUBLIC_API_URL` is a build argument there (inlined by `next build`: changing it means rebuilding the image). Images run as `node`; `NODE_ENV` comes from the build target, never from `.env.dev`. TEI takes ~4 min and over 4 GB of RAM to start: no `mem_limit` below that.
 - The build context is the repo root (`backend/Dockerfile`, `frontend/Dockerfile`); the root `.dockerignore` keeps `.env*`, `node_modules`, `data/`, `eval/` and `docs/` out.
 - A CSS change that does not show in dev: Turbopack's cache is stale, even across restarts. `docker exec frontend rm -rf /app/frontend/.next/dev && docker restart frontend`.
 

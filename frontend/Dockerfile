@@ -39,6 +39,10 @@ CMD ["npm", "run", "dev"]
 FROM development AS builder
 # `next build` expects production: a development NODE_ENV would bundle React's dev build
 ENV NODE_ENV=production
+# Next inlines NEXT_PUBLIC_* into the client bundle at build time: the image targets
+# one backend URL, and changing it means rebuilding (docker-compose.prod.yml passes it)
+ARG NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 RUN npm run build
 
 ##########################
@@ -61,11 +65,13 @@ RUN npm ci --omit=dev -w frontend --ignore-scripts
 
 # Copy built app from builder
 COPY --from=builder /app/packages/contract/dist packages/contract/dist
-COPY --from=builder /app/frontend/.next frontend/.next
+# Owned by `node`: `next start` writes its cache under .next/cache
+COPY --from=builder --chown=node:node /app/frontend/.next frontend/.next
 COPY --from=builder /app/frontend/public frontend/public
 WORKDIR /app/frontend
 
 EXPOSE 3000
 ENV NODE_ENV=production
 
+USER node
 CMD ["npm", "start"]
