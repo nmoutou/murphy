@@ -10,6 +10,9 @@ import { assemblePassages } from './passages';
 
 const logger = rootLogger.child({ context: 'ragService' });
 
+/** Stands in for the passages in the French system prompt when the search found none */
+const NO_PASSAGE_CONTEXT = 'Aucun document pertinent trouvé.';
+
 export interface EmbedResult {
   embedding: number[];
   embeddingMs: number;
@@ -54,7 +57,7 @@ export const fetchPassages = async (chunks: readonly RetrievedChunk[]): Promise<
 /** The LLM reads the passage alone, not its whole document (ADR-039 §4) */
 export const buildContextString = (passages: readonly Passage[]): string => {
   if (passages.length === 0) {
-    return 'No relevant documents found.';
+    return NO_PASSAGE_CONTEXT;
   }
 
   return passages.map((passage, idx) => `[${idx + 1}] ${passage.document.title}\n${passage.text}`).join('\n\n');

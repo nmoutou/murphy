@@ -47,7 +47,7 @@ const { embedding, qdrant, mongo } = getInfraClients();
 
 describe('buildContextString', () => {
   it('says so when no document was found', () => {
-    expect(buildContextString([])).toBe('No relevant documents found.');
+    expect(buildContextString([])).toBe('Aucun document pertinent trouvé.');
   });
 
   it('numbers the passages and gives the passage alone, not its whole document', () => {
