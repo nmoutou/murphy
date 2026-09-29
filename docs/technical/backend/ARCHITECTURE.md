@@ -45,7 +45,12 @@ casse la compilation des deux côtés à la fois.
 - **WebSocket** `/api/v1/chat/ws` (`routes/chatWebSocket.ts`) — ce que le frontend
   utilise. Un message entrant, un flux de parts JSON sortant, socket fermée. Une
   requête invalide ou un quota épuisé reçoivent une part `error` d'étape `request`, sans
-  lancer le pipeline.
+  lancer le pipeline. `attachChatWebSocket` fixe les limites du socket : message de
+  100 ko au plus (`maxPayload`, comme `express.json()`, `utils/requestLimits.ts`), en-tête
+  `Origin` limité à `CORS_ORIGIN` (403 sinon ; un client sans `Origin` passe), fermeture
+  en `1008` sans message après 10 s. Une trame invalide ou trop grosse est journalisée en
+  `warn` et ferme ce seul socket : sans écouteur `error`, `ws` la lèverait en exception non
+  capturée, qui arrête le serveur.
 - **POST** `/api/v1/chat/streams` (SSE) et **POST** `/api/v1/chat/completions` (draine le
   flux en une réponse JSON) — `routes/chat.ts`, pour tests et clients non-WS.
 

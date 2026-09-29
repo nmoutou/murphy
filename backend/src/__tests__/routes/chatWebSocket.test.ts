@@ -4,15 +4,18 @@
  */
 
 import http from 'http';
-import { WebSocket, WebSocketServer } from 'ws';
+import { WebSocket } from 'ws';
+import type { ClientOptions } from 'ws';
 import type { InferUIMessageChunk } from 'ai';
-import { registerChatWebSocket } from '../../routes/chatWebSocket';
+import { attachChatWebSocket, CHAT_WEBSOCKET_PATH } from '../../routes/chatWebSocket';
 import { createChatStream } from '../../services/chatService';
 import { consumeStreamQuota } from '../../middleware/streamRateLimiter';
 import type { AppUIMessage } from '@murphy/contract/messages';
 import type { ChatError } from '@murphy/contract/errors';
 import { serializeChatError } from '@murphy/contract/errors';
 import { RagError } from '../../types/rag';
+import { MAX_REQUEST_BODY_BYTES } from '../../utils/requestLimits';
+import { logger } from '../../utils/logger';
 
 jest.mock('../../services/chatService', () => ({ createChatStream: jest.fn() }));
 jest.mock('../../middleware/streamRateLimiter', () => ({ consumeStreamQuota: jest.fn() }));
@@ -46,21 +49,36 @@ const streamOf = (parts: AppChunk[]): ReadableStream<AppChunk> =>
     },
   });
 
-let server: http.Server;
-let serverUrl: string;
+const ALLOWED_ORIGIN = 'http://localhost:3000';
+const CLOSE_CODES = { PROTOCOL_ERROR: 1002, POLICY_VIOLATION: 1008, MESSAGE_TOO_BIG: 1009 };
 
-beforeAll(async () => {
-  server = http.createServer();
-  registerChatWebSocket(new WebSocketServer({ server }));
+interface TestServer {
+  readonly server: http.Server;
+  readonly url: string;
+}
+
+/** A real HTTP server on an ephemeral port, with the chat socket attached as `server.ts` does */
+const startServer = async (firstMessageTimeoutMs?: number): Promise<TestServer> => {
+  const server = http.createServer();
+  attachChatWebSocket({ server, allowedOrigins: [ALLOWED_ORIGIN], firstMessageTimeoutMs });
   await new Promise<void>((resolve) => server.listen(0, resolve));
   const address = server.address();
   if (address === null || typeof address === 'string') throw new Error('Expected the server to listen on a TCP port');
-  serverUrl = `ws://127.0.0.1:${address.port}`;
+  return { server, url: `ws://127.0.0.1:${address.port}${CHAT_WEBSOCKET_PATH}` };
+};
+
+const stopServer = ({ server }: TestServer): Promise<void> =>
+  new Promise<void>((resolve) => server.close(() => resolve()));
+
+let testServer: TestServer;
+let serverUrl: string;
+
+beforeAll(async () => {
+  testServer = await startServer();
+  serverUrl = testServer.url;
 });
 
-afterAll(async () => {
-  await new Promise<void>((resolve) => server.close(() => resolve()));
-});
+afterAll(() => stopServer(testServer));
 
 beforeEach(() => {
   jest.mocked(consumeStreamQuota).mockResolvedValue(true);
@@ -77,7 +95,94 @@ const exchange = (rawPayload: string): Promise<unknown[]> =>
     client.on('error', reject);
   });
 
+const HANDSHAKE_HEADERS = {
+  Connection: 'Upgrade',
+  Upgrade: 'websocket',
+  'Sec-WebSocket-Key': 'dGhlIHNhbXBsZSBub25jZQ==',
+  'Sec-WebSocket-Version': '13',
+};
+/** Text frame "hi" without the mask bit, which RFC 6455 requires from a client */
+const UNMASKED_FRAME = Buffer.from([0x81, 0x02, 0x68, 0x69]);
+
+/** Upgrades by hand, writes one raw frame, and resolves with the first bytes the server sends back */
+const sendRawFrame = (frame: Buffer): Promise<Buffer> =>
+  new Promise((resolve, reject) => {
+    const request = http.request(serverUrl.replace(/^ws/, 'http'), { headers: HANDSHAKE_HEADERS });
+    request.on('upgrade', (_response, socket) => {
+      socket.once('data', (reply: Buffer) => {
+        socket.destroy();
+        resolve(reply);
+      });
+      socket.write(frame);
+    });
+    request.on('error', reject);
+    request.end();
+  });
+
+/** Opens a socket, sends `rawPayload` when given, and resolves with the code the server closes it with */
+const closeCodeAfter = (url: string, rawPayload?: string): Promise<number> =>
+  new Promise((resolve, reject) => {
+    const client = new WebSocket(url);
+    if (rawPayload !== undefined) client.on('open', () => client.send(rawPayload));
+    client.on('close', (code) => resolve(code));
+    client.on('error', reject);
+  });
+
+const SWITCHING_PROTOCOLS = 101;
+
+/** Resolves with the handshake's HTTP status: 101 once the socket opens, the refusal status otherwise */
+const handshakeStatus = (options: ClientOptions): Promise<number> =>
+  new Promise((resolve, reject) => {
+    const client = new WebSocket(serverUrl, options);
+    client.on('open', () => {
+      client.close();
+      resolve(SWITCHING_PROTOCOLS);
+    });
+    client.on('unexpected-response', (_request, response) => {
+      client.terminate();
+      resolve(response.statusCode ?? 0);
+    });
+    client.on('error', reject);
+  });
+
+describe('chat WebSocket limits', () => {
+  it('survives an invalid frame: it closes that socket with a protocol error and keeps serving', async () => {
+    jest.mocked(createChatStream).mockResolvedValue(streamOf(ANSWER_PARTS));
+
+    const reply = await sendRawFrame(UNMASKED_FRAME);
+
+    expect(reply.readUInt16BE(2)).toBe(CLOSE_CODES.PROTOCOL_ERROR);
+    expect(logger.warn).toHaveBeenCalledWith(expect.objectContaining({ err: expect.any(RangeError) }), expect.any(String));
+    await expect(exchange(JSON.stringify(VALID_PAYLOAD))).resolves.toEqual(ANSWER_PARTS);
+  });
+
+  it('closes the socket on a message larger than an HTTP request body, without running the pipeline', async () => {
+    const oversizedPayload = 'x'.repeat(MAX_REQUEST_BODY_BYTES + 1);
+
+    await expect(closeCodeAfter(serverUrl, oversizedPayload)).resolves.toBe(CLOSE_CODES.MESSAGE_TOO_BIG);
+    expect(createChatStream).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['an allowed origin', { origin: ALLOWED_ORIGIN }, SWITCHING_PROTOCOLS],
+    ['no origin (not a browser)', {}, SWITCHING_PROTOCOLS],
+    ['another origin', { origin: 'https://evil.example' }, 403],
+  ])('answers the handshake of %s with status %i', async (_case, options, status) => {
+    await expect(handshakeStatus(options)).resolves.toBe(status);
+  });
+
+  it('closes a socket that sends nothing', async () => {
+    const idleServer = await startServer(50);
+    try {
+      await expect(closeCodeAfter(idleServer.url)).resolves.toBe(CLOSE_CODES.POLICY_VIOLATION);
+    } finally {
+      await stopServer(idleServer);
+    }
+  });
+});
+
 describe('chat WebSocket', () => {
+
   it('forwards the pipeline parts in order, then closes', async () => {
     jest.mocked(createChatStream).mockResolvedValue(streamOf(ANSWER_PARTS));
 

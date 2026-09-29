@@ -1,20 +1,17 @@
 import http from 'http';
-import { WebSocketServer } from 'ws';
 import app from './app';
 import { logger } from './utils/logger';
 import { config, environmentReport } from './config';
 import { initInfraClients, closeInfraClients } from './infra/clients';
-import { registerChatWebSocket } from './routes/chatWebSocket';
+import { attachChatWebSocket } from './routes/chatWebSocket';
 import { checkEnvironment } from './utils/configWarnings';
 
-const CHAT_WEBSOCKET_PATH = '/api/v1/chat/ws';
 /** Past this delay, a shutdown still waiting on open connections is forced */
 const FORCED_SHUTDOWN_DELAY_MS = 10_000;
 
 const server = http.createServer(app);
 
-const wss = new WebSocketServer({ server, path: CHAT_WEBSOCKET_PATH });
-registerChatWebSocket(wss);
+attachChatWebSocket({ server, allowedOrigins: config.http.corsOrigins });
 
 async function start() {
   checkEnvironment(environmentReport);

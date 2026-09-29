@@ -65,7 +65,7 @@ Tests live in `src/__tests__/`, mirroring `src/`; `vitest.config.mts` runs them 
 
 The pipeline is `backend/src/services/chatService.ts:createChatStream(messages, abortSignal)`:
 
-1. **Extract the question** — the text parts of the last `user` message (requests carry an AI SDK `messages` array).
+1. **Extract the question** — the text parts of the last `user` message (requests carry an AI SDK `messages` array; the frontend sends only that last question).
 2. **Embed** → TEI.
 3. **Retrieve** → Qdrant top-K (`RETRIEVAL_TOP_K`, default 5).
 4. **Fetch passages** → Mongo `documents`, by `(identifier, owner_id)`. Each passage is cut out of its parent's `content` between the payload's `char_start`/`char_end` (code points, converted to UTF-16 in `services/passages.ts`). A missing parent or out-of-range offsets raise a `CONTRACT_VIOLATION` `RagError` (ADR-039).
@@ -87,7 +87,7 @@ One stream, three transports — change `createChatStream` once:
 - **Infra clients** (`src/infra/`): `EmbeddingClient`, `QdrantVectorClient`, `LLMProvider` (OpenAI-compatible API), `MongoDbClient`; each takes its section of `config`. `initInfraClients(config)` builds them once at boot and may refuse the boot; requests use `getInfraClients()`. Never create a client per request. Failures go through `types/rag.ts:toRagError` → `RagError { stage, code }` (`TIMEOUT` when the error's type name ends in `TimeoutError`).
 - **Qdrant collection**: never configured. The backend reads the pointer `MURPHY_META.meta_published_collection`, published by the last `ok` ingestion run, and refuses to boot when it is missing, when its `serving_contract_version` differs from `SERVING_CONTRACT_VERSION` (ADR-039), or when the collection does not exist. The embedding model must match the ingestion's (`all-mpnet-base-v2`, 768 dimensions, cosine).
 - **HTTP**: base path `/api/v1`. JSON responses go through `utils/response.ts:buildApiResponse(code, message, data?)`. Async handlers are wrapped in `asyncHandler`; `notFoundHandler` and `errorHandler` come last in `app.ts`, after requestLogger → security (helmet, rate limit, CORS) → body parsing → routes.
-- **Chat requests**: validated by `validation/chatRequest.ts:parseChatRequest` (HTTP and WebSocket). One stream budget per IP (10/min by default, `middleware/streamRateLimiter.ts`), shared by `/streams`, `/completions` and WebSocket messages. `trust proxy` is `false` in `app.ts` until a proxy is deployed.
+- **Chat requests**: validated by `validation/chatRequest.ts:parseChatRequest` (HTTP and WebSocket). Bodies and WebSocket messages share one size limit (`utils/requestLimits.ts`, 100 KiB); the socket also checks `Origin` against `CORS_ORIGIN` and closes after 10 s without a message. Every WebSocket keeps an `error` listener: `ws` throws an unheard one (invalid frame, oversized message) as an uncaught exception, which stops the server. One stream budget per IP (10/min by default, `middleware/streamRateLimiter.ts`), shared by `/streams`, `/completions` and WebSocket messages. `trust proxy` is `false` in `app.ts` until a proxy is deployed.
 - **Health**: `/api/v1/health` (alias `/api/v1/health/services`) probes TEI, Qdrant and Mongo: `ok`, `degraded` (1 down) or `down` (2+), 503 unless `ok`.
 - **Logging**: Pino, one child logger per module (`rootLogger.child({ context: 'moduleName' })`).
 - Neo4j is written by the ingestion but not yet read by the backend.

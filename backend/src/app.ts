@@ -7,6 +7,7 @@ import { config } from './config';
 import chatRouter from './routes/chat';
 import healthRouter from './routes/health';
 import { HTTP_STATUS } from './utils/httpStatus';
+import { MAX_REQUEST_BODY_BYTES } from './utils/requestLimits';
 
 // No reverse proxy in front of the backend yet (not deployed, TR-03): `req.ip`
 // is the socket address, so a forged `X-Forwarded-For` cannot dodge the rate
@@ -25,7 +26,7 @@ app.use(limiter);
 
 // Body parsing middleware
 app.use(originParser);
-app.use(express.json());
+app.use(express.json({ limit: MAX_REQUEST_BODY_BYTES }));
 app.use(express.urlencoded({ extended: true }));
 
 // Routes

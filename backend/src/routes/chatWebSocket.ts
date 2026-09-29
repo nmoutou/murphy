@@ -3,9 +3,9 @@
  * One `{ messages }` payload in, the AI SDK UI message parts out, then the socket closes
  */
 
-import type { IncomingMessage } from 'http';
+import type { IncomingMessage, Server } from 'http';
 import { WebSocketServer, WebSocket } from 'ws';
-import type { RawData } from 'ws';
+import type { RawData, VerifyClientCallbackAsync } from 'ws';
 import type { InferUIMessageChunk } from 'ai';
 import { logger as rootLogger } from '../utils/logger';
 import { createChatStream } from '../services/chatService';
@@ -15,8 +15,24 @@ import type { AppUIMessage } from '@murphy/contract/messages';
 import type { ChatError } from '@murphy/contract/errors';
 import { serializeChatError } from '@murphy/contract/errors';
 import { toChatError } from '../types/rag';
+import { HTTP_STATUS } from '../utils/httpStatus';
+import { MAX_REQUEST_BODY_BYTES } from '../utils/requestLimits';
 
 const logger = rootLogger.child({ context: 'chatWebSocket' });
+
+export const CHAT_WEBSOCKET_PATH = '/api/v1/chat/ws';
+/** The frontend sends its question as soon as the socket opens */
+const FIRST_MESSAGE_TIMEOUT_MS = 10_000;
+/** RFC 6455 close code for a client breaking the server's policy */
+const POLICY_VIOLATION_CLOSE_CODE = 1008;
+
+interface ChatWebSocketOptions {
+  readonly server: Server;
+  /** `config.http.corsOrigins`: `false` refuses every browser */
+  readonly allowedOrigins: readonly string[] | false;
+  /** Past this delay without a message, the socket is closed */
+  readonly firstMessageTimeoutMs?: number;
+}
 
 const RATE_LIMITED_ERROR: ChatError = { stage: 'request', code: 'RATE_LIMITED' };
 const INVALID_JSON_ERROR: ChatError = { stage: 'request', code: 'INVALID_JSON' };
@@ -81,14 +97,55 @@ const handleChatMessage = async (ws: WebSocket, raw: RawData, remoteAddress: str
   }
 };
 
-export function registerChatWebSocket(wss: WebSocketServer): void {
-  wss.on('connection', (ws: WebSocket, request: IncomingMessage) => {
-    logger.info('WebSocket client connected');
+/** Only a browser sends `Origin`, and a cross-site page cannot forge it: the same list as the HTTP CORS */
+const isOriginAllowed = (origin: string | undefined, allowedOrigins: readonly string[] | false): boolean => {
+  if (origin === undefined) return true;
+  return allowedOrigins !== false && allowedOrigins.includes(origin);
+};
 
-    ws.once('message', (raw: RawData) => {
-      handleChatMessage(ws, raw, request.socket.remoteAddress).catch((error: unknown) => {
-        logger.error({ err: error }, 'WebSocket chat handler failed');
-      });
+const createOriginVerifier =
+  (allowedOrigins: readonly string[] | false): VerifyClientCallbackAsync =>
+  ({ req }, callback) => {
+    const { origin } = req.headers;
+    if (isOriginAllowed(origin, allowedOrigins)) {
+      callback(true);
+      return;
+    }
+    logger.warn({ origin }, 'WebSocket origin refused');
+    callback(false, HTTP_STATUS.FORBIDDEN);
+  };
+
+const handleConnection = (ws: WebSocket, request: IncomingMessage, firstMessageTimeoutMs: number): void => {
+  const remoteAddress = request.socket.remoteAddress;
+  logger.info('WebSocket client connected');
+
+  // Invalid frame or payload over `maxPayload`: ws already closes the socket, and an
+  // unheard `error` event would be thrown as an uncaught exception, stopping the server
+  ws.on('error', (error: Error) => {
+    logger.warn({ err: error, ip: remoteAddress }, 'WebSocket protocol error, socket closed');
+  });
+
+  const idleTimer = setTimeout(
+    () => ws.close(POLICY_VIOLATION_CLOSE_CODE, 'No message received'),
+    firstMessageTimeoutMs,
+  );
+  ws.on('close', () => clearTimeout(idleTimer));
+
+  ws.once('message', (raw: RawData) => {
+    clearTimeout(idleTimer);
+    handleChatMessage(ws, raw, remoteAddress).catch((error: unknown) => {
+      logger.error({ err: error }, 'WebSocket chat handler failed');
     });
   });
-}
+};
+
+export const attachChatWebSocket = (options: ChatWebSocketOptions): void => {
+  const { server, allowedOrigins, firstMessageTimeoutMs = FIRST_MESSAGE_TIMEOUT_MS } = options;
+  const wss = new WebSocketServer({
+    server,
+    path: CHAT_WEBSOCKET_PATH,
+    maxPayload: MAX_REQUEST_BODY_BYTES,
+    verifyClient: createOriginVerifier(allowedOrigins),
+  });
+  wss.on('connection', (ws: WebSocket, request: IncomingMessage) => handleConnection(ws, request, firstMessageTimeoutMs));
+};
