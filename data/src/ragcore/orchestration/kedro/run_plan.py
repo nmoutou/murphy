@@ -15,7 +15,7 @@ from typing import Any
 from ragcore.adapters.config.settings import InfraSettings
 from ragcore.adapters.storage.neo4j.node_properties import NodeHydration, NodeLabels
 from ragcore.core.models.enums import SourceName
-from ragcore.core.models.processing import ChunkingConfig, EmbeddingConfig
+from ragcore.core.models.processing import ChunkingConfig
 from ragcore.orchestration.kedro.parameters_model import (
     NodeHydrationParameters,
     validate_parameters,
@@ -36,7 +36,6 @@ class RunPlan:
     """Ce que ce run écrit, et comment."""
 
     chunking: ChunkingConfig
-    embedding: EmbeddingConfig
     collection: str
     """La collection Qdrant : un nom fixe, lu de ``QDRANT_COLLECTION``."""
     sources: tuple[SourceName, ...]
@@ -92,7 +91,6 @@ def plan_run(params: dict[str, Any], settings: InfraSettings) -> RunPlan:
     )
     plan = RunPlan(
         chunking=parameters.chunking,
-        embedding=parameters.embedding,
         collection=settings.qdrant_collection,
         sources=resolve_sources(requested_source),
         node_hydration=_node_hydration(dev.node_hydration, is_dev),

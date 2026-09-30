@@ -1,4 +1,5 @@
-"""Embedder distant — API compatible OpenAI (le service TEI du docker-compose).
+"""L'embedder de l'ingestion : le service TEI du docker-compose, par son API compatible
+OpenAI (``POST /embeddings``).
 
 Par lots : un corpus de dix mille chunks en dix mille requêtes HTTP serait lent
 sans raison, et ferait tomber le service bien avant d'être lent.
@@ -12,9 +13,9 @@ from dataclasses import dataclass
 import httpx
 
 from ragcore.core.models.chunk import Chunk, EmbeddedChunk
-from ragcore.core.models.processing import EmbeddingConfig
+from ragcore.core.models.processing import EmbeddingModel
 
-__all__ = ["EmbeddingTransport", "OpenAIEmbedder"]
+__all__ = ["EmbeddingTransport", "TeiEmbedder"]
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -38,35 +39,21 @@ def _rejected(chunk: Chunk) -> ValueError:
 class EmbeddingTransport:
     """Comment joindre le service : de l'infra, lue de l'environnement."""
 
-    base_url: str | None
+    base_url: str
     timeout_ms: int
     """Le timeout d'une requête au service (``EMBEDDING_INGESTION_TIMEOUT``)."""
-    api_key: str | None = None
     batch_size: int = 32
 
 
-class OpenAIEmbedder:
+class TeiEmbedder:
     """Implémentation de ``BaseEmbedder`` via ``POST /embeddings``."""
 
-    def __init__(
-        self, embedding: EmbeddingConfig, transport: EmbeddingTransport
-    ) -> None:
-        base_url = transport.base_url
-        if not base_url:
-            # L'ancien défaut retombait sur `https://api.openai.com/v1` : un
-            # EMBEDDING_SERVICE_URL oublié envoyait SILENCIEUSEMENT tout le corpus chez
-            # OpenAI — facturé, et avec un autre modèle que celui de la
-            # configuration. Un défaut ne doit jamais désigner un service tiers payant.
-            raise ValueError(
-                "OpenAIEmbedder exige une `base_url` explicite. Renseigner "
-                "EMBEDDING_SERVICE_URL (p. ex. http://localhost:5001/v1)."
-            )
-        self._model_name = embedding.model_name
-        self._dimension = embedding.dimension
-        self._api_key = transport.api_key
+    def __init__(self, model: EmbeddingModel, transport: EmbeddingTransport) -> None:
+        self._model_name = model.model_name
+        self._dimension = model.dimension
         self._batch_size = transport.batch_size
         self._timeout_seconds = transport.timeout_ms / _MS_PER_SECOND
-        self._base_url = base_url.rstrip("/")
+        self._base_url = transport.base_url.rstrip("/")
         # Quels CHUNKS ont dû être raccourcis pour tenir dans la fenêtre du modèle. Non
         # vide = le `chunking.max_chars` configuré n'est PAS compatible avec le modèle, et une part
         # du corpus n'est indexée qu'en partie. Le run reste complet (aucun document
@@ -93,6 +80,10 @@ class OpenAIEmbedder:
         # l'appeler, et les autres échoueraient. La clé est donc la boucle courante —
         # chaque worker obtient le sien, et le réutilise sur tous ses documents.
         self._clients: dict[object, httpx.AsyncClient] = {}
+
+    @property
+    def dimension(self) -> int:
+        return self._dimension
 
     @property
     def truncations(self) -> int:
@@ -124,8 +115,6 @@ class OpenAIEmbedder:
             return []
 
         headers = {"Content-Type": "application/json"}
-        if self._api_key:
-            headers["Authorization"] = f"Bearer {self._api_key}"
 
         client = self._client()
         batches = [

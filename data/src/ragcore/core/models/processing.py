@@ -1,7 +1,7 @@
-"""Les réglages du traitement : la découpe, et le modèle d'embedding.
+"""Ce que le run traite : la découpe, et le modèle d'embedding.
 
-Lus de ``parameters.yml`` (blocs ``chunking`` et ``embedding``) en tête de run. Un champ
-absent, mal typé ou inconnu arrête le run : aucun défaut dans le code, et aucune
+``ChunkingConfig`` est lu de ``parameters.yml`` (bloc ``chunking``) en tête de run. Un
+champ absent, mal typé ou inconnu arrête le run : aucun défaut dans le code, et aucune
 conversion (``"384"`` n'est pas un entier).
 """
 
@@ -9,7 +9,7 @@ from typing import Self
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-__all__ = ["ChunkingConfig", "EmbeddingConfig"]
+__all__ = ["ChunkingConfig", "EmbeddingModel"]
 
 
 class _Frozen(BaseModel):
@@ -33,11 +33,12 @@ class ChunkingConfig(_Frozen):
         return self
 
 
-class EmbeddingConfig(_Frozen):
-    """Le modèle d'embedding et la dimension de ses vecteurs.
+class EmbeddingModel(_Frozen):
+    """Le modèle que sert TEI, et la dimension de ses vecteurs.
 
-    La collection Qdrant est créée à cette dimension, et le backend doit interroger le
-    même modèle.
+    Ce n'est pas un réglage : le nom vient de ``EMBEDDING_MODEL``, la dimension est
+    mesurée auprès du service au démarrage. La collection Qdrant est créée à cette
+    dimension, et le backend interroge le même modèle.
     """
 
     model_name: str = Field(min_length=1)

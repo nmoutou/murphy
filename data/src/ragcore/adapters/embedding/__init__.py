@@ -1,5 +1,3 @@
-from .local_embedder import LocalEmbedder
-from .noop_embedder import NoopEmbedder
-from .openai_embedder import EmbeddingTransport, OpenAIEmbedder
+from .tei_embedder import EmbeddingTransport, TeiEmbedder
 
-__all__ = ["EmbeddingTransport", "LocalEmbedder", "NoopEmbedder", "OpenAIEmbedder"]
+__all__ = ["EmbeddingTransport", "TeiEmbedder"]

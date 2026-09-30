@@ -10,7 +10,6 @@ from pathlib import Path
 
 import pytest
 
-from ragcore.adapters.embedding.noop_embedder import NoopEmbedder
 from ragcore.adapters.telemetry.aggregator import RunStatsAggregator
 from ragcore.application.run_context import PipelineContext
 from ragcore.core.models.audit import build_event
@@ -23,6 +22,7 @@ from ragcore.core.telemetry_events import (
     DOCUMENT_PERSISTED,
 )
 from ragcore.orchestration.kedro.run_session import RunSession
+from ragcore.tests.fakes.embedder import NoopEmbedder
 from ragcore.tests.fakes.runtime import FakeRuntime
 from ragcore.tests.fakes.telemetry import RecordingTelemetry
 

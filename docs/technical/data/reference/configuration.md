@@ -4,8 +4,8 @@ Deux surfaces :
 
 | Surface | Fichier | Contenu |
 |---|---|---|
-| **Réglages du pipeline** | `conf/base/parameters.yml` | Découpe, modèle d'embedding, labels du graphe, réglages de dev |
-| **Infra** (`InfraSettings`, `EmbeddingRuntimeSettings`) | `.env.dev` à la **racine du dépôt** | Le *où* et le *comment* : bases, secrets, chemins, nom de la collection Qdrant |
+| **Réglages du pipeline** | `conf/base/parameters.yml` | Découpe, labels du graphe, réglages de dev |
+| **Infra** (`InfraSettings`, `EmbeddingRuntimeSettings`) | `.env.dev` à la **racine du dépôt** | Le *où* et le *comment* : bases, secrets, chemins, nom de la collection Qdrant, modèle d'embedding servi par TEI |
 
 `parameters.yml` illisible = run arrêté, jamais de défauts silencieux. Le fichier est
 validé **en entier** par un modèle strict (`orchestration/kedro/parameters_model.py`),
@@ -19,23 +19,23 @@ seul `source` y est accepté (`--params sorce=cass` est refusé).
 
 La collection s'appelle `QDRANT_COLLECTION` (`.env.dev`), et le backend lit la même
 variable (ADR-042). Il n'y a **qu'une** collection, réécrite en place à chaque run.
-Conséquence : changer `chunking` ou `embedding` invalide les vecteurs déjà écrits, sans
+Conséquence : changer `chunking` ou `EMBEDDING_MODEL` invalide les vecteurs déjà écrits, sans
 que rien ne les sépare des nouveaux — après un tel changement, **réingérer tout le
 corpus** (`nuke_all` en dev).
 
 ## `parameters.yml`, champ par champ
 
-### `chunking` et `embedding` — ce qui décide des vecteurs
+### `chunking` — la découpe
 
-Obligatoires, sans défaut dans le code (`core/models/processing.py`) : un bloc absent, un
-champ manquant, mal typé ou inconnu arrête le run au démarrage.
+Obligatoire, sans défaut dans le code (`core/models/processing.py`) : un bloc absent, un
+champ manquant, mal typé ou inconnu arrête le run au démarrage. Le modèle d'embedding
+n'est pas ici : il vient de `EMBEDDING_MODEL` (voir plus bas), et sa dimension est
+mesurée auprès de TEI.
 
 | Clé | Valeur | Effet |
 |---|---|---|
 | `chunking.max_chars` | `384` | Taille maximale d'un chunk, en **caractères** (la fenêtre du modèle est en tokens ; ratio mesuré : 3,08 car/token en moyenne, 0,33 au pire). 384 est le plus grand qui tienne : ≤ 300 tokens mesurés au tokenizer du modèle sur les six sources, **zéro document perdu** (512 en perdait 1, 1024 en perdait 98). C'est aussi le levier de coût : l'embedding est ~99,9 % du temps d'un run, et 128 → 384 l'a divisé par ~5 (838 s → 173 s). |
 | `chunking.overlap_chars` | `25` | Recouvrement de la fenêtre glissante, en caractères. Doit rester < `max_chars` : sinon le curseur n'avance pas, et le run s'arrête au démarrage. Ne joue que dans un bloc plus long que `max_chars`, que la fenêtre coupe en plein mot : 25 caractères (3 ou 4 mots) gardent entier un mot coupé à la frontière, pas une phrase. **Non mesuré** : aucun jeu d'évaluation du retrieval n'existe pour le régler. |
-| `embedding.model_name` | `sentence-transformers/all-mpnet-base-v2` | Doit être le modèle que sert le conteneur TEI — vérifié au démarrage (`GET /info`). |
-| `embedding.dimension` | `768` | Taille des vecteurs (et de la collection Qdrant). |
 
 ### `node_labels` — le graphe, en dev comme en prod
 
@@ -54,22 +54,22 @@ coquille arrête le run même en prod.
 | Clé | Valeur | En `dev` | Hors `dev` |
 |---|---|---|---|
 | `nuke_all` | `true` | Efface TOUTES les données de TOUTES les bases en tête de run (Mongo documents+manifest, graphe Neo4j, **toutes** les collections Qdrant), en **préservant `MURPHY_META`**. Le levier disque du développement. | Rien n'est effacé. |
-| `embedding_enabled` | `true` | **L'interrupteur d'embedding (ADR-023).** `false` = aucun vecteur calculé ni écrit (Qdrant vide, Mongo/Neo4j normaux) — le régime d'itération sur le modèle de données. Distinct de `EMBEDDING_PROVIDER=noop`, qui calcule et ÉCRIT des vecteurs nuls. | On embarque toujours. |
+| `embedding_enabled` | `true` | **L'interrupteur d'embedding (ADR-023).** `false` = aucun vecteur calculé ni écrit (Qdrant vide, Mongo/Neo4j normaux) — le régime d'itération sur le modèle de données. | On embarque toujours. |
 | `skip_unconfigured` | `false` | Le sort des balises non configurées (cadrage « trois portes ») : `false` = la balise entre en metadata sous sa clé chemin-complet ; `true` = retirée du document. Le signal `tag.unconfigured`, lui, est TOUJOURS émis — on compte d'abord, on filtre ensuite. | Toujours retirées (ADR-022 §1). |
 | `node_hydration.include_path` / `include_content` | `true` / `true` | Ce que portent en plus les nœuds Neo4j (avec leurs métadonnées) : chemins des fichiers XML source, texte du document (`_text_content`). | Nœud maigre (ADR-022 §2). |
 
-Le transport de l'embedding n'est pas dans `parameters.yml` : taille de lot et timeout
-sont dans l'environnement (`EMBEDDING_BATCH_SIZE`, `EMBEDDING_INGESTION_TIMEOUT`).
+Rien de l'embedding n'est dans `parameters.yml` : le modèle, l'URL de TEI, la taille de
+lot et le timeout sont dans l'environnement (voir `EmbeddingRuntimeSettings`).
 
 ## `.env.dev` (racine du dépôt)
 
 **Un seul fichier, par chemin absolu** (`settings.py:ROOT_ENV_FILE`) — jamais résolu
 depuis le CWD (un `kedro run` lancé d'ailleurs prendrait silencieusement tous les
-défauts, dont `provider=noop`). Absent = levée à l'instanciation des settings (pas à
-l'import : les tests unitaires n'en ont pas besoin). Un seul fichier parce que le
-conteneur TEI et le pipeline doivent lire **la même** variable de modèle : deux fichiers
-pourraient diverger, et une divergence écrit les vecteurs d'un autre modèle que celui que
-le backend interroge.
+défauts). Absent = levée à l'instanciation des settings (pas à
+l'import : les tests unitaires n'en ont pas besoin). Un seul fichier parce que TEI, le
+backend et le pipeline doivent lire **la même** variable de modèle, `EMBEDDING_MODEL` :
+deux sources pourraient diverger, et une divergence écrit les vecteurs d'un autre modèle
+que celui que le backend interroge.
 
 Le fichier porte les URLs **côté hôte** (`localhost`) : le pipeline tourne sur l'hôte,
 et c'est docker-compose qui surcharge les services conteneurisés avec leurs noms de
@@ -92,12 +92,15 @@ service.
 
 ### `EmbeddingRuntimeSettings` (préfixe `EMBEDDING_`)
 
-Comment on **atteint** le modèle — jamais quel modèle (lui est dans `parameters.yml`).
+Le service TEI, seul embedder de l'ingestion : pas de fournisseur à choisir. Au
+démarrage, le hook vérifie que TEI sert `EMBEDDING_MODEL` (`GET /info`) et mesure la
+dimension des vecteurs par une requête de sonde (`served_model.inspect_served_model`) ;
+la collection Qdrant est créée à cette dimension. Service injoignable, autre modèle ou
+sonde en échec = run arrêté avant tout nœud.
 
 | Variable | Défaut | Rôle |
 |---|---|---|
-| `EMBEDDING_PROVIDER` | `noop` | `openai` (TEI/compatible — le vrai run), `local` (sentence-transformers, extra `embedding-local`), `noop` (vecteurs **nuls**, écrits dans la collection du vrai modèle — hygiène de test, bruyamment signalée). |
-| `EMBEDDING_SERVICE_URL` | — | L'URL du service (vide = absente). |
-| `EMBEDDING_API_KEY` | — | Clé éventuelle (vide = absente — sinon `Bearer` vide et 401 inexpliqué). |
-| `EMBEDDING_BATCH_SIZE` | `32` | Taille de lot du provider. |
+| `EMBEDDING_MODEL` | — (**obligatoire**) | Le modèle attendu. Lu aussi par TEI (`--model-id`) et par le backend (`EMBEDDING_MODEL_NAME` via Compose). En changer invalide les vecteurs écrits : redémarrer TEI, puis réingérer tout le corpus. |
+| `EMBEDDING_SERVICE_URL` | — (**obligatoire**) | L'API compatible OpenAI de TEI, p. ex. `http://localhost:5001/v1`. Vide = absente. |
+| `EMBEDDING_BATCH_SIZE` | `32` | Taille de lot des requêtes à TEI. |
 | `EMBEDDING_INGESTION_TIMEOUT` | `120000` | Timeout d'une requête au service, en **ms** (> 0). Distinct d'`EMBEDDING_SERVICE_TIMEOUT` (10 s), celui du backend : le backend embarque une question, l'ingestion envoie en parallèle tous les lots d'un document, qui font la queue côté GPU. |

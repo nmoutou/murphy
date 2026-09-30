@@ -6,7 +6,6 @@ vérification du modèle servi est remplacée de même.
 """
 
 import asyncio
-import logging
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -16,10 +15,10 @@ from ragcore.adapters.config.settings import (
     EmbeddingRuntimeSettings,
     InfraSettings,
 )
-from ragcore.adapters.embedding.noop_embedder import NoopEmbedder
-from ragcore.adapters.embedding.openai_embedder import OpenAIEmbedder
+from ragcore.adapters.embedding.tei_embedder import TeiEmbedder
 from ragcore.application.ingestion_runner import IngestionRunner
 from ragcore.application.run_context import PipelineContext
+from ragcore.core.models.processing import EmbeddingModel
 from ragcore.orchestration.kedro import assembly, stores
 from ragcore.orchestration.kedro.assembly import (
     ReportsTruncations,
@@ -34,6 +33,7 @@ from ragcore.orchestration.kedro.stores import (
     open_document_stores,
     open_meta_stores,
 )
+from ragcore.tests.fakes.embedder import NoopEmbedder
 from ragcore.tests.fakes.runtime import FakeRuntime
 
 
@@ -69,7 +69,6 @@ def settings(tmp_path: Path) -> InfraSettings:
 def plan(settings: InfraSettings) -> RunPlan:
     params = {
         "chunking": {"max_chars": 384, "overlap_chars": 25},
-        "embedding": {"model_name": "un-modele", "dimension": 768},
         "node_labels": {"default": "Document", "by_prefix": {}},
         "dev": {
             "nuke_all": False,
@@ -95,10 +94,8 @@ def _close(clients: InfraClients) -> None:
     asyncio.run(clients.qdrant.close())
 
 
-def _embedding_settings(provider: str) -> EmbeddingRuntimeSettings:
-    return EmbeddingRuntimeSettings(
-        provider=provider, service_url="http://localhost:1", api_key=None
-    )
+def _embedding_settings() -> EmbeddingRuntimeSettings:
+    return EmbeddingRuntimeSettings(model="un-modele", service_url="http://localhost:1")
 
 
 # ── Les clients : le code est partagé, pas les instances (§11) ─────────────────────
@@ -121,40 +118,31 @@ def test_les_depots_s_ouvrent_sans_se_connecter(
 ) -> None:
     clients = open_clients(settings)
     try:
-        open_document_stores(clients, settings, plan)
+        open_document_stores(clients, settings, plan, vector_size=768)
         open_meta_stores(clients, settings)
     finally:
         _close(clients)
 
 
-# ── L'embedder : une seule branche sur le fournisseur ─────────────────────────────
+# ── L'embedder : TEI, vérifié et mesuré avant d'être construit ─────────────────────
 
 
-def test_noop_rend_un_embedder_nul_et_le_DIT(
-    plan: RunPlan, runtime: FakeRuntime, caplog: pytest.LogCaptureFixture
+def test_prepare_embedder_verifie_le_modele_et_mesure_la_dimension(
+    runtime: FakeRuntime, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    with caplog.at_level(logging.WARNING):
-        embedder = prepare_embedder(_embedding_settings("noop"), plan, runtime)
+    inspected: list[tuple[str, str]] = []
 
-    assert isinstance(embedder, NoopEmbedder)
-    assert "vecteurs seront NULS" in caplog.text
-    assert not isinstance(embedder, ReportsTruncations)
+    async def _fake_inspect(base_url: str, expected_model: str) -> EmbeddingModel:
+        inspected.append((base_url, expected_model))
+        return EmbeddingModel(model_name=expected_model, dimension=384)
 
+    monkeypatch.setattr(assembly, "inspect_served_model", _fake_inspect)
 
-def test_openai_verifie_le_modele_servi_AVANT_de_construire(
-    plan: RunPlan, runtime: FakeRuntime, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    checked: list[tuple[str, str]] = []
+    embedder = prepare_embedder(_embedding_settings(), runtime)
 
-    async def _fake_check(base_url: str, expected_model: str) -> None:
-        checked.append((base_url, expected_model))
-
-    monkeypatch.setattr(assembly, "assert_service_serves_model", _fake_check)
-
-    embedder = prepare_embedder(_embedding_settings("openai"), plan, runtime)
-
-    assert checked == [("http://localhost:1", plan.embedding.model_name)]
-    assert isinstance(embedder, OpenAIEmbedder)
+    assert inspected == [("http://localhost:1", "un-modele")]
+    assert isinstance(embedder, TeiEmbedder)
+    assert embedder.dimension == 384
     assert isinstance(embedder, ReportsTruncations)
 
 

@@ -13,7 +13,7 @@ class RagCoreError(Exception):
 
 
 class EmbeddingModelMismatchError(RagCoreError):
-    """Le service d'embedding ne sert pas le modèle que la configuration déclare.
+    """Le service d'embedding ne sert pas ``EMBEDDING_MODEL``, ou ne peut pas le prouver.
 
     TEI ne sert qu'UN modèle — celui de son ``--model-id`` — et **ignore** le champ
     ``model`` de la requête. Réclamer `all-mpnet-base-v2` à un service lancé sur

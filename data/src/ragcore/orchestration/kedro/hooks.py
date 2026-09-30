@@ -82,9 +82,7 @@ class TelemetryHooks:
         """Assemble le run et le POSE au catalogue : le DAG nomme, le hook fournit."""
         settings = get_infra_settings()
         plan = plan_run(load_parameters(catalog), settings)
-        embedder = prepare_embedder(
-            get_embedding_runtime_settings(), plan, self._runtime
-        )
+        embedder = prepare_embedder(get_embedding_runtime_settings(), self._runtime)
         for name, value in self._assemble(settings, plan, embedder).items():
             catalog.save(name, value)
         if self._session is not None:
@@ -104,7 +102,7 @@ class TelemetryHooks:
         """
         clients = open_clients(settings)
         ensure_indexes(clients, settings, self._runtime)
-        stores = open_document_stores(clients, settings, plan)
+        stores = open_document_stores(clients, settings, plan, embedder.dimension)
         meta = open_meta_stores(clients, settings)
         session = self._open_session(settings, plan.context_source, meta, embedder)
         stack = build_processing_stack(plan, Path(settings.xml_source_path), embedder)

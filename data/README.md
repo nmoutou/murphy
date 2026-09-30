@@ -32,12 +32,12 @@ There is **one** environment file, and it lives at the repo root: `../.env.dev` 
 from `../.env.example`). There is **no `.env` in this directory** — creating one has no
 effect, since `ragcore/adapters/config/settings.py` reads the root file by absolute path.
 
-One file, because the pipeline and the TEI container must agree on the embedding model:
-if they were two variables they could diverge, and a divergence writes the *wrong* model's
-vectors into the collection named after the *right* one — silently. They are now the same
-variable, and the pipeline additionally checks TEI's `GET /info` before writing anything.
+One file, because TEI, the backend and the pipeline must agree on the embedding model:
+they all read `EMBEDDING_MODEL`. The pipeline additionally checks TEI's `GET /info`
+before writing anything, and measures the vector dimension with a probe request. TEI is
+the only embedder: `EMBEDDING_MODEL` and `EMBEDDING_SERVICE_URL` are required.
 
-Tuning surface: `conf/base/parameters.yml` (`chunking` and `embedding` blocks).
+Tuning surface: `conf/base/parameters.yml` (`chunking`, `node_labels` and `dev` blocks).
 The Qdrant collection has a fixed name, `QDRANT_COLLECTION` in `../.env.dev`, shared with
 the backend: after changing the chunking or the embedding model, re-ingest the whole corpus.
 

@@ -4,6 +4,7 @@ Elles vivent sous ``tests/`` et non sous ``adapters/`` : un dépôt en mémoire 
 dans le package de production serait du code que la production n'exécute jamais.
 """
 
+from .embedder import NoopEmbedder
 from .repositories import (
     InMemoryDocumentRepository,
     InMemoryGraphRepository,
@@ -22,6 +23,7 @@ __all__ = [
     "InMemoryManifestRepository",
     "InMemoryPendingRepository",
     "InMemoryVectorRepository",
+    "NoopEmbedder",
     "RecordingTelemetry",
     "RecordingTelemetryFactory",
 ]

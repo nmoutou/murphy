@@ -71,6 +71,8 @@ class _StubChunker:
 
 
 class _StubEmbedder:
+    dimension = 3
+
     async def embed(self, chunks: list[Chunk]) -> list[EmbeddedChunk]:
         return [
             EmbeddedChunk(
@@ -222,8 +224,8 @@ def test_embedding_actif_ecrit_les_vecteurs() -> None:
 def test_embedding_coupe_nECRIT_AUCUN_vecteur_mais_merge_le_noeud() -> None:
     """ADR-023 : ``embedding_enabled=False`` saute ``embed()`` — Qdrant reste vide.
 
-    Ce qu'on prouve, et pourquoi ce n'est pas ``NoopEmbedder`` : là, AUCUN
-    ``EmbeddedChunk`` n'atteint le dépôt (pas même un vecteur nul). Et pourtant le nœud
+    Ce qu'on prouve : AUCUN ``EmbeddedChunk`` n'atteint le dépôt (pas même un vecteur
+    nul). Et pourtant le nœud
     Neo4j est mergé et la relation ressort pour la phase 2 : couper l'embedding n'ampute
     que la vectorisation, le reste du régime d'ingestion tourne à l'identique — c'est
     l'état d'itération dev sur le modèle de données sans payer le GPU.

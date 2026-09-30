@@ -20,7 +20,7 @@ Priorité : P1 à P4, puis P18 (qui règle P1, P2, P6 et P12).
 
 ## Clés lues et non lues
 
-- **Lues** : `chunking`, `embedding`, `node_labels`, `dev.*` (depuis P11 : `nuke_all`, `embedding_enabled`, `skip_unconfigured`, `node_hydration.*`).
+- **Lues** : `chunking`, `node_labels`, `dev.*` (depuis P11 : `nuke_all`, `embedding_enabled`, `skip_unconfigured`, `node_hydration.*`).
 - **Non lues** : aucune depuis P18. Les clés mortes ont été supprimées, et le modèle strict refuse désormais toute clé inconnue.
 
 ---
@@ -177,6 +177,15 @@ Depuis P18, `embedding_runtime` ne contient plus que `enabled` : le timeout et l
 - `model_name` fait doublon avec `EMBEDDING_MODEL` (`.env.dev`, qui sert à TEI et au backend). La docstring de `ROOT_ENV_FILE` affirme « ils ne sont plus deux variables » : c'est faux.
 - Le risque est seulement atténué par la vérification `GET /info` au démarrage.
 - `dimension` est une propriété du modèle, donc redondante : elle pourrait être mesurée au démarrage plutôt que déclarée.
+
+> **Traité** : le bloc `embedding` a quitté `parameters.yml`.
+>
+> - **Plus de fournisseur.** TEI est le seul embedder (`TeiEmbedder`). `EMBEDDING_PROVIDER`, `noop` (le défaut, qui écrivait des vecteurs nuls dans la collection du backend), `local` (et l'extra `embedding-local`) et `EMBEDDING_API_KEY` ont disparu. `NoopEmbedder` ne vit plus que dans les doublures de test.
+> - **Le modèle** vient de `EMBEDDING_MODEL`, obligatoire, que lisent aussi TEI et le backend. La vérification `GET /info` détecte désormais un conteneur pas redémarré après un changement de la variable.
+> - **La dimension** est mesurée au démarrage par une requête de sonde (`served_model.inspect_served_model`), et portée par le port `BaseEmbedder.dimension` jusqu'à la collection Qdrant.
+> - La docstring de `ROOT_ENV_FILE` est vraie.
+>
+> Reste ouvert : une collection Qdrant qui existe déjà à une autre dimension n'est pas détectée (`ensure_collection` ne crée que si elle est absente). Après un changement de modèle sans `nuke_all`, chaque upsert échouerait. Piste : vérifier la taille de la collection existante au démarrage.
 
 ### P15. `neo4j.labels`
 

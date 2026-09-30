@@ -1,9 +1,9 @@
-"""Le garde-fou du modèle servi, et le footgun qu'il ferme.
+"""L'embedder TEI, et la précondition du run : le modèle servi, et sa dimension.
 
 TEI ne sert qu'UN modèle et **ignore** le champ ``model`` de la requête. Le seul moyen de
 savoir ce qu'il sert vraiment est de le lui demander (``GET /info``). Sans cette
-vérification, une divergence entre le conteneur et ``parameters.yml`` écrit les vecteurs
-d'un modèle dans la collection nommée d'après un autre — sans lever, sans logguer.
+vérification, un conteneur qui ne sert pas ``EMBEDDING_MODEL`` écrit les vecteurs d'un
+modèle dans la collection qu'on interroge avec un autre — sans lever, sans logguer.
 """
 
 import json
@@ -11,20 +11,18 @@ import json
 import httpx
 import pytest
 
-from ragcore.adapters.embedding.openai_embedder import (
-    EmbeddingTransport,
-    OpenAIEmbedder,
-)
-from ragcore.adapters.embedding.served_model import assert_service_serves_model
+from ragcore.adapters.embedding.served_model import inspect_served_model
+from ragcore.adapters.embedding.tei_embedder import EmbeddingTransport, TeiEmbedder
 from ragcore.core.exceptions import EmbeddingModelMismatchError
 from ragcore.core.models.chunk import Chunk
 from ragcore.core.models.identifiers import Identifier
-from ragcore.core.models.processing import EmbeddingConfig
+from ragcore.core.models.processing import EmbeddingModel
 
 ATTENDU = "sentence-transformers/all-mpnet-base-v2"
 BASE_URL = "http://tei.test:80/v1"
 DIM = 4
 TIMEOUT_MS = 2500
+SERVED_DIMENSION = 768
 
 
 def _chunk(chunk_id: str, text: str) -> Chunk:
@@ -44,10 +42,15 @@ class _ServiceFactice:
     """Un TEI en carton qui enregistre ce qu'on lui a demandé."""
 
     def __init__(
-        self, *, model_id: str | None = ATTENDU, info_status: int = 200
+        self,
+        *,
+        model_id: str | None = ATTENDU,
+        info_status: int = 200,
+        probe_status: int = 200,
     ) -> None:
         self._model_id = model_id
         self._info_status = info_status
+        self._probe_status = probe_status
         self.chemins: list[str] = []
 
     def handler(self, request: httpx.Request) -> httpx.Response:
@@ -56,6 +59,13 @@ class _ServiceFactice:
             if self._info_status != 200:
                 return httpx.Response(self._info_status)
             return httpx.Response(200, json={"model_id": self._model_id})
+        if request.url.path == "/v1/embeddings":
+            if self._probe_status != 200:
+                return httpx.Response(self._probe_status)
+            vector = [0.0] * SERVED_DIMENSION
+            return httpx.Response(
+                200, json={"data": [{"index": 0, "embedding": vector}]}
+            )
         return httpx.Response(404)
 
     def transport(self) -> httpx.MockTransport:
@@ -90,7 +100,7 @@ async def test_un_service_qui_sert_un_autre_modele_fait_echouer_le_run(
     _patch_client(service)
 
     with pytest.raises(EmbeddingModelMismatchError) as erreur:
-        await assert_service_serves_model(BASE_URL, ATTENDU)
+        await inspect_served_model(BASE_URL, ATTENDU)
 
     # L'erreur doit NOMMER les deux modèles : un message qui dit « ça ne colle pas »
     # sans dire quoi force à aller lire le code.
@@ -98,60 +108,57 @@ async def test_un_service_qui_sert_un_autre_modele_fait_echouer_le_run(
     assert ATTENDU in str(erreur.value)
 
 
-async def test_le_bon_modele_passe(_patch_client) -> None:
-    service = _ServiceFactice(model_id=ATTENDU)
-    _patch_client(service)
+async def test_le_bon_modele_passe_et_sa_dimension_est_mesuree(_patch_client) -> None:
+    _patch_client(_ServiceFactice(model_id=ATTENDU))
 
-    await assert_service_serves_model(BASE_URL, ATTENDU)  # ne lève pas
+    model = await inspect_served_model(BASE_URL, ATTENDU)
+
+    assert model == EmbeddingModel(model_name=ATTENDU, dimension=SERVED_DIMENSION)
 
 
-async def test_info_est_interroge_a_l_ORIGINE_pas_sous_le_prefixe(
+async def test_info_est_interroge_a_l_ORIGINE_et_la_sonde_sous_le_prefixe(
     _patch_client,
 ) -> None:
-    """`/info` est à la racine du service, pas sous `/v1`.
+    """`/info` est à la racine du service, pas sous `/v1` ; `/embeddings` est sous `/v1`.
 
-    S'y tromper donne un 404 — donc un garde-fou qui ne se déclenche JAMAIS, ce qui est
-    pire que pas de garde-fou : on croit être protégé.
+    Se tromper pour `/info` donne un 404 — donc un garde-fou qui ne se déclenche JAMAIS,
+    ce qui est pire que pas de garde-fou : on croit être protégé.
     """
     service = _ServiceFactice()
     _patch_client(service)
 
-    await assert_service_serves_model(BASE_URL, ATTENDU)
+    await inspect_served_model(BASE_URL, ATTENDU)
 
-    assert service.chemins == ["/info"]
-    assert "/v1/info" not in service.chemins
+    assert service.chemins == ["/info", "/v1/embeddings"]
 
 
 async def test_un_service_injoignable_ne_passe_pas_en_silence(_patch_client) -> None:
     """Tant qu'on ne peut pas VÉRIFIER ce qu'il sert, on n'écrit pas."""
-    service = _ServiceFactice(info_status=503)
-    _patch_client(service)
+    _patch_client(_ServiceFactice(info_status=503))
 
     with pytest.raises(EmbeddingModelMismatchError):
-        await assert_service_serves_model(BASE_URL, ATTENDU)
+        await inspect_served_model(BASE_URL, ATTENDU)
 
 
-def test_une_base_url_absente_est_refusee() -> None:
-    """Le défaut retombait sur `https://api.openai.com/v1` : un EMBEDDING_SERVICE_URL
-    oublié envoyait tout le corpus chez OpenAI, facturé, avec un autre modèle."""
-    with pytest.raises(ValueError, match="base_url"):
-        OpenAIEmbedder(
-            EmbeddingConfig(model_name=ATTENDU, dimension=768),
-            EmbeddingTransport(base_url=None, timeout_ms=TIMEOUT_MS),
-        )
+async def test_une_sonde_en_echec_arrete_le_run(_patch_client) -> None:
+    """Sans dimension, la collection Qdrant ne peut pas être créée."""
+    _patch_client(_ServiceFactice(probe_status=500))
+
+    with pytest.raises(EmbeddingModelMismatchError, match="sonde"):
+        await inspect_served_model(BASE_URL, ATTENDU)
 
 
 async def test_embed_d_une_liste_vide_ne_touche_pas_au_reseau() -> None:
-    embedder = OpenAIEmbedder(
-        EmbeddingConfig(model_name=ATTENDU, dimension=768),
+    embedder = TeiEmbedder(
+        EmbeddingModel(model_name=ATTENDU, dimension=768),
         EmbeddingTransport(base_url=BASE_URL, timeout_ms=TIMEOUT_MS),
     )
     assert await embedder.embed([]) == []
 
 
 async def test_le_timeout_du_transport_s_applique_au_client_http() -> None:
-    embedder = OpenAIEmbedder(
-        EmbeddingConfig(model_name=ATTENDU, dimension=768),
+    embedder = TeiEmbedder(
+        EmbeddingModel(model_name=ATTENDU, dimension=768),
         EmbeddingTransport(base_url=BASE_URL, timeout_ms=TIMEOUT_MS),
     )
 
@@ -176,9 +183,9 @@ class _ServiceAFenetre:
         data = [{"index": i, "embedding": [0.0] * DIM} for i in range(len(textes))]
         return httpx.Response(200, json={"data": data})
 
-    def embedder(self) -> OpenAIEmbedder:
-        emb = OpenAIEmbedder(
-            EmbeddingConfig(model_name=ATTENDU, dimension=DIM),
+    def embedder(self) -> TeiEmbedder:
+        emb = TeiEmbedder(
+            EmbeddingModel(model_name=ATTENDU, dimension=DIM),
             EmbeddingTransport(base_url=BASE_URL, timeout_ms=TIMEOUT_MS, batch_size=32),
         )
         # On câble le transport factice dans le client que l'embedder construira.

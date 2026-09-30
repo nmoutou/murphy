@@ -18,7 +18,6 @@ from ragcore.orchestration.kedro.run_plan import plan_run
 
 PARAMS: dict[str, Any] = {
     "chunking": {"max_chars": 384, "overlap_chars": 25},
-    "embedding": {"model_name": "un-modele", "dimension": 768},
     "node_labels": {"default": "Document", "by_prefix": {"LEGIARTI": "Article"}},
     "dev": {
         "nuke_all": False,
@@ -89,13 +88,11 @@ def test_un_run_nu_ecrit_la_collection_configuree() -> None:
     assert plan.context_source is None, "un run multi-source n'a pas de source"
     assert plan.collection == "chunks"
     assert (plan.chunking.max_chars, plan.chunking.overlap_chars) == (384, 25)
-    assert plan.embedding.dimension == 768
 
 
-@pytest.mark.parametrize("block", ["chunking", "embedding"])
-def test_sans_reglage_de_traitement_le_run_s_arrete(block: str) -> None:
-    with pytest.raises(ValueError, match=_path(block)):
-        plan_run(_without(block), _settings())
+def test_sans_reglage_de_decoupe_le_run_s_arrete() -> None:
+    with pytest.raises(ValueError, match=_path("chunking")):
+        plan_run(_without("chunking"), _settings())
 
 
 def test_un_reglage_de_traitement_mal_forme_arrete_le_run() -> None:
@@ -233,9 +230,12 @@ def test_une_cle_inconnue_arrete_le_run(path: str) -> None:
         plan_run(_with(path, True), _settings())
 
 
-@pytest.mark.parametrize("block", ["maintenance", "exportation", "embedding_runtime"])
+@pytest.mark.parametrize(
+    "block", ["maintenance", "exportation", "embedding_runtime", "embedding"]
+)
 def test_l_ancienne_forme_est_refusee(block: str) -> None:
-    """Un `parameters.yml` resté à la forme d'avant le bloc `dev` arrête le run."""
+    """Un `parameters.yml` resté à une ancienne forme arrête le run. Le bloc `embedding`
+    est parti dans l'environnement : `EMBEDDING_MODEL`, et une dimension mesurée."""
     with pytest.raises(ValueError, match=_path(block)):
         plan_run(_with(block, {}), _settings())
 
@@ -254,13 +254,13 @@ def test_un_entier_ecrit_en_chaine_arrete_le_run() -> None:
 
 def test_toutes_les_erreurs_sont_signalees_ensemble() -> None:
     params = _with("dev.nuke_all", "false")
-    del params["embedding"]
+    del params["chunking"]
 
     with pytest.raises(ValueError) as raised:
         plan_run(params, _settings())
 
     assert "`dev.nuke_all`" in str(raised.value)
-    assert "`embedding`" in str(raised.value)
+    assert "`chunking`" in str(raised.value)
 
 
 def test_le_parameters_yml_livre_est_valide() -> None:

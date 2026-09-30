@@ -87,10 +87,11 @@ def ensure_indexes(
 
 
 def open_document_stores(
-    clients: InfraClients, settings: InfraSettings, plan: RunPlan
+    clients: InfraClients, settings: InfraSettings, plan: RunPlan, vector_size: int
 ) -> IngestionStores:
     """Les dépôts que l'ingestion écrit, sur la collection et l'hydratation du plan.
 
+    ``vector_size`` est la dimension mesurée auprès de TEI (``embedder.dimension``).
     Le hook en ouvre un jeu (maintenance, phase 2), chaque worker de la phase 1 le sien.
     """
     data_db = settings.mongodb_data_db_name
@@ -100,9 +101,7 @@ def open_document_stores(
         graph=Neo4jGraphRepository(
             clients.neo4j, plan.node_labels, plan.node_hydration
         ),
-        vectors=QdrantVectorRepository(
-            clients.qdrant, plan.collection, plan.embedding.dimension
-        ),
+        vectors=QdrantVectorRepository(clients.qdrant, plan.collection, vector_size),
     )
 
 

@@ -13,7 +13,7 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, ValidationError
 from pydantic_core import ErrorDetails
 
-from ragcore.core.models.processing import ChunkingConfig, EmbeddingConfig
+from ragcore.core.models.processing import ChunkingConfig
 
 __all__ = [
     "DevParameters",
@@ -58,7 +58,6 @@ class IngestionParameters(_StrictParameters):
     """Tout ``parameters.yml``, plus les ``--params`` de la ligne de commande."""
 
     chunking: ChunkingConfig
-    embedding: EmbeddingConfig
     node_labels: NodeLabelsParameters
     dev: DevParameters
     source: str | None = None

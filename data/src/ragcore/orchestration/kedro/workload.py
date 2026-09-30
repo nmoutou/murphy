@@ -83,10 +83,9 @@ def build_document_workload(
     ``embedding_enabled=False`` (dev, ADR-023) SAUTE l'embedding : ``embed()`` n'est pas
     appelé, la saga reçoit zéro chunk embarqué, Qdrant n'écrit rien. Mongo et Neo4j
     tournent normalement — c'est l'état recherché pour itérer sur le modèle de données
-    sans payer le GPU (~99,9 % du temps d'un run). **Ce n'est PAS ``NoopEmbedder``** :
-    lui produit N vecteurs NULS de la bonne dimension et les ÉCRIT dans Qdrant ; couper
-    l'embedding n'écrit rien du tout. La garde ``ENVIRONMENT != dev ⇒ toujours embarquer`` vit dans le
-    plan du run (`run_plan.plan_run`), pas ici : ce booléen arrive déjà arbitré.
+    sans payer le GPU (~99,9 % du temps d'un run). La garde ``ENVIRONMENT != dev ⇒
+    toujours embarquer`` vit dans le plan du run (`run_plan.plan_run`), pas ici : ce
+    booléen arrive déjà arbitré.
     """
     use_cases = _UseCasePerWorker(use_case_factory)
 

@@ -1,8 +1,8 @@
 """La composition de l'ingestion : embedder, briques de traitement, pool de la phase 1.
 
 Tout ce qui s'assemble ici est soit pur (parser, chunker, extracteur), soit créé à
-l'appel (l'embedder ouvre son client HTTP à chaque requête, les workers leurs clients
-dans leur propre runtime) : rien n'est lié à la boucle du hook.
+l'usage (l'embedder ouvre un client HTTP par boucle, les workers leurs clients dans leur
+propre runtime) : rien n'est lié à la boucle du hook.
 """
 
 from __future__ import annotations
@@ -14,13 +14,8 @@ from pathlib import Path
 from typing import Protocol, runtime_checkable
 
 from ragcore.adapters.config.settings import EmbeddingRuntimeSettings, InfraSettings
-from ragcore.adapters.embedding.local_embedder import LocalEmbedder
-from ragcore.adapters.embedding.noop_embedder import NoopEmbedder
-from ragcore.adapters.embedding.openai_embedder import (
-    EmbeddingTransport,
-    OpenAIEmbedder,
-)
-from ragcore.adapters.embedding.served_model import assert_service_serves_model
+from ragcore.adapters.embedding.served_model import inspect_served_model
+from ragcore.adapters.embedding.tei_embedder import EmbeddingTransport, TeiEmbedder
 from ragcore.adapters.runtime import AsyncioRuntimeFactory
 from ragcore.adapters.storage.mongo.audit_repository import MongoAuditRepository
 from ragcore.adapters.storage.mongo.client import create_mongo_client
@@ -75,7 +70,7 @@ _WORKER_COUNT = 4
 
 @runtime_checkable
 class ReportsTruncations(Protocol):
-    """Un embedder qui compte les chunks qu'il a dû raccourcir (``OpenAIEmbedder``).
+    """Un embedder qui compte les chunks qu'il a dû raccourcir (``TeiEmbedder``).
 
     Hors du port ``BaseEmbedder`` : c'est un détail d'UNE implémentation, que le hook lit
     une fois en fin de run pour le déclarer au bilan.
@@ -96,46 +91,9 @@ class ProcessingStack:
 
 
 def prepare_embedder(
-    embedding_settings: EmbeddingRuntimeSettings,
-    plan: RunPlan,
-    runtime: AsyncRuntime,
-) -> BaseEmbedder:
-    """Vérifie les préconditions du fournisseur, puis construit son embedder.
-
-    Le MODÈLE et la DIMENSION viennent de ``parameters.yml`` ; le PROVIDER et son
-    transport viennent de l'environnement. La couture passe exactement ici.
-    """
-    embedding = plan.embedding
-    match embedding_settings.provider:
-        case "openai":
-            _assert_service_serves_model(embedding_settings, plan, runtime)
-            return OpenAIEmbedder(
-                embedding,
-                EmbeddingTransport(
-                    base_url=embedding_settings.service_url,
-                    timeout_ms=embedding_settings.ingestion_timeout,
-                    api_key=embedding_settings.api_key,
-                    batch_size=embedding_settings.batch_size,
-                ),
-            )
-        case "noop":
-            _warn_null_vectors(plan.collection)
-            return NoopEmbedder(dimension=embedding.dimension)
-        case "local":
-            return LocalEmbedder(
-                model_name=embedding.model_name, dimension=embedding.dimension
-            )
-
-
-def _assert_service_serves_model(
-    embedding_settings: EmbeddingRuntimeSettings, plan: RunPlan, runtime: AsyncRuntime
-) -> None:
-    """Le modèle déclaré dans `parameters.yml` est-il celui que le service SERT ?
-
-    TEI ne sert qu'un modèle — celui de son `--model-id` — et ignore le champ `model` de
-    la requête. Si le conteneur et `parameters.yml` divergent, on écrit les vecteurs d'un
-    autre modèle que celui que le backend interroge : rien ne lève, rien ne loggue, et
-    ça ne se voit qu'à la recherche.
+    embedding_settings: EmbeddingRuntimeSettings, runtime: AsyncRuntime
+) -> TeiEmbedder:
+    """Vérifie le modèle que sert TEI, mesure sa dimension, puis construit l'embedder.
 
     C'est une PRÉCONDITION du run, et c'est pourquoi elle est ici et pas dans
     l'embedder : `SagaExecutor` attrape `Exception` pour compenser, donc levée dans un
@@ -143,24 +101,19 @@ def _assert_service_serves_model(
     conclut « ok ». Vérifier N fois quel modèle le service sert n'aurait de toute façon
     aucun sens : il n'en sert qu'un, et il le dit une fois pour toutes.
     """
-    runtime.run(
-        assert_service_serves_model(
-            embedding_settings.service_url or "",
-            plan.embedding.model_name,
-        )
+    model = runtime.run(
+        inspect_served_model(embedding_settings.service_url, embedding_settings.model)
     )
-
-
-def _warn_null_vectors(collection: str) -> None:
-    """`noop` n'atteint aucun modèle : il produit des vecteurs NULS, et les écrit dans la
-    collection du vrai modèle, où plus rien ne les distingue ensuite. La doctrine assume
-    la verrue ; elle n'exige pas qu'elle soit muette.
-    """
-    logger.warning(
-        "EMBEDDING_PROVIDER=noop : les vecteurs seront NULS et seront écrits dans "
-        "la collection %s — celle du vrai modèle, où rien ne les distinguera. "
-        "Hygiène de test uniquement : pour un vrai run, EMBEDDING_PROVIDER=openai.",
-        collection,
+    logger.info(
+        "Modèle d'embedding : %s (%d dimensions)", model.model_name, model.dimension
+    )
+    return TeiEmbedder(
+        model,
+        EmbeddingTransport(
+            base_url=embedding_settings.service_url,
+            timeout_ms=embedding_settings.ingestion_timeout,
+            batch_size=embedding_settings.batch_size,
+        ),
     )
 
 
@@ -227,7 +180,9 @@ def build_runner(
     """
     workload = build_document_workload(
         steps=stack.steps,
-        use_case_factory=_use_case_factory(settings, plan),
+        use_case_factory=_use_case_factory(
+            settings, plan, stack.steps.embedder.dimension
+        ),
         context=context,
         embedding_enabled=plan.embedding_enabled,
     )
@@ -239,14 +194,18 @@ def build_runner(
     )
 
 
-def _use_case_factory(settings: InfraSettings, plan: RunPlan) -> UseCaseFactory:
+def _use_case_factory(
+    settings: InfraSettings, plan: RunPlan, vector_size: int
+) -> UseCaseFactory:
     def use_case_factory(telemetry: WorkerTelemetry) -> IngestDocumentUseCase:
         """Un use case PAR worker, sur des dépôts NEUFS et sa propre télémétrie.
 
         Les clients sont ouverts ici, dans le runtime du worker : ceux du hook sont liés
         à la boucle du hook, et tous les workers échoueraient sauf un.
         """
-        stores = open_document_stores(open_clients(settings), settings, plan)
+        stores = open_document_stores(
+            open_clients(settings), settings, plan, vector_size
+        )
         return IngestDocumentUseCase(stores, telemetry)
 
     return use_case_factory

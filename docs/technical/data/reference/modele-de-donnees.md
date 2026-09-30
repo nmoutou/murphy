@@ -91,7 +91,8 @@ données.
 
 - **Nom de collection** : `QDRANT_COLLECTION` (`.env.dev`), un nom fixe que le backend
   lit aussi. Une seule collection, réécrite en place à chaque run.
-- **Vecteurs** : dimension de `embedding.dimension` (768), distance **Cosine** (codée en
+- **Vecteurs** : dimension mesurée auprès de TEI au démarrage (768 pour
+  `all-mpnet-base-v2`), distance **Cosine** (codée en
   dur dans le dépôt `QdrantVectorRepository`).
 - **ID de point** : SHA-256 du `chunk_id`, replié sur 63 bits — stable entre processus
   (jamais `hash()` natif, resemé par interpréteur).

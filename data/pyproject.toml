@@ -38,12 +38,6 @@ dependencies = [
 [project.entry-points."kedro.hooks"]
 
 [project.optional-dependencies]
-# Embedding LOCAL uniquement : tire torch (plusieurs centaines de Mo). Les modes
-# `noop` et `openai` n'en ont aucun besoin — d'où l'extra, et l'import paresseux
-# dans local_embedder.py.
-embedding-local = [
-    "sentence-transformers~=3.3"
-]
 # spaCy et son modèle de langue ont quitté le chemin critique au lot 4.
 #
 # Ils servaient à LEMMATISER le contenu des documents : « Le directeur général est nommé

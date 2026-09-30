@@ -20,7 +20,7 @@ Le hook est le **point d'assemblage** du run. Dans l'ordre :
    - la validation du fichier entier (`parameters_model.validate_parameters`), `--params`
      compris : un modèle strict, sans défaut dans le code. Clé inconnue, absente ou mal
      typée = échec au démarrage, toutes les erreurs listées ensemble ;
-   - la découpe et le modèle d'embedding : les blocs `chunking` et `embedding` ;
+   - la découpe : le bloc `chunking` ;
    - la collection Qdrant : `QDRANT_COLLECTION`, un nom fixe lu des settings ;
    - les sources (`run_parameters.resolve_sources`) : `--params source=…` ou `SOURCE` du
      `.env`, défaut `all` = les six ingérables. Valeur inconnue = échec au démarrage en
@@ -31,13 +31,13 @@ Le hook est le **point d'assemblage** du run. Dans l'ordre :
      un avertissement au log ;
    - les labels des nœuds Neo4j (`NodeLabels`) : la table `node_labels`.
      Préfixe ou label mal formé = échec au démarrage ;
-4. **L'embedder** (`assembly.prepare_embedder`), une seule branche sur le provider :
-   - `openai` : précondition TEI d'abord. `assert_service_serves_model` interroge
-     `GET /info` du service et compare au modèle de `parameters.yml`. TEI ignore le champ `model`
-     des requêtes ; sans cette vérification, une divergence conteneur/YAML écrirait les
-     vecteurs d'un autre modèle que celui que le backend interroge — en silence ;
-   - `noop` : avertissement (vecteurs NULS écrits dans la collection du vrai modèle) ;
-   - `local` : `LocalEmbedder`, qui charge le modèle au premier usage.
+4. **L'embedder** (`assembly.prepare_embedder`) : TEI, seul embedder. Précondition
+   d'abord : `served_model.inspect_served_model` interroge `GET /info` et compare le
+   modèle servi à `EMBEDDING_MODEL`. TEI ignore le champ `model` des requêtes ; sans
+   cette vérification, un conteneur pas redémarré après un changement de modèle écrirait
+   les vecteurs d'un autre modèle que celui que le backend interroge — en silence. Puis
+   une requête de sonde mesure la dimension des vecteurs : c'est elle qui dimensionne la
+   collection Qdrant. Échec = run arrêté avant tout nœud ;
 5. **Clients, index et dépôts du hook** (`stores.open_clients`, `ensure_indexes`,
    `open_document_stores`, `open_meta_stores`) : `ensure_data_indexes` (LEGIFRANCE) et
    `ensure_meta_indexes` (MURPHY_META).
@@ -161,7 +161,7 @@ Entrées : `to_process`, `runner`, contexte. Le nœud est mince : il lance
 2. **Chunking** (`chunker.chunk(parsed)`) — voir [sources.md](sources.md#le-chunking).
 3. **Embedding** (`runtime.run(embedder.embed(chunks))`) — sauté si l'interrupteur
    d'embedding est coupé (dev, ADR-023) : zéro vecteur calculé ni écrit, Qdrant reste
-   vide, Mongo/Neo4j normaux. Ce n'est **pas** `NoopEmbedder` (qui écrit N vecteurs nuls).
+   vide, Mongo/Neo4j normaux.
 4. **Use case** (`IngestDocumentUseCase.execute`) — la saga d'écriture, voir
    [idempotence.md](idempotence.md#la-saga).
    Un use case **par worker**, mémorisé par identité de télémétrie (la fabrique crée

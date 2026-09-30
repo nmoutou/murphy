@@ -21,12 +21,7 @@ from pathlib import Path
 
 import pytest
 
-from ragcore.adapters.embedding import (
-    EmbeddingTransport,
-    LocalEmbedder,
-    NoopEmbedder,
-    OpenAIEmbedder,
-)
+from ragcore.adapters.embedding import EmbeddingTransport, TeiEmbedder
 from ragcore.adapters.runtime import AsyncioRuntime, AsyncioRuntimeFactory
 from ragcore.adapters.storage.mongo.audit_repository import MongoAuditRepository
 from ragcore.adapters.storage.mongo.document_repository import MongoDocumentRepository
@@ -50,7 +45,7 @@ from ragcore.adapters.telemetry import (
     WorkerTelemetryFactory,
 )
 from ragcore.core.models.enums import SourceName
-from ragcore.core.models.processing import EmbeddingConfig
+from ragcore.core.models.processing import EmbeddingModel
 from ragcore.core.ports.audit_repository import AuditRepository
 from ragcore.core.ports.document_repository import DocumentRepository
 from ragcore.core.ports.embedder import BaseEmbedder
@@ -124,24 +119,13 @@ class TestStorageAdapters:
 
 
 class TestEmbedders:
-    """Les trois providers sur lesquels ``assembly.prepare_embedder`` branche."""
+    """Le seul embedder : TEI."""
 
-    def test_noop_embedder(self) -> None:
-        assert isinstance(NoopEmbedder(dimension=768), BaseEmbedder)
-
-    def test_local_embedder(self) -> None:
-        # Le modèle n'est PAS chargé ici (import paresseux) : c'est ce qui permet
-        # à ce test de tourner sans torch.
-        assert isinstance(
-            LocalEmbedder(model_name="whatever", dimension=768), BaseEmbedder
-        )
-
-    def test_openai_embedder(self) -> None:
-        # `base_url` est obligatoire depuis qu'un défaut absent retombait sur OpenAI.
+    def test_tei_embedder(self) -> None:
         # La construire n'ouvre aucune connexion : la conformité reste hors-réseau.
         assert isinstance(
-            OpenAIEmbedder(
-                EmbeddingConfig(model_name="whatever", dimension=768),
+            TeiEmbedder(
+                EmbeddingModel(model_name="whatever", dimension=768),
                 EmbeddingTransport(base_url="http://tei.invalid/v1", timeout_ms=1),
             ),
             BaseEmbedder,

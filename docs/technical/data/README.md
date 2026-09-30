@@ -43,8 +43,8 @@ Points critiques :
 - `ENVIRONMENT=dev` ouvre le bloc `dev` de `parameters.yml` : `nuke_all`, l'interrupteur
   d'embedding, l'ingestion des balises non configurées et l'hydratation Neo4j. Ailleurs,
   le bloc est ignoré (avertissement au log) ; l'absence de la variable vaut `prod`.
-- `EMBEDDING_PROVIDER` : `openai` (TEI) pour un vrai run ; le défaut est `noop`
-  (vecteurs **nuls**, hygiène de test uniquement).
+- `EMBEDDING_MODEL` et `EMBEDDING_SERVICE_URL` sont obligatoires : TEI est le seul
+  embedder, et il doit être démarré (`npm run ingest:up`) avant un run.
 
 ### Lancer un run
 
@@ -75,9 +75,7 @@ pytest -m integration   # tests d'intégration (testcontainers), exclus par déf
 mypy                # typage strict sur src/ragcore (config dans pyproject.toml)
 ```
 
-Extras optionnels (`pyproject.toml`) : `embedding-local` (sentence-transformers/torch,
-uniquement pour `EMBEDDING_PROVIDER=local`),
-`notebooks`, `docs`, `dev`.
+Extras optionnels (`pyproject.toml`) : `notebooks`, `docs`, `dev`.
 
 ### Diagnostic rapide
 
@@ -86,7 +84,7 @@ uniquement pour `EMBEDDING_PROVIDER=local`),
 | `FileNotFoundError` au démarrage sur `.env.dev` | Le fichier vit à la **racine du dépôt**, pas dans `data/`. |
 | Run « ok » mais 0 document | `XML_SOURCE_PATH` ne pointe sur rien (un répertoire absent ne lève pas — il donne zéro document) ; vérifier le chemin et les sous-répertoires par source. |
 | Avertissement « le bloc `dev` de parameters.yml est ignoré » | `ENVIRONMENT` ≠ `dev` dans le `.env.dev` racine : `nuke_all` n'efface rien, l'embedding est calculé — c'est le garde-fou voulu. |
-| Avertissement « vecteurs NULS » | `EMBEDDING_PROVIDER=noop` (le défaut). Passer à `openai` + `EMBEDDING_SERVICE_URL` pour un vrai run. |
-| Le run échoue avant d'ingérer, en nommant un modèle | La précondition TEI : le modèle servi par le conteneur (`GET /info`) diverge de `parameters.yml`. Aligner les deux. |
+| Le run échoue avant d'ingérer, en nommant un modèle | La précondition TEI : le modèle servi par le conteneur (`GET /info`) n'est pas `EMBEDDING_MODEL`. Redémarrer TEI après avoir changé la variable (`npm run ingest:up`). |
+| Le run échoue avant d'ingérer sur « sonde de dimension » ou « Impossible d'interroger » | TEI n'est pas joignable à `EMBEDDING_SERVICE_URL` : le démarrer (`npm run ingest:up`, ~4 min) ou corriger l'URL. |
 | `chunk.truncated` non nul au bilan | Le `chunking.max_chars` configuré dépasse la fenêtre du modèle d'embedding : le corpus est complet mais des fins de chunks ne sont pas indexées — baisser `chunking.max_chars`. |
 | Le backend ne trouve rien après un run | Le run était-il `ok` ? Un run `degraded` a laissé un corpus incomplet dans la collection servie. Lire le bilan dans `meta_run_summaries`, puis relancer. |

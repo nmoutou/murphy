@@ -24,7 +24,6 @@ qui parle dans le fichier.
 
 from functools import lru_cache
 from pathlib import Path
-from typing import Literal
 
 from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -38,21 +37,21 @@ __all__ = [
 
 
 ROOT_ENV_FILE = Path(__file__).resolve().parents[5] / ".env.dev"
-
-DEFAULT_EMBEDDING_INGESTION_TIMEOUT_MS = 120_000
-"""Deux minutes : les lots d'un document partent ensemble et font la queue côté GPU."""
 """Le **seul** fichier d'environnement du projet : celui de la racine, pas d'ici.
 
 ``data/`` est un sous-module ; la racine est son parent (d'où ``parents[5]``). Le chemin
 est calculé depuis ``__file__``, **jamais depuis le CWD** — un ``env_file=".env"`` relatif
 se résout contre le répertoire courant, donc un ``kedro run`` lancé d'ailleurs que de
-``data/`` ne lirait *aucun* fichier et prendrait **silencieusement tous les défauts**,
-dont ``provider="noop"`` : des vecteurs nuls écrits dans la collection du vrai modèle.
+``data/`` ne lirait *aucun* fichier et prendrait silencieusement les défauts des autres
+variables.
 
-Un seul fichier, deux consommateurs : le modèle que sert le conteneur TEI et celui que le
-pipeline croit embarquer ne peuvent plus diverger, **parce qu'ils ne sont plus deux
-variables**.
+Un seul fichier, trois consommateurs : TEI (``--model-id``), le backend et l'ingestion
+lisent le même ``EMBEDDING_MODEL``. Le modèle servi et celui que le pipeline croit
+embarquer ne peuvent plus diverger, **parce qu'ils ne sont plus deux variables**.
 """
+
+DEFAULT_EMBEDDING_INGESTION_TIMEOUT_MS = 120_000
+"""Deux minutes : les lots d'un document partent ensemble et font la queue côté GPU."""
 
 
 def _require_env_file() -> Path:
@@ -143,8 +142,7 @@ class InfraSettings(BaseSettings):
     def _secret_vide_vaut_absent(cls, value: SecretStr | None) -> SecretStr | None:
         """``QDRANT_API_KEY=`` produit ``SecretStr('')``, **pas** ``None``.
 
-        Même piège que ``EMBEDDING_API_KEY``, une couche plus bas : le type optionnel dit
-        « une clé, ou aucune », et la chaîne vide n'est ni l'un ni l'autre. Le client
+        Le type optionnel dit « une clé, ou aucune », et la chaîne vide n'est ni l'un ni l'autre. Le client
         Qdrant recevrait une clé d'API *vide* au lieu de n'en recevoir aucune — un refus
         d'authentification là où on voulait ne pas s'authentifier du tout.
         """
@@ -154,44 +152,29 @@ class InfraSettings(BaseSettings):
 
 
 class EmbeddingRuntimeSettings(BaseSettings):
-    """Comment on **atteint** le modèle — pas quel modèle, ni quelle dimension.
+    """Le service TEI : le modèle qu'il doit servir, et comment le joindre.
 
-    Le modèle et sa dimension sont dans ``parameters.yml`` (bloc ``embedding``). Ce qui
-    reste ici est le transport : un fournisseur, une clé d'API, une URL de service, une
-    taille de lot, un timeout.
-
-    ⚠️ ``provider="noop"`` produit des vecteurs nuls et les écrit dans la collection du
-    *vrai* modèle. C'est une hygiène de test, qui n'est garantie par rien.
+    Il n'y a qu'un embedder, TEI : pas de fournisseur à choisir. La dimension n'est pas
+    déclarée, elle est mesurée auprès du service au démarrage
+    (``served_model.inspect_served_model``).
     """
 
     model_config = SettingsConfigDict(
         env_file=ROOT_ENV_FILE, env_prefix="embedding_", extra="ignore"
     )
 
-    provider: Literal["local", "noop", "openai"] = "noop"
+    model: str = Field(min_length=1)
+    """Le modèle attendu (``EMBEDDING_MODEL``), celui que TEI charge et que le backend
+    interroge. Obligatoire : en changer invalide les vecteurs écrits."""
+    service_url: str = Field(min_length=1)
+    """L'URL de l'API compatible OpenAI de TEI (``EMBEDDING_SERVICE_URL``), p. ex.
+    ``http://localhost:5001/v1``. Obligatoire : aucun défaut ne doit désigner un service."""
     batch_size: int = 32
     ingestion_timeout: int = Field(default=DEFAULT_EMBEDDING_INGESTION_TIMEOUT_MS, gt=0)
     """Le timeout d'une requête au service, en millisecondes comme côté backend.
 
     Distinct d'``EMBEDDING_SERVICE_TIMEOUT``, celui du backend (10 s) : le backend
     embarque une question, l'ingestion des lots de chunks envoyés en parallèle."""
-
-    api_key: str | None = None
-    service_url: str | None = None
-
-    @field_validator("api_key", "service_url", mode="after")
-    @classmethod
-    def _vide_vaut_absent(cls, value: str | None) -> str | None:
-        """``EMBEDDING_API_KEY=`` dans un ``.env`` produit ``''``, **pas** ``None``.
-
-        La chaîne vide n'est pas une valeur, c'est l'absence — et les deux champs sont lus
-        comme telle : ``OpenAIEmbedder`` ne pose l'en-tête ``Authorization`` que si la clé
-        est *vraie*, et une ``service_url`` vide doit être refusée comme une absente, pas
-        interprétée comme une URL. Laisser passer ``''`` fait dépendre la correction de la
-        *falsyness* de chaque appelant : le jour où l'un écrit ``is not None``, il envoie
-        un ``Bearer`` vide et récolte un 401 que rien n'explique.
-        """
-        return value or None
 
 
 @lru_cache
