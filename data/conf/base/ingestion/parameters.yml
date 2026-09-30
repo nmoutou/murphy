@@ -113,6 +113,6 @@ maintenance:
     - "data/cache"
     - "data/meta/events"
 
-  # Efface TOUTES les données de TOUTES les bases (sauf la base méta)
-  # À NE PAS activer en prod.
+  # Efface TOUTES les données de TOUTES les bases (sauf la base méta).
+  # Hors ENVIRONMENT=dev, `true` arrête le run avant tout nœud.
   nuke_all: true

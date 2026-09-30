@@ -50,14 +50,14 @@ champ manquant, mal typé ou inconnu arrête le run au démarrage.
 | Clé | Valeur | Effet |
 |---|---|---|
 | `embedding_service_timeout` / `batch_size` | `30` / `32` | Transport (le batch effectif du provider `openai` vient de `EMBEDDING_BATCH_SIZE` côté env). |
-| `enabled` | `true` | **L'interrupteur d'embedding (ADR-023).** `false` = aucun vecteur calculé ni écrit (Qdrant vide, Mongo/Neo4j normaux) — le régime d'itération dev sur le modèle de données. **Sans effet hors `ENVIRONMENT=dev`** (garde dans le hook). Distinct de `EMBEDDING_PROVIDER=noop`, qui calcule et ÉCRIT des vecteurs nuls. |
+| `enabled` | `true` | **L'interrupteur d'embedding (ADR-023).** `false` = aucun vecteur calculé ni écrit (Qdrant vide, Mongo/Neo4j normaux) — le régime d'itération dev sur le modèle de données. **Sans effet hors `ENVIRONMENT=dev`** (arbitré par le plan du run). Distinct de `EMBEDDING_PROVIDER=noop`, qui calcule et ÉCRIT des vecteurs nuls. **Obligatoire**, booléen strict, validé par le plan du run dans tous les environnements (clé absente ou `"false"` = échec avant tout nœud). |
 
 ### `exportation`
 
 | Clé | Valeur | Effet |
 |---|---|---|
 | `skip_unconfigured` | `false` | Le sort des balises non-configurées (cadrage « trois portes ») : `false` = la balise entre en metadata sous sa clé chemin-complet ; `true` = retirée du document. Le signal `tag.unconfigured`, lui, est TOUJOURS émis — on compte d'abord, on filtre ensuite. **Obligatoire**, booléen strict (`"false"` est refusé) : clé absente ou mal typée = échec dans le plan du run, avant tout nœud. |
-| `neo4j.include_path` / `include_content` | `true` / `true` | Hydratation des nœuds Neo4j **en dev seulement** (forcés à `false` ailleurs — ADR-022 §2) : chemins des fichiers XML source, texte du document (`_text_content`). |
+| `neo4j.include_path` / `include_content` | `true` / `true` | Hydratation des nœuds Neo4j **en dev seulement** (forcés à `false` ailleurs — ADR-022 §2) : chemins des fichiers XML source, texte du document (`_text_content`). **Obligatoire**, booléen strict, validé par le plan du run dans tous les environnements (clé absente ou `"false"` = échec avant tout nœud). |
 | `neo4j.labels.default` / `labels.by_prefix` | `Document` / `LEGIARTI: Article`, `LEGITEXT: Texte`, `LEGISCTA: Section` | Le label d'un nœud Neo4j d'après les 8 lettres de son identifiant ; un préfixe absent de la table reçoit `default`. **Obligatoire** (aucun défaut dans le code) : bloc absent, préfixe qui n'est pas 8 majuscules ou label mal formé = échec au démarrage. S'applique en dev comme en prod. Changer la table sans `nuke_all` laisse l'ancien label sur les nœuds déjà écrits. |
 | `mongodb.database` / `collection` | `LEGIFRANCE` / `chunks` | ⚠️ **Vestige non lu** : les noms réels viennent du `.env` (`MONGODB_DATA_DB_NAME`) et des dépôts (`documents`, `manifest`). |
 | `qdrant.distance` / `batch_size` | `Cosine` / `100` | ⚠️ **Vestige non lu** : la distance est codée en dur (COSINE), et le nom de la collection vient de `QDRANT_COLLECTION` (`.env.dev`). |
@@ -67,7 +67,7 @@ champ manquant, mal typé ou inconnu arrête le run au démarrage.
 | Clé | Valeur | Effet |
 |---|---|---|
 | `cleanup_enabled` / `cache_paths` | `true`, `data/cache` + `data/meta/events` | Nettoyage de fichiers en tête de run (node `cleanup`). |
-| `nuke_all` | `true` | Efface TOUTES les données de TOUTES les bases en tête de run (Mongo documents+manifest, graphe Neo4j, **toutes** les collections Qdrant), en **préservant `MURPHY_META`**. Refuse de tourner si `ENVIRONMENT != dev` (l'absence de la variable vaut `prod`). Le levier disque du développement — à ne jamais activer en prod. |
+| `nuke_all` | `true` | Efface TOUTES les données de TOUTES les bases en tête de run (Mongo documents+manifest, graphe Neo4j, **toutes** les collections Qdrant), en **préservant `MURPHY_META`**. Le levier disque du développement. Hors `ENVIRONMENT=dev` (l'absence de la variable vaut `prod`), `true` arrête le run dans le plan du run, avant tout nœud (`NukeAllOutsideDevError`). **Obligatoire**, booléen strict, validé par le plan du run dans tous les environnements (clé absente ou `"false"` = échec avant tout nœud). |
 
 ## `.env.dev` (racine du dépôt)
 
@@ -112,10 +112,11 @@ Comment on **atteint** le modèle — jamais quel modèle (lui est dans `paramet
 ## Les trois garde-fous dev/prod
 
 Même asymétrie pour les trois : le YAML propose, l'environnement **arbitre**, et hors
-`dev` le comportement sûr gagne quoi que dise le fichier.
+`dev` le comportement sûr gagne quoi que dise le fichier. Les clés sont validées partout,
+avant l'arbitrage : une coquille arrête le run même en prod.
 
 | Levier | En `dev` | Hors `dev` |
 |---|---|---|
-| `maintenance.nuke_all` | Efface tout (sauf MURPHY_META) | **Lève** `NukeAllOutsideDevError` avant toute écriture |
+| `maintenance.nuke_all` | Efface tout (sauf MURPHY_META) | **Lève** `NukeAllOutsideDevError` dans le plan du run, avant tout nœud |
 | `embedding_runtime.enabled` | Peut couper l'embedding | Ignoré : on embarque toujours |
 | `exportation.neo4j.*` | Hydratation ouverte par défaut | Ignorés : nœud maigre |

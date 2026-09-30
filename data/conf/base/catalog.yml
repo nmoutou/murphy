@@ -65,6 +65,9 @@ pipeline_runtime:
 skip_unconfigured:
   type: MemoryDataset
 
+nuke_all:
+  type: MemoryDataset
+
 # ============================================================
 # Données inter-nœuds — produites et consommées dans le run
 # ============================================================

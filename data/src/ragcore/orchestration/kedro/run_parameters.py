@@ -17,15 +17,27 @@ from ragcore.core.models.processing import ChunkingConfig, EmbeddingConfig
 from ragcore.sources.registry import all_sources
 
 __all__ = [
+    "NukeAllOutsideDevError",
     "load_parameters",
     "resolve_chunking",
     "resolve_embedding_enabled",
     "resolve_embedding_model",
     "resolve_node_hydration",
     "resolve_node_labels",
+    "resolve_nuke_all",
     "resolve_skip_unconfigured",
     "resolve_sources",
 ]
+
+
+class NukeAllOutsideDevError(RuntimeError):
+    """Le mode ``nuke_all`` a été demandé hors d'un environnement `dev`.
+
+    Ce n'est pas un avertissement : c'est un arrêt. Effacer TOUTES les données de
+    TOUTES les bases n'a de sens qu'en développement, où les données sont jetables.
+    Ailleurs, l'intention est presque sûrement une erreur — et le mode de défaillance
+    d'un `nuke` mal placé est irréversible. On lève avant de toucher la moindre base.
+    """
 
 
 def load_parameters(catalog: DataCatalog) -> dict[str, Any]:
@@ -71,8 +83,8 @@ def _require_block(params: dict[str, Any], name: str) -> dict[str, Any]:
 def resolve_embedding_enabled(params: dict[str, Any], environment: str) -> bool:
     """L'embedding est-il calculé pour ce run ? (ADR-023)
 
-    Deux entrées, et l'environnement PRIME. Le flag YAML ``embedding.enabled`` (défaut
-    ``true`` : le comportement historique) n'a d'effet qu'en ``dev`` ; partout ailleurs
+    Deux entrées, et l'environnement PRIME. Le flag YAML ``embedding_runtime.enabled``
+    (obligatoire, validé dans tous les environnements) n'a d'effet qu'en ``dev`` ; partout ailleurs
     on embarque toujours. C'est la même asymétrie que ``nuke_all`` : couper l'embedding
     est une commodité de développement, et une commodité ne doit jamais pouvoir dégrader
     la prod par simple oubli d'une variable. Un ``parameters.yml`` traîné de dev en prod
@@ -81,10 +93,8 @@ def resolve_embedding_enabled(params: dict[str, Any], environment: str) -> bool:
     Le flag vit sous ``embedding_runtime``, à part du bloc ``embedding`` qui porte le
     modèle et sa dimension.
     """
-    if environment != "dev":
-        return True
-    embedding_runtime = params.get("embedding_runtime", {})
-    return bool(embedding_runtime.get("enabled", True))
+    is_enabled = _require_bool(params, "embedding_runtime.enabled")
+    return is_enabled or environment != "dev"
 
 
 def resolve_node_hydration(params: dict[str, Any], environment: str) -> NodeHydration:
@@ -95,18 +105,17 @@ def resolve_node_hydration(params: dict[str, Any], environment: str) -> NodeHydr
     ``include_path: true`` traîné en prod écrirait les chemins de fichiers du poste
     d'ingestion sur chaque nœud, une info locale sans valeur ailleurs que sur ce poste.
 
-    En dev, tout est ouvert par défaut (Neo4j est l'outil d'inspection de la v0) et le
-    YAML peut refermer chaque vanne : ``include_path`` = chemins des FICHIERS source,
+    Les deux toggles sont obligatoires et validés dans tous les environnements. En dev,
+    le YAML ouvre ou referme chaque vanne : ``include_path`` = chemins des FICHIERS source,
     ``include_content`` = texte du document (``_text_content``). Ces toggles ne
     concernent QUE Neo4j — le format de clé des métadonnées, lui, n'est pas un toggle.
     """
+    include_path = _require_bool(params, "exportation.neo4j.include_path")
+    include_content = _require_bool(params, "exportation.neo4j.include_content")
     if environment != "dev":
         return NodeHydration()
-    neo4j = params.get("exportation", {}).get("neo4j", {})
     return NodeHydration(
-        metadata=True,
-        include_path=bool(neo4j.get("include_path", True)),
-        include_content=bool(neo4j.get("include_content", True)),
+        metadata=True, include_path=include_path, include_content=include_content
     )
 
 
@@ -135,15 +144,42 @@ def resolve_node_labels(params: dict[str, Any]) -> NodeLabels:
 def resolve_skip_unconfigured(params: dict[str, Any]) -> bool:
     """Le curseur des balises non configurées — un booléen strict, ou un ARRÊT.
 
-    Pas de ``bool(...)`` : la chaîne ``"false"`` vaudrait vrai. Pas de défaut non plus :
-    une clé absente ou mal typée arrête le run ici, avant qu'un nœud ne touche aux bases.
+    L'environnement n'arbitre rien ici : le curseur vaut en dev comme en prod.
     """
-    value = params.get("exportation", {}).get("skip_unconfigured")
+    return _require_bool(params, "exportation.skip_unconfigured")
+
+
+def resolve_nuke_all(params: dict[str, Any], environment: str) -> bool:
+    """L'effacement de toutes les bases en tête de run — refusé hors ``dev``.
+
+    Le refus a lieu ici, dans le plan du run : avant tout nœud, avant qu'aucun client
+    ne soit ouvert. L'absence de ``ENVIRONMENT`` vaut ``prod`` (voir
+    ``InfraSettings.environment``) : un ``.env`` incomplet est traité comme protégé.
+    """
+    is_requested = _require_bool(params, "maintenance.nuke_all")
+    if is_requested and environment != "dev":
+        raise NukeAllOutsideDevError(
+            f"nuke_all refusé : ENVIRONMENT={environment!r}, attendu 'dev'. "
+            "Ce mode efface TOUTES les données de TOUTES les bases — il n'est autorisé "
+            "que là où les données sont jetables. Pour l'exécuter, ENVIRONMENT doit "
+            "valoir strictement 'dev' dans le .env de la racine."
+        )
+    return is_requested
+
+
+def _require_bool(params: dict[str, Any], path: str) -> bool:
+    """La valeur booléenne au chemin pointé ``path`` — ou un ARRÊT.
+
+    Pas de ``bool(...)`` : la chaîne ``"false"`` vaudrait vrai. Pas de défaut non plus :
+    une clé absente ou mal typée arrête le run, avant qu'un nœud ne touche aux bases.
+    """
+    value: object = params
+    for key in path.split("."):
+        value = value.get(key) if isinstance(value, dict) else None
     if not isinstance(value, bool):
         raise ValueError(
-            "`exportation.skip_unconfigured` est absent de `parameters.yml` ou n'est "
-            f"pas un booléen (reçu : {value!r}) : le run est interrompu. Attendu : "
-            "`true` ou `false`."
+            f"`{path}` est absent de `parameters.yml` ou n'est pas un booléen "
+            f"(reçu : {value!r}) : le run est interrompu. Attendu : `true` ou `false`."
         )
     return value
 

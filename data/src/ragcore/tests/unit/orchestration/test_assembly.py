@@ -70,10 +70,16 @@ def plan(settings: InfraSettings) -> RunPlan:
     params = {
         "chunking": {"size": 384, "overlap": 25},
         "embedding": {"model_name": "un-modele", "dimension": 768},
+        "embedding_runtime": {"enabled": True},
         "exportation": {
             "skip_unconfigured": False,
-            "neo4j": {"labels": {"default": "Document"}},
+            "neo4j": {
+                "include_path": True,
+                "include_content": True,
+                "labels": {"default": "Document"},
+            },
         },
+        "maintenance": {"nuke_all": False},
     }
     return plan_run(params, settings, {"runtime_params": {"source": "cass"}})
 

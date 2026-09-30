@@ -39,6 +39,8 @@ Priorité : P1 à P4, puis P18 (qui règle P1, P2, P6 et P12).
 - **Conséquence** : `nuke_all: "false"` est une chaîne non vide, donc vraie : **les bases sont effacées**.
 - **Piste** : booléens stricts, clés obligatoires (voir P18).
 
+> **Traité** : `nuke_all`, `embedding_runtime.enabled` et `neo4j.include_*` sont des booléens stricts et obligatoires, validés par `plan_run` dans tous les environnements. Le refus de `nuke_all` hors dev a lieu dans `plan_run`, avant tout nœud.
+
 ### P3. `cache_paths` ne vide rien, en silence
 
 - **Constat** : les chemins sont relatifs au répertoire courant. Lancé depuis `data/`, le run vise `data/data/cache` et `data/data/meta/events`, qui n'existent pas. `_clear` renvoie 0. Les événements sont en réalité dans `data/08_reporting/events` (`META_JSONL_DIR`).
@@ -123,6 +125,8 @@ Priorité : P1 à P4, puis P18 (qui règle P1, P2, P6 et P12).
 - Les nœuds reçoivent des blocs entiers (`params:exportation`, `params:maintenance`) pour n'en lire qu'une clé.
 - `nuke_all` relit `ENVIRONMENT` lui-même au lieu de passer par le `RunPlan`.
 
+> **En partie traité** (P1, P2) : `nukeAll` et `computeIdempotence` reçoivent un booléen du `RunPlan`, et `nuke_all` ne relit plus `ENVIRONMENT`. Reste `cleanup` (`params:maintenance.cache_paths`, voir P3).
+
 ---
 
 ## D. Valeurs et nommage
@@ -155,7 +159,7 @@ Priorité : P1 à P4, puis P18 (qui règle P1, P2, P6 et P12).
 
 ### P17. Commentaires décalés
 
-- « À NE PAS activer en prod » : `nuke_all` est de toute façon refusé hors dev. Le commentaire devrait décrire ce refus.
+- « À NE PAS activer en prod » : `nuke_all` est de toute façon refusé hors dev. Le commentaire devrait décrire ce refus. **Traité** (P2).
 - Rien n'indique l'unité de `embedding_service_timeout`.
 
 ---

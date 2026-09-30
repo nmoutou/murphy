@@ -65,7 +65,8 @@ def _nuke_all() -> Node:
             "manifest_repo",
             "graph_repo",
             "vector_repo",
-            "params:maintenance",
+            # Déjà arbitré par le plan du run : refusé hors dev avant tout nœud.
+            "nuke_all",
             "pipeline_context",
             "telemetry",
             "pipeline_runtime",

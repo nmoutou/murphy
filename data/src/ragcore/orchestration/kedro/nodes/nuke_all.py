@@ -1,9 +1,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any
 
-from ragcore.adapters.config.settings import get_infra_settings
 from ragcore.adapters.storage.mongo.document_repository import MongoDocumentRepository
 from ragcore.adapters.storage.mongo.manifest_repository import MongoManifestRepository
 from ragcore.adapters.storage.mongo.schemas import ensure_data_indexes
@@ -18,22 +16,12 @@ from ragcore.core.telemetry_events import MAINTENANCE_NUKE_ALL_EXECUTED
 logger = logging.getLogger(__name__)
 
 
-class NukeAllOutsideDevError(RuntimeError):
-    """Le mode ``nuke_all`` a été demandé hors d'un environnement `dev`.
-
-    Ce n'est pas un avertissement : c'est un arrêt. Effacer TOUTES les données de
-    TOUTES les bases n'a de sens qu'en développement, où les données sont jetables.
-    Ailleurs, l'intention est presque sûrement une erreur — et le mode de défaillance
-    d'un `nuke` mal placé est irréversible. On lève avant de toucher la moindre base.
-    """
-
-
 def nuke_all_node(
     doc_repo: MongoDocumentRepository,
     manifest_repo: MongoManifestRepository,
     graph_repo: Neo4jGraphRepository,
     vector_repo: QdrantVectorRepository,
-    maintenance_params: dict[str, Any],
+    nuke_all: bool,
     pipeline_context: PipelineContext,
     telemetry: TelemetryPort,
     pipeline_runtime: AsyncRuntime,
@@ -52,8 +40,11 @@ def nuke_all_node(
     - **PRÉSERVÉ : la base méta Mongo** (`MURPHY_META` : audit, bilans de run,
       pendantes). Un nuke ne doit jamais emporter la mémoire de ce qu'on a fait —
       c'est elle qui rend un run *invérifiable* si elle disparaît, pas le corpus.
+
+    Le garde-fou dev est appliqué en amont, par ``plan_run`` (``resolve_nuke_all``) :
+    ``nuke_all=True`` n'arrive ici qu'avec ``ENVIRONMENT=dev``, avant tout nœud.
     """
-    if not maintenance_params.get("nuke_all"):
+    if not nuke_all:
         # Setup partagé quand même : la collection doit exister avant le pool de
         # workers, qu'on ait nuké ou démarré à froid. La laisser aux workers les met
         # en course, et Qdrant répond `409` à tous sauf un — un document perdu par
@@ -61,7 +52,6 @@ def nuke_all_node(
         pipeline_runtime.run(vector_repo.ensure_collection())
         return {"mongodb": False, "neo4j": False, "qdrant": False}
 
-    _assert_dev_environment()
     logger.warning(
         "nuke_all activé (ENVIRONMENT=dev) : effacement de TOUTES les données de TOUTES les bases"
     )
@@ -94,19 +84,6 @@ def _emit_nuked(
             payload=dropped,
         )
     )
-
-
-def _assert_dev_environment() -> None:
-    """Le garde-fou, AVANT toute écriture. L'absence de `ENVIRONMENT` vaut `prod` (voir
-    InfraSettings.environment) : un `.env` incomplet est traité comme protégé."""
-    environment = get_infra_settings().environment
-    if environment != "dev":
-        raise NukeAllOutsideDevError(
-            f"nuke_all refusé : ENVIRONMENT={environment!r}, attendu 'dev'. "
-            f"Ce mode efface TOUTES les données de TOUTES les bases — il n'est autorisé "
-            f"que là où les données sont jetables. Pour l'exécuter, ENVIRONMENT doit "
-            f"valoir strictement 'dev' dans le .env de la racine."
-        )
 
 
 def _drop_mongo(

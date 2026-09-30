@@ -67,15 +67,15 @@ chemins configurés (`data/cache`, `data/meta/events`). Émet
 
 ## 2. `nukeAll`
 
-Entrées : les quatre dépôts du hook, `params:maintenance`.
+Entrées : les quatre dépôts du hook, `nuke_all` (du plan du run).
 
 - `nuke_all: false` → ne supprime rien, mais fait quand même le **setup partagé** :
   `vector_repo.ensure_collection()`. La collection du run doit exister
   avant le pool — la laisser aux workers les mettrait en course (Qdrant répond 409 à tous
   sauf un).
-- `nuke_all: true` → garde-fou d'abord : `ENVIRONMENT != "dev"` lève
-  `NukeAllOutsideDevError` **avant de toucher la moindre base** (l'absence de la variable
-  vaut `prod`). Puis efface :
+- `nuke_all: true` → le garde-fou a déjà joué en amont : hors `ENVIRONMENT=dev`, `plan_run`
+  lève `NukeAllOutsideDevError` **avant tout nœud** (l'absence de la variable vaut
+  `prod`). Le nœud efface donc :
   - Mongo `LEGIFRANCE` : collections `documents` + `manifest` (et **repose les index**,
     qu'un drop détruit avec la collection) ;
   - Neo4j : le graphe entier ;

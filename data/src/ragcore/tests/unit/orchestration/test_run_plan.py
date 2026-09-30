@@ -1,28 +1,41 @@
 """Le plan du run : dérivé une fois, en tête de run, sans rien ouvrir."""
 
+import copy
 from typing import Any
 
 import pytest
 
 from ragcore.adapters.config.settings import InfraSettings
+from ragcore.adapters.storage.neo4j.node_properties import NodeHydration
 from ragcore.core.models.enums import SourceName
 from ragcore.core.models.identifiers import Identifier
+from ragcore.orchestration.kedro.run_parameters import NukeAllOutsideDevError
 from ragcore.orchestration.kedro.run_plan import plan_run
 
-PROCESSING: dict[str, Any] = {
+PARAMS: dict[str, Any] = {
     "chunking": {"size": 384, "overlap": 25},
     "embedding": {"model_name": "un-modele", "dimension": 768},
-}
-PARAMS: dict[str, Any] = {
-    **PROCESSING,
+    "embedding_runtime": {"enabled": True},
     "exportation": {
         "skip_unconfigured": False,
         "neo4j": {
-            "labels": {"default": "Document", "by_prefix": {"LEGIARTI": "Article"}}
+            "include_path": True,
+            "include_content": True,
+            "labels": {"default": "Document", "by_prefix": {"LEGIARTI": "Article"}},
         },
     },
+    "maintenance": {"nuke_all": False},
 }
-"""Les blocs de `parameters.yml` sans défaut dans le code."""
+"""Les clés de `parameters.yml` sans défaut dans le code."""
+
+BOOLEAN_PATHS = [
+    "exportation.skip_unconfigured",
+    "embedding_runtime.enabled",
+    "exportation.neo4j.include_path",
+    "exportation.neo4j.include_content",
+    "maintenance.nuke_all",
+]
+"""Les booléens du YAML : stricts, obligatoires, validés dans tous les environnements."""
 
 
 def _settings(environment: str = "prod") -> InfraSettings:
@@ -37,6 +50,28 @@ def _cli(**params: str) -> dict[str, object]:
     return {"runtime_params": params}
 
 
+def _with(path: str, value: object) -> dict[str, Any]:
+    """Une copie de `PARAMS` où la clé au chemin pointé `path` vaut `value`."""
+    params = copy.deepcopy(PARAMS)
+    *parents, key = path.split(".")
+    block = params
+    for parent in parents:
+        block = block[parent]
+    block[key] = value
+    return params
+
+
+def _without(path: str) -> dict[str, Any]:
+    """Une copie de `PARAMS` sans la clé au chemin pointé `path`."""
+    params = copy.deepcopy(PARAMS)
+    *parents, key = path.split(".")
+    block = params
+    for parent in parents:
+        block = block[parent]
+    del block[key]
+    return params
+
+
 def test_un_run_nu_ecrit_la_collection_configuree() -> None:
     plan = plan_run(PARAMS, _settings(), {})
 
@@ -48,14 +83,12 @@ def test_un_run_nu_ecrit_la_collection_configuree() -> None:
 
 @pytest.mark.parametrize("block", ["chunking", "embedding"])
 def test_sans_reglage_de_traitement_le_run_s_arrete(block: str) -> None:
-    params = {name: value for name, value in PARAMS.items() if name != block}
-
     with pytest.raises(ValueError, match=f"`{block}` est absent"):
-        plan_run(params, _settings(), {})
+        plan_run(_without(block), _settings(), {})
 
 
 def test_un_reglage_de_traitement_mal_forme_arrete_le_run() -> None:
-    params = {**PARAMS, "chunking": {"size": 0, "overlap": 25}}
+    params = _with("chunking", {"size": 0, "overlap": 25})
 
     with pytest.raises(ValueError, match="size"):
         plan_run(params, _settings(), {})
@@ -73,44 +106,61 @@ def test_une_source_inconnue_echoue_avant_d_ouvrir_quoi_que_ce_soit() -> None:
         plan_run(PARAMS, _settings(), _cli(source="cas"))
 
 
+@pytest.mark.parametrize("path", BOOLEAN_PATHS)
+def test_sans_booleen_le_run_s_arrete_meme_hors_dev(path: str) -> None:
+    with pytest.raises(ValueError, match=f"`{path}` est absent"):
+        plan_run(_without(path), _settings("prod"), {})
+
+
+@pytest.mark.parametrize("value", [None, "false", 0])
+@pytest.mark.parametrize("path", BOOLEAN_PATHS)
+def test_un_booleen_mal_type_arrete_le_run_meme_hors_dev(
+    path: str, value: object
+) -> None:
+    """``"false"`` est une chaîne non vide : lue avec ``bool(...)``, elle vaudrait vrai."""
+    with pytest.raises(ValueError, match=f"`{path}` est absent"):
+        plan_run(_with(path, value), _settings("prod"), {})
+
+
+@pytest.mark.parametrize("value", [True, False])
+def test_le_curseur_des_balises_non_configurees_vient_du_yaml(value: bool) -> None:
+    params = _with("exportation.skip_unconfigured", value)
+
+    assert plan_run(params, _settings(), {}).skip_unconfigured is value
+
+
 def test_couper_l_embedding_n_a_d_effet_qu_en_dev() -> None:
-    params = {**PARAMS, "embedding_runtime": {"enabled": False}}
+    params = _with("embedding_runtime.enabled", False)
 
     assert plan_run(params, _settings("prod"), {}).embedding_enabled
     assert not plan_run(params, _settings("dev"), {}).embedding_enabled
 
 
-def _with_skip_unconfigured(value: object) -> dict[str, Any]:
-    return {
-        **PARAMS,
-        "exportation": {**PARAMS["exportation"], "skip_unconfigured": value},
-    }
+def test_l_hydratation_neo4j_vient_du_yaml_en_dev() -> None:
+    params = _with("exportation.neo4j.include_path", False)
+
+    hydration = plan_run(params, _settings("dev"), {}).node_hydration
+
+    assert (hydration.include_path, hydration.include_content) == (False, True)
 
 
-@pytest.mark.parametrize("value", [True, False])
-def test_le_curseur_des_balises_non_configurees_vient_du_yaml(value: bool) -> None:
-    assert (
-        plan_run(_with_skip_unconfigured(value), _settings(), {}).skip_unconfigured
-        is value
-    )
+def test_hors_dev_le_noeud_neo4j_reste_maigre() -> None:
+    assert plan_run(PARAMS, _settings("prod"), {}).node_hydration == NodeHydration()
 
 
-def test_sans_curseur_des_balises_non_configurees_le_run_s_arrete() -> None:
-    exportation = {
-        name: value
-        for name, value in PARAMS["exportation"].items()
-        if name != "skip_unconfigured"
-    }
-
-    with pytest.raises(ValueError, match=r"exportation\.skip_unconfigured"):
-        plan_run({**PARAMS, "exportation": exportation}, _settings(), {})
+def test_nuke_all_est_refuse_hors_dev_avant_tout_noeud() -> None:
+    with pytest.raises(NukeAllOutsideDevError, match="ENVIRONMENT='prod'"):
+        plan_run(_with("maintenance.nuke_all", True), _settings("prod"), {})
 
 
-@pytest.mark.parametrize("value", [None, "false", "skip", 0])
-def test_un_curseur_non_booleen_arrete_le_run(value: object) -> None:
-    """``"false"`` est une chaîne non vide : lue avec ``bool(...)``, elle vaudrait vrai."""
-    with pytest.raises(ValueError, match=r"exportation\.skip_unconfigured"):
-        plan_run(_with_skip_unconfigured(value), _settings(), {})
+def test_nuke_all_est_accepte_en_dev() -> None:
+    params = _with("maintenance.nuke_all", True)
+
+    assert plan_run(params, _settings("dev"), {}).nuke_all is True
+
+
+def test_sans_nuke_all_un_run_hors_dev_passe() -> None:
+    assert plan_run(PARAMS, _settings("prod"), {}).nuke_all is False
 
 
 def test_les_labels_neo4j_viennent_du_yaml_par_prefixe_d_identifiant() -> None:
@@ -123,7 +173,7 @@ def test_les_labels_neo4j_viennent_du_yaml_par_prefixe_d_identifiant() -> None:
 
 def test_sans_labels_neo4j_le_run_s_arrete() -> None:
     with pytest.raises(ValueError, match=r"exportation\.neo4j\.labels"):
-        plan_run(PROCESSING, _settings(), {})
+        plan_run(_without("exportation.neo4j.labels"), _settings(), {})
 
 
 @pytest.mark.parametrize(
@@ -137,7 +187,5 @@ def test_sans_labels_neo4j_le_run_s_arrete() -> None:
 def test_un_label_ou_un_prefixe_mal_forme_arrete_le_run(
     labels: dict[str, Any], message: str
 ) -> None:
-    params = {**PROCESSING, "exportation": {"neo4j": {"labels": labels}}}
-
     with pytest.raises(ValueError, match=message):
-        plan_run(params, _settings(), {})
+        plan_run(_with("exportation.neo4j.labels", labels), _settings(), {})

@@ -22,6 +22,7 @@ from ragcore.orchestration.kedro.run_parameters import (
     resolve_embedding_model,
     resolve_node_hydration,
     resolve_node_labels,
+    resolve_nuke_all,
     resolve_skip_unconfigured,
     resolve_sources,
 )
@@ -51,6 +52,9 @@ class RunPlan:
     skip_unconfigured: bool
     """Le curseur des balises non configurées : ``True`` retire leurs métadonnées du
     document. Validé ici, avant tout nœud — une coquille n'attend pas ``nukeAll``."""
+    nuke_all: bool
+    """L'effacement de toutes les bases en tête de run. Déjà refusé hors ``dev`` : un
+    ``True`` ici n'existe qu'en développement."""
 
     @property
     def context_source(self) -> SourceName | None:
@@ -69,8 +73,8 @@ def plan_run(
 ) -> RunPlan:
     """Dérive le plan du run. Sans I/O : rien n'est ouvert, seul le plan est journalisé.
 
-    Une source inconnue (``--params source=cas``) ou un réglage manquant échoue ici,
-    avant qu'aucun client ne soit ouvert.
+    Une source inconnue (``--params source=cas``), un réglage manquant ou mal typé, ou
+    ``nuke_all`` hors ``dev`` échoue ici, avant qu'aucun client ne soit ouvert.
     """
     # Les `--params` de la ligne de commande. Kedro 1.x les passe sous
     # `runtime_params` ; l'ancienne clé `extra_params` n'existe plus, et la lire
@@ -94,6 +98,7 @@ def plan_run(
         node_labels=resolve_node_labels(params),
         embedding_enabled=resolve_embedding_enabled(params, settings.environment),
         skip_unconfigured=resolve_skip_unconfigured(params),
+        nuke_all=resolve_nuke_all(params, settings.environment),
     )
     _log_plan(plan)
     return plan
