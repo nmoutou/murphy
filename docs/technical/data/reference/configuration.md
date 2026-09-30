@@ -4,13 +4,13 @@ Deux surfaces :
 
 | Surface | Fichier | Contenu |
 |---|---|---|
-| **Réglages du pipeline** | `conf/base/parameters.yml` | Découpe, modèle d'embedding, exportation, maintenance |
+| **Réglages du pipeline** | `conf/base/parameters.yml` | Découpe, modèle d'embedding, labels du graphe, réglages de dev |
 | **Infra** (`InfraSettings`, `EmbeddingRuntimeSettings`) | `.env.dev` à la **racine du dépôt** | Le *où* et le *comment* : bases, secrets, chemins, nom de la collection Qdrant |
 
 `parameters.yml` illisible = run arrêté, jamais de défauts silencieux. Le fichier est
 validé **en entier** par un modèle strict (`orchestration/kedro/parameters_model.py`),
 avant tout nœud : une clé inconnue, absente ou mal typée arrête le run, et toutes les
-erreurs sont listées ensemble, chacune par son chemin (`` `maintenance.nuke_all` ``).
+erreurs sont listées ensemble, chacune par son chemin (`` `dev.nuke_all` ``).
 Strict veut dire sans conversion : `"false"` n'est pas un booléen, `"384"` n'est pas un
 entier. Kedro fusionne les `--params` dans les paramètres : le modèle les voit aussi, et
 seul `source` y est accepté (`--params sorce=cass` est refusé).
@@ -37,25 +37,29 @@ champ manquant, mal typé ou inconnu arrête le run au démarrage.
 | `embedding.model_name` | `sentence-transformers/all-mpnet-base-v2` | Doit être le modèle que sert le conteneur TEI — vérifié au démarrage (`GET /info`). |
 | `embedding.dimension` | `768` | Taille des vecteurs (et de la collection Qdrant). |
 
-### `embedding_runtime` — l'interrupteur
+### `node_labels` — le graphe, en dev comme en prod
 
 | Clé | Valeur | Effet |
 |---|---|---|
-| `enabled` | `true` | **L'interrupteur d'embedding (ADR-023).** `false` = aucun vecteur calculé ni écrit (Qdrant vide, Mongo/Neo4j normaux) — le régime d'itération dev sur le modèle de données. **Sans effet hors `ENVIRONMENT=dev`** (arbitré par le plan du run). Distinct de `EMBEDDING_PROVIDER=noop`, qui calcule et ÉCRIT des vecteurs nuls. Le transport n'est pas ici : taille de lot dans `EMBEDDING_BATCH_SIZE`, timeout codé en dur (120 s). |
+| `default` / `by_prefix` | `Document` / `LEGIARTI: Article`, `LEGITEXT: Texte`, `LEGISCTA: Section` | Le label d'un nœud Neo4j d'après les 8 lettres de son identifiant ; un préfixe absent de la table reçoit `default`. `by_prefix` est obligatoire (`{}` accepté). Préfixe qui n'est pas 8 majuscules ou label mal formé = échec au démarrage. Changer la table sans `nuke_all` laisse l'ancien label sur les nœuds déjà écrits. |
 
-### `exportation`
+### `dev` — les commodités de développement, ignorées hors `dev`
 
-| Clé | Valeur | Effet |
-|---|---|---|
-| `skip_unconfigured` | `false` | Le sort des balises non-configurées (cadrage « trois portes ») : `false` = la balise entre en metadata sous sa clé chemin-complet ; `true` = retirée du document. **Sans effet hors `ENVIRONMENT=dev`** : la balise est toujours retirée (ADR-022 §1, arbitré par le plan du run). Le signal `tag.unconfigured`, lui, est TOUJOURS émis — on compte d'abord, on filtre ensuite. |
-| `neo4j.include_path` / `include_content` | `true` / `true` | Hydratation des nœuds Neo4j **en dev seulement** (forcés à `false` ailleurs — ADR-022 §2) : chemins des fichiers XML source, texte du document (`_text_content`). |
-| `neo4j.labels.default` / `labels.by_prefix` | `Document` / `LEGIARTI: Article`, `LEGITEXT: Texte`, `LEGISCTA: Section` | Le label d'un nœud Neo4j d'après les 8 lettres de son identifiant ; un préfixe absent de la table reçoit `default`. `by_prefix` est obligatoire (`{}` accepté). Préfixe qui n'est pas 8 majuscules ou label mal formé = échec au démarrage. S'applique en dev comme en prod. Changer la table sans `nuke_all` laisse l'ancien label sur les nœuds déjà écrits. |
+Le YAML propose, l'environnement **arbitre** (`run_parameters.resolve_dev_settings`) :
+en `ENVIRONMENT=dev`, le bloc s'applique tel quel ; ailleurs (l'absence de la variable
+vaut `prod`), il est **remplacé en entier** par les valeurs sûres, et le plan du run
+journalise un avertissement. Les clés restent obligatoires et validées partout : une
+coquille arrête le run même en prod.
 
-### `maintenance`
+| Clé | Valeur | En `dev` | Hors `dev` |
+|---|---|---|---|
+| `nuke_all` | `true` | Efface TOUTES les données de TOUTES les bases en tête de run (Mongo documents+manifest, graphe Neo4j, **toutes** les collections Qdrant), en **préservant `MURPHY_META`**. Le levier disque du développement. | Rien n'est effacé. |
+| `embedding_enabled` | `true` | **L'interrupteur d'embedding (ADR-023).** `false` = aucun vecteur calculé ni écrit (Qdrant vide, Mongo/Neo4j normaux) — le régime d'itération sur le modèle de données. Distinct de `EMBEDDING_PROVIDER=noop`, qui calcule et ÉCRIT des vecteurs nuls. | On embarque toujours. |
+| `skip_unconfigured` | `false` | Le sort des balises non configurées (cadrage « trois portes ») : `false` = la balise entre en metadata sous sa clé chemin-complet ; `true` = retirée du document. Le signal `tag.unconfigured`, lui, est TOUJOURS émis — on compte d'abord, on filtre ensuite. | Toujours retirées (ADR-022 §1). |
+| `node_hydration.include_path` / `include_content` | `true` / `true` | Ce que portent en plus les nœuds Neo4j (avec leurs métadonnées) : chemins des fichiers XML source, texte du document (`_text_content`). | Nœud maigre (ADR-022 §2). |
 
-| Clé | Valeur | Effet |
-|---|---|---|
-| `nuke_all` | `true` | Efface TOUTES les données de TOUTES les bases en tête de run (Mongo documents+manifest, graphe Neo4j, **toutes** les collections Qdrant), en **préservant `MURPHY_META`**. Le levier disque du développement. Hors `ENVIRONMENT=dev` (l'absence de la variable vaut `prod`), `true` arrête le run dans le plan du run, avant tout nœud (`NukeAllOutsideDevError`). |
+Le transport de l'embedding n'est pas dans `parameters.yml` : taille de lot dans
+`EMBEDDING_BATCH_SIZE`, timeout codé en dur (120 s).
 
 ## `.env.dev` (racine du dépôt)
 
@@ -75,7 +79,7 @@ service.
 
 | Variable | Défaut | Rôle |
 |---|---|---|
-| `ENVIRONMENT` | `prod` | **Le défaut penche vers le refus** : il garde `nuke_all`, l'interrupteur d'embedding, l'hydratation Neo4j et l'ingestion des balises non configurées. Un `.env` incomplet est traité comme protégé. |
+| `ENVIRONMENT` | `prod` | **Le défaut penche vers le refus** : seul `dev` applique le bloc `dev` de `parameters.yml` (`nuke_all`, interrupteur d'embedding, balises non configurées, hydratation Neo4j). Un `.env` incomplet est traité comme protégé. |
 | `MONGODB_URI` | `mongodb://localhost:27017` | |
 | `MONGODB_DATA_DB_NAME` | `LEGIFRANCE` | Données : `documents`, `manifest`. |
 | `MONGODB_META_DB_NAME` | `MURPHY_META` | Méta : audit, bilans, pendantes. |
@@ -96,16 +100,3 @@ Comment on **atteint** le modèle — jamais quel modèle (lui est dans `paramet
 | `EMBEDDING_SERVICE_URL` | — | L'URL du service (vide = absente). |
 | `EMBEDDING_API_KEY` | — | Clé éventuelle (vide = absente — sinon `Bearer` vide et 401 inexpliqué). |
 | `EMBEDDING_BATCH_SIZE` | `32` | Taille de lot du provider. |
-
-## Les quatre garde-fous dev/prod
-
-Même asymétrie pour les quatre : le YAML propose, l'environnement **arbitre**, et hors
-`dev` le comportement sûr gagne quoi que dise le fichier. Les clés sont validées partout,
-avant l'arbitrage : une coquille arrête le run même en prod.
-
-| Levier | En `dev` | Hors `dev` |
-|---|---|---|
-| `maintenance.nuke_all` | Efface tout (sauf MURPHY_META) | **Lève** `NukeAllOutsideDevError` dans le plan du run, avant tout nœud |
-| `embedding_runtime.enabled` | Peut couper l'embedding | Ignoré : on embarque toujours |
-| `exportation.neo4j.*` | Hydratation ouverte par défaut | Ignorés : nœud maigre |
-| `exportation.skip_unconfigured` | Peut ingérer les balises non configurées | Ignoré : toujours retirées |

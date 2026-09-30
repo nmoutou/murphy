@@ -16,12 +16,13 @@ from ragcore.adapters.config.settings import InfraSettings
 from ragcore.adapters.storage.neo4j.node_properties import NodeHydration, NodeLabels
 from ragcore.core.models.enums import SourceName
 from ragcore.core.models.processing import ChunkingConfig, EmbeddingConfig
-from ragcore.orchestration.kedro.parameters_model import validate_parameters
+from ragcore.orchestration.kedro.parameters_model import (
+    NodeHydrationParameters,
+    validate_parameters,
+)
 from ragcore.orchestration.kedro.run_parameters import (
-    resolve_embedding_enabled,
-    resolve_node_hydration,
-    resolve_nuke_all,
-    resolve_skip_unconfigured,
+    DEV_ENVIRONMENT,
+    resolve_dev_settings,
     resolve_sources,
 )
 
@@ -46,13 +47,13 @@ class RunPlan:
     node_labels: NodeLabels
     """Le label des nœuds Neo4j d'après le préfixe de l'identifiant, lu dans le YAML."""
     embedding_enabled: bool
-    """L'interrupteur d'embedding (dev, ADR-023), arbitré par l'environnement."""
+    """L'interrupteur d'embedding (ADR-023) : toujours ``True`` hors ``dev``."""
     skip_unconfigured: bool
     """Le curseur des balises non configurées : ``True`` retire leurs métadonnées du
-    document. Validé ici, avant tout nœud, et forcé à ``True`` hors ``dev`` (ADR-022)."""
+    document. Toujours ``True`` hors ``dev`` (ADR-022 §1)."""
     nuke_all: bool
-    """L'effacement de toutes les bases en tête de run. Déjà refusé hors ``dev`` : un
-    ``True`` ici n'existe qu'en développement."""
+    """L'effacement de toutes les bases en tête de run : toujours ``False`` hors
+    ``dev``."""
 
     @property
     def context_source(self) -> SourceName | None:
@@ -70,13 +71,15 @@ def plan_run(params: dict[str, Any], settings: InfraSettings) -> RunPlan:
     """Dérive le plan du run. Sans I/O : rien n'est ouvert, seul le plan est journalisé.
 
     ``params`` contient déjà les ``--params`` de la ligne de commande : Kedro les
-    fusionne dans les paramètres. Un ``parameters.yml`` invalide, une source inconnue
-    (``--params source=cas``) ou ``nuke_all`` hors ``dev`` échoue ici, avant qu'aucun
-    client ne soit ouvert.
+    fusionne dans les paramètres. Un ``parameters.yml`` invalide ou une source inconnue
+    (``--params source=cas``) échoue ici, avant qu'aucun client ne soit ouvert. Hors
+    ``dev``, le bloc ``dev`` est remplacé par les valeurs sûres, et un avertissement le
+    signale.
     """
     parameters = validate_parameters(params)
-    environment = settings.environment
-    neo4j = parameters.exportation.neo4j
+    is_dev = settings.environment == DEV_ENVIRONMENT
+    dev = resolve_dev_settings(parameters.dev, settings.environment)
+    labels = parameters.node_labels
     # Un run nu ingère TOUTES les sources ; `--params source=cass` le restreint.
     #
     # ⚠️ DETTE OUVERTE : un run qui mélange des sources doit pouvoir dire *laquelle* a
@@ -92,20 +95,34 @@ def plan_run(params: dict[str, Any], settings: InfraSettings) -> RunPlan:
         embedding=parameters.embedding,
         collection=settings.qdrant_collection,
         sources=resolve_sources(requested_source),
-        node_hydration=resolve_node_hydration(neo4j, environment),
-        node_labels=NodeLabels(
-            default=neo4j.labels.default, by_prefix=neo4j.labels.by_prefix
-        ),
-        embedding_enabled=resolve_embedding_enabled(
-            parameters.embedding_runtime.enabled, environment
-        ),
-        skip_unconfigured=resolve_skip_unconfigured(
-            parameters.exportation.skip_unconfigured, environment
-        ),
-        nuke_all=resolve_nuke_all(parameters.maintenance.nuke_all, environment),
+        node_hydration=_node_hydration(dev.node_hydration, is_dev),
+        node_labels=NodeLabels(default=labels.default, by_prefix=labels.by_prefix),
+        embedding_enabled=dev.embedding_enabled,
+        skip_unconfigured=dev.skip_unconfigured,
+        nuke_all=dev.nuke_all,
     )
+    if not is_dev:
+        _warn_dev_ignored(settings.environment)
     _log_plan(plan)
     return plan
+
+
+def _node_hydration(hydration: NodeHydrationParameters, is_dev: bool) -> NodeHydration:
+    """Hors ``dev``, le nœud est maigre : ``NodeHydration()`` (ADR-022 §2)."""
+    return NodeHydration(
+        metadata=is_dev,
+        include_path=hydration.include_path,
+        include_content=hydration.include_content,
+    )
+
+
+def _warn_dev_ignored(environment: str) -> None:
+    logger.warning(
+        "ENVIRONMENT=%s : le bloc `dev` de parameters.yml est ignoré. Rien n'est "
+        "effacé, l'embedding est calculé, les métadonnées des balises non configurées "
+        "sont retirées et les nœuds Neo4j restent maigres.",
+        environment,
+    )
 
 
 def _log_plan(plan: RunPlan) -> None:

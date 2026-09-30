@@ -20,7 +20,7 @@ Priorité : P1 à P4, puis P18 (qui règle P1, P2, P6 et P12).
 
 ## Clés lues et non lues
 
-- **Lues** : `chunking`, `embedding`, `embedding_runtime.enabled`, `exportation.skip_unconfigured`, `exportation.neo4j.*`, `maintenance.nuke_all`.
+- **Lues** : `chunking`, `embedding`, `node_labels`, `dev.*` (depuis P11 : `nuke_all`, `embedding_enabled`, `skip_unconfigured`, `node_hydration.*`).
 - **Non lues** : aucune depuis P18. Les clés mortes ont été supprimées, et le modèle strict refuse désormais toute clé inconnue.
 
 ---
@@ -42,6 +42,8 @@ Priorité : P1 à P4, puis P18 (qui règle P1, P2, P6 et P12).
 - **Piste** : booléens stricts, clés obligatoires (voir P18).
 
 > **Traité** : `nuke_all`, `embedding_runtime.enabled` et `neo4j.include_*` sont des booléens stricts et obligatoires, validés par `plan_run` dans tous les environnements. Le refus de `nuke_all` hors dev a lieu dans `plan_run`, avant tout nœud.
+>
+> Depuis P11, `nuke_all` n'arrête plus le run hors dev : il est ignoré, comme tout le bloc `dev`, et un avertissement le signale.
 
 ### P3. `cache_paths` ne vide rien, en silence
 
@@ -123,6 +125,8 @@ Priorité : P1 à P4, puis P18 (qui règle P1, P2, P6 et P12).
 
 Depuis P18, `exportation` ne contient plus que `skip_unconfigured` et `neo4j` (`mongodb` et `qdrant`, morts, ont été supprimés).
 
+> **Traité** (avec P11) : `exportation` a disparu. `skip_unconfigured` et `neo4j.include_*` sont dans le bloc `dev` ; les labels, qui s'appliquent en dev comme en prod, forment le bloc `node_labels`.
+
 ### P10. `embedding` / `embedding_runtime` : séparation sans objet
 
 - La séparation « quoi / comment » servait l'empreinte d'ADR-026, qui a été supprimée.
@@ -131,11 +135,15 @@ Depuis P18, `exportation` ne contient plus que `skip_unconfigured` et `neo4j` (`
 
 Depuis P18, `embedding_runtime` ne contient plus que `enabled` : le timeout et la taille de lot, non lus, ont été supprimés.
 
+> **Traité** (avec P11) : `embedding_runtime` a disparu. L'interrupteur est devenu `dev.embedding_enabled` ; `embedding` ne porte plus que le « quoi », et le « comment » reste dans l'environnement.
+
 ### P11. Réglages propres au dev éparpillés
 
 - Quatre réglages (`nuke_all`, `embedding_runtime.enabled`, `neo4j.include_*`, `unconfigured`) dans trois blocs.
 - `docs/technical/data/reference/configuration.md` regroupe déjà les trois premiers dans un tableau « garde-fous dev/prod ».
 - **Piste** : un bloc `dev:` unique, ignoré hors dev. C'est l'argument d'ADR-026 : une frontière portée par la structure, pas par des commentaires.
+
+> **Traité** : un bloc `dev` regroupe `nuke_all`, `embedding_enabled`, `skip_unconfigured` et `node_hydration.*`. Un seul arbitrage, `run_parameters.resolve_dev_settings`, l'applique en dev et le remplace ailleurs par les valeurs sûres, avec un avertissement au log. `nuke_all` suit la règle commune : hors dev, il est ignoré au lieu d'arrêter le run (`NukeAllOutsideDevError` a disparu). Les clés restent obligatoires et validées partout.
 
 ### P12. Le format du YAML est connu en plusieurs endroits
 
@@ -175,9 +183,11 @@ Depuis P18, `embedding_runtime` ne contient plus que `enabled` : le timeout et l
 | `include_content` | Stocké sous `_text_content` | aligner le nom et la propriété stockée |
 | `unconfigured` | Ne dit pas de quoi il s'agit | `unconfigured_tags` |
 
+Depuis P4 et P11, la clé est `dev.skip_unconfigured` : la proposition `unconfigured_tags` est à revoir. `include_path` et `include_content` sont désormais sous `dev.node_hydration`.
+
 ### P17. Commentaires décalés
 
-- « À NE PAS activer en prod » : `nuke_all` est de toute façon refusé hors dev. Le commentaire devrait décrire ce refus. **Traité** (P2).
+- « À NE PAS activer en prod » : `nuke_all` est de toute façon refusé hors dev. Le commentaire devrait décrire ce refus. **Traité** (P2), puis P11 : hors dev, le bloc `dev` entier est ignoré, et son commentaire d'en-tête le dit.
 - Rien n'indique l'unité de `embedding_service_timeout`. **Sans objet** (P18) : la clé, non lue, a été supprimée.
 
 ---

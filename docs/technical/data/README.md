@@ -40,8 +40,9 @@ chemin absolu, et **lève** s'il est absent (fail-fast, pas de défauts silencie
 Les variables et leur sémantique : voir [reference/configuration.md](reference/configuration.md).
 Points critiques :
 
-- `ENVIRONMENT=dev` est requis pour `nuke_all`, l'interrupteur d'embedding,
-  l'hydratation Neo4j et l'ingestion des balises non configurées — l'absence de la variable vaut `prod`, donc tout est verrouillé.
+- `ENVIRONMENT=dev` ouvre le bloc `dev` de `parameters.yml` : `nuke_all`, l'interrupteur
+  d'embedding, l'ingestion des balises non configurées et l'hydratation Neo4j. Ailleurs,
+  le bloc est ignoré (avertissement au log) ; l'absence de la variable vaut `prod`.
 - `EMBEDDING_PROVIDER` : `openai` (TEI) pour un vrai run ; le défaut est `noop`
   (vecteurs **nuls**, hygiène de test uniquement).
 
@@ -84,7 +85,7 @@ uniquement pour `EMBEDDING_PROVIDER=local`),
 |---|---|
 | `FileNotFoundError` au démarrage sur `.env.dev` | Le fichier vit à la **racine du dépôt**, pas dans `data/`. |
 | Run « ok » mais 0 document | `XML_SOURCE_PATH` ne pointe sur rien (un répertoire absent ne lève pas — il donne zéro document) ; vérifier le chemin et les sous-répertoires par source. |
-| `nuke_all refusé` | `ENVIRONMENT` ≠ `dev` dans le `.env.dev` racine — c'est le garde-fou voulu. |
+| Avertissement « le bloc `dev` de parameters.yml est ignoré » | `ENVIRONMENT` ≠ `dev` dans le `.env.dev` racine : `nuke_all` n'efface rien, l'embedding est calculé — c'est le garde-fou voulu. |
 | Avertissement « vecteurs NULS » | `EMBEDDING_PROVIDER=noop` (le défaut). Passer à `openai` + `EMBEDDING_SERVICE_URL` pour un vrai run. |
 | Le run échoue avant d'ingérer, en nommant un modèle | La précondition TEI : le modèle servi par le conteneur (`GET /info`) diverge de `parameters.yml`. Aligner les deux. |
 | `chunk.truncated` non nul au bilan | Le `chunk_size` configuré dépasse la fenêtre du modèle d'embedding : le corpus est complet mais des fins de chunks ne sont pas indexées — baisser `chunk_size`. |

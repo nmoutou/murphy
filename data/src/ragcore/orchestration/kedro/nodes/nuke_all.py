@@ -41,8 +41,9 @@ def nuke_all_node(
       pendantes). Un nuke ne doit jamais emporter la mémoire de ce qu'on a fait —
       c'est elle qui rend un run *invérifiable* si elle disparaît, pas le corpus.
 
-    Le garde-fou dev est appliqué en amont, par ``plan_run`` (``resolve_nuke_all``) :
-    ``nuke_all=True`` n'arrive ici qu'avec ``ENVIRONMENT=dev``, avant tout nœud.
+    Le garde-fou dev est appliqué en amont, par ``plan_run`` (``resolve_dev_settings``) :
+    hors ``ENVIRONMENT=dev``, le bloc ``dev`` est ignoré et ``nuke_all`` arrive ici à
+    ``False``.
     """
     if not nuke_all:
         # Setup partagé quand même : la collection doit exister avant le pool de

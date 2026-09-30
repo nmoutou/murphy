@@ -1,6 +1,7 @@
 """Le plan du run : dérivé une fois, en tête de run, sans rien ouvrir."""
 
 import copy
+import logging
 import re
 from pathlib import Path
 from typing import Any
@@ -12,33 +13,38 @@ from ragcore.adapters.config.settings import InfraSettings
 from ragcore.adapters.storage.neo4j.node_properties import NodeHydration
 from ragcore.core.models.enums import SourceName
 from ragcore.core.models.identifiers import Identifier
-from ragcore.orchestration.kedro.run_parameters import NukeAllOutsideDevError
+from ragcore.orchestration.kedro.run_parameters import SAFE_DEV_SETTINGS
 from ragcore.orchestration.kedro.run_plan import plan_run
 
 PARAMS: dict[str, Any] = {
     "chunking": {"size": 384, "overlap": 25},
     "embedding": {"model_name": "un-modele", "dimension": 768},
-    "embedding_runtime": {"enabled": True},
-    "exportation": {
+    "node_labels": {"default": "Document", "by_prefix": {"LEGIARTI": "Article"}},
+    "dev": {
+        "nuke_all": False,
+        "embedding_enabled": True,
         "skip_unconfigured": False,
-        "neo4j": {
-            "include_path": True,
-            "include_content": True,
-            "labels": {"default": "Document", "by_prefix": {"LEGIARTI": "Article"}},
-        },
+        "node_hydration": {"include_path": True, "include_content": True},
     },
-    "maintenance": {"nuke_all": False},
 }
 """Les clés de `parameters.yml` sans défaut dans le code."""
 
 BOOLEAN_PATHS = [
-    "exportation.skip_unconfigured",
-    "embedding_runtime.enabled",
-    "exportation.neo4j.include_path",
-    "exportation.neo4j.include_content",
-    "maintenance.nuke_all",
+    "dev.nuke_all",
+    "dev.embedding_enabled",
+    "dev.skip_unconfigured",
+    "dev.node_hydration.include_path",
+    "dev.node_hydration.include_content",
 ]
 """Les booléens du YAML : stricts, obligatoires, validés dans tous les environnements."""
+
+RISKIEST_DEV: dict[str, Any] = {
+    "nuke_all": True,
+    "embedding_enabled": False,
+    "skip_unconfigured": False,
+    "node_hydration": {"include_path": True, "include_content": True},
+}
+"""Le bloc `dev` réglé au plus risqué pour une prod."""
 
 SHIPPED_PARAMETERS = Path(__file__).parents[5] / "conf/base/parameters.yml"
 """Le `parameters.yml` livré, celui que lit `kedro run`."""
@@ -127,53 +133,51 @@ def test_un_booleen_mal_type_arrete_le_run_meme_hors_dev(
         plan_run(_with(path, value), _settings("prod"))
 
 
-@pytest.mark.parametrize("value", [True, False])
-def test_le_curseur_des_balises_non_configurees_vient_du_yaml_en_dev(
-    value: bool,
-) -> None:
-    params = _with("exportation.skip_unconfigured", value)
+def test_en_dev_le_bloc_dev_s_applique_tel_quel() -> None:
+    plan = plan_run(_with("dev", RISKIEST_DEV), _settings("dev"))
 
-    assert plan_run(params, _settings("dev")).skip_unconfigured is value
-
-
-def test_hors_dev_les_balises_non_configurees_sont_toujours_retirees() -> None:
-    params = _with("exportation.skip_unconfigured", False)
-
-    assert plan_run(params, _settings("prod")).skip_unconfigured is True
-
-
-def test_couper_l_embedding_n_a_d_effet_qu_en_dev() -> None:
-    params = _with("embedding_runtime.enabled", False)
-
-    assert plan_run(params, _settings("prod")).embedding_enabled
-    assert not plan_run(params, _settings("dev")).embedding_enabled
+    assert plan.nuke_all is True
+    assert plan.embedding_enabled is False
+    assert plan.skip_unconfigured is False
+    assert plan.node_hydration == NodeHydration(
+        metadata=True, include_path=True, include_content=True
+    )
 
 
 def test_l_hydratation_neo4j_vient_du_yaml_en_dev() -> None:
-    params = _with("exportation.neo4j.include_path", False)
+    params = _with("dev.node_hydration.include_path", False)
 
     hydration = plan_run(params, _settings("dev")).node_hydration
 
     assert (hydration.include_path, hydration.include_content) == (False, True)
 
 
-def test_hors_dev_le_noeud_neo4j_reste_maigre() -> None:
-    assert plan_run(PARAMS, _settings("prod")).node_hydration == NodeHydration()
+def test_hors_dev_le_bloc_dev_est_ignore() -> None:
+    """Même réglé au plus risqué, le bloc `dev` ne touche pas une prod."""
+    plan = plan_run(_with("dev", RISKIEST_DEV), _settings("prod"))
+
+    assert plan.nuke_all is SAFE_DEV_SETTINGS.nuke_all is False
+    assert plan.embedding_enabled is True
+    assert plan.skip_unconfigured is True
+    assert plan.node_hydration == NodeHydration()
 
 
-def test_nuke_all_est_refuse_hors_dev_avant_tout_noeud() -> None:
-    with pytest.raises(NukeAllOutsideDevError, match="ENVIRONMENT='prod'"):
-        plan_run(_with("maintenance.nuke_all", True), _settings("prod"))
+def test_hors_dev_un_avertissement_signale_le_bloc_ignore(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    with caplog.at_level(logging.WARNING):
+        plan_run(PARAMS, _settings("prod"))
+
+    assert "le bloc `dev` de parameters.yml est ignoré" in caplog.text
 
 
-def test_nuke_all_est_accepte_en_dev() -> None:
-    params = _with("maintenance.nuke_all", True)
+def test_en_dev_aucun_avertissement_de_bloc_ignore(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    with caplog.at_level(logging.WARNING):
+        plan_run(PARAMS, _settings("dev"))
 
-    assert plan_run(params, _settings("dev")).nuke_all is True
-
-
-def test_sans_nuke_all_un_run_hors_dev_passe() -> None:
-    assert plan_run(PARAMS, _settings("prod")).nuke_all is False
+    assert "est ignoré" not in caplog.text
 
 
 def test_les_labels_neo4j_viennent_du_yaml_par_prefixe_d_identifiant() -> None:
@@ -185,8 +189,8 @@ def test_les_labels_neo4j_viennent_du_yaml_par_prefixe_d_identifiant() -> None:
 
 
 def test_sans_labels_neo4j_le_run_s_arrete() -> None:
-    with pytest.raises(ValueError, match=_path("exportation.neo4j.labels")):
-        plan_run(_without("exportation.neo4j.labels"), _settings())
+    with pytest.raises(ValueError, match=_path("node_labels")):
+        plan_run(_without("node_labels"), _settings())
 
 
 @pytest.mark.parametrize(
@@ -201,21 +205,28 @@ def test_un_label_ou_un_prefixe_mal_forme_arrete_le_run(
     labels: dict[str, Any], message: str
 ) -> None:
     with pytest.raises(ValueError, match=message):
-        plan_run(_with("exportation.neo4j.labels", labels), _settings())
+        plan_run(_with("node_labels", labels), _settings())
 
 
 def test_sans_table_by_prefix_le_run_s_arrete() -> None:
-    with pytest.raises(ValueError, match=_path("exportation.neo4j.labels.by_prefix")):
-        plan_run(_without("exportation.neo4j.labels.by_prefix"), _settings())
+    with pytest.raises(ValueError, match=_path("node_labels.by_prefix")):
+        plan_run(_without("node_labels.by_prefix"), _settings())
 
 
 @pytest.mark.parametrize(
-    "path", ["nlp", "exportation.neo4j.include_pth", "chunking.sise"]
+    "path", ["nlp", "dev.node_hydration.include_pth", "chunking.sise"]
 )
 def test_une_cle_inconnue_arrete_le_run(path: str) -> None:
     """Une clé morte ou mal orthographiée ne passe plus en silence, à aucun niveau."""
     with pytest.raises(ValueError, match=_path(path)):
         plan_run(_with(path, True), _settings())
+
+
+@pytest.mark.parametrize("block", ["maintenance", "exportation", "embedding_runtime"])
+def test_l_ancienne_forme_est_refusee(block: str) -> None:
+    """Un `parameters.yml` resté à la forme d'avant le bloc `dev` arrête le run."""
+    with pytest.raises(ValueError, match=_path(block)):
+        plan_run(_with(block, {}), _settings())
 
 
 def test_un_params_mal_orthographie_arrete_le_run() -> None:
@@ -231,13 +242,13 @@ def test_un_entier_ecrit_en_chaine_arrete_le_run() -> None:
 
 
 def test_toutes_les_erreurs_sont_signalees_ensemble() -> None:
-    params = _with("maintenance.nuke_all", "false")
+    params = _with("dev.nuke_all", "false")
     del params["embedding"]
 
     with pytest.raises(ValueError) as raised:
         plan_run(params, _settings())
 
-    assert "`maintenance.nuke_all`" in str(raised.value)
+    assert "`dev.nuke_all`" in str(raised.value)
     assert "`embedding`" in str(raised.value)
 
 

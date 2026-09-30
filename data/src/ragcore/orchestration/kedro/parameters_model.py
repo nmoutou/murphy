@@ -16,11 +16,9 @@ from pydantic_core import ErrorDetails
 from ragcore.core.models.processing import ChunkingConfig, EmbeddingConfig
 
 __all__ = [
-    "EmbeddingRuntimeParameters",
-    "ExportationParameters",
+    "DevParameters",
     "IngestionParameters",
-    "MaintenanceParameters",
-    "Neo4jParameters",
+    "NodeHydrationParameters",
     "NodeLabelsParameters",
     "validate_parameters",
 ]
@@ -32,12 +30,6 @@ class _StrictParameters(BaseModel):
     model_config = ConfigDict(strict=True, extra="forbid", frozen=True)
 
 
-class EmbeddingRuntimeParameters(_StrictParameters):
-    """L'interrupteur d'embedding (ADR-023), arbitré ensuite par l'environnement."""
-
-    enabled: bool
-
-
 class NodeLabelsParameters(_StrictParameters):
     """Le label d'un nœud Neo4j d'après les 8 lettres de son identifiant."""
 
@@ -45,25 +37,21 @@ class NodeLabelsParameters(_StrictParameters):
     by_prefix: dict[str, str]
 
 
-class Neo4jParameters(_StrictParameters):
-    """L'hydratation des nœuds (ADR-022 §2) et leurs labels."""
+class NodeHydrationParameters(_StrictParameters):
+    """Ce que les nœuds Neo4j portent en plus en dev (ADR-022 §2)."""
 
     include_path: bool
     include_content: bool
-    labels: NodeLabelsParameters
 
 
-class ExportationParameters(_StrictParameters):
-    """Le sort des balises non configurées (ADR-022 §1) et les nœuds Neo4j."""
-
-    skip_unconfigured: bool
-    neo4j: Neo4jParameters
-
-
-class MaintenanceParameters(_StrictParameters):
-    """L'effacement de toutes les bases en tête de run, refusé hors ``dev``."""
+class DevParameters(_StrictParameters):
+    """Les commodités de dev. Hors ``dev``, tout le bloc est remplacé par les valeurs
+    sûres (``run_parameters.resolve_dev_settings``) ; il est validé partout."""
 
     nuke_all: bool
+    embedding_enabled: bool
+    skip_unconfigured: bool
+    node_hydration: NodeHydrationParameters
 
 
 class IngestionParameters(_StrictParameters):
@@ -71,9 +59,8 @@ class IngestionParameters(_StrictParameters):
 
     chunking: ChunkingConfig
     embedding: EmbeddingConfig
-    embedding_runtime: EmbeddingRuntimeParameters
-    exportation: ExportationParameters
-    maintenance: MaintenanceParameters
+    node_labels: NodeLabelsParameters
+    dev: DevParameters
     source: str | None = None
     """``--params source=cass``. Kedro fusionne les ``--params`` dans les paramètres :
     ils arrivent ici avec le YAML, et une faute (``sorce=cass``) est une clé inconnue.

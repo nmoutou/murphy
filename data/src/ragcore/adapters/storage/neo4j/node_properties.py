@@ -37,7 +37,7 @@ _PREFIX_PATTERN = re.compile(rf"[A-Z]{{{IDENTIFIER_PREFIX_LENGTH}}}")
 class NodeLabels:
     """Le label d'un nœud document, décidé par les 8 lettres de son identifiant.
 
-    Une DONNÉE, lue dans ``exportation.neo4j.labels`` de ``parameters.yml`` : le préfixe
+    Une DONNÉE, lue dans ``node_labels`` de ``parameters.yml`` : le préfixe
     ``LEGIARTI`` donne ``Article``, et un préfixe que la table ne connaît pas reçoit
     ``default``. Donner un label aux décisions, c'est ajouter une ligne au YAML.
 
@@ -77,8 +77,9 @@ class NodeHydration:
     """Ce qu'un nœud document porte AU-DELÀ de ses deux props de base (ADR-022 §2).
 
     Le défaut est le régime PROD : nœud maigre (``title``, ``source``), rien d'autre.
-    C'est le constructeur — le hook — qui ouvre les vannes en dev
-    (``resolve_node_hydration``), jamais ce module : le défaut penche vers le refus, comme ``nuke_all`` et l'interrupteur d'embedding.
+    C'est le plan du run qui ouvre les vannes en dev (bloc ``dev.node_hydration`` de
+    ``parameters.yml``), jamais ce module : le défaut penche vers le refus, comme
+    ``nuke_all`` et l'interrupteur d'embedding.
 
     - ``metadata`` : les métadonnées du document en props (clés chemin-complet,
       valeurs chaînes). Neo4j est l'outil d'inspection privilégié de la v0 — un nœud

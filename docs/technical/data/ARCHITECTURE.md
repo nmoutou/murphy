@@ -96,10 +96,11 @@ Déroulé détaillé nœud par nœud : [reference/pipeline.md](reference/pipelin
    pas une ligne au hook.
    Voir [reference/sources.md](reference/sources.md).
 
-5. **Les garde-fous penchent vers le refus.** `ENVIRONMENT` absent vaut `prod`, et hors
-   `dev` : `nuke_all` refuse de tourner, l'embedding est toujours calculé (quoi que dise le
-   flag), les nœuds Neo4j restent maigres, les balises non configurées ne sont pas ingérées. Une commodité de dev ne peut pas dégrader une
-   prod par simple oubli d'une variable.
+5. **Les garde-fous penchent vers le refus.** Les commodités de dev vivent dans un seul
+   bloc, `dev` de `parameters.yml`, et `ENVIRONMENT` absent vaut `prod`. Hors `dev`, le
+   bloc est ignoré : rien n'est effacé, l'embedding est toujours calculé, les nœuds
+   Neo4j restent maigres, les balises non configurées ne sont pas ingérées. Une commodité
+   de dev ne peut pas dégrader une prod par simple oubli d'une variable.
 
 ## Frontières avec le serving
 

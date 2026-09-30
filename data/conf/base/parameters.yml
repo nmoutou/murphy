@@ -18,36 +18,41 @@ embedding:
   model_name: "sentence-transformers/all-mpnet-base-v2"
   dimension: 768
 
-embedding_runtime:
-  enabled: true
-
 # ============================================================
-# Export
+# Graphe Neo4j — s'applique en dev comme en prod
 # ============================================================
 
-exportation:
+# Le label d'un nœud, d'après les 8 lettres de son identifiant. Un préfixe absent de la
+# table reçoit `default`. Changer la table sans `nuke_all` laisse l'ancien label sur les
+# nœuds déjà écrits.
+node_labels:
+  default: "Document"
+  by_prefix:
+    LEGIARTI: "Article"
+    LEGITEXT: "Texte"
+    LEGISCTA: "Section"
+
+# ============================================================
+# Dev — IGNORÉ hors ENVIRONMENT=dev
+# ============================================================
+
+# Hors dev, tout le bloc est remplacé par les valeurs sûres (rien n'est effacé,
+# l'embedding est calculé, les métadonnées non configurées sont retirées, les nœuds
+# Neo4j restent maigres) et un avertissement le signale au log. Les clés restent
+# obligatoires et validées partout : une coquille arrête le run même en prod.
+dev:
+  # Efface TOUTES les données de TOUTES les bases (sauf la base méta) en tête de run.
+  nuke_all: true
+
+  # `false` : aucun vecteur calculé ni écrit (ADR-023) ; Mongo et Neo4j normaux.
+  embedding_enabled: true
+
   # `true` retire du document les métadonnées des balises non configurées ; le signal
-  # `tag.unconfigured` est émis dans les deux cas. Booléen obligatoire.
-  # Hors ENVIRONMENT=dev, ignoré : les métadonnées sont toujours retirées.
+  # `tag.unconfigured` est émis dans les deux cas (ADR-022 §1).
   skip_unconfigured: false
 
-  neo4j:
+  # Ce que les nœuds Neo4j portent en plus (ADR-022 §2) : chemins des fichiers XML
+  # source, texte du document (`_text_content`).
+  node_hydration:
     include_path: true
     include_content: true
-    # Le label d'un nœud, d'après les 8 lettres de son identifiant. Un préfixe absent
-    # de la table reçoit `default`.
-    labels:
-      default: "Document"
-      by_prefix:
-        LEGIARTI: "Article"
-        LEGITEXT: "Texte"
-        LEGISCTA: "Section"
-
-# ============================================================
-# Maintenance
-# ============================================================
-
-maintenance:
-  # Efface TOUTES les données de TOUTES les bases (sauf la base méta).
-  # Hors ENVIRONMENT=dev, `true` arrête le run avant tout nœud.
-  nuke_all: true

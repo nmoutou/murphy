@@ -23,8 +23,8 @@ CATEGORY_UNCONFIGURED_TAG = "tag.unconfigured"
 
 Ce n'est plus un « unknown » dans la donnée : la balise a été ROUTÉE (porte metadata ou
 porte liens, cascade des « trois portes ») et ce compteur est le signal qui survit au
-routage. Émis au site de parse, TOUJOURS — que le curseur ``exportation.unconfigured``
-soit à ``ingest`` ou ``skip``. On compte d'abord, on filtre ensuite.
+routage. Émis au site de parse, TOUJOURS — que le curseur ``dev.skip_unconfigured``
+retire ou non les métadonnées. On compte d'abord, on filtre ensuite.
 """
 
 CATEGORY_ROOT = "racine"

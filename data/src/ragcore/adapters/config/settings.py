@@ -81,10 +81,9 @@ class InfraSettings(BaseSettings):
     environment: str = "prod"
     """L'environnement d'exécution. **Le défaut est `prod`, et c'est délibéré.**
 
-    Il ne sert qu'à *une* chose : garder le mode `nuke_all` (voir
-    `nodes/nuke_all.py`), qui efface TOUTES les données de TOUTES les bases, du seul
-    environnement où l'effacement est sans conséquence. Le node refuse de tourner si
-    `environment != "dev"`.
+    Il ne sert qu'à *une* chose : ouvrir le bloc `dev` de `parameters.yml` (voir
+    `run_parameters.resolve_dev_settings`), dont `nuke_all`, qui efface TOUTES les
+    données de TOUTES les bases. Hors `dev`, le bloc est ignoré.
 
     Le défaut penche vers le refus, pas vers l'autorisation : un `.env` sans
     `ENVIRONMENT` est traité comme de la prod, donc protégé. Un garde-fou dont le

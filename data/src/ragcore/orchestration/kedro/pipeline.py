@@ -91,7 +91,7 @@ def _compute_idempotence() -> Node:
             "pipeline_context",
             "telemetry",
             "pipeline_runtime",
-            # Le curseur `exportation.skip_unconfigured`, validé par le plan du run :
+            # Le curseur `dev.skip_unconfigured`, arbitré par le plan du run :
             # appliqué au site de parse, juste avant que le document parte à l'ingestion.
             "skip_unconfigured",
         ],

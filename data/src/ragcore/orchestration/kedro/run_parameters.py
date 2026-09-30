@@ -11,30 +11,32 @@ from typing import Any
 
 from kedro.io import DataCatalog, DatasetError
 
-from ragcore.adapters.storage.neo4j.node_properties import NodeHydration
 from ragcore.core.models.enums import SourceName
-from ragcore.orchestration.kedro.parameters_model import Neo4jParameters
+from ragcore.orchestration.kedro.parameters_model import (
+    DevParameters,
+    NodeHydrationParameters,
+)
 from ragcore.sources.registry import all_sources
 
 __all__ = [
-    "NukeAllOutsideDevError",
+    "DEV_ENVIRONMENT",
+    "SAFE_DEV_SETTINGS",
     "load_parameters",
-    "resolve_embedding_enabled",
-    "resolve_node_hydration",
-    "resolve_nuke_all",
-    "resolve_skip_unconfigured",
+    "resolve_dev_settings",
     "resolve_sources",
 ]
 
+DEV_ENVIRONMENT = "dev"
+"""La seule valeur d'``ENVIRONMENT`` qui ouvre le bloc ``dev`` de ``parameters.yml``."""
 
-class NukeAllOutsideDevError(RuntimeError):
-    """Le mode ``nuke_all`` a été demandé hors d'un environnement `dev`.
-
-    Ce n'est pas un avertissement : c'est un arrêt. Effacer TOUTES les données de
-    TOUTES les bases n'a de sens qu'en développement, où les données sont jetables.
-    Ailleurs, l'intention est presque sûrement une erreur — et le mode de défaillance
-    d'un `nuke` mal placé est irréversible. On lève avant de toucher la moindre base.
-    """
+SAFE_DEV_SETTINGS = DevParameters(
+    nuke_all=False,
+    embedding_enabled=True,
+    skip_unconfigured=True,
+    node_hydration=NodeHydrationParameters(include_path=False, include_content=False),
+)
+"""Le bloc ``dev`` tel qu'il s'applique hors ``dev`` : rien n'est effacé, l'embedding
+est calculé, les métadonnées non configurées sont retirées, les nœuds restent maigres."""
 
 
 def load_parameters(catalog: DataCatalog) -> dict[str, Any]:
@@ -58,69 +60,19 @@ def load_parameters(catalog: DataCatalog) -> dict[str, Any]:
     return params
 
 
-def resolve_embedding_enabled(is_enabled: bool, environment: str) -> bool:
-    """L'embedding est-il calculé pour ce run ? (ADR-023)
+def resolve_dev_settings(dev: DevParameters, environment: str) -> DevParameters:
+    """Le bloc ``dev`` effectif : celui du YAML en ``dev``, les valeurs sûres ailleurs.
 
-    Deux entrées, et l'environnement PRIME. Le flag YAML ``embedding_runtime.enabled``
-    (déjà validé par ``parameters_model``) n'a d'effet qu'en ``dev`` ; partout ailleurs
-    on embarque toujours. C'est la même asymétrie que ``nuke_all`` : couper l'embedding
-    est une commodité de développement, et une commodité ne doit jamais pouvoir dégrader
-    la prod par simple oubli d'une variable. Un ``parameters.yml`` traîné de dev en prod
-    avec ``enabled: false`` produirait sinon une collection vide sans que rien ne lève.
+    L'environnement PRIME, et le défaut penche vers le refus : l'absence
+    d'``ENVIRONMENT`` vaut ``prod`` (voir ``InfraSettings.environment``). Chaque clé du
+    bloc est une commodité de développement : effacer toutes les bases, couper
+    l'embedding (ADR-023), ingérer les métadonnées des balises non configurées ou
+    hydrater les nœuds Neo4j (ADR-022). Un ``parameters.yml`` traîné de dev en prod ne
+    doit pouvoir ni effacer une base, ni produire une collection vide, ni écrire sur
+    chaque nœud les chemins de fichiers du poste d'ingestion. Le signal
+    ``tag.unconfigured``, lui, est émis dans les deux régimes.
     """
-    return is_enabled or environment != "dev"
-
-
-def resolve_node_hydration(neo4j: Neo4jParameters, environment: str) -> NodeHydration:
-    """L'hydratation des nœuds Neo4j — arbitrée par l'environnement (ADR-022 §2).
-
-    Hors ``dev``, le nœud est MAIGRE et les toggles YAML sont ignorés — garde-fou dur,
-    même asymétrie que ``nuke_all`` et l'interrupteur d'embedding : un
-    ``include_path: true`` traîné en prod écrirait les chemins de fichiers du poste
-    d'ingestion sur chaque nœud, une info locale sans valeur ailleurs que sur ce poste.
-
-    En dev, le YAML ouvre ou referme chaque vanne : ``include_path`` = chemins des
-    FICHIERS source, ``include_content`` = texte du document (``_text_content``). Ces
-    toggles ne concernent QUE Neo4j — le format de clé des métadonnées, lui, n'est pas
-    un toggle.
-    """
-    if environment != "dev":
-        return NodeHydration()
-    return NodeHydration(
-        metadata=True,
-        include_path=neo4j.include_path,
-        include_content=neo4j.include_content,
-    )
-
-
-def resolve_skip_unconfigured(is_skipped: bool, environment: str) -> bool:
-    """Les métadonnées des balises non configurées sont-elles retirées ? (ADR-022 §1)
-
-    Le flag YAML ``exportation.skip_unconfigured`` (déjà validé par
-    ``parameters_model``) n'a d'effet qu'en ``dev`` ; partout ailleurs on retire
-    toujours. Même asymétrie que l'embedding : ingérer les balises non configurées est
-    une commodité d'itération sur le modèle de données, et un ``false`` traîné de dev en
-    prod ne doit pas remplir la prod de métadonnées que personne n'a choisies. Le
-    signal ``tag.unconfigured``, lui, est émis dans les deux régimes.
-    """
-    return is_skipped or environment != "dev"
-
-
-def resolve_nuke_all(is_requested: bool, environment: str) -> bool:
-    """L'effacement de toutes les bases en tête de run — refusé hors ``dev``.
-
-    Le refus a lieu ici, dans le plan du run : avant tout nœud, avant qu'aucun client
-    ne soit ouvert. L'absence de ``ENVIRONMENT`` vaut ``prod`` (voir
-    ``InfraSettings.environment``) : un ``.env`` incomplet est traité comme protégé.
-    """
-    if is_requested and environment != "dev":
-        raise NukeAllOutsideDevError(
-            f"nuke_all refusé : ENVIRONMENT={environment!r}, attendu 'dev'. "
-            "Ce mode efface TOUTES les données de TOUTES les bases — il n'est autorisé "
-            "que là où les données sont jetables. Pour l'exécuter, ENVIRONMENT doit "
-            "valoir strictement 'dev' dans le .env de la racine."
-        )
-    return is_requested
+    return dev if environment == DEV_ENVIRONMENT else SAFE_DEV_SETTINGS
 
 
 def resolve_sources(
