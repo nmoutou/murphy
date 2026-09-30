@@ -1,6 +1,6 @@
 # ADR-042 — Une collection Qdrant au nom fixe : fin de l'empreinte, du pointeur et du tracking
 
-**Statut** : ✅ Accepté (30 septembre 2026) — remplace ADR-026, amende ADR-039 §3
+**Statut** : ✅ Accepté (30 septembre 2026) — remplace ADR-026, amende ADR-039 §3 · **§3 amendé par [ADR-043](ADR-043-configuration-ingestion-environment.md)** (fichier unique, modèle lu d'`EMBEDDING_MODEL`)
 
 ## Contexte
 
@@ -72,4 +72,4 @@ supprimés.
 ## Références
 
 ADR-026 (partition de la configuration, remplacé) · ADR-039 (contrat ingestion ↔ serving,
-§3 amendé)
+§3 amendé) · ADR-043 (amende §3)

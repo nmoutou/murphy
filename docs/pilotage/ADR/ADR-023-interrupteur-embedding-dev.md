@@ -1,6 +1,7 @@
 # ADR-023 — Un interrupteur d'embedding, pas trois interrupteurs de store
 
-**Statut** : acté (18 juillet 2026) — amende ADR-022 §5
+**Statut** : acté (18 juillet 2026) — amende ADR-022 §5 · **amendé par
+ADR-043** (interrupteur limité au bloc `dev`, plus de fournisseur `noop`)
 
 ## Contexte
 
@@ -72,4 +73,4 @@ l'ADR-022.
 
 ## Références
 
-ADR-022 (§5 amendé) · ADR-020 · `workload.py`
+ADR-022 (§5 amendé) · ADR-020 · ADR-043 (amende cet ADR) · `workload.py`

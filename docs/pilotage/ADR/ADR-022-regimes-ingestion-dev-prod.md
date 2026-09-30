@@ -4,7 +4,9 @@
 interrupteurs `exportation.<store>.enabled` sont remplacés par un unique
 interrupteur d'embedding en dev) · **§7 amendé par ADR-024** (le
 paramètre d'échantillonnage du connecteur est retiré : sans objet sur le
-corpus réel ; le corpus témoin relève de `--params source=`)
+corpus réel ; le corpus témoin relève de `--params source=`) · **§5-§6
+amendés par ADR-043** (routage d'audit laissé au code, conf morte refusée
+par le modèle strict)
 
 ## Contexte
 
@@ -80,4 +82,4 @@ mode jetable.
 
 ## Références
 
-ADR-004 · ADR-018 · ADR-020 · ADR-023 · ADR-024
+ADR-004 · ADR-018 · ADR-020 · ADR-023 · ADR-024 · ADR-043
