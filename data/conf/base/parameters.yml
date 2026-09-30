@@ -13,21 +13,6 @@ chunking:
   overlap_chars: 25
 
 # ============================================================
-# Graphe Neo4j — s'applique en dev comme en prod
-# ============================================================
-
-# Le label d'un nœud, d'après les 8 lettres de son identifiant. Un préfixe absent de la
-# table reçoit `default`. L'écriture ajoute le label sans retirer l'ancien : après un
-# changement de la table, un nœud déjà écrit garde l'ancien label, même réingéré (il
-# porte alors les deux). Repartir de zéro demande `nuke_all`.
-node_labels:
-  default: "Document"
-  by_prefix:
-    LEGIARTI: "Article"
-    LEGITEXT: "Texte"
-    LEGISCTA: "Section"
-
-# ============================================================
 # Dev — IGNORÉ hors ENVIRONMENT=dev
 # ============================================================
 

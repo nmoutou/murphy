@@ -18,7 +18,6 @@ from ragcore.orchestration.kedro.run_plan import plan_run
 
 PARAMS: dict[str, Any] = {
     "chunking": {"max_chars": 384, "overlap_chars": 25},
-    "node_labels": {"default": "Document", "by_prefix": {"LEGIARTI": "Article"}},
     "dev": {
         "nuke_all": False,
         "embedding_enabled": True,
@@ -188,37 +187,12 @@ def test_en_dev_aucun_avertissement_de_bloc_ignore(
     assert "est ignoré" not in caplog.text
 
 
-def test_les_labels_neo4j_viennent_du_yaml_par_prefixe_d_identifiant() -> None:
+def test_les_labels_neo4j_viennent_des_sources() -> None:
     labels = plan_run(PARAMS, _settings()).node_labels
 
     assert labels.label_for(Identifier(raw="LEGIARTI000006419264")) == "Article"
     assert labels.label_for(Identifier(raw="JURITEXT000019333891")) == "Document"
-    assert labels.known == ("Document", "Article")
-
-
-def test_sans_labels_neo4j_le_run_s_arrete() -> None:
-    with pytest.raises(ValueError, match=_path("node_labels")):
-        plan_run(_without("node_labels"), _settings())
-
-
-@pytest.mark.parametrize(
-    ("labels", "message"),
-    [
-        ({"default": "Document", "by_prefix": {"ARTI": "Article"}}, "Préfixe"),
-        ({"default": "Document", "by_prefix": {"LEGIARTI": "Mon Label"}}, "Label"),
-        ({"default": "Pending", "by_prefix": {}}, "réservé"),
-    ],
-)
-def test_un_label_ou_un_prefixe_mal_forme_arrete_le_run(
-    labels: dict[str, Any], message: str
-) -> None:
-    with pytest.raises(ValueError, match=message):
-        plan_run(_with("node_labels", labels), _settings())
-
-
-def test_sans_table_by_prefix_le_run_s_arrete() -> None:
-    with pytest.raises(ValueError, match=_path("node_labels.by_prefix")):
-        plan_run(_without("node_labels.by_prefix"), _settings())
+    assert labels.known == ("Document", "Article", "Texte", "Section")
 
 
 @pytest.mark.parametrize(
@@ -231,11 +205,13 @@ def test_une_cle_inconnue_arrete_le_run(path: str) -> None:
 
 
 @pytest.mark.parametrize(
-    "block", ["maintenance", "exportation", "embedding_runtime", "embedding"]
+    "block",
+    ["maintenance", "exportation", "embedding_runtime", "embedding", "node_labels"],
 )
 def test_l_ancienne_forme_est_refusee(block: str) -> None:
     """Un `parameters.yml` resté à une ancienne forme arrête le run. Le bloc `embedding`
-    est parti dans l'environnement : `EMBEDDING_MODEL`, et une dimension mesurée."""
+    est parti dans l'environnement : `EMBEDDING_MODEL`, et une dimension mesurée ; le
+    bloc `node_labels` dans le registre des sources."""
     with pytest.raises(ValueError, match=_path(block)):
         plan_run(_with(block, {}), _settings())
 

@@ -25,6 +25,7 @@ from ragcore.orchestration.kedro.run_parameters import (
     resolve_dev_settings,
     resolve_sources,
 )
+from ragcore.sources.registry import node_labels_by_prefix
 
 __all__ = ["RunPlan", "plan_run"]
 
@@ -44,7 +45,8 @@ class RunPlan:
     dépôt du hook et ceux des workers — deux résolutions seraient deux occasions de
     diverger."""
     node_labels: NodeLabels
-    """Le label des nœuds Neo4j d'après le préfixe de l'identifiant, lu dans le YAML."""
+    """Le label des nœuds Neo4j d'après le préfixe de l'identifiant, déclaré par les
+    sources."""
     embedding_enabled: bool
     """L'interrupteur d'embedding (ADR-023) : toujours ``True`` hors ``dev``."""
     skip_unconfigured: bool
@@ -78,7 +80,6 @@ def plan_run(params: dict[str, Any], settings: InfraSettings) -> RunPlan:
     parameters = validate_parameters(params)
     is_dev = settings.environment == DEV_ENVIRONMENT
     dev = resolve_dev_settings(parameters.dev, settings.environment)
-    labels = parameters.node_labels
     # Un run nu ingère TOUTES les sources ; `--params source=cass` le restreint.
     #
     # ⚠️ DETTE OUVERTE : un run qui mélange des sources doit pouvoir dire *laquelle* a
@@ -94,7 +95,7 @@ def plan_run(params: dict[str, Any], settings: InfraSettings) -> RunPlan:
         collection=settings.qdrant_collection,
         sources=resolve_sources(requested_source),
         node_hydration=_node_hydration(dev.node_hydration, is_dev),
-        node_labels=NodeLabels(default=labels.default, by_prefix=labels.by_prefix),
+        node_labels=NodeLabels(by_prefix=node_labels_by_prefix()),
         embedding_enabled=dev.embedding_enabled,
         skip_unconfigured=dev.skip_unconfigured,
         nuke_all=dev.nuke_all,

@@ -108,9 +108,7 @@ class TestStorageAdapters:
         """Le test qui a attrapé le ``NameError`` : le module ne s'importait pas,
         et son ``upsert_relations`` annonçait un ``RelationWriteResult`` inconnu.
         """
-        repo = Neo4jGraphRepository(
-            driver=None, labels=NodeLabels(default="Document", by_prefix={})
-        )
+        repo = Neo4jGraphRepository(driver=None, labels=NodeLabels(by_prefix={}))
         assert isinstance(repo, GraphRepository)
 
     def test_qdrant_vector_repository(self) -> None:

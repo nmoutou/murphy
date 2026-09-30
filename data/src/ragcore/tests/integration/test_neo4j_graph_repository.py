@@ -80,7 +80,7 @@ async def repo(neo4j_url):
     driver = create_neo4j_driver(url, "neo4j", password)
     async with driver.session() as session:
         await session.run("MATCH (n) DETACH DELETE n")
-    labels = NodeLabels(default="Document", by_prefix={"LEGIARTI": "Article"})
+    labels = NodeLabels(by_prefix={"LEGIARTI": "Article"})
     repository = Neo4jGraphRepository(driver, labels)
     yield repository
     await driver.close()

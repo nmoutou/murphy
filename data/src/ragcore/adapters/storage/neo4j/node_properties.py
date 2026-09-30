@@ -10,6 +10,7 @@ from ragcore.core.models.identifiers import IDENTIFIER_PREFIX_LENGTH, Identifier
 
 __all__ = [
     "CITATIONS_PROP",
+    "DEFAULT_LABEL",
     "PENDING_LABEL",
     "NodeHydration",
     "NodeLabels",
@@ -29,24 +30,26 @@ au prochain run. Seul (b) mérite un nœud, et c'est celui-ci.
 seul ``identifier`` et retombe sur ce nœud quel que soit son label.
 """
 
+DEFAULT_LABEL = "Document"
+"""Le label d'un document dont aucune source ne déclare le préfixe (les décisions)."""
+
 _LABEL_PATTERN = re.compile(r"[A-Z][A-Za-z0-9]*")
 _PREFIX_PATTERN = re.compile(rf"[A-Z]{{{IDENTIFIER_PREFIX_LENGTH}}}")
 
 
 @dataclass(frozen=True)
 class NodeLabels:
-    """Le label d'un nœud document, décidé par les 8 lettres de son identifiant.
+    """Le label d'un nœud document, décidé par le préfixe de son identifiant.
 
-    Une DONNÉE, lue dans ``node_labels`` de ``parameters.yml`` : le préfixe
+    Une DONNÉE, déclarée par chaque source (``sources/registry.py``) : le préfixe
     ``LEGIARTI`` donne ``Article``, et un préfixe que la table ne connaît pas reçoit
-    ``default``. Donner un label aux décisions, c'est ajouter une ligne au YAML.
+    ``DEFAULT_LABEL``.
 
     Les labels sont validés à la construction, parce qu'ils finissent dans le TEXTE
     d'une requête Cypher (``REMOVE n:Article:Texte…`` à la dé-hydratation) : un label
     mal formé arrête le run ici, avec un message, plutôt que dans Neo4j.
     """
 
-    default: str
     by_prefix: Mapping[str, str]
 
     def __post_init__(self) -> None:
@@ -66,10 +69,10 @@ class NodeLabels:
     @property
     def known(self) -> tuple[str, ...]:
         """Tous les labels que cette table peut poser, sans doublon."""
-        return tuple(dict.fromkeys((self.default, *self.by_prefix.values())))
+        return tuple(dict.fromkeys((DEFAULT_LABEL, *self.by_prefix.values())))
 
     def label_for(self, identifier: Identifier) -> str:
-        return self.by_prefix.get(identifier.prefix, self.default)
+        return self.by_prefix.get(identifier.prefix, DEFAULT_LABEL)
 
 
 @dataclass(frozen=True)

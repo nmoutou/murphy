@@ -69,7 +69,6 @@ def settings(tmp_path: Path) -> InfraSettings:
 def plan(settings: InfraSettings) -> RunPlan:
     params = {
         "chunking": {"max_chars": 384, "overlap_chars": 25},
-        "node_labels": {"default": "Document", "by_prefix": {}},
         "dev": {
             "nuke_all": False,
             "embedding_enabled": True,

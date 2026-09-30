@@ -19,7 +19,6 @@ __all__ = [
     "DevParameters",
     "IngestionParameters",
     "NodeHydrationParameters",
-    "NodeLabelsParameters",
     "validate_parameters",
 ]
 
@@ -28,13 +27,6 @@ _MISSING_ERROR_TYPE = "missing"
 
 class _StrictParameters(BaseModel):
     model_config = ConfigDict(strict=True, extra="forbid", frozen=True)
-
-
-class NodeLabelsParameters(_StrictParameters):
-    """Le label d'un nœud Neo4j d'après les 8 lettres de son identifiant."""
-
-    default: str
-    by_prefix: dict[str, str]
 
 
 class NodeHydrationParameters(_StrictParameters):
@@ -58,7 +50,6 @@ class IngestionParameters(_StrictParameters):
     """Tout ``parameters.yml``, plus les ``--params`` de la ligne de commande."""
 
     chunking: ChunkingConfig
-    node_labels: NodeLabelsParameters
     dev: DevParameters
     source: str | None = None
     """``--params source=cass``. Kedro fusionne les ``--params`` dans les paramètres :
