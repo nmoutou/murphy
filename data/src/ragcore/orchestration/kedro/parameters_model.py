@@ -13,8 +13,6 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, ValidationError
 from pydantic_core import ErrorDetails
 
-from ragcore.core.models.processing import ChunkingConfig
-
 __all__ = [
     "DevParameters",
     "IngestionParameters",
@@ -47,9 +45,11 @@ class DevParameters(_StrictParameters):
 
 
 class IngestionParameters(_StrictParameters):
-    """Tout ``parameters.yml``, plus les ``--params`` de la ligne de commande."""
+    """Tout ``parameters.yml``, plus les ``--params`` de la ligne de commande.
 
-    chunking: ChunkingConfig
+    La découpe n'y est plus : elle vit dans l'environnement, à côté du modèle
+    d'embedding (``ChunkingSettings``). Un bloc ``chunking`` est une clé inconnue."""
+
     dev: DevParameters
     source: str | None = None
     """``--params source=cass``. Kedro fusionne les ``--params`` dans les paramètres :

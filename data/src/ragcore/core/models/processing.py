@@ -1,8 +1,9 @@
 """Ce que le run traite : la découpe, et le modèle d'embedding.
 
-``ChunkingConfig`` est lu de ``parameters.yml`` (bloc ``chunking``) en tête de run. Un
-champ absent, mal typé ou inconnu arrête le run : aucun défaut dans le code, et aucune
-conversion (``"384"`` n'est pas un entier).
+``ChunkingConfig`` est lu de l'environnement (``ChunkingSettings`` :
+``CHUNKING_MAX_CHARS``, ``CHUNKING_OVERLAP_CHARS``) en tête de run. Une variable absente
+ou invalide arrête le run : aucun défaut dans le code. Le modèle reste strict : la
+conversion des chaînes de l'environnement est faite par ``ChunkingSettings``, pas ici.
 """
 
 from typing import Self

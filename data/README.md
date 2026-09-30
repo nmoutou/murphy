@@ -37,8 +37,10 @@ they all read `EMBEDDING_MODEL`. The pipeline additionally checks TEI's `GET /in
 before writing anything, and measures the vector dimension with a probe request. TEI is
 the only embedder: `EMBEDDING_MODEL` and `EMBEDDING_SERVICE_URL` are required.
 
-Tuning surface: `conf/base/parameters.yml` (`chunking`, `node_labels` and `dev` blocks).
-The Qdrant collection has a fixed name, `QDRANT_COLLECTION` in `../.env.dev`, shared with
+Tuning surface: `conf/base/parameters.yml` holds the `dev` block only. The chunking
+(`CHUNKING_MAX_CHARS`, `CHUNKING_OVERLAP_CHARS`) lives in `../.env.dev`, next to
+`EMBEDDING_MODEL`, since the chunk size is measured against the model's window. The
+Qdrant collection has a fixed name, `QDRANT_COLLECTION` in `../.env.dev`, shared with
 the backend: after changing the chunking or the embedding model, re-ingest the whole corpus.
 
 ## Develop

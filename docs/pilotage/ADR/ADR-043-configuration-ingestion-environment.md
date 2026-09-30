@@ -1,6 +1,6 @@
 # ADR-043 — Configuration de l'ingestion : un fichier, un bloc `dev`, `ENVIRONMENT` seul arbitre
 
-**Statut** : ✅ Accepté (30 septembre 2026) — amende ADR-022 §5-§6, ADR-023 et ADR-042 §3 · **§4 amendé le 30 septembre 2026** (labels Neo4j déclarés par les sources)
+**Statut** : ✅ Accepté (30 septembre 2026) — amende ADR-022 §5-§6, ADR-023 et ADR-042 §3 · **§4 amendé le 30 septembre 2026** (labels Neo4j déclarés par les sources ; découpe dans l'environnement)
 
 ## Contexte
 
@@ -49,6 +49,16 @@ environnements : une coquille arrête le run même en prod.
 > (`SourceDefinition.node_labels`), et un préfixe qu'aucune source ne déclare reçoit
 > `Document` (critique de `parameters.yml`, P15).
 
+> **Amendement (30 septembre 2026)** : `chunking` en est sorti aussi, et avec lui le
+> dernier réglage hors du bloc `dev`. `max_chars` est mesuré pour la fenêtre du modèle
+> d'embedding : il change avec `EMBEDDING_MODEL`, qui vit dans l'environnement. Les deux
+> sont désormais au même endroit : `CHUNKING_MAX_CHARS` et `CHUNKING_OVERLAP_CHARS`
+> (`.env.dev`, `ChunkingSettings`), obligatoires et sans défaut dans le code. Les bornes
+> restent celles de `ChunkingConfig`. `parameters.yml` ne porte plus que le bloc `dev`,
+> et un bloc `chunking` y est une clé inconnue qui arrête le run. Le prix : la découpe
+> n'est plus versionnée avec le code ; `.env.example` porte la valeur mesurée et sa
+> justification.
+
 ## Alternatives rejetées
 
 - **Une surcouche `conf/prod/`.** Une surcouche change des valeurs ; elle ne sait pas
@@ -84,7 +94,8 @@ environnements : une coquille arrête le run même en prod.
 
 **ADR-042.**
 
-- §3 : `chunking` vit dans `conf/base/parameters.yml`, à la racine. Il n'y a plus de bloc
+- §3 : `chunking` vit dans `conf/base/parameters.yml`, à la racine (depuis l'amendement
+  de §4 : dans l'environnement, `CHUNKING_*`). Il n'y a plus de bloc
   `embedding` : le modèle vient d'`EMBEDDING_MODEL`, la variable que lisent aussi TEI et
   le backend, et la dimension est mesurée auprès de TEI au démarrage. Il ne reste rien de
   la partition d'ADR-026.

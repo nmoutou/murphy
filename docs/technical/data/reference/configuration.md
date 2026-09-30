@@ -4,8 +4,8 @@ Deux surfaces :
 
 | Surface | Fichier | Contenu |
 |---|---|---|
-| **Réglages du pipeline** | `conf/base/parameters.yml` | Découpe, réglages de dev |
-| **Infra** (`InfraSettings`, `EmbeddingRuntimeSettings`) | `.env.dev` à la **racine du dépôt** | Le *où* et le *comment* : bases, secrets, chemins, nom de la collection Qdrant, modèle d'embedding servi par TEI |
+| **Réglages de dev** | `conf/base/parameters.yml` | Le bloc `dev` |
+| **Environnement** (`InfraSettings`, `EmbeddingRuntimeSettings`, `ChunkingSettings`) | `.env.dev` à la **racine du dépôt** | Le *où* et le *comment* : bases, secrets, chemins, nom de la collection Qdrant, modèle d'embedding servi par TEI, et la découpe, qui en dépend |
 
 `parameters.yml` illisible = run arrêté, jamais de défauts silencieux. Le fichier est
 validé **en entier** par un modèle strict (`orchestration/kedro/parameters_model.py`),
@@ -19,23 +19,15 @@ seul `source` y est accepté (`--params sorce=cass` est refusé).
 
 La collection s'appelle `QDRANT_COLLECTION` (`.env.dev`), et le backend lit la même
 variable (ADR-042). Il n'y a **qu'une** collection, réécrite en place à chaque run.
-Conséquence : changer `chunking` ou `EMBEDDING_MODEL` invalide les vecteurs déjà écrits, sans
+Conséquence : changer `CHUNKING_*` ou `EMBEDDING_MODEL` invalide les vecteurs déjà écrits, sans
 que rien ne les sépare des nouveaux — après un tel changement, **réingérer tout le
 corpus** (`nuke_all` en dev).
 
 ## `parameters.yml`, champ par champ
 
-### `chunking` — la découpe
-
-Obligatoire, sans défaut dans le code (`core/models/processing.py`) : un bloc absent, un
-champ manquant, mal typé ou inconnu arrête le run au démarrage. Le modèle d'embedding
-n'est pas ici : il vient de `EMBEDDING_MODEL` (voir plus bas), et sa dimension est
-mesurée auprès de TEI.
-
-| Clé | Valeur | Effet |
-|---|---|---|
-| `chunking.max_chars` | `384` | Taille maximale d'un chunk, en **caractères** (la fenêtre du modèle est en tokens ; ratio mesuré : 3,08 car/token en moyenne, 0,33 au pire). 384 est le plus grand qui tienne : ≤ 300 tokens mesurés au tokenizer du modèle sur les six sources, **zéro document perdu** (512 en perdait 1, 1024 en perdait 98). C'est aussi le levier de coût : l'embedding est ~99,9 % du temps d'un run, et 128 → 384 l'a divisé par ~5 (838 s → 173 s). |
-| `chunking.overlap_chars` | `25` | Recouvrement de la fenêtre glissante, en caractères. Doit rester < `max_chars` : sinon le curseur n'avance pas, et le run s'arrête au démarrage. Ne joue que dans un bloc plus long que `max_chars`, que la fenêtre coupe en plein mot : 25 caractères (3 ou 4 mots) gardent entier un mot coupé à la frontière, pas une phrase. **Non mesuré** : aucun jeu d'évaluation du retrieval n'existe pour le régler. |
+Il ne porte plus que le bloc `dev`. Un bloc `chunking` resté d'une ancienne forme est une
+clé inconnue : le run s'arrête (la découpe vit dans l'environnement, voir
+`ChunkingSettings`).
 
 ### `dev` — les commodités de développement, ignorées hors `dev`
 
@@ -98,3 +90,18 @@ sonde en échec = run arrêté avant tout nœud.
 | `EMBEDDING_SERVICE_URL` | — (**obligatoire**) | L'API compatible OpenAI de TEI, p. ex. `http://localhost:5001/v1`. Vide = absente. |
 | `EMBEDDING_BATCH_SIZE` | `32` | Taille de lot des requêtes à TEI. |
 | `EMBEDDING_INGESTION_TIMEOUT` | `120000` | Timeout d'une requête au service, en **ms** (> 0). Distinct d'`EMBEDDING_SERVICE_TIMEOUT` (10 s), celui du backend : le backend embarque une question, l'ingestion envoie en parallèle tous les lots d'un document, qui font la queue côté GPU. |
+
+### `ChunkingSettings` (préfixe `CHUNKING_`)
+
+La découpe, à côté d'`EMBEDDING_MODEL` parce qu'elle en dépend : `CHUNKING_MAX_CHARS` est
+le plus grand qui tienne dans la fenêtre du modèle, et se remesure quand il change. Les
+deux variables sont obligatoires, sans défaut dans le code : une variable absente, vide ou
+qui n'est pas un entier arrête le run au démarrage, comme une valeur hors bornes
+(`ChunkingConfig`, `core/models/processing.py`). Pour essayer une valeur sans toucher au
+fichier : `CHUNKING_MAX_CHARS=512 kedro run` (l'environnement du shell prime sur
+`.env.dev`).
+
+| Variable | Valeur | Effet |
+|---|---|---|
+| `CHUNKING_MAX_CHARS` | `384` | Taille maximale d'un chunk, en **caractères** (la fenêtre du modèle est en tokens ; ratio mesuré : 3,08 car/token en moyenne, 0,33 au pire). 384 est le plus grand qui tienne pour `all-mpnet-base-v2` : ≤ 300 tokens mesurés au tokenizer du modèle sur les six sources, **zéro document perdu** (512 en perdait 1, 1024 en perdait 98). C'est aussi le levier de coût : l'embedding est ~99,9 % du temps d'un run, et 128 → 384 l'a divisé par ~5 (838 s → 173 s). |
+| `CHUNKING_OVERLAP_CHARS` | `25` | Recouvrement de la fenêtre glissante, en caractères. Doit rester < `CHUNKING_MAX_CHARS` : sinon le curseur n'avance pas, et le run s'arrête au démarrage. Ne joue que dans un bloc plus long que `CHUNKING_MAX_CHARS`, que la fenêtre coupe en plein mot : 25 caractères (3 ou 4 mots) gardent entier un mot coupé à la frontière, pas une phrase. **Non mesuré** : aucun jeu d'évaluation du retrieval n'existe pour le régler. |

@@ -13,11 +13,14 @@ from ragcore.adapters.config.settings import Environment, InfraSettings
 from ragcore.adapters.storage.neo4j.node_properties import NodeHydration
 from ragcore.core.models.enums import SourceName
 from ragcore.core.models.identifiers import Identifier
+from ragcore.core.models.processing import ChunkingConfig
 from ragcore.orchestration.kedro.run_parameters import SAFE_DEV_SETTINGS
 from ragcore.orchestration.kedro.run_plan import plan_run
 
+CHUNKING = ChunkingConfig(max_chars=384, overlap_chars=25)
+"""La découpe, lue de l'environnement par ``ChunkingSettings``, hors de ces tests."""
+
 PARAMS: dict[str, Any] = {
-    "chunking": {"max_chars": 384, "overlap_chars": 25},
     "dev": {
         "nuke_all": False,
         "embedding_enabled": True,
@@ -82,38 +85,15 @@ def _without(path: str) -> dict[str, Any]:
 
 
 def test_un_run_nu_ecrit_la_collection_configuree() -> None:
-    plan = plan_run(PARAMS, _settings())
+    plan = plan_run(PARAMS, _settings(), CHUNKING)
 
     assert plan.context_source is None, "un run multi-source n'a pas de source"
     assert plan.collection == "chunks"
-    assert (plan.chunking.max_chars, plan.chunking.overlap_chars) == (384, 25)
-
-
-def test_sans_reglage_de_decoupe_le_run_s_arrete() -> None:
-    with pytest.raises(ValueError, match=_path("chunking")):
-        plan_run(_without("chunking"), _settings())
-
-
-def test_un_reglage_de_traitement_mal_forme_arrete_le_run() -> None:
-    params = _with("chunking", {"max_chars": 0, "overlap_chars": 25})
-
-    with pytest.raises(ValueError, match="max_chars"):
-        plan_run(params, _settings())
-
-
-@pytest.mark.parametrize("overlap_chars", [384, 400])
-def test_un_recouvrement_qui_n_est_pas_inferieur_a_la_taille_arrete_le_run(
-    overlap_chars: int,
-) -> None:
-    """Le curseur de la fenêtre glissante n'avancerait pas : boucle infinie."""
-    params = _with("chunking.overlap_chars", overlap_chars)
-
-    with pytest.raises(ValueError, match=_path("chunking")):
-        plan_run(params, _settings())
+    assert plan.chunking == CHUNKING
 
 
 def test_un_run_restreint_garde_sa_source() -> None:
-    plan = plan_run(_with("source", "cass"), _settings())
+    plan = plan_run(_with("source", "cass"), _settings(), CHUNKING)
 
     assert plan.sources == (SourceName.CASS,)
     assert plan.context_source is SourceName.CASS
@@ -121,13 +101,13 @@ def test_un_run_restreint_garde_sa_source() -> None:
 
 def test_une_source_inconnue_echoue_avant_d_ouvrir_quoi_que_ce_soit() -> None:
     with pytest.raises(ValueError, match="Source inconnue"):
-        plan_run(_with("source", "cas"), _settings())
+        plan_run(_with("source", "cas"), _settings(), CHUNKING)
 
 
 @pytest.mark.parametrize("path", BOOLEAN_PATHS)
 def test_sans_booleen_le_run_s_arrete_meme_hors_dev(path: str) -> None:
     with pytest.raises(ValueError, match=_path(path)):
-        plan_run(_without(path), _settings("prod"))
+        plan_run(_without(path), _settings("prod"), CHUNKING)
 
 
 @pytest.mark.parametrize("value", [None, "false", 0])
@@ -137,11 +117,11 @@ def test_un_booleen_mal_type_arrete_le_run_meme_hors_dev(
 ) -> None:
     """``"false"`` est une chaîne non vide : lue avec ``bool(...)``, elle vaudrait vrai."""
     with pytest.raises(ValueError, match=_path(path)):
-        plan_run(_with(path, value), _settings("prod"))
+        plan_run(_with(path, value), _settings("prod"), CHUNKING)
 
 
 def test_en_dev_le_bloc_dev_s_applique_tel_quel() -> None:
-    plan = plan_run(_with("dev", RISKIEST_DEV), _settings("dev"))
+    plan = plan_run(_with("dev", RISKIEST_DEV), _settings("dev"), CHUNKING)
 
     assert plan.nuke_all is True
     assert plan.embedding_enabled is False
@@ -154,14 +134,14 @@ def test_en_dev_le_bloc_dev_s_applique_tel_quel() -> None:
 def test_l_hydratation_neo4j_vient_du_yaml_en_dev() -> None:
     params = _with("dev.node_hydration.include_path", False)
 
-    hydration = plan_run(params, _settings("dev")).node_hydration
+    hydration = plan_run(params, _settings("dev"), CHUNKING).node_hydration
 
     assert (hydration.include_path, hydration.include_content) == (False, True)
 
 
 def test_hors_dev_le_bloc_dev_est_ignore() -> None:
     """Même réglé au plus risqué, le bloc `dev` ne touche pas une prod."""
-    plan = plan_run(_with("dev", RISKIEST_DEV), _settings("prod"))
+    plan = plan_run(_with("dev", RISKIEST_DEV), _settings("prod"), CHUNKING)
 
     assert plan.nuke_all is SAFE_DEV_SETTINGS.nuke_all is False
     assert plan.embedding_enabled is True
@@ -173,7 +153,7 @@ def test_hors_dev_un_avertissement_signale_le_bloc_ignore(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
     with caplog.at_level(logging.WARNING):
-        plan_run(PARAMS, _settings("prod"))
+        plan_run(PARAMS, _settings("prod"), CHUNKING)
 
     assert "le bloc `dev` de parameters.yml est ignoré" in caplog.text
 
@@ -182,13 +162,13 @@ def test_en_dev_aucun_avertissement_de_bloc_ignore(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
     with caplog.at_level(logging.WARNING):
-        plan_run(PARAMS, _settings("dev"))
+        plan_run(PARAMS, _settings("dev"), CHUNKING)
 
     assert "est ignoré" not in caplog.text
 
 
 def test_les_labels_neo4j_viennent_des_sources() -> None:
-    labels = plan_run(PARAMS, _settings()).node_labels
+    labels = plan_run(PARAMS, _settings(), CHUNKING).node_labels
 
     assert labels.label_for(Identifier(raw="LEGIARTI000006419264")) == "Article"
     assert labels.label_for(Identifier(raw="JURITEXT000019333891")) == "Document"
@@ -196,50 +176,53 @@ def test_les_labels_neo4j_viennent_des_sources() -> None:
 
 
 @pytest.mark.parametrize(
-    "path", ["nlp", "dev.node_hydration.include_pth", "chunking.max_char"]
+    "path", ["nlp", "dev.node_hydration.include_pth", "dev.nuke_al"]
 )
 def test_une_cle_inconnue_arrete_le_run(path: str) -> None:
     """Une clé morte ou mal orthographiée ne passe plus en silence, à aucun niveau."""
     with pytest.raises(ValueError, match=_path(path)):
-        plan_run(_with(path, True), _settings())
+        plan_run(_with(path, True), _settings(), CHUNKING)
 
 
 @pytest.mark.parametrize(
     "block",
-    ["maintenance", "exportation", "embedding_runtime", "embedding", "node_labels"],
+    [
+        "maintenance",
+        "exportation",
+        "embedding_runtime",
+        "embedding",
+        "node_labels",
+        "chunking",
+    ],
 )
 def test_l_ancienne_forme_est_refusee(block: str) -> None:
     """Un `parameters.yml` resté à une ancienne forme arrête le run. Le bloc `embedding`
     est parti dans l'environnement : `EMBEDDING_MODEL`, et une dimension mesurée ; le
-    bloc `node_labels` dans le registre des sources."""
+    bloc `chunking` aussi, à côté du modèle (`CHUNKING_*`) ; le bloc `node_labels` dans
+    le registre des sources."""
     with pytest.raises(ValueError, match=_path(block)):
-        plan_run(_with(block, {}), _settings())
+        plan_run(_with(block, {}), _settings(), CHUNKING)
 
 
 def test_un_params_mal_orthographie_arrete_le_run() -> None:
     """Kedro fusionne les `--params` dans les paramètres : `sorce=cass` est une clé
     inconnue, pas un run sur toutes les sources."""
     with pytest.raises(ValueError, match=_path("sorce")):
-        plan_run(_with("sorce", "cass"), _settings())
-
-
-def test_un_entier_ecrit_en_chaine_arrete_le_run() -> None:
-    with pytest.raises(ValueError, match=_path("chunking.max_chars")):
-        plan_run(_with("chunking.max_chars", "384"), _settings())
+        plan_run(_with("sorce", "cass"), _settings(), CHUNKING)
 
 
 def test_toutes_les_erreurs_sont_signalees_ensemble() -> None:
-    params = _with("dev.nuke_all", "false")
-    del params["chunking"]
+    params = _without("dev.skip_unconfigured")
+    params["dev"]["nuke_all"] = "false"
 
     with pytest.raises(ValueError) as raised:
-        plan_run(params, _settings())
+        plan_run(params, _settings(), CHUNKING)
 
     assert "`dev.nuke_all`" in str(raised.value)
-    assert "`chunking`" in str(raised.value)
+    assert "`dev.skip_unconfigured`" in str(raised.value)
 
 
 def test_le_parameters_yml_livre_est_valide() -> None:
     params = yaml.safe_load(SHIPPED_PARAMETERS.read_text(encoding="utf-8"))
 
-    assert plan_run(params, _settings("dev")).collection == "chunks"
+    assert plan_run(params, _settings("dev"), CHUNKING).collection == "chunks"

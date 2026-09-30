@@ -18,7 +18,7 @@ from ragcore.adapters.config.settings import (
 from ragcore.adapters.embedding.tei_embedder import TeiEmbedder
 from ragcore.application.ingestion_runner import IngestionRunner
 from ragcore.application.run_context import PipelineContext
-from ragcore.core.models.processing import EmbeddingModel
+from ragcore.core.models.processing import ChunkingConfig, EmbeddingModel
 from ragcore.orchestration.kedro import assembly, stores
 from ragcore.orchestration.kedro.assembly import (
     ReportsTruncations,
@@ -68,7 +68,6 @@ def settings(tmp_path: Path) -> InfraSettings:
 @pytest.fixture
 def plan(settings: InfraSettings) -> RunPlan:
     params = {
-        "chunking": {"max_chars": 384, "overlap_chars": 25},
         "dev": {
             "nuke_all": False,
             "embedding_enabled": True,
@@ -77,7 +76,8 @@ def plan(settings: InfraSettings) -> RunPlan:
         },
         "source": "cass",
     }
-    return plan_run(params, settings)
+    chunking = ChunkingConfig(max_chars=384, overlap_chars=25)
+    return plan_run(params, settings, chunking)
 
 
 @pytest.fixture

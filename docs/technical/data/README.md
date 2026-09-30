@@ -88,5 +88,5 @@ Extras optionnels (`pyproject.toml`) : `notebooks`, `docs`, `dev`.
 | `ValidationError` sur `environment` au démarrage | `ENVIRONMENT` ne vaut ni `dev` ni `prod` (casse comprise) : corriger la valeur. |
 | Le run échoue avant d'ingérer, en nommant un modèle | La précondition TEI : le modèle servi par le conteneur (`GET /info`) n'est pas `EMBEDDING_MODEL`. Redémarrer TEI après avoir changé la variable (`npm run ingest:up`). |
 | Le run échoue avant d'ingérer sur « sonde de dimension » ou « Impossible d'interroger » | TEI n'est pas joignable à `EMBEDDING_SERVICE_URL` : le démarrer (`npm run ingest:up`, ~4 min) ou corriger l'URL. |
-| `chunk.truncated` non nul au bilan | Le `chunking.max_chars` configuré dépasse la fenêtre du modèle d'embedding : le corpus est complet mais des fins de chunks ne sont pas indexées — baisser `chunking.max_chars`. |
+| `chunk.truncated` non nul au bilan | Le `CHUNKING_MAX_CHARS` configuré dépasse la fenêtre du modèle d'embedding : le corpus est complet mais des fins de chunks ne sont pas indexées — baisser `CHUNKING_MAX_CHARS`. |
 | Le backend ne trouve rien après un run | Le run était-il `ok` ? Un run `degraded` a laissé un corpus incomplet dans la collection servie. Lire le bilan dans `meta_run_summaries`, puis relancer. |

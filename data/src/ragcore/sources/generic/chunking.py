@@ -56,7 +56,7 @@ class StructuralChunker:
         **Ce ne sont pas deux stratégies concurrentes.** L'ancienne version choisissait
         l'une *ou* l'autre — et donc, dès qu'un bloc structurel existait, elle le rendait
         entier. Sur le corpus, un article fait couramment 3000 caractères là où
-        ``chunking.max_chars`` en vaut 128 : l'embedder aurait tronqué en silence (la fenêtre
+        ``CHUNKING_MAX_CHARS`` en vaut 128 : l'embedder aurait tronqué en silence (la fenêtre
         d'``all-mpnet-base-v2`` est de 384 tokens), et les trois quarts du texte se
         seraient évaporés sans qu'aucune exception ne soit levée.
 

@@ -1,7 +1,8 @@
 """``InfraSettings`` — lue de l'environnement, jamais du dépôt.
 
-Les bases, les secrets, les chemins : le *où* du pipeline. Les réglages du traitement
-(découpe, modèle d'embedding) vivent dans ``conf/base/parameters.yml``.
+Les bases, les secrets, les chemins : le *où* du pipeline. S'y ajoutent le modèle
+d'embedding et la découpe, qui changent ensemble : ``max_chars`` est mesuré pour la
+fenêtre du modèle. ``conf/base/parameters.yml`` ne garde que le bloc ``dev``.
 
 La forme de ces modèles est **dictée par ses appelants**. ``orchestration/kedro/stores.py`` appelle
 ``.get_secret_value()`` sur le mot de passe Neo4j et la clé Qdrant : ce sont donc des
@@ -29,10 +30,14 @@ from typing import Literal
 from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from ragcore.core.models.processing import ChunkingConfig
+
 __all__ = [
+    "ChunkingSettings",
     "EmbeddingRuntimeSettings",
     "Environment",
     "InfraSettings",
+    "get_chunking_config",
     "get_embedding_runtime_settings",
     "get_infra_settings",
 ]
@@ -195,6 +200,29 @@ class EmbeddingRuntimeSettings(BaseSettings):
     embarque une question, l'ingestion des lots de chunks envoyés en parallèle."""
 
 
+class ChunkingSettings(BaseSettings):
+    """La découpe (``CHUNKING_MAX_CHARS``, ``CHUNKING_OVERLAP_CHARS``), en caractères.
+
+    À côté d'``EMBEDDING_MODEL`` parce qu'elle en dépend : ``max_chars`` est le plus grand
+    qui tienne dans la fenêtre du modèle, à remesurer quand il change. Obligatoires et
+    sans défaut : en changer invalide les vecteurs écrits. L'environnement ne donne que
+    des chaînes : elles sont converties ici, puis validées par ``ChunkingConfig``.
+    """
+
+    model_config = SettingsConfigDict(
+        env_file=ROOT_ENV_FILE, env_prefix="chunking_", extra="ignore"
+    )
+
+    max_chars: int
+    overlap_chars: int
+
+    def to_config(self) -> ChunkingConfig:
+        """La découpe du run, bornée : ``0 ≤ overlap_chars < max_chars``."""
+        return ChunkingConfig(
+            max_chars=self.max_chars, overlap_chars=self.overlap_chars
+        )
+
+
 @lru_cache
 def get_infra_settings() -> InfraSettings:
     _require_env_file()
@@ -205,3 +233,9 @@ def get_infra_settings() -> InfraSettings:
 def get_embedding_runtime_settings() -> EmbeddingRuntimeSettings:
     _require_env_file()
     return EmbeddingRuntimeSettings()
+
+
+@lru_cache
+def get_chunking_config() -> ChunkingConfig:
+    _require_env_file()
+    return ChunkingSettings().to_config()

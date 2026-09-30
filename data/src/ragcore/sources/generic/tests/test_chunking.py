@@ -61,7 +61,7 @@ def test_aucun_chunk_ne_depasse_la_taille_maximale(fixtures_dir: Path) -> None:
 
     L'ancienne version choisissait entre découpe structurelle *ou* taille fixe. Dès
     qu'un bloc existait, elle le rendait ENTIER : un article de 2914 caractères donnait
-    un chunk de 2914 caractères, quand ``chunking.max_chars`` en vaut 128.
+    un chunk de 2914 caractères, quand ``CHUNKING_MAX_CHARS`` en vaut 128.
 
     L'embedder l'aurait tronqué en silence — la fenêtre d'``all-mpnet-base-v2`` est de
     384 tokens — et les trois quarts du texte se seraient évaporés sans qu'aucune

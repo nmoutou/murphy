@@ -16,6 +16,7 @@ from kedro.io import DataCatalog
 
 from ragcore.adapters.config.settings import (
     InfraSettings,
+    get_chunking_config,
     get_embedding_runtime_settings,
     get_infra_settings,
 )
@@ -81,7 +82,7 @@ class TelemetryHooks:
     ) -> None:
         """Assemble le run et le POSE au catalogue : le DAG nomme, le hook fournit."""
         settings = get_infra_settings()
-        plan = plan_run(load_parameters(catalog), settings)
+        plan = plan_run(load_parameters(catalog), settings, get_chunking_config())
         embedder = prepare_embedder(get_embedding_runtime_settings(), self._runtime)
         for name, value in self._assemble(settings, plan, embedder).items():
             catalog.save(name, value)

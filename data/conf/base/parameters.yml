@@ -1,16 +1,5 @@
-# ============================================================
-# Découpe
-# ============================================================
-
-# Changer une valeur invalide les vecteurs déjà écrits : réingérer tout le corpus.
-chunking:
-  # Le plus grand qui tienne dans la fenêtre de all-mpnet-base-v2 (mesuré, cf.
-  # configuration.md). À remesurer si EMBEDDING_MODEL change.
-  max_chars: 384
-  # Ne joue que dans un bloc plus long que `max_chars`, coupé en plein mot : 3 ou 4
-  # mots, de quoi garder entier un mot coupé à la frontière, pas une phrase. Non mesuré.
-  # Doit rester < `max_chars`.
-  overlap_chars: 25
+# La découpe n'est pas ici : elle vit dans `.env.dev` (CHUNKING_MAX_CHARS,
+# CHUNKING_OVERLAP_CHARS), à côté d'EMBEDDING_MODEL dont elle dépend.
 
 # ============================================================
 # Dev — IGNORÉ hors ENVIRONMENT=dev

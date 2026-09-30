@@ -1,9 +1,9 @@
 """Le plan du run : ce qu'il écrit, et comment — dérivé UNE fois, en tête de run.
 
 Tout ce que le hook déduit des paramètres (``parameters.yml``, ``--params``) et de
-l'environnement est rassemblé ici, en une donnée figée. Les briques de l'assemblage
-(``stores``, ``assembly``) la lisent ; aucune ne re-dérive ce qu'elle contient — deux
-dérivations sont deux occasions de diverger.
+l'environnement (dont la découpe, ``ChunkingSettings``) est rassemblé ici, en une donnée
+figée. Les briques de l'assemblage (``stores``, ``assembly``) la lisent ; aucune ne
+re-dérive ce qu'elle contient — deux dérivations sont deux occasions de diverger.
 """
 
 from __future__ import annotations
@@ -37,6 +37,7 @@ class RunPlan:
     """Ce que ce run écrit, et comment."""
 
     chunking: ChunkingConfig
+    """La découpe : ``CHUNKING_MAX_CHARS`` et ``CHUNKING_OVERLAP_CHARS``."""
     collection: str
     """La collection Qdrant : un nom fixe, lu de ``QDRANT_COLLECTION``."""
     sources: tuple[SourceName, ...]
@@ -68,7 +69,9 @@ class RunPlan:
         return self.sources[0] if len(self.sources) == 1 else None
 
 
-def plan_run(params: dict[str, Any], settings: InfraSettings) -> RunPlan:
+def plan_run(
+    params: dict[str, Any], settings: InfraSettings, chunking: ChunkingConfig
+) -> RunPlan:
     """Dérive le plan du run. Sans I/O : rien n'est ouvert, seul le plan est journalisé.
 
     ``params`` contient déjà les ``--params`` de la ligne de commande : Kedro les
@@ -91,7 +94,7 @@ def plan_run(params: dict[str, Any], settings: InfraSettings) -> RunPlan:
         settings.source if parameters.source is None else parameters.source
     )
     plan = RunPlan(
-        chunking=parameters.chunking,
+        chunking=chunking,
         collection=settings.qdrant_collection,
         sources=resolve_sources(requested_source),
         node_hydration=_node_hydration(dev.node_hydration, is_dev),
@@ -126,6 +129,11 @@ def _warn_dev_ignored(environment: Environment) -> None:
 
 def _log_plan(plan: RunPlan) -> None:
     logger.info("Collection Qdrant : %s", plan.collection)
+    logger.info(
+        "Découpe : %d caractères, recouvrement %d",
+        plan.chunking.max_chars,
+        plan.chunking.overlap_chars,
+    )
     logger.info(
         "Sources du run (%d) : %s",
         len(plan.sources),

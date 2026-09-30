@@ -12,7 +12,8 @@ run et sa clôture).
 
 Le hook est le **point d'assemblage** du run. Dans l'ordre :
 
-1. **Chargement des settings** : `InfraSettings` + `EmbeddingRuntimeSettings`, lues du
+1. **Chargement des settings** : `InfraSettings`, `EmbeddingRuntimeSettings` et
+   `ChunkingSettings`, lues du
    `.env.dev` **racine** (chemin absolu, jamais le CWD). Fichier absent = levée immédiate.
 2. **Chargement de `parameters.yml`** (`run_parameters.load_parameters`) — sans fallback :
    un YAML illisible arrête le run.
@@ -20,7 +21,7 @@ Le hook est le **point d'assemblage** du run. Dans l'ordre :
    - la validation du fichier entier (`parameters_model.validate_parameters`), `--params`
      compris : un modèle strict, sans défaut dans le code. Clé inconnue, absente ou mal
      typée = échec au démarrage, toutes les erreurs listées ensemble ;
-   - la découpe : le bloc `chunking` ;
+   - la découpe : `CHUNKING_MAX_CHARS` et `CHUNKING_OVERLAP_CHARS` (`ChunkingSettings`) ;
    - la collection Qdrant : `QDRANT_COLLECTION`, un nom fixe lu des settings ;
    - les sources (`run_parameters.resolve_sources`) : `--params source=…` ou `SOURCE` du
      `.env`, défaut `all` = les six ingérables. Valeur inconnue = échec au démarrage en
@@ -48,7 +49,7 @@ Le hook est le **point d'assemblage** du run. Dans l'ordre :
    `data/08_reporting/events/`, audit Mongo, agrégateur `RunStats`).
 7. **Briques de traitement** (`assembly.build_processing_stack`) : `CompositeConnector`
    (un connecteur par source, routé), `RoutingParser` (un `GenericParser` par source,
-   chacun avec sa table de rôles), `StructuralChunker` (`chunking.max_chars` / `chunking.overlap_chars`),
+   chacun avec sa table de rôles), `StructuralChunker` (`CHUNKING_MAX_CHARS` / `CHUNKING_OVERLAP_CHARS`),
    `RoutingRelationExtractor`, et l'embedder.
 8. **Pool phase 1** (`assembly.build_runner`) : un `IngestionRunner` à 4 workers, armé de
    *fabriques* (runtime, télémétrie, use case) — jamais d'instances partagées.
