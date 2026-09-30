@@ -60,7 +60,7 @@ def _run(
             pipeline_context=PipelineContext.create(),
             telemetry=telemetry,
             pipeline_runtime=runtime,
-            exportation_params={},
+            skip_unconfigured=False,
         )
     finally:
         runtime.close()

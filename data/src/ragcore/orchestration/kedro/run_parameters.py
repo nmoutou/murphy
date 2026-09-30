@@ -23,6 +23,7 @@ __all__ = [
     "resolve_embedding_model",
     "resolve_node_hydration",
     "resolve_node_labels",
+    "resolve_skip_unconfigured",
     "resolve_sources",
 ]
 
@@ -129,6 +130,22 @@ def resolve_node_labels(params: dict[str, Any]) -> NodeLabels:
         default=str(labels["default"]),
         by_prefix={str(prefix): str(label) for prefix, label in by_prefix.items()},
     )
+
+
+def resolve_skip_unconfigured(params: dict[str, Any]) -> bool:
+    """Le curseur des balises non configurées — un booléen strict, ou un ARRÊT.
+
+    Pas de ``bool(...)`` : la chaîne ``"false"`` vaudrait vrai. Pas de défaut non plus :
+    une clé absente ou mal typée arrête le run ici, avant qu'un nœud ne touche aux bases.
+    """
+    value = params.get("exportation", {}).get("skip_unconfigured")
+    if not isinstance(value, bool):
+        raise ValueError(
+            "`exportation.skip_unconfigured` est absent de `parameters.yml` ou n'est "
+            f"pas un booléen (reçu : {value!r}) : le run est interrompu. Attendu : "
+            "`true` ou `false`."
+        )
+    return value
 
 
 def resolve_sources(

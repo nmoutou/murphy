@@ -78,7 +78,9 @@ embedding_runtime:
   enabled: true
 
 exportation:
-  unconfigured: ingest
+  # `true` retire du document les métadonnées des balises non configurées ; le signal
+  # `tag.unconfigured` est émis dans les deux cas. Booléen obligatoire.
+  skip_unconfigured: false
 
   neo4j:
     include_path: true

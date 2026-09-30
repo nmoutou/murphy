@@ -101,9 +101,9 @@ def _compute_idempotence() -> Node:
             "pipeline_context",
             "telemetry",
             "pipeline_runtime",
-            # Le curseur `exportation.unconfigured` (ingest|skip) : appliqué au site de
-            # parse, juste avant que le document parte à l'ingestion.
-            "params:exportation",
+            # Le curseur `exportation.skip_unconfigured`, validé par le plan du run :
+            # appliqué au site de parse, juste avant que le document parte à l'ingestion.
+            "skip_unconfigured",
         ],
         outputs=["to_process", "to_skip"],
         name="computeIdempotence",

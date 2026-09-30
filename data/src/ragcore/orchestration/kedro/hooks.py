@@ -135,6 +135,8 @@ class TelemetryHooks:
             # phase 2) comme pont sync→async — l'équivalent déclaré de l'ancienne
             # globale run_async.
             "pipeline_runtime": self._runtime,
+            # Un réglage du plan, pas un objet vivant : déjà validé par `plan_run`.
+            "skip_unconfigured": plan.skip_unconfigured,
         }
 
     def _open_session(

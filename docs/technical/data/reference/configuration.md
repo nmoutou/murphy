@@ -56,7 +56,7 @@ champ manquant, mal typé ou inconnu arrête le run au démarrage.
 
 | Clé | Valeur | Effet |
 |---|---|---|
-| `unconfigured` | `ingest` | Le sort des balises non-configurées (cadrage « trois portes ») : `ingest` = la balise entre en metadata sous sa clé chemin-complet ; `skip` = retirée du document (prod). Le signal `tag.unconfigured`, lui, est TOUJOURS émis — on compte d'abord, on filtre ensuite. Valeur invalide = échec au démarrage. |
+| `skip_unconfigured` | `false` | Le sort des balises non-configurées (cadrage « trois portes ») : `false` = la balise entre en metadata sous sa clé chemin-complet ; `true` = retirée du document. Le signal `tag.unconfigured`, lui, est TOUJOURS émis — on compte d'abord, on filtre ensuite. **Obligatoire**, booléen strict (`"false"` est refusé) : clé absente ou mal typée = échec dans le plan du run, avant tout nœud. |
 | `neo4j.include_path` / `include_content` | `true` / `true` | Hydratation des nœuds Neo4j **en dev seulement** (forcés à `false` ailleurs — ADR-022 §2) : chemins des fichiers XML source, texte du document (`_text_content`). |
 | `neo4j.labels.default` / `labels.by_prefix` | `Document` / `LEGIARTI: Article`, `LEGITEXT: Texte`, `LEGISCTA: Section` | Le label d'un nœud Neo4j d'après les 8 lettres de son identifiant ; un préfixe absent de la table reçoit `default`. **Obligatoire** (aucun défaut dans le code) : bloc absent, préfixe qui n'est pas 8 majuscules ou label mal formé = échec au démarrage. S'applique en dev comme en prod. Changer la table sans `nuke_all` laisse l'ancien label sur les nœuds déjà écrits. |
 | `mongodb.database` / `collection` | `LEGIFRANCE` / `chunks` | ⚠️ **Vestige non lu** : les noms réels viennent du `.env` (`MONGODB_DATA_DB_NAME`) et des dépôts (`documents`, `manifest`). |

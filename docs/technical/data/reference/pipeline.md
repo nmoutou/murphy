@@ -103,7 +103,7 @@ Sortie : `raw_documents`.
 ## 4. `computeIdempotence`
 
 Entrées : `raw_documents`, `parser`, `manifest_repo`, contexte, télémétrie (de type
-`WorkerTelemetry` : ce nœud *déclare* des inconnus), runtime, `params:exportation`.
+`WorkerTelemetry` : ce nœud *déclare* des inconnus), runtime, `skip_unconfigured` (du plan du run).
 
 Pour chaque `RawDocument` :
 
@@ -118,8 +118,8 @@ Pour chaque `RawDocument` :
    `record_unknown("tag.unconfigured", …)` et `record_unknown("root", …)` pour ce que la
    cascade du parser a rangé sans que la table le lui apprenne. C'est la vigie de dérive
    DILA : elle compte, que la donnée soit ensuite gardée ou retirée.
-3. **Curseur `exportation.unconfigured`** (`ingest` | `skip`, validé — une coquille lève
-   en nommant les valeurs valides) : en `skip`, les métadonnées non-configurées sont
+3. **Curseur `exportation.skip_unconfigured`** (booléen, validé par `plan_run` en tête de
+   run, avant tout nœud) : à `true`, les métadonnées non-configurées sont
    retirées du document juste avant l'ingestion. On compte d'abord, on filtre ensuite.
 4. **Idempotence** : `manifest_repo.last_for_identifier(identifier)` →
    `determine_operation` : identifiant inconnu du manifest = `INSERT`, connu = `UPDATE`.

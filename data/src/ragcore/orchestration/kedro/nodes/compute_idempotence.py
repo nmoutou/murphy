@@ -35,24 +35,6 @@ from ragcore.core.telemetry_events import DOCUMENT_INVALIDATED, DOCUMENT_PARSED
 
 logger = logging.getLogger(__name__)
 
-_UNCONFIGURED_BEHAVIORS = frozenset({"ingest", "skip"})
-
-
-def _resolve_unconfigured_behavior(exportation_params: dict[str, object]) -> str:
-    """Le curseur ``exportation.unconfigured`` — validé au démarrage, jamais deviné.
-
-    Une valeur inconnue (coquille ``skipp``) doit échouer EN NOMMANT les valeurs
-    valides, pas retomber en silence sur le défaut : un run qui n'applique pas le
-    comportement qu'on croit avoir demandé est un échec silencieux (même règle que
-    ``resolve_sources`` dans ``run_parameters``).
-    """
-    value = str(exportation_params.get("unconfigured", "ingest")).strip().lower()
-    if value not in _UNCONFIGURED_BEHAVIORS:
-        valides = ", ".join(sorted(_UNCONFIGURED_BEHAVIORS))
-        msg = f"exportation.unconfigured invalide : {value!r}. Valeurs : {valides}."
-        raise ValueError(msg)
-    return value
-
 
 @dataclass(frozen=True)
 class _Rejection:
@@ -81,7 +63,7 @@ def compute_idempotence_node(
     # n'émet pas seulement. Le stack du hook (RegistryAwareTelemetry) le fournit.
     telemetry: WorkerTelemetry,
     pipeline_runtime: AsyncRuntime,
-    exportation_params: dict[str, object],
+    skip_unconfigured: bool,
 ) -> tuple[list[tuple[ParsedDocument, Operation]], list[str]]:
     """Parse documents and determine which need processing (INSERT vs UPDATE).
 
@@ -91,11 +73,11 @@ def compute_idempotence_node(
     C'est aussi le SITE DE PARSE — donc le site du signal et du curseur : le
     parser est pur et rend ses constats dans ``ParseResult`` ; ce nœud,
     qui tient la télémétrie, déclare les balises non-configurées (``tag.unconfigured``,
-    TOUJOURS), puis applique le curseur ``exportation.unconfigured`` — ``skip`` retire
+    TOUJOURS), puis applique le curseur ``skip_unconfigured`` — ``True`` retire
     les métadonnées non-configurées du document juste avant qu'il parte vers
     l'ingestion. Compter d'abord, filtrer ensuite : le signal précède le filtre.
+    Le curseur arrive déjà validé par le plan du run (``run_plan.plan_run``).
     """
-    skip_unconfigured = _resolve_unconfigured_behavior(exportation_params) == "skip"
     site = _ParseSite(manifest_repo, pipeline_context, telemetry, pipeline_runtime)
     to_process: list[tuple[ParsedDocument, Operation]] = []
     to_skip: list[str] = []

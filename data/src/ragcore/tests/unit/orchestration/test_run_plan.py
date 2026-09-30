@@ -16,9 +16,10 @@ PROCESSING: dict[str, Any] = {
 PARAMS: dict[str, Any] = {
     **PROCESSING,
     "exportation": {
+        "skip_unconfigured": False,
         "neo4j": {
             "labels": {"default": "Document", "by_prefix": {"LEGIARTI": "Article"}}
-        }
+        },
     },
 }
 """Les blocs de `parameters.yml` sans défaut dans le code."""
@@ -77,6 +78,39 @@ def test_couper_l_embedding_n_a_d_effet_qu_en_dev() -> None:
 
     assert plan_run(params, _settings("prod"), {}).embedding_enabled
     assert not plan_run(params, _settings("dev"), {}).embedding_enabled
+
+
+def _with_skip_unconfigured(value: object) -> dict[str, Any]:
+    return {
+        **PARAMS,
+        "exportation": {**PARAMS["exportation"], "skip_unconfigured": value},
+    }
+
+
+@pytest.mark.parametrize("value", [True, False])
+def test_le_curseur_des_balises_non_configurees_vient_du_yaml(value: bool) -> None:
+    assert (
+        plan_run(_with_skip_unconfigured(value), _settings(), {}).skip_unconfigured
+        is value
+    )
+
+
+def test_sans_curseur_des_balises_non_configurees_le_run_s_arrete() -> None:
+    exportation = {
+        name: value
+        for name, value in PARAMS["exportation"].items()
+        if name != "skip_unconfigured"
+    }
+
+    with pytest.raises(ValueError, match=r"exportation\.skip_unconfigured"):
+        plan_run({**PARAMS, "exportation": exportation}, _settings(), {})
+
+
+@pytest.mark.parametrize("value", [None, "false", "skip", 0])
+def test_un_curseur_non_booleen_arrete_le_run(value: object) -> None:
+    """``"false"`` est une chaîne non vide : lue avec ``bool(...)``, elle vaudrait vrai."""
+    with pytest.raises(ValueError, match=r"exportation\.skip_unconfigured"):
+        plan_run(_with_skip_unconfigured(value), _settings(), {})
 
 
 def test_les_labels_neo4j_viennent_du_yaml_par_prefixe_d_identifiant() -> None:

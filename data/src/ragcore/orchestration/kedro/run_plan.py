@@ -22,6 +22,7 @@ from ragcore.orchestration.kedro.run_parameters import (
     resolve_embedding_model,
     resolve_node_hydration,
     resolve_node_labels,
+    resolve_skip_unconfigured,
     resolve_sources,
 )
 
@@ -47,6 +48,9 @@ class RunPlan:
     """Le label des nœuds Neo4j d'après le préfixe de l'identifiant, lu dans le YAML."""
     embedding_enabled: bool
     """L'interrupteur d'embedding (dev, ADR-023), arbitré par l'environnement."""
+    skip_unconfigured: bool
+    """Le curseur des balises non configurées : ``True`` retire leurs métadonnées du
+    document. Validé ici, avant tout nœud — une coquille n'attend pas ``nukeAll``."""
 
     @property
     def context_source(self) -> SourceName | None:
@@ -89,6 +93,7 @@ def plan_run(
         node_hydration=resolve_node_hydration(params, settings.environment),
         node_labels=resolve_node_labels(params),
         embedding_enabled=resolve_embedding_enabled(params, settings.environment),
+        skip_unconfigured=resolve_skip_unconfigured(params),
     )
     _log_plan(plan)
     return plan
@@ -100,6 +105,10 @@ def _log_plan(plan: RunPlan) -> None:
         "Sources du run (%d) : %s",
         len(plan.sources),
         ", ".join(s.value for s in plan.sources),
+    )
+    logger.info(
+        "Balises non configurées : %s",
+        "métadonnées retirées" if plan.skip_unconfigured else "métadonnées ingérées",
     )
     if not plan.embedding_enabled:
         # En dehors de `dev`, on embarque TOUJOURS, quoi que dise le flag : un flag

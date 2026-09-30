@@ -61,6 +61,10 @@ pipeline_runtime:
   type: MemoryDataset
   copy_mode: assign
 
+# --- Réglages du plan, validés par `plan_run` avant tout nœud ---
+skip_unconfigured:
+  type: MemoryDataset
+
 # ============================================================
 # Données inter-nœuds — produites et consommées dans le run
 # ============================================================
