@@ -42,7 +42,8 @@ Points critiques :
 
 - `ENVIRONMENT=dev` ouvre le bloc `dev` de `parameters.yml` : `nuke_all`, l'interrupteur
   d'embedding, l'ingestion des balises non configurées et l'hydratation Neo4j. Ailleurs,
-  le bloc est ignoré (avertissement au log) ; l'absence de la variable vaut `prod`.
+  le bloc est ignoré (avertissement au log) ; l'absence de la variable vaut `prod`, et
+  toute valeur autre que `dev` ou `prod` arrête le run.
 - `EMBEDDING_MODEL` et `EMBEDDING_SERVICE_URL` sont obligatoires : TEI est le seul
   embedder, et il doit être démarré (`npm run ingest:up`) avant un run.
 
@@ -83,7 +84,8 @@ Extras optionnels (`pyproject.toml`) : `notebooks`, `docs`, `dev`.
 |---|---|
 | `FileNotFoundError` au démarrage sur `.env.dev` | Le fichier vit à la **racine du dépôt**, pas dans `data/`. |
 | Run « ok » mais 0 document | `XML_SOURCE_PATH` ne pointe sur rien (un répertoire absent ne lève pas — il donne zéro document) ; vérifier le chemin et les sous-répertoires par source. |
-| Avertissement « le bloc `dev` de parameters.yml est ignoré » | `ENVIRONMENT` ≠ `dev` dans le `.env.dev` racine : `nuke_all` n'efface rien, l'embedding est calculé — c'est le garde-fou voulu. |
+| Avertissement « le bloc `dev` de parameters.yml est ignoré » | `ENVIRONMENT=prod`, ou absente, dans le `.env.dev` racine : `nuke_all` n'efface rien, l'embedding est calculé — c'est le garde-fou voulu. |
+| `ValidationError` sur `environment` au démarrage | `ENVIRONMENT` ne vaut ni `dev` ni `prod` (casse comprise) : corriger la valeur. |
 | Le run échoue avant d'ingérer, en nommant un modèle | La précondition TEI : le modèle servi par le conteneur (`GET /info`) n'est pas `EMBEDDING_MODEL`. Redémarrer TEI après avoir changé la variable (`npm run ingest:up`). |
 | Le run échoue avant d'ingérer sur « sonde de dimension » ou « Impossible d'interroger » | TEI n'est pas joignable à `EMBEDDING_SERVICE_URL` : le démarrer (`npm run ingest:up`, ~4 min) ou corriger l'URL. |
 | `chunk.truncated` non nul au bilan | Le `chunking.max_chars` configuré dépasse la fenêtre du modèle d'embedding : le corpus est complet mais des fins de chunks ne sont pas indexées — baisser `chunking.max_chars`. |

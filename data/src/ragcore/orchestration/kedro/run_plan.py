@@ -12,7 +12,7 @@ import logging
 from dataclasses import dataclass
 from typing import Any
 
-from ragcore.adapters.config.settings import InfraSettings
+from ragcore.adapters.config.settings import Environment, InfraSettings
 from ragcore.adapters.storage.neo4j.node_properties import NodeHydration, NodeLabels
 from ragcore.core.models.enums import SourceName
 from ragcore.core.models.processing import ChunkingConfig
@@ -114,7 +114,7 @@ def _node_hydration(hydration: NodeHydrationParameters, is_dev: bool) -> NodeHyd
     )
 
 
-def _warn_dev_ignored(environment: str) -> None:
+def _warn_dev_ignored(environment: Environment) -> None:
     logger.warning(
         "ENVIRONMENT=%s : le bloc `dev` de parameters.yml est ignoré. Rien n'est "
         "effacé, l'embedding est calculé, les métadonnées des balises non configurées "

@@ -79,7 +79,7 @@ service.
 
 | Variable | Défaut | Rôle |
 |---|---|---|
-| `ENVIRONMENT` | `prod` | **Le défaut penche vers le refus** : seul `dev` applique le bloc `dev` de `parameters.yml` (`nuke_all`, interrupteur d'embedding, balises non configurées, hydratation Neo4j). Un `.env` incomplet est traité comme protégé. |
+| `ENVIRONMENT` | `prod` | `dev` ou `prod` (ADR-043). **Le défaut penche vers le refus** : seul `dev` applique le bloc `dev` de `parameters.yml` (`nuke_all`, interrupteur d'embedding, balises non configurées, hydratation Neo4j). Absente ou vide, la variable vaut `prod` : un `.env` incomplet est traité comme protégé. Toute autre valeur (`Dev`, `development`…) arrête le run au chargement de la configuration, avant tout nœud. |
 | `MONGODB_URI` | `mongodb://localhost:27017` | |
 | `MONGODB_DATA_DB_NAME` | `LEGIFRANCE` | Données : `documents`, `manifest`. |
 | `MONGODB_META_DB_NAME` | `MURPHY_META` | Méta : audit, bilans, pendantes. |

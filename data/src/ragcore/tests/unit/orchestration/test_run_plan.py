@@ -9,7 +9,7 @@ from typing import Any
 import pytest
 import yaml
 
-from ragcore.adapters.config.settings import InfraSettings
+from ragcore.adapters.config.settings import Environment, InfraSettings
 from ragcore.adapters.storage.neo4j.node_properties import NodeHydration
 from ragcore.core.models.enums import SourceName
 from ragcore.core.models.identifiers import Identifier
@@ -49,7 +49,7 @@ SHIPPED_PARAMETERS = Path(__file__).parents[5] / "conf/base/parameters.yml"
 """Le `parameters.yml` livré, celui que lit `kedro run`."""
 
 
-def _settings(environment: str = "prod") -> InfraSettings:
+def _settings(environment: Environment = "prod") -> InfraSettings:
     return InfraSettings(
         source="all", environment=environment, qdrant_collection="chunks"
     )

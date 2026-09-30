@@ -11,6 +11,7 @@ from typing import Any
 
 from kedro.io import DataCatalog, DatasetError
 
+from ragcore.adapters.config.settings import Environment
 from ragcore.core.models.enums import SourceName
 from ragcore.orchestration.kedro.parameters_model import (
     DevParameters,
@@ -26,7 +27,7 @@ __all__ = [
     "resolve_sources",
 ]
 
-DEV_ENVIRONMENT = "dev"
+DEV_ENVIRONMENT: Environment = "dev"
 """La seule valeur d'``ENVIRONMENT`` qui ouvre le bloc ``dev`` de ``parameters.yml``."""
 
 SAFE_DEV_SETTINGS = DevParameters(
@@ -60,7 +61,7 @@ def load_parameters(catalog: DataCatalog) -> dict[str, Any]:
     return params
 
 
-def resolve_dev_settings(dev: DevParameters, environment: str) -> DevParameters:
+def resolve_dev_settings(dev: DevParameters, environment: Environment) -> DevParameters:
     """Le bloc ``dev`` effectif : celui du YAML en ``dev``, les valeurs sûres ailleurs.
 
     L'environnement PRIME, et le défaut penche vers le refus : l'absence

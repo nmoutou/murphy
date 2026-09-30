@@ -24,12 +24,14 @@ qui parle dans le fichier.
 
 from functools import lru_cache
 from pathlib import Path
+from typing import Literal
 
 from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 __all__ = [
     "EmbeddingRuntimeSettings",
+    "Environment",
     "InfraSettings",
     "get_embedding_runtime_settings",
     "get_infra_settings",
@@ -49,6 +51,11 @@ Un seul fichier, trois consommateurs : TEI (``--model-id``), le backend et l'ing
 lisent le même ``EMBEDDING_MODEL``. Le modèle servi et celui que le pipeline croit
 embarquer ne peuvent plus diverger, **parce qu'ils ne sont plus deux variables**.
 """
+
+Environment = Literal["dev", "prod"]
+"""Les deux valeurs d'``ENVIRONMENT``. Tout ce qui n'est pas un poste de dev est ``prod``."""
+
+DEFAULT_ENVIRONMENT: Environment = "prod"
 
 DEFAULT_EMBEDDING_INGESTION_TIMEOUT_MS = 120_000
 """Deux minutes : les lots d'un document partent ensemble et font la queue côté GPU."""
@@ -80,8 +87,9 @@ class InfraSettings(BaseSettings):
 
     model_config = SettingsConfigDict(env_file=ROOT_ENV_FILE, extra="ignore")
 
-    environment: str = "prod"
-    """L'environnement d'exécution. **Le défaut est `prod`, et c'est délibéré.**
+    environment: Environment = DEFAULT_ENVIRONMENT
+    """L'environnement d'exécution, `dev` ou `prod`. **Le défaut est `prod`, et c'est
+    délibéré.**
 
     Il ne sert qu'à *une* chose : ouvrir le bloc `dev` de `parameters.yml` (voir
     `run_parameters.resolve_dev_settings`), dont `nuke_all`, qui efface TOUTES les
@@ -90,7 +98,11 @@ class InfraSettings(BaseSettings):
     Le défaut penche vers le refus, pas vers l'autorisation : un `.env` sans
     `ENVIRONMENT` est traité comme de la prod, donc protégé. Un garde-fou dont le
     défaut *ouvre* la trappe ne protège rien — il suffirait d'oublier une variable
-    pour vider une prod. On rend l'effacement accidentel impossible, pas déconseillé."""
+    pour vider une prod. On rend l'effacement accidentel impossible, pas déconseillé.
+
+    Toute autre valeur (`Dev`, `development`…) arrête le run au chargement de la
+    configuration, avant tout nœud : une coquille valait prod en silence, et le bloc
+    `dev` était ignoré sans que rien ne s'arrête. Vide, la variable vaut absente."""
 
     mongodb_uri: str = "mongodb://localhost:27017"
     mongodb_data_db_name: str = "LEGIFRANCE"
@@ -136,6 +148,12 @@ class InfraSettings(BaseSettings):
     Toutes les sources partagent la même collection Qdrant : même normalisation, même
     chunking, même modèle."""
     meta_jsonl_dir: Path = Path("data/08_reporting")
+
+    @field_validator("environment", mode="before")
+    @classmethod
+    def _environnement_vide_vaut_absent(cls, value: object) -> object:
+        """``ENVIRONMENT=`` produit ``''`` : l'absence, donc le défaut, pas une coquille."""
+        return DEFAULT_ENVIRONMENT if value == "" else value
 
     @field_validator("qdrant_api_key", mode="after")
     @classmethod
