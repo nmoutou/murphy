@@ -34,7 +34,6 @@ services:
 
   backend:
     container_name: backend
-    profiles: ["serve"]
     build:
       context: .
       dockerfile: backend/Dockerfile
@@ -73,7 +72,6 @@ services:
 
   frontend:
     container_name: frontend
-    profiles: ["serve"]
     build:
       context: .
       dockerfile: frontend/Dockerfile
@@ -87,7 +85,6 @@ services:
 
   embedding-service:
     container_name: embedding-service
-    profiles: ["ingest", "serve"]
     image: ghcr.io/huggingface/text-embeddings-inference:cuda-1.8.1
     command: ["--model-id", "${EMBEDDING_MODEL}", "--pooling", "mean", "--dtype", "float16"]
     networks:
@@ -96,7 +93,6 @@ services:
       - hf_cache:/data
     environment:
       - CUDA_VISIBLE_DEVICES=0
-    # CUDA image: both profiles need the GPU
     deploy:
       resources:
         reservations:
