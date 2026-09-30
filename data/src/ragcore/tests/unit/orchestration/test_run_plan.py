@@ -24,7 +24,8 @@ PARAMS: dict[str, Any] = {
     "nuke_all": False,
     "embedding_enabled": True,
     "skip_unconfigured": False,
-    "node_hydration": {"include_path": True, "include_content": True},
+    "include_path": True,
+    "include_content_neo4j": True,
 }
 """Les clés de `parameters.yml` sans défaut dans le code."""
 
@@ -32,8 +33,8 @@ BOOLEAN_PATHS = [
     "nuke_all",
     "embedding_enabled",
     "skip_unconfigured",
-    "node_hydration.include_path",
-    "node_hydration.include_content",
+    "include_path",
+    "include_content_neo4j",
 ]
 """Les booléens du YAML : stricts, obligatoires, validés dans tous les environnements."""
 
@@ -41,7 +42,8 @@ RISKIEST_DEV: dict[str, Any] = {
     "nuke_all": True,
     "embedding_enabled": False,
     "skip_unconfigured": False,
-    "node_hydration": {"include_path": True, "include_content": True},
+    "include_path": True,
+    "include_content_neo4j": True,
 }
 """`parameters.yml` réglé au plus risqué pour une prod."""
 
@@ -124,16 +126,19 @@ def test_en_dev_le_fichier_s_applique_tel_quel() -> None:
     assert plan.nuke_all is True
     assert plan.embedding_enabled is False
     assert plan.skip_unconfigured is False
+    assert plan.include_path is True
     assert plan.node_hydration == NodeHydration(
         metadata=True, include_path=True, include_content=True
     )
 
 
 def test_l_hydratation_neo4j_vient_du_yaml_en_dev() -> None:
-    params = _with("node_hydration.include_path", False)
+    params = _with("include_path", False)
 
-    hydration = plan_run(params, _settings("dev"), CHUNKING).node_hydration
+    plan = plan_run(params, _settings("dev"), CHUNKING)
 
+    assert plan.include_path is False
+    hydration = plan.node_hydration
     assert (hydration.include_path, hydration.include_content) == (False, True)
 
 
@@ -144,6 +149,7 @@ def test_hors_dev_le_fichier_est_ignore() -> None:
     assert plan.nuke_all is SAFE_DEV_SETTINGS.nuke_all is False
     assert plan.embedding_enabled is True
     assert plan.skip_unconfigured is True
+    assert plan.include_path is False
     assert plan.node_hydration == NodeHydration()
 
 
@@ -173,7 +179,7 @@ def test_les_labels_neo4j_viennent_des_sources() -> None:
     assert labels.known == ("Document", "Article", "Texte", "Section")
 
 
-@pytest.mark.parametrize("path", ["nlp", "node_hydration.include_pth", "nuke_al"])
+@pytest.mark.parametrize("path", ["nlp", "include_pth", "nuke_al"])
 def test_une_cle_inconnue_arrete_le_run(path: str) -> None:
     """Une clé morte ou mal orthographiée ne passe plus en silence, à aucun niveau."""
     with pytest.raises(ValueError, match=_path(path)):
@@ -190,13 +196,15 @@ def test_une_cle_inconnue_arrete_le_run(path: str) -> None:
         "node_labels",
         "chunking",
         "dev",
+        "node_hydration",
     ],
 )
 def test_l_ancienne_forme_est_refusee(block: str) -> None:
     """Un `parameters.yml` resté à une ancienne forme arrête le run. Le bloc `embedding`
     est parti dans l'environnement : `EMBEDDING_MODEL`, et une dimension mesurée ; le
     bloc `chunking` aussi, à côté du modèle (`CHUNKING_*`) ; le bloc `node_labels` dans
-    le registre des sources. Le bloc `dev` est devenu le fichier entier."""
+    le registre des sources. Le bloc `dev` est devenu le fichier entier, et
+    `node_hydration` s'est aplati en `include_path` et `include_content_neo4j`."""
     with pytest.raises(ValueError, match=_path(block)):
         plan_run(_with(block, {}), _settings(), CHUNKING)
 

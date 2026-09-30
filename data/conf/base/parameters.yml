@@ -1,7 +1,7 @@
 # Des commodités de développement, et rien d'autre. IGNORÉ hors ENVIRONMENT=dev : tout le
 # fichier est alors remplacé par les valeurs sûres (rien n'est effacé, l'embedding est
-# calculé, les métadonnées non configurées sont retirées, les nœuds Neo4j restent
-# maigres) et un avertissement le signale au log. Les clés restent obligatoires et
+# calculé, les métadonnées non configurées sont retirées, aucun chemin de fichier n'est
+# écrit, les nœuds Neo4j restent maigres) et un avertissement le signale au log. Les clés restent obligatoires et
 # validées partout : une coquille arrête le run même en prod.
 #
 # La découpe n'est pas ici : elle vit dans `.env.dev` (CHUNKING_MAX_CHARS,
@@ -18,10 +18,11 @@ embedding_enabled: true
 # `tag.unconfigured` est émis dans les deux cas (ADR-022 §1).
 skip_unconfigured: false
 
-# Ce que les nœuds Neo4j portent en plus de leurs métadonnées, toujours présentes en
-# dev (ADR-022 §2) : chemins des fichiers XML source (`source_files`), texte du
-# document (`_text_content`). L'écriture n'efface aucune propriété : repasser à
-# `false` sans `nuke_all` laisse celles déjà écrites.
-node_hydration:
-  include_path: true
-  include_content: true
+# Les chemins des fichiers XML source (`source_files`), dans le document Mongo et sur
+# le nœud Neo4j. Repasser à `false` sans `nuke_all` laisse ceux déjà écrits : un
+# document déjà ingéré n'est pas réécrit, et Neo4j n'efface aucune propriété.
+include_path: true
+
+# Le texte du document sur son nœud Neo4j (`_text_content`), en plus des métadonnées,
+# toujours présentes en dev (ADR-022 §2). Même remarque sans `nuke_all`.
+include_content_neo4j: true

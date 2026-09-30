@@ -10,7 +10,7 @@ Deux surfaces :
 `parameters.yml` illisible = run arrêté, jamais de défauts silencieux. Le fichier est
 validé **en entier** par un modèle strict (`orchestration/kedro/parameters_model.py`),
 avant tout nœud : une clé inconnue, absente ou mal typée arrête le run, et toutes les
-erreurs sont listées ensemble, chacune par son chemin (`` `node_hydration.include_path` ``).
+erreurs sont listées ensemble, chacune par son chemin (`` `include_path` ``).
 Strict veut dire sans conversion : `"false"` n'est pas un booléen. Kedro fusionne les
 `--params` à la racine des paramètres : le modèle les voit aussi. Seul `source` y est
 accepté, et il est rangé à part avant la validation, parce qu'il vaut aussi en prod
@@ -41,7 +41,8 @@ coquille arrête le run même en prod.
 | `nuke_all` | `true` | Efface TOUTES les données de TOUTES les bases en tête de run (Mongo documents+manifest, graphe Neo4j, **toutes** les collections Qdrant), en **préservant `MURPHY_META`**. Le levier disque du développement. | Rien n'est effacé. |
 | `embedding_enabled` | `true` | **L'interrupteur d'embedding (ADR-023).** `false` = aucun vecteur calculé ni écrit (Qdrant vide, Mongo/Neo4j normaux) — le régime d'itération sur le modèle de données. TEI doit quand même tourner : le modèle servi est vérifié et la dimension mesurée au démarrage. | On embarque toujours. |
 | `skip_unconfigured` | `false` | Le sort des balises non configurées (cadrage « trois portes ») : `false` = la balise entre en metadata sous sa clé chemin-complet ; `true` = retirée du document. Le signal `tag.unconfigured`, lui, est TOUJOURS émis — on compte d'abord, on filtre ensuite. | Toujours retirées (ADR-022 §1). |
-| `node_hydration.include_path` / `include_content` | `true` / `true` | Ce que portent en plus les nœuds Neo4j (leurs métadonnées, elles, sont toujours là en dev) : chemins des fichiers XML source (`source_files`), texte du document (`_text_content`). L'écriture (`SET +=`) n'efface aucune propriété : repasser à `false` sans `nuke_all` laisse celles déjà écrites. | Nœud maigre (ADR-022 §2). |
+| `include_path` | `true` | Les chemins des fichiers XML source (`source_files`), dans le document Mongo **et** sur le nœud Neo4j. Repasser à `false` sans `nuke_all` laisse ceux déjà écrits : un document déjà au manifest n'est pas réécrit, et l'écriture Neo4j (`SET +=`) n'efface aucune propriété. | Aucun chemin écrit (ADR-022 §4). |
+| `include_content_neo4j` | `true` | Le texte du document sur son nœud Neo4j (`_text_content`), en plus de ses métadonnées, toujours là en dev. Même remarque sans `nuke_all`. | Nœud maigre (ADR-022 §2). |
 
 Rien de l'embedding n'est dans `parameters.yml` : le modèle, l'URL de TEI, la taille de
 lot et le timeout sont dans l'environnement (voir `EmbeddingRuntimeSettings`).
@@ -64,7 +65,7 @@ service.
 
 | Variable | Défaut | Rôle |
 |---|---|---|
-| `ENVIRONMENT` | `prod` | `dev` ou `prod` (ADR-043). **Le défaut penche vers le refus** : seul `dev` applique `parameters.yml` (`nuke_all`, interrupteur d'embedding, balises non configurées, hydratation Neo4j). Absente ou vide, la variable vaut `prod` : un `.env` incomplet est traité comme protégé. Toute autre valeur (`Dev`, `development`…) arrête le run au chargement de la configuration, avant tout nœud. |
+| `ENVIRONMENT` | `prod` | `dev` ou `prod` (ADR-043). **Le défaut penche vers le refus** : seul `dev` applique `parameters.yml` (`nuke_all`, interrupteur d'embedding, balises non configurées, chemins des fichiers source, hydratation Neo4j). Absente ou vide, la variable vaut `prod` : un `.env` incomplet est traité comme protégé. Toute autre valeur (`Dev`, `development`…) arrête le run au chargement de la configuration, avant tout nœud. |
 | `MONGODB_URI` | `mongodb://localhost:27017` | |
 | `MONGODB_DATA_DB_NAME` | `LEGIFRANCE` | Données : `documents`, `manifest`. |
 | `MONGODB_META_DB_NAME` | `MURPHY_META` | Méta : audit, bilans, pendantes. |

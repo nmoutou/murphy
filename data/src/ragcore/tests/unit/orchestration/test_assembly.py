@@ -71,7 +71,8 @@ def plan(settings: InfraSettings) -> RunPlan:
         "nuke_all": False,
         "embedding_enabled": True,
         "skip_unconfigured": False,
-        "node_hydration": {"include_path": True, "include_content": True},
+        "include_path": True,
+        "include_content_neo4j": True,
         "source": "cass",
     }
     chunking = ChunkingConfig(max_chars=384, overlap_chars=25)

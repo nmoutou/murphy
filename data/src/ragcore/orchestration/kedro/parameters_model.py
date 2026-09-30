@@ -15,7 +15,6 @@ from pydantic_core import ErrorDetails
 
 __all__ = [
     "DevParameters",
-    "NodeHydrationParameters",
     "RunParameters",
     "validate_parameters",
 ]
@@ -29,13 +28,6 @@ class _StrictParameters(BaseModel):
     model_config = ConfigDict(strict=True, extra="forbid", frozen=True)
 
 
-class NodeHydrationParameters(_StrictParameters):
-    """Ce que les nœuds Neo4j portent en plus en dev (ADR-022 §2)."""
-
-    include_path: bool
-    include_content: bool
-
-
 class DevParameters(_StrictParameters):
     """Tout ``parameters.yml`` : des commodités de dev. Hors ``dev``, le fichier entier
     est remplacé par les valeurs sûres (``run_parameters.resolve_dev_settings``) ; il
@@ -44,7 +36,10 @@ class DevParameters(_StrictParameters):
     nuke_all: bool
     embedding_enabled: bool
     skip_unconfigured: bool
-    node_hydration: NodeHydrationParameters
+    include_path: bool
+    """Les chemins des fichiers XML source (``source_files``), dans Mongo et Neo4j."""
+    include_content_neo4j: bool
+    """Le texte du document sur son nœud Neo4j (``_text_content``)."""
 
 
 class RunParameters(_StrictParameters):

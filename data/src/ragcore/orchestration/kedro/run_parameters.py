@@ -13,10 +13,7 @@ from kedro.io import DataCatalog, DatasetError
 
 from ragcore.adapters.config.settings import Environment
 from ragcore.core.models.enums import SourceName
-from ragcore.orchestration.kedro.parameters_model import (
-    DevParameters,
-    NodeHydrationParameters,
-)
+from ragcore.orchestration.kedro.parameters_model import DevParameters
 from ragcore.sources.registry import all_sources
 
 __all__ = [
@@ -34,11 +31,12 @@ SAFE_DEV_SETTINGS = DevParameters(
     nuke_all=False,
     embedding_enabled=True,
     skip_unconfigured=True,
-    node_hydration=NodeHydrationParameters(include_path=False, include_content=False),
+    include_path=False,
+    include_content_neo4j=False,
 )
 """``parameters.yml`` tel qu'il s'applique hors ``dev`` : rien n'est effacé,
-l'embedding est calculé, les métadonnées non configurées sont retirées, les nœuds
-restent maigres."""
+l'embedding est calculé, les métadonnées non configurées sont retirées, aucun chemin de
+fichier n'est écrit et les nœuds restent maigres."""
 
 
 def load_parameters(catalog: DataCatalog) -> dict[str, Any]:
@@ -68,10 +66,11 @@ def resolve_dev_settings(dev: DevParameters, environment: Environment) -> DevPar
     L'environnement PRIME, et le défaut penche vers le refus : l'absence
     d'``ENVIRONMENT`` vaut ``prod`` (voir ``InfraSettings.environment``). Chaque clé du
     fichier est une commodité de développement : effacer toutes les bases, couper
-    l'embedding (ADR-023), ingérer les métadonnées des balises non configurées ou
-    hydrater les nœuds Neo4j (ADR-022). Un ``parameters.yml`` traîné de dev en prod ne
-    doit pouvoir ni effacer une base, ni produire une collection vide, ni écrire sur
-    chaque nœud les chemins de fichiers du poste d'ingestion. Le signal
+    l'embedding (ADR-023), ingérer les métadonnées des balises non configurées,
+    écrire les chemins des fichiers source ou hydrater les nœuds Neo4j (ADR-022). Un
+    ``parameters.yml`` traîné de dev en prod ne doit pouvoir ni effacer une base, ni
+    produire une collection vide, ni écrire dans Mongo ou sur chaque nœud les chemins
+    de fichiers du poste d'ingestion. Le signal
     ``tag.unconfigured``, lui, est émis dans les deux régimes.
     """
     return dev if environment == DEV_ENVIRONMENT else SAFE_DEV_SETTINGS

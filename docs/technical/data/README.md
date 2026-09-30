@@ -41,7 +41,8 @@ Les variables et leur sémantique : voir [reference/configuration.md](reference/
 Points critiques :
 
 - `ENVIRONMENT=dev` applique `parameters.yml` : `nuke_all`, l'interrupteur
-  d'embedding, l'ingestion des balises non configurées et l'hydratation Neo4j. Ailleurs,
+  d'embedding, l'ingestion des balises non configurées, les chemins des fichiers source
+  (Mongo et Neo4j) et l'hydratation Neo4j. Ailleurs,
   le fichier est ignoré (avertissement au log) ; l'absence de la variable vaut `prod`, et
   toute valeur autre que `dev` ou `prod` arrête le run.
 - `EMBEDDING_MODEL` et `EMBEDDING_SERVICE_URL` sont obligatoires : TEI est le seul

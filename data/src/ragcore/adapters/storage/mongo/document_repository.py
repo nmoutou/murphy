@@ -11,23 +11,41 @@ from ragcore.adapters.storage.mongo.client import MongoClient, MongoDatabase
 from ragcore.core.models.document import ParsedDocument
 from ragcore.core.models.identifiers import Identifier
 
+_STRUCTURE_FIELD = "structure"
+_SOURCE_FILES_FIELD = "source_files"
+
 
 def _serialize_identifier(identifier: Identifier) -> str:
     """Sérialise un identifier pour la persistance."""
     return identifier.serialize()
 
 
+def _excluded_fields(include_path: bool) -> set[str]:
+    """Les champs du modèle retirés du dump : ``source_files`` seulement sans
+    ``include_path``."""
+    if include_path:
+        return {_STRUCTURE_FIELD}
+    return {_STRUCTURE_FIELD, _SOURCE_FILES_FIELD}
+
+
 class MongoDocumentRepository:
-    """MongoDB implementation of DocumentRepository (atomic replace upsert)."""
+    """MongoDB implementation of DocumentRepository (atomic replace upsert).
+
+    ``include_path`` écrit les chemins des fichiers source (``source_files``) : une
+    commodité de dev (``parameters.yml``), ``False`` par défaut comme en prod.
+    """
 
     def __init__(
         self,
         client: MongoClient,
         db_name: str,
         collection: str = "documents",
+        *,
+        include_path: bool = False,
     ) -> None:
         self._database = client[db_name]
         self._collection = self._database[collection]
+        self._excluded_fields = _excluded_fields(include_path)
 
     @property
     def database(self) -> MongoDatabase:
@@ -43,9 +61,9 @@ class MongoDocumentRepository:
         """
         identifier_key = _serialize_identifier(document.identifier)
         filter_ = {"identifier": identifier_key}
-        # Épuration (ADR-022 §4) : `source_files` est de la provenance d'inspection
-        # (Neo4j dev), pas du contenu — un chemin absolu du poste d'ingestion n'a rien
-        # à faire en base. `structure` NE L'EST PLUS DU TOUT, ses trois clés étant
+        # Épuration (ADR-022 §4) : `source_files` est de la provenance d'inspection,
+        # pas du contenu — un chemin absolu du poste d'ingestion n'est écrit qu'en dev,
+        # avec `include_path`. `structure` NE L'EST PLUS DU TOUT, ses trois clés étant
         # chacune redondante avec ce qui est déjà persisté ailleurs :
         #
         # - `references` et `context` sont de la donnée d'ARÊTE : elles vivent dans
@@ -60,7 +78,7 @@ class MongoDocumentRepository:
         #
         # Les trois champs restent sur le MODÈLE (le chunker et l'extracteur les lisent
         # en phase 1, dans le même run, en mémoire) — ils sont retirés du DUMP.
-        data = document.model_dump(mode="json", exclude={"source_files", "structure"})
+        data = document.model_dump(mode="json", exclude=self._excluded_fields)
         # Le champ sérialisé porte l'indexation ; il double la clé du filtre.
         data["identifier"] = identifier_key
         await self._collection.replace_one(filter_, data, upsert=True)

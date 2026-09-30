@@ -44,12 +44,15 @@ environnements : une coquille arrête le run même en prod.
 > **Amendement (30 septembre 2026)** : depuis que `chunking` est parti dans
 > l'environnement (§4), le bloc `dev` était tout le fichier. Il est aplati : ses clés
 > sont à la racine de `parameters.yml` (`nuke_all`, `embedding_enabled`,
-> `skip_unconfigured`, `node_hydration`), et c'est le fichier entier qui s'applique en
+> `skip_unconfigured`, `include_path`, `include_content_neo4j`), et c'est le fichier entier qui s'applique en
 > `dev` et qu'on remplace par `SAFE_DEV_SETTINGS` en `prod`. Une clé `dev` est une clé
 > inconnue. Les `--params` arrivent à la même racine : `source`, qui vaut aussi en prod,
 > est rangé à part avant la validation (`parameters_model.validate_parameters`), et ses
 > erreurs sont listées avec celles du fichier. Un réglage qui vaudrait partout ne peut
-> plus aller dans ce fichier : il va dans l'environnement ou dans le code.
+> plus aller dans ce fichier : il va dans l'environnement ou dans le code. Le
+> sous-bloc `node_hydration` est aplati lui aussi : `include_path` en sort parce qu'il
+> vaut aussi pour Mongo (voir l'amendement d'ADR-022 §2 et §4), et `include_content`,
+> resté seul, devient `include_content_neo4j`.
 
 **4. Ce qui vaut partout est hors du bloc** : `chunking`.
 
@@ -92,8 +95,13 @@ environnements : une coquille arrête le run même en prod.
   chaque type d'événement, pas un réglage qu'un opérateur change d'un run à l'autre ; son
   exposition dans `parameters.yml` est retirée.
 - §6 est étendu : toute la configuration morte a été supprimée, pas seulement
-  `field_mappings`, et le modèle strict du fichier (`IngestionParameters`) refuse les clés
+  `field_mappings`, et le modèle strict du fichier (`DevParameters`) refuse les clés
   inconnues, ce qui l'empêche de revenir.
+- §2 et §4 (30 septembre 2026) : en dev, `include_path` écrit les chemins des fichiers
+  XML source (`source_files`) dans le document Mongo comme sur le nœud Neo4j. L'épuration
+  de Mongo tient en prod, où `include_path` vaut toujours `false` ; en dev, ces chemins
+  servent l'inspection dans les deux bases. Repasser à `false` sans `nuke_all` les
+  laisse en place : un document déjà au manifest n'est pas réécrit.
 
 **ADR-023.**
 

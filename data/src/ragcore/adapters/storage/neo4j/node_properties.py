@@ -80,15 +80,16 @@ class NodeHydration:
     """Ce qu'un nœud document porte AU-DELÀ de ses deux props de base (ADR-022 §2).
 
     Le défaut est le régime PROD : nœud maigre (``title``, ``source``), rien d'autre.
-    C'est le plan du run qui ouvre les vannes en dev (``node_hydration`` de
-    ``parameters.yml``), jamais ce module : le défaut penche vers le refus, comme
+    C'est le plan du run qui ouvre les vannes en dev (``include_path`` et
+    ``include_content_neo4j`` de ``parameters.yml``), jamais ce module : le défaut penche vers le refus, comme
     ``nuke_all`` et l'interrupteur d'embedding.
 
     - ``metadata`` : les métadonnées du document en props (clés chemin-complet,
       valeurs chaînes). Neo4j est l'outil d'inspection privilégié de la v0 — un nœud
       maigre est un obstacle à l'itération sur le modèle de données.
     - ``include_path`` : les chemins des FICHIERS source (``document.source_files``).
-      Un chemin absolu du poste d'ingestion n'a de sens qu'en dev.
+      Un chemin absolu du poste d'ingestion n'a de sens qu'en dev. Le même réglage les
+      écrit dans le document Mongo.
     - ``include_content`` : le texte du document, sous la prop ``_text_content``
       (convention ``_text_``). Les sections n'ont pas de prop à
       elles : chaque section est un morceau LITTÉRAL de ``content`` (invariant du

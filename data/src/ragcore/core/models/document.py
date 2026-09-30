@@ -61,8 +61,8 @@ class ParsedDocument(BaseModel):
     source_files: tuple[str, ...] = ()
     """Les FICHIERS XML dont ce document est issu (un article LEGI = jusqu'à 2 facettes).
 
-    De la provenance, pas du contenu : ce champ sert l'inspection Neo4j en dev
-    (``include_path``, ADR-022 amendé) et n'est JAMAIS persisté dans Mongo — le dépôt
-    l'exclut du dump. Un chemin absolu du poste d'ingestion n'a de sens nulle part
-    ailleurs que sur ce poste.
+    De la provenance, pas du contenu : ce champ sert l'inspection en dev, et n'est écrit
+    dans Mongo et sur le nœud Neo4j qu'avec ``include_path`` (``parameters.yml``,
+    ADR-022 amendé) — sinon les dépôts l'excluent. Un chemin absolu du poste
+    d'ingestion n'a de sens nulle part ailleurs que sur ce poste.
     """

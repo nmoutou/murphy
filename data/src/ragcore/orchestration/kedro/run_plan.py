@@ -17,7 +17,7 @@ from ragcore.adapters.storage.neo4j.node_properties import NodeHydration, NodeLa
 from ragcore.core.models.enums import SourceName
 from ragcore.core.models.processing import ChunkingConfig
 from ragcore.orchestration.kedro.parameters_model import (
-    NodeHydrationParameters,
+    DevParameters,
     validate_parameters,
 )
 from ragcore.orchestration.kedro.run_parameters import (
@@ -41,6 +41,10 @@ class RunPlan:
     collection: str
     """La collection Qdrant : un nom fixe, lu de ``QDRANT_COLLECTION``."""
     sources: tuple[SourceName, ...]
+    include_path: bool
+    """Les chemins des fichiers XML source (``source_files``) dans les documents Mongo.
+    Le même réglage hydrate les nœuds Neo4j (``node_hydration.include_path``). Toujours
+    ``False`` hors ``dev``."""
     node_hydration: NodeHydration
     """L'hydratation des nœuds Neo4j (ADR-022 §2) : résolue UNE fois, partagée entre le
     dépôt du hook et ceux des workers — deux résolutions seraient deux occasions de
@@ -97,7 +101,8 @@ def plan_run(
         chunking=chunking,
         collection=settings.qdrant_collection,
         sources=resolve_sources(requested_source),
-        node_hydration=_node_hydration(dev.node_hydration, is_dev),
+        include_path=dev.include_path,
+        node_hydration=_node_hydration(dev, is_dev),
         node_labels=NodeLabels(by_prefix=node_labels_by_prefix()),
         embedding_enabled=dev.embedding_enabled,
         skip_unconfigured=dev.skip_unconfigured,
@@ -109,12 +114,12 @@ def plan_run(
     return plan
 
 
-def _node_hydration(hydration: NodeHydrationParameters, is_dev: bool) -> NodeHydration:
+def _node_hydration(dev: DevParameters, is_dev: bool) -> NodeHydration:
     """Hors ``dev``, le nœud est maigre : ``NodeHydration()`` (ADR-022 §2)."""
     return NodeHydration(
         metadata=is_dev,
-        include_path=hydration.include_path,
-        include_content=hydration.include_content,
+        include_path=dev.include_path,
+        include_content=dev.include_content_neo4j,
     )
 
 
@@ -122,7 +127,8 @@ def _warn_dev_ignored(environment: Environment) -> None:
     logger.warning(
         "ENVIRONMENT=%s : parameters.yml est ignoré. Rien n'est "
         "effacé, l'embedding est calculé, les métadonnées des balises non configurées "
-        "sont retirées et les nœuds Neo4j restent maigres.",
+        "sont retirées, aucun chemin de fichier n'est écrit et les nœuds Neo4j restent "
+        "maigres.",
         environment,
     )
 

@@ -33,7 +33,7 @@ RawDocument ──parse──▶ ParsedDocument ──chunk──▶ Chunk ─�
 - `ParsedDocument` : `identifier`, `source`, `title`, `content` (texte
   intégral lisible), `structure` (sections/references/context — **jamais persisté**,
   voir plus bas), `metadata` (clés = chemin complet de balise), `citations` (tuple de
-  `Citation`), `source_files` (provenance, jamais persistée en Mongo).
+  `Citation`), `source_files` (provenance, persistée seulement en dev avec `include_path`).
 - `Chunk` : `chunk_id`, `parent_identifier`, `ordinal`, `text`, `tag_path`,
   `char_start`/`char_end` (offsets **littéraux** dans `content`), `metadata`.
 - `Relation` : source → cible (deux identifiants), `relation_type` = **verbe validé**
@@ -54,7 +54,8 @@ Contenu : le dump JSON du `ParsedDocument`, **sauf** :
 - `identifier` est remplacé par sa forme sérialisée (la chaîne brute) — c'est elle qui
   est indexée ;
 - `source_files` est exclu (provenance d'inspection, chemins absolus du poste
-  d'ingestion) ;
+  d'ingestion), sauf en dev avec `include_path` (`parameters.yml`), qui l'écrit aussi
+  sur le nœud Neo4j ;
 - `structure` est exclue **entièrement** (ADR-022 §4) : `references`/`context` sont de la
   donnée d'arête (elles vivent dans Neo4j), et `sections` est `content` re-découpé — son
   seul apport propre (`path`) survit sur les chunks (`tag_path` + offsets).
@@ -125,9 +126,9 @@ données.
   les décisions. L'écriture ajoute le label sans retirer l'ancien : après un changement
   de table, un nœud déjà écrit porte les deux, même réingéré ; repartir de zéro demande
   `nuke_all`. Un nœud cité dont le document manque porte `Pending`.
-- **Hydratation** (ADR-022 §2) : en prod, nœud **maigre** (`title`, `source`). En dev (et seulement en dev), `node_hydration` (`parameters.yml`) ouvre les vannes : `metadata`
-  en props (clés chemin-complet), `include_path` (les fichiers XML source),
-  `include_content` (le texte, prop `_text_content`), les citations. Neo4j est l'outil
+- **Hydratation** (ADR-022 §2) : en prod, nœud **maigre** (`title`, `source`). En dev (et seulement en dev), `parameters.yml` ouvre les vannes : `metadata`
+  en props (clés chemin-complet), `include_path` (les fichiers XML source, écrits aussi
+  dans Mongo), `include_content_neo4j` (le texte, prop `_text_content`), les citations. Neo4j est l'outil
   d'inspection de la v0.
 - **Arêtes** : écrites en phase 2 uniquement, `MERGE (a)-[r:TYPE]->(b)` avec le **verbe
   comme type d'arête** (type paramétré natif), taguées du `run_id` qui les a posées

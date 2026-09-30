@@ -96,7 +96,9 @@ def open_document_stores(
     """
     data_db = settings.mongodb_data_db_name
     return IngestionStores(
-        documents=MongoDocumentRepository(clients.mongo, data_db),
+        documents=MongoDocumentRepository(
+            clients.mongo, data_db, include_path=plan.include_path
+        ),
         manifest=MongoManifestRepository(clients.mongo, data_db),
         graph=Neo4jGraphRepository(
             clients.neo4j, plan.node_labels, plan.node_hydration
