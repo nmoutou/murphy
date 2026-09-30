@@ -18,11 +18,9 @@ de mots vides, aucune mise en minuscules, aucune linéarisation. Ce qui sort d'i
 français lisible — pas un sac de lemmes. On normalise la *typographie*, jamais la
 *langue* : la première est du bruit d'encodage, la seconde est du sens.
 
-**⚠️ Elle entre dans le hash (§6).** ``formatting.normalization.version`` peuple le
-``WorkflowConfig``, donc le nom de la collection Qdrant. Faire passer cette version de
-``none`` à ``v1`` **crée mécaniquement une nouvelle collection** : les vecteurs d'avant et
-d'après ne sont pas comparables et ne doivent pas cohabiter. C'est exactement le
-comportement voulu — et le premier vrai exercice de l'A/B que le fingerprint rend possible.
+**⚠️ La modifier invalide les vecteurs déjà écrits** : ceux d'avant et d'après ne sont
+pas comparables et ne doivent pas cohabiter dans la collection. Après un changement,
+tout le corpus se réingère.
 """
 
 from __future__ import annotations
@@ -30,17 +28,7 @@ from __future__ import annotations
 import re
 import unicodedata
 
-__all__ = ["NORMALIZATION_VERSION", "normalize_text"]
-
-NORMALIZATION_VERSION = "v1"
-"""La version de CE traitement. Elle doit être reportée dans ``parameters.yml``.
-
-Changer le code sans changer la version produirait deux jeux de vecteurs incomparables
-**dans la même collection**, sans que rien ne le signale. La version est le lien entre le
-traitement et le hash qui nomme la collection — la rompre, c'est rouvrir précisément le
-trou que §6 ferme.
-"""
-
+__all__ = ["normalize_text"]
 
 _TAGS = re.compile(r"<[^>]+>")
 """Les balises résiduelles : du HTML échappé survit dans le TEXTE de certains nœuds, et

@@ -31,13 +31,13 @@ export interface HttpConfig {
 export interface MongoConfig {
   readonly uri: string;
   readonly database: string;
-  readonly metaDatabase: string;
   readonly timeoutMs: number;
 }
 
-/** The collection itself is read from the pointer published by the ingestion (`infra/collectionPointer.ts`) */
 export interface QdrantConfig {
   readonly url: string;
+  /** The fixed name the ingestion writes to: both read `QDRANT_COLLECTION` */
+  readonly collection: string;
   /** Per request; the client's own default is 300 s */
   readonly timeoutMs: number;
 }
@@ -95,7 +95,6 @@ const DEFAULT_RATE_LIMIT_MAX = 100;
 const DEFAULT_STREAM_RATE_LIMIT_WINDOW_MS = 60_000;
 const DEFAULT_STREAM_RATE_LIMIT_MAX = 10;
 const DEFAULT_MONGODB_DATABASE = 'LEGIFRANCE';
-const DEFAULT_MONGODB_META_DATABASE = 'MURPHY_META';
 const DEFAULT_MONGODB_TIMEOUT_MS = 10_000;
 const DEFAULT_QDRANT_URL = 'http://qdrant:6333';
 const DEFAULT_QDRANT_TIMEOUT_MS = 10_000;
@@ -181,12 +180,12 @@ const readHttpConfig = (reader: EnvReader): HttpConfig => ({
 const readMongoConfig = (reader: EnvReader): MongoConfig => ({
   uri: reader.required('MONGODB_URI'),
   database: reader.optional('MONGODB_DATABASE') ?? DEFAULT_MONGODB_DATABASE,
-  metaDatabase: reader.optional('MONGODB_META_DB_NAME') ?? DEFAULT_MONGODB_META_DATABASE,
   timeoutMs: reader.integer('MONGODB_TIMEOUT', DEFAULT_MONGODB_TIMEOUT_MS),
 });
 
 const readQdrantConfig = (reader: EnvReader): QdrantConfig => ({
   url: reader.optional('QDRANT_URL') ?? DEFAULT_QDRANT_URL,
+  collection: reader.required('QDRANT_COLLECTION'),
   timeoutMs: reader.integer('QDRANT_TIMEOUT', DEFAULT_QDRANT_TIMEOUT_MS),
 });
 

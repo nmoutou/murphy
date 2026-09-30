@@ -7,6 +7,7 @@ import { loadConfig } from '../config';
 
 const REQUIRED_ENV = {
   MONGODB_URI: 'mongodb://mongo:27017',
+  QDRANT_COLLECTION: 'chunks',
   LLM_API_ENDPOINT: 'http://llm.test/v1/chat/completions',
   LLM_API_KEY: 'test-key',
   LLM_MODEL: 'test-model',
@@ -19,8 +20,8 @@ describe('loadConfig', () => {
     expect(config.server).toEqual({ port: 5000, nodeEnv: 'development', isProduction: false, logLevel: 'debug' });
     expect(config.http.corsOrigins).toBe(false);
     expect(config.http.streamRateLimit).toEqual({ windowMs: 60_000, limit: 10 });
-    expect(config.mongo).toMatchObject({ database: 'LEGIFRANCE', metaDatabase: 'MURPHY_META' });
-    expect(config.qdrant).toEqual({ url: 'http://qdrant:6333', timeoutMs: 10_000 });
+    expect(config.mongo).toMatchObject({ database: 'LEGIFRANCE' });
+    expect(config.qdrant).toEqual({ url: 'http://qdrant:6333', collection: '', timeoutMs: 10_000 });
     expect(config.retrieval).toEqual({ topK: 5, minScore: 0.5 });
     expect(config.llm.systemPrompt).toContain('assistant juridique');
   });
@@ -39,7 +40,7 @@ describe('loadConfig', () => {
     expect(config.server).toMatchObject({ isProduction: true, logLevel: 'info' });
     expect(config.http.corsOrigins).toEqual(['http://a.test', 'http://b.test']);
     expect(config.retrieval.topK).toBe(8);
-    expect(config.qdrant.timeoutMs).toBe(2500);
+    expect(config.qdrant).toMatchObject({ collection: 'chunks', timeoutMs: 2500 });
     expect(config.llm).toMatchObject({ apiKey: 'test-key', temperature: 0.2, systemPrompt: 'Consigne de test' });
   });
 
@@ -64,7 +65,7 @@ describe('loadConfig', () => {
     const { report } = loadConfig({ ...REQUIRED_ENV, LLM_API_KEY: undefined });
 
     expect(report.missingRequired).toEqual(['LLM_API_KEY']);
-    expect(report.defaulted).toContain('MONGODB_META_DB_NAME');
+    expect(report.defaulted).toContain('MONGODB_DATABASE');
     expect(report.defaulted).not.toContain('MONGODB_URI');
   });
 });

@@ -11,25 +11,22 @@ from uuid import uuid4
 from pydantic import BaseModel, ConfigDict, Field
 
 from ragcore.core.models.enums import SourceName
-from ragcore.core.models.identifiers import OwnerId, RunId
+from ragcore.core.models.identifiers import RunId
 
 __all__ = ["PipelineContext"]
 
 
 class PipelineContext(BaseModel):
-    """run_id, owner_id, source, started_at — ce qui identifie un run."""
+    """run_id, source, started_at — ce qui identifie un run."""
 
     model_config = ConfigDict(frozen=True)
 
     run_id: RunId
-    owner_id: OwnerId
     source: SourceName | None = None
     started_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
     @classmethod
-    def create(
-        cls, owner_id: OwnerId, source: SourceName | None = None
-    ) -> "PipelineContext":
+    def create(cls, source: SourceName | None = None) -> "PipelineContext":
         """Ouvre un run neuf : identifiant tiré, horloge démarrée.
 
         Le ``run_id`` est un hex nu, sans tiret : il est repris tel quel dans les
@@ -38,7 +35,6 @@ class PipelineContext(BaseModel):
         """
         return cls(
             run_id=RunId(uuid4().hex),
-            owner_id=owner_id,
             source=source,
             started_at=datetime.now(UTC),
         )

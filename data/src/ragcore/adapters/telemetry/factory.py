@@ -20,7 +20,7 @@ from datetime import datetime
 from pathlib import Path
 
 from ragcore.core.models.enums import SourceName
-from ragcore.core.models.identifiers import OwnerId, RunId
+from ragcore.core.models.identifiers import RunId
 from ragcore.core.ports.runtime import AsyncRuntime
 from ragcore.core.ports.telemetry import TelemetryPort
 from ragcore.core.services.telemetry_registry import TelemetryRegistry
@@ -75,14 +75,12 @@ class WorkerTelemetryFactory:
     def __init__(  # noqa: PLR0913 — l'identité du run + ses sorties ; les grouper les cacherait
         self,
         run_id: RunId,
-        owner_id: OwnerId,
         source: SourceName | None,
         started_at: datetime,
         events_dir: Path,
         audit_repo_factory: object | None = None,
     ) -> None:
         self._run_id = run_id
-        self._owner_id = owner_id
         self._source = source
         self._started_at = started_at
         self._events_dir = Path(events_dir)
@@ -92,7 +90,6 @@ class WorkerTelemetryFactory:
     def build(self, worker_id: int, runtime: AsyncRuntime) -> RegistryAwareTelemetry:
         aggregator = RunStatsAggregator(
             run_id=self._run_id,
-            owner_id=self._owner_id,
             source=self._source,
             started_at=self._started_at,
         )

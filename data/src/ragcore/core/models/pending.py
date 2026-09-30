@@ -11,9 +11,8 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from .document import SCHEMA_VERSION
 from .enums import SourceName
-from .identifiers import DocumentId, Identifier, OwnerId, RunId
+from .identifiers import DocumentId, Identifier, RunId
 from .relation import Relation
 from .verbs import ValidatedVerb
 
@@ -21,18 +20,10 @@ __all__ = ["PendingKey", "PendingRelation"]
 
 
 class PendingKey(BaseModel):
-    """Clé d'unicité d'une pendante : (owner_id, source_id, target_id, relation_type).
-
-    ``owner_id`` est dans la clé SANS EXCEPTION. Une pendante n'est pas un fait du
-    monde : c'est un trou dans un graphe *donné*. « Cet arrêt cite cette directive »
-    est universel ; « cette arête me manque » est relatif au propriétaire du graphe.
-    Sans owner_id, promouvoir la pendante d'un propriétaire effacerait celle d'un
-    autre — dont l'arête ne serait jamais écrite, et rien ne le signalerait.
-    """
+    """Clé d'unicité d'une pendante : (source_id, target_id, relation_type)."""
 
     model_config = ConfigDict(frozen=True)
 
-    owner_id: OwnerId
     source_id: DocumentId  # identifiant sérialisé
     target_id: DocumentId  # identifiant sérialisé
     relation_type: ValidatedVerb
@@ -47,7 +38,6 @@ class PendingKey(BaseModel):
         diverger en silence — l'unicité est un fait du modèle, elle vit ici.
         """
         return cls(
-            owner_id=relation.owner_id,
             source_id=relation.source_identifier.serialize(),
             target_id=relation.target_identifier.serialize(),
             relation_type=relation.relation_type,
@@ -67,9 +57,6 @@ class PendingRelation(BaseModel):
 
     model_config = ConfigDict(frozen=True)
 
-    schema_version: int = SCHEMA_VERSION
-
-    owner_id: OwnerId
     source_id: DocumentId
     target_id: DocumentId
     relation_type: ValidatedVerb
@@ -82,7 +69,6 @@ class PendingRelation(BaseModel):
     @property
     def key(self) -> PendingKey:
         return PendingKey(
-            owner_id=self.owner_id,
             source_id=self.source_id,
             target_id=self.target_id,
             relation_type=self.relation_type,
@@ -91,7 +77,6 @@ class PendingRelation(BaseModel):
     @classmethod
     def from_relation(cls, relation: Relation, run_id: RunId) -> "PendingRelation":
         return cls(
-            owner_id=relation.owner_id,
             source_id=relation.source_identifier.serialize(),
             target_id=relation.target_identifier.serialize(),
             relation_type=relation.relation_type,
@@ -107,7 +92,6 @@ class PendingRelation(BaseModel):
             source_identifier=Identifier(raw=self.source_id),
             target_identifier=Identifier(raw=self.target_id),
             relation_type=self.relation_type,
-            owner_id=self.owner_id,
             source=self.source,
             metadata=dict(self.metadata),
         )

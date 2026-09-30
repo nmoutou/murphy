@@ -18,7 +18,6 @@ from ragcore.core.models import (
     Identifier,
     ManifestEntry,
     Operation,
-    OwnerId,
     ParsedDocument,
 )
 from ragcore.core.models.audit import build_event
@@ -100,17 +99,15 @@ class IngestDocumentUseCase:
             SagaStep(
                 name="mongo_upsert",
                 forward=lambda: self._document_repo.upsert(parsed),
-                compensate=lambda: self._document_repo.delete(
-                    parsed.identifier, parsed.owner_id
-                ),
+                compensate=lambda: self._document_repo.delete(parsed.identifier),
             ),
             SagaStep(
                 name="qdrant_upsert",
                 forward=lambda: self._qdrant_delete_then_insert(
-                    parsed.identifier, parsed.owner_id, embedded_chunks
+                    parsed.identifier, embedded_chunks
                 ),
                 compensate=lambda: self._vector_repo.delete_by_document(
-                    parsed.identifier, parsed.owner_id
+                    parsed.identifier
                 ),
             ),
             SagaStep(
@@ -120,7 +117,7 @@ class IngestDocumentUseCase:
                 # supprime ; s'il l'est, on le dé-hydrate en `:Pending` sans arracher la
                 # citation d'autrui. Fin du `_noop` — le nœud orphelin ne survit plus.
                 compensate=lambda: self._graph_repo.compensate_document_node(
-                    parsed.identifier, parsed.owner_id
+                    parsed.identifier
                 ),
             ),
         ]
@@ -134,7 +131,6 @@ class IngestDocumentUseCase:
             ManifestEntry(
                 identifier=parsed.identifier,
                 source=parsed.source,
-                owner_id=parsed.owner_id,
                 operation=operation,
                 reason=None,
                 targets_written=list(TARGETS_WRITTEN),
@@ -145,7 +141,6 @@ class IngestDocumentUseCase:
             build_event(
                 event_type=DOCUMENT_PERSISTED,
                 run_id=context.run_id,
-                owner_id=parsed.owner_id,
                 source=parsed.source,
                 document_id=parsed.identifier.serialize(),
                 payload={"operation": operation.value},
@@ -155,7 +150,6 @@ class IngestDocumentUseCase:
     async def _qdrant_delete_then_insert(
         self,
         identifier: Identifier,
-        owner_id: OwnerId,
         embedded_chunks: list[EmbeddedChunk],
     ) -> None:
         """Supprimer TOUS les points de ce document, PUIS insérer ceux du neuf.
@@ -176,5 +170,5 @@ class IngestDocumentUseCase:
         l'at-least-once : le run suivant ré-écrit le document. Aucune donnée d'autorité
         n'est perdue — la source XML reste la vérité.
         """
-        await self._vector_repo.delete_by_document(identifier, owner_id)
+        await self._vector_repo.delete_by_document(identifier)
         await self._vector_repo.upsert(embedded_chunks)

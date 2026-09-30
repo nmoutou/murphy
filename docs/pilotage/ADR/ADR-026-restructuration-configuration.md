@@ -1,6 +1,6 @@
 # ADR-026 — Restructuration de la configuration en partition workflow / ingestion
 
-**Statut** : ✅ Accepté — 19 juillet 2026
+**Statut** : ❌ Remplacé par [ADR-042](ADR-042-collection-qdrant-nom-fixe.md) (30 septembre 2026) — accepté le 19 juillet 2026
 **Version cible** : v0
 
 ## Contexte

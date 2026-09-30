@@ -141,16 +141,14 @@ résiduelles. Invisible à l'œil, décisif pour le tokenizer et le modèle.
 Ce qu'elle ne fait pas, délibérément : lemmatisation, mots vides, minuscules — on
 normalise la *typographie*, jamais la *langue*.
 
-⚠️ Elle **entre dans le hash** de la collection Qdrant :
-`workflow.normalization.version` (`conf/base/workflow/parameters.yml`) doit rester
-synchronisé avec `NORMALIZATION_VERSION` dans le code. Changer le traitement sans changer
-la version mélangerait deux jeux de vecteurs incomparables dans la même collection.
+⚠️ La modifier invalide les vecteurs déjà écrits : après un changement, réingérer tout
+le corpus, sinon deux jeux de vecteurs incomparables cohabitent dans la collection.
 
 ## Le chunking (`sources/generic/chunking.py` — `StructuralChunker`)
 
 **La structure dit où couper, la taille dit jusqu'où aller** — pas deux stratégies
 concurrentes : on ne coupe jamais à travers un bloc structurel, et on ne dépasse jamais
-`chunk_size` dans un bloc (fenêtre glissante avec `overlap`).
+`chunking.size` dans un bloc (fenêtre glissante avec `overlap`).
 
 - Sans section déclarée, le document entier est un bloc : la découpe à taille fixe est le
   cas particulier où la structure est muette.
@@ -160,9 +158,9 @@ concurrentes : on ne coupe jamais à travers un bloc structurel, et on ne dépas
   jamais : deux blocs au texte identique reçoivent des offsets différents. Si l'invariant
   du parser est rompu (section non littérale), le bloc est ignoré plutôt que doté d'un
   offset faux.
-- Le calibrage vit dans `conf/base/workflow/parameters.yml` — voir
-  [configuration.md](configuration.md#workflow-confbaseworkflowparametersyml--ce-qui-entre-dans-le-hash)
-  pour le raisonnement mesuré derrière `chunk_size: 384`.
+- Le calibrage vit dans `conf/base/ingestion/parameters.yml` — voir
+  [configuration.md](configuration.md#chunking-et-embedding--ce-qui-décide-des-vecteurs)
+  pour le raisonnement mesuré derrière `chunking.size: 384`.
 
 ## Relations et citations (`core/links/`, `sources/generic/relations.py`)
 

@@ -20,7 +20,7 @@ from ragcore.application.run_context import PipelineContext
 from ragcore.core.models.audit import build_event
 from ragcore.core.models.document import ParsedDocument
 from ragcore.core.models.enums import Operation, SourceName
-from ragcore.core.models.identifiers import Identifier, OwnerId
+from ragcore.core.models.identifiers import Identifier
 from ragcore.core.ports.runtime import AsyncRuntimeFactory
 from ragcore.core.ports.telemetry import TelemetryFactory, WorkerTelemetry
 from ragcore.core.telemetry_events import DOCUMENT_PERSISTED
@@ -30,13 +30,10 @@ from ragcore.tests.fakes import (
     RecordingTelemetryFactory,
 )
 
-OWNER = OwnerId("owner-1")
-
 
 def _doc(n: int) -> ParsedDocument:
     return ParsedDocument(
         identifier=Identifier(raw=f"LEGIARTI{n:012d}"),
-        owner_id=OWNER,
         source=SourceName.LEGI,
         title=f"Article {n}",
         content=f"contenu {n}",
@@ -52,7 +49,6 @@ def _workload(parsed, operation, runtime, telemetry) -> WorkloadResult:  # noqa:
         build_event(
             DOCUMENT_PERSISTED,
             "run-1",
-            OWNER,
             document_id=parsed.identifier.serialize(),
             payload={"operation": "insert"},
         )
@@ -62,7 +58,7 @@ def _workload(parsed, operation, runtime, telemetry) -> WorkloadResult:  # noqa:
 
 @pytest.fixture
 def context() -> PipelineContext:
-    return PipelineContext.create(owner_id=OWNER, source=SourceName.LEGI)
+    return PipelineContext.create(source=SourceName.LEGI)
 
 
 def _runner(workload=_workload, worker_count: int = 4) -> IngestionRunner:  # noqa: ANN001

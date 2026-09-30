@@ -1,4 +1,4 @@
-# Télémétrie, bilan de run, tracking
+# Télémétrie et bilan de run
 
 La doctrine tient en une phrase : **rien en silence**. Tout ce qui est vu est compté, tout
 ce qui échoue est compté, et le compteur qui compte est lui-même surveillé. Le statut d'un
@@ -80,7 +80,7 @@ les pousser les compterait deux fois).
 
 ## Le statut d'un run
 
-`RunSummary` = l'identité du run (run_id, owner, source, dates) + l'agrégat + le
+`RunSummary` = l'identité du run (run_id, source, dates) + l'agrégat + le
 `status`. Le statut annoncé « ok » par le hook est **re-dérivé des compteurs**
 (`_status_from`) — trois propriétés, vérifiées dans cet ordre :
 
@@ -95,7 +95,7 @@ les pousser les compterait deux fois).
 
 | Statut | Sens |
 |---|---|
-| `ok` | Tout ce qui a été vu a été ingéré ou écarté sciemment. **Seul ce statut publie le pointeur de collection.** |
+| `ok` | Tout ce qui a été vu a été ingéré ou écarté sciemment. |
 | `degraded` | Le run est allé au bout mais ne peut pas se déclarer complet (une des trois propriétés a cassé). |
 | `failed` | Le pipeline a levé ; rien ne garantit l'état des stores. Si la casse précède le node `report`, le bilan est pauvre (les stats des workers ne remontent que par lui) — le statut reste vrai. |
 
@@ -108,16 +108,3 @@ rencontrées.
 
 Persistance du bilan : JSON local (`data/08_reporting/stats/{iso}_{run_id}.json`) +
 upsert Mongo (`meta_run_summaries`, unique par run_id).
-
-## Le tracking d'expériences (MLflow)
-
-`TRACKING_PROVIDER` : `noop` (défaut — aucune dépendance) ou `mlflow` (extra `tracking`).
-Le run MLflow est ouvert en tête de run avec pour **run-id le nom de la collection
-Qdrant** — donc le fingerprint : les deux sortent du même calcul et ne peuvent pas
-diverger. Il porte la `WorkflowConfig` **en clair** (ce qui lève l'opacité du hash) et
-reçoit le bilan en fin de run. Fermé dans `after_pipeline_run` **et** `on_pipeline_error`
-(`end_run` en `finally`) : un run cassé ne laisse pas un run MLflow ouvert que le suivant
-polluerait.
-
-C'est l'outil de lecture de l'A/B : deux stratégies de chunking = deux collections = deux
-runs MLflow comparables, paramètres et compteurs en clair.

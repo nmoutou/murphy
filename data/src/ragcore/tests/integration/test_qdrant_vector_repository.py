@@ -16,23 +16,20 @@ from testcontainers.qdrant import QdrantContainer
 from ragcore.adapters.storage.qdrant.client import create_qdrant_client
 from ragcore.adapters.storage.qdrant.vector_repository import QdrantVectorRepository
 from ragcore.core.models.chunk import Chunk, EmbeddedChunk
-from ragcore.core.models.identifiers import Identifier, OwnerId
+from ragcore.core.models.identifiers import Identifier
 
 pytestmark = pytest.mark.integration
 
-OWNER = OwnerId("owner-1")
-OTHER_OWNER = OwnerId("owner-2")
 DIM = 8
 COLLECTION = "chunks_test"
 
 
-def _embedded(document: str, ordinal: int, owner: OwnerId = OWNER) -> EmbeddedChunk:
+def _embedded(document: str, ordinal: int) -> EmbeddedChunk:
     identifier = Identifier(raw=document)
     return EmbeddedChunk(
         chunk=Chunk(
-            chunk_id=f"{document}#{ordinal}#{owner}",
+            chunk_id=f"{document}#{ordinal}",
             parent_identifier=identifier,
-            owner_id=owner,
             ordinal=ordinal,
             text=f"texte {ordinal}",
             tag_path=[],
@@ -111,26 +108,9 @@ async def test_deleting_a_document_removes_only_its_own_vectors(repo) -> None:
     )
     assert await _count(repo) == 3
 
-    await repo.delete_by_document(Identifier(raw="LEGIARTI000000000001"), OWNER)
+    await repo.delete_by_document(Identifier(raw="LEGIARTI000000000001"))
 
     # Les 2 chunks du doc 1 sont partis, celui du doc 2 est intact.
-    assert await _count(repo) == 1
-
-
-async def test_deleting_never_crosses_owners(repo) -> None:
-    """Le même document, chez deux propriétaires. Supprimer chez l'un ne doit pas
-    toucher l'autre — sinon un run effacerait le corpus d'un tiers, en silence.
-    """
-    await repo.upsert(
-        [
-            _embedded("LEGIARTI000000000001", 0, owner=OWNER),
-            _embedded("LEGIARTI000000000001", 0, owner=OTHER_OWNER),
-        ]
-    )
-    assert await _count(repo) == 2
-
-    await repo.delete_by_document(Identifier(raw="LEGIARTI000000000001"), OWNER)
-
     assert await _count(repo) == 1
 
 

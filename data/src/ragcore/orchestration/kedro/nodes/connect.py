@@ -20,7 +20,7 @@ def connect_node(
     del nuke_done  # signal-only input: ensures nukeAll runs before connect
 
     async def _fetch() -> list[RawDocument]:
-        return [doc async for doc in connector.fetch_all(pipeline_context.owner_id)]
+        return [doc async for doc in connector.fetch_all()]
 
     # Le pont sync→async passe par le runtime du hook (sa boucle), jamais une globale
     # (§11 : ``_async_utils.run_async`` tenait une boucle unique, point de
@@ -54,7 +54,6 @@ def _emit(
         build_event(
             event_type=event_type,
             run_id=context.run_id,
-            owner_id=context.owner_id,
             source=context.source,
             payload=payload,
         )

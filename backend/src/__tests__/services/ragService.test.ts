@@ -29,14 +29,12 @@ jest.mock('../../utils/logger', () => {
 const EMBEDDING = [0.1, 0.2, 0.3];
 const DOCUMENT: StoredDocument = {
   identifier: 'LEGIARTI000006419304',
-  ownerId: 'default',
   title: 'Code civil, art. 2224',
   content: 'Article 2224. Cinq ans.',
 };
 const CHUNK: RetrievedChunk = {
   chunkId: 'LEGIARTI000006419304_0001',
   identifier: DOCUMENT.identifier,
-  ownerId: DOCUMENT.ownerId,
   charStart: 14,
   charEnd: 23,
   score: 0.9,
@@ -70,7 +68,7 @@ describe('fetchPassages', () => {
 
     const fetched = await fetchPassages([CHUNK]);
 
-    expect(mongo.fetchParentDocuments).toHaveBeenCalledWith([CHUNK]);
+    expect(mongo.fetchParentDocuments).toHaveBeenCalledWith([CHUNK.identifier]);
     expect(fetched.passages).toEqual([PASSAGE]);
     expect(fetched.docFetchMs).toBeGreaterThanOrEqual(0);
   });

@@ -5,24 +5,29 @@ from typing import Any
 import pytest
 
 from ragcore.adapters.config.settings import InfraSettings
-from ragcore.core.config import collection_name
 from ragcore.core.models.enums import SourceName
 from ragcore.core.models.identifiers import Identifier
-from ragcore.orchestration.kedro.run_parameters import build_workflow_config
 from ragcore.orchestration.kedro.run_plan import plan_run
 
+PROCESSING: dict[str, Any] = {
+    "chunking": {"size": 384, "overlap": 25},
+    "embedding": {"model_name": "un-modele", "dimension": 768},
+}
 PARAMS: dict[str, Any] = {
+    **PROCESSING,
     "exportation": {
         "neo4j": {
             "labels": {"default": "Document", "by_prefix": {"LEGIARTI": "Article"}}
         }
-    }
+    },
 }
-"""Le seul bloc de `parameters.yml` sans défaut dans le code : les labels Neo4j."""
+"""Les blocs de `parameters.yml` sans défaut dans le code."""
 
 
 def _settings(environment: str = "prod") -> InfraSettings:
-    return InfraSettings(source="all", owner_id="default", environment=environment)
+    return InfraSettings(
+        source="all", environment=environment, qdrant_collection="chunks"
+    )
 
 
 def _cli(**params: str) -> dict[str, object]:
@@ -31,25 +36,35 @@ def _cli(**params: str) -> dict[str, object]:
     return {"runtime_params": params}
 
 
-def test_un_run_nu_est_complet_et_ecrit_la_collection_derivee() -> None:
+def test_un_run_nu_ecrit_la_collection_configuree() -> None:
     plan = plan_run(PARAMS, _settings(), {})
 
-    assert plan.is_full_run
     assert plan.context_source is None, "un run multi-source n'a pas de source"
-    assert plan.collection == collection_name(build_workflow_config(PARAMS))
+    assert plan.collection == "chunks"
+    assert (plan.chunking.size, plan.chunking.overlap) == (384, 25)
+    assert plan.embedding.dimension == 768
 
 
-def test_un_run_restreint_n_est_pas_complet_et_garde_sa_source() -> None:
+@pytest.mark.parametrize("block", ["chunking", "embedding"])
+def test_sans_reglage_de_traitement_le_run_s_arrete(block: str) -> None:
+    params = {name: value for name, value in PARAMS.items() if name != block}
+
+    with pytest.raises(ValueError, match=f"`{block}` est absent"):
+        plan_run(params, _settings(), {})
+
+
+def test_un_reglage_de_traitement_mal_forme_arrete_le_run() -> None:
+    params = {**PARAMS, "chunking": {"size": 0, "overlap": 25}}
+
+    with pytest.raises(ValueError, match="size"):
+        plan_run(params, _settings(), {})
+
+
+def test_un_run_restreint_garde_sa_source() -> None:
     plan = plan_run(PARAMS, _settings(), _cli(source="cass"))
 
     assert plan.sources == (SourceName.CASS,)
-    assert not plan.is_full_run
     assert plan.context_source is SourceName.CASS
-
-
-def test_l_owner_id_de_la_ligne_de_commande_prime_sur_l_environnement() -> None:
-    assert plan_run(PARAMS, _settings(), _cli(owner_id="alice")).owner_id == "alice"
-    assert plan_run(PARAMS, _settings(), {}).owner_id == "default"
 
 
 def test_une_source_inconnue_echoue_avant_d_ouvrir_quoi_que_ce_soit() -> None:
@@ -74,7 +89,7 @@ def test_les_labels_neo4j_viennent_du_yaml_par_prefixe_d_identifiant() -> None:
 
 def test_sans_labels_neo4j_le_run_s_arrete() -> None:
     with pytest.raises(ValueError, match=r"exportation\.neo4j\.labels"):
-        plan_run({}, _settings(), {})
+        plan_run(PROCESSING, _settings(), {})
 
 
 @pytest.mark.parametrize(
@@ -88,7 +103,7 @@ def test_sans_labels_neo4j_le_run_s_arrete() -> None:
 def test_un_label_ou_un_prefixe_mal_forme_arrete_le_run(
     labels: dict[str, Any], message: str
 ) -> None:
-    params = {"exportation": {"neo4j": {"labels": labels}}}
+    params = {**PROCESSING, "exportation": {"neo4j": {"labels": labels}}}
 
     with pytest.raises(ValueError, match=message):
         plan_run(params, _settings(), {})

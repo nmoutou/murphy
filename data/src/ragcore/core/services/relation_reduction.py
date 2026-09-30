@@ -35,7 +35,6 @@ from collections import defaultdict
 import networkx as nx
 
 from ..links.vocabulary import CONTAINS, RelationVerb
-from ..models.identifiers import OwnerId
 from ..models.relation import Relation
 
 __all__ = ["REDUCIBLE_TYPES", "reduce_transitively"]
@@ -64,8 +63,7 @@ def reduce_transitively(
     oubli, c'est le sujet. Et depuis que le vocabulaire est ouvert, cela couvre aussi
     tous les verbes bruts que le domaine n'a pas encore traduits.
 
-    Groupé par ``(owner_id, relation_type)`` — deux propriétaires ne partagent pas de
-    graphe, et deux verbes n'ont pas la même algèbre. Un cycle rend la réduction
+    Groupé par ``relation_type`` — deux verbes n'ont pas la même algèbre. Un cycle rend la réduction
     indéfinie (elle n'existe que sur les DAG) : le sous-graphe est alors conservé tel
     quel. Une donnée qu'on ne sait pas simplifier reste une donnée vraie.
     """
@@ -73,11 +71,11 @@ def reduce_transitively(
         return relations
 
     kept: list[Relation] = []
-    to_reduce: dict[tuple[OwnerId, str], list[Relation]] = defaultdict(list)
+    to_reduce: dict[str, list[Relation]] = defaultdict(list)
 
     for relation in relations:
         if relation.relation_type in reducible:
-            to_reduce[(relation.owner_id, relation.relation_type)].append(relation)
+            to_reduce[relation.relation_type].append(relation)
         else:
             kept.append(relation)
 
@@ -88,7 +86,7 @@ def reduce_transitively(
 
 
 def _reduce_group(group: list[Relation]) -> list[Relation]:
-    """Réduit un groupe homogène (même owner, même type). Rend les arêtes CONSERVÉES."""
+    """Réduit un groupe homogène (même type). Rend les arêtes CONSERVÉES."""
     graph: nx.DiGraph = nx.DiGraph()
     # L'arête porte l'identité complète de la relation : après réduction, networkx ne
     # rend que des couples de chaînes. Sans ce registre, on saurait quelles arêtes

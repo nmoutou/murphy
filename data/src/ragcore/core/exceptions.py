@@ -13,12 +13,12 @@ class RagCoreError(Exception):
 
 
 class EmbeddingModelMismatchError(RagCoreError):
-    """Le service d'embedding ne sert pas le modèle dont le nom baptise la collection.
+    """Le service d'embedding ne sert pas le modèle que la configuration déclare.
 
     TEI ne sert qu'UN modèle — celui de son ``--model-id`` — et **ignore** le champ
     ``model`` de la requête. Réclamer `all-mpnet-base-v2` à un service lancé sur
     `gte-base` ne lève rien : on reçoit les vecteurs de `gte-base`, et on les écrit dans
-    la collection nommée d'après l'empreinte d'`all-mpnet-base-v2` (§6). Deux jeux de
+    la collection que le backend interroge avec `all-mpnet-base-v2`. Deux jeux de
     vecteurs incomparables dans un même index, et pas une ligne de log — ça ne se voit
     qu'à la recherche, longtemps après.
 

@@ -8,7 +8,7 @@ noms divergent de ceux que sérialise ``PendingRelation``, l'index ne protège r
 lieu des trous. Rien ne lèverait.
 
 Trois affirmations que seule la vraie base peut trancher :
-  1. l'index unique existe et porte sur le bon quadruplet ;
+  1. l'index unique existe et porte sur le bon triplet ;
   2. ``$setOnInsert`` fige vraiment ``first_seen_run`` ;
   3. le rejeu ciblé filtre bien par ``target_id`` — donc par le DELTA.
 """
@@ -24,21 +24,16 @@ from ragcore.adapters.storage.mongo.pending_repository import (
 from ragcore.adapters.storage.mongo.schemas import ensure_meta_indexes
 from ragcore.core.links import CITES
 from ragcore.core.models.enums import SourceName
-from ragcore.core.models.identifiers import OwnerId, RunId
+from ragcore.core.models.identifiers import RunId
 from ragcore.core.models.pending import PendingRelation
 
 pytestmark = pytest.mark.integration
 
-OWNER = OwnerId("owner-1")
-OTHER_OWNER = OwnerId("owner-2")
 DB = "MURPHY_META_TEST"
 
 
-def _pending(
-    source: str, target: str, run_id: str, owner: OwnerId = OWNER
-) -> PendingRelation:
+def _pending(source: str, target: str, run_id: str) -> PendingRelation:
     return PendingRelation(
-        owner_id=owner,
         source_id=source,
         target_id=target,
         relation_type=CITES,
@@ -64,15 +59,14 @@ async def repo(mongo_uri):
     client.close()
 
 
-async def test_the_unique_index_covers_the_quadruplet(repo) -> None:
+async def test_the_unique_index_covers_the_triplet(repo) -> None:
     """Sans cet index, ``upsert_many`` n'est plus une union — c'est un espoir."""
     collection = repo._collection  # noqa: SLF001
     indexes = await collection.index_information()
 
-    unique = indexes["uq_pending_owner_source_target_type"]
+    unique = indexes["uq_pending_source_target_type"]
     assert unique["unique"] is True
     assert [key for key, _ in unique["key"]] == [
-        "owner_id",
         "source_id",
         "target_id",
         "relation_type",
@@ -85,7 +79,7 @@ async def test_seeing_the_same_pending_twice_yields_one_entry(repo) -> None:
     await repo.upsert_many([_pending("A", "B", "run-2")])
     await repo.upsert_many([_pending("A", "B", "run-3")])
 
-    assert await repo.count_for_owner(OWNER) == 1
+    assert await repo.count() == 1
 
 
 async def test_first_seen_run_never_moves_but_last_seen_does(repo) -> None:
@@ -97,7 +91,7 @@ async def test_first_seen_run_never_moves_but_last_seen_does(repo) -> None:
     await repo.upsert_many([_pending("A", "B", "run-1")])
     await repo.upsert_many([_pending("A", "B", "run-2")])
 
-    stored = await repo.promotable_for({"B"}, OWNER)
+    stored = await repo.promotable_for({"B"})
 
     assert len(stored) == 1
     assert stored[0].first_seen_run == "run-1"
@@ -105,7 +99,7 @@ async def test_first_seen_run_never_moves_but_last_seen_does(repo) -> None:
 
 
 async def test_a_duplicate_insert_is_actually_rejected_by_mongo(repo) -> None:
-    """La preuve que l'index MORD : une insertion nue du même quadruplet échoue.
+    """La preuve que l'index MORD : une insertion nue du même triplet échoue.
 
     Le fake ne peut pas prouver ça — son ``dict`` écraserait silencieusement.
     """
@@ -131,40 +125,20 @@ async def test_the_replay_is_bounded_by_the_delta_not_the_backlog(repo) -> None:
         ]
     )
 
-    promotable = await repo.promotable_for({"D"}, OWNER)
+    promotable = await repo.promotable_for({"D"})
 
     assert len(promotable) == 1
     assert promotable[0].target_id == "D"
-    assert await repo.count_for_owner(OWNER) == 3  # rien n'a été retiré
+    assert await repo.count() == 3  # rien n'a été retiré
 
 
 async def test_a_promoted_pending_leaves_the_backlog(repo) -> None:
     await repo.upsert_many([_pending("A", "B", "run-1"), _pending("C", "D", "run-1")])
 
-    promotable = await repo.promotable_for({"B"}, OWNER)
+    promotable = await repo.promotable_for({"B"})
     await repo.delete_many([p.key for p in promotable])
 
-    assert await repo.count_for_owner(OWNER) == 1
-
-
-async def test_owner_id_is_in_the_key_without_exception(repo) -> None:
-    """Deux propriétaires, le MÊME trou. Promouvoir chez l'un ne doit rien effacer
-    chez l'autre — dont l'arête ne serait jamais écrite, et rien ne le dirait.
-    """
-    await repo.upsert_many(
-        [
-            _pending("A", "B", "run-1", owner=OWNER),
-            _pending("A", "B", "run-1", owner=OTHER_OWNER),
-        ]
-    )
-    assert await repo.count_for_owner(OWNER) == 1
-    assert await repo.count_for_owner(OTHER_OWNER) == 1
-
-    promotable = await repo.promotable_for({"B"}, OWNER)
-    await repo.delete_many([p.key for p in promotable])
-
-    assert await repo.count_for_owner(OWNER) == 0
-    assert await repo.count_for_owner(OTHER_OWNER) == 1  # intact
+    assert await repo.count() == 1
 
 
 async def test_an_empty_delta_promotes_nothing(repo) -> None:
@@ -173,4 +147,4 @@ async def test_an_empty_delta_promotes_nothing(repo) -> None:
     """
     await repo.upsert_many([_pending("A", "B", "run-1")])
 
-    assert await repo.promotable_for(set(), OWNER) == []
+    assert await repo.promotable_for(set()) == []

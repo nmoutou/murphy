@@ -21,9 +21,6 @@ from ragcore.adapters.storage.mongo.manifest_repository import MongoManifestRepo
 from ragcore.adapters.storage.mongo.pending_repository import (
     MongoPendingRelationRepository,
 )
-from ragcore.adapters.storage.mongo.published_collection_repository import (
-    MongoPublishedCollectionRepository,
-)
 from ragcore.adapters.storage.mongo.run_summary_repository import (
     MongoRunSummaryRepository,
 )
@@ -58,11 +55,10 @@ class InfraClients:
 
 @dataclass(frozen=True)
 class MetaStores:
-    """La base méta : audit, bilans, pointeur publié, relations en attente."""
+    """La base méta : audit, bilans, relations en attente."""
 
     audit: MongoAuditRepository
     summaries: MongoRunSummaryRepository
-    published: MongoPublishedCollectionRepository
     pending: MongoPendingRelationRepository
 
 
@@ -105,7 +101,7 @@ def open_document_stores(
             clients.neo4j, plan.node_labels, plan.node_hydration
         ),
         vectors=QdrantVectorRepository(
-            clients.qdrant, plan.collection, plan.workflow.embedding.dimension
+            clients.qdrant, plan.collection, plan.embedding.dimension
         ),
     )
 
@@ -115,6 +111,5 @@ def open_meta_stores(clients: InfraClients, settings: InfraSettings) -> MetaStor
     return MetaStores(
         audit=MongoAuditRepository(clients.mongo, meta_db),
         summaries=MongoRunSummaryRepository(clients.mongo, meta_db),
-        published=MongoPublishedCollectionRepository(clients.mongo, meta_db),
         pending=MongoPendingRelationRepository(clients.mongo, meta_db),
     )

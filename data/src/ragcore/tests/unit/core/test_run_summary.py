@@ -13,18 +13,17 @@ import pytest
 from ragcore.adapters.telemetry.aggregator import RunStatsAggregator
 from ragcore.core.models.audit import build_event
 from ragcore.core.models.enums import SourceName
-from ragcore.core.models.identifiers import OwnerId, RunId
+from ragcore.core.models.identifiers import RunId
 from ragcore.core.models.run_stats import RunStats
 from ragcore.core.models.run_summary import RunStatus, RunSummary
 from ragcore.core.telemetry_events import DOCUMENT_INVALIDATED, DOCUMENT_PERSISTED
 
 RUN = RunId("run-1")
-OWNER = OwnerId("owner-1")
 
 
 @pytest.fixture
 def aggregator() -> RunStatsAggregator:
-    return RunStatsAggregator(RUN, OWNER, SourceName.LEGI, datetime.now(UTC))
+    return RunStatsAggregator(RUN, SourceName.LEGI, datetime.now(UTC))
 
 
 def test_aggregator_produces_a_valid_summary(aggregator: RunStatsAggregator) -> None:
@@ -38,13 +37,12 @@ def test_aggregator_produces_a_valid_summary(aggregator: RunStatsAggregator) -> 
 
 def test_counts_and_breakdown_reach_the_stats(aggregator: RunStatsAggregator) -> None:
     aggregator.emit(
-        build_event(DOCUMENT_PERSISTED, RUN, OWNER, payload={"operation": "insert"})
+        build_event(DOCUMENT_PERSISTED, RUN, payload={"operation": "insert"})
     )
     aggregator.emit(
         build_event(
             DOCUMENT_INVALIDATED,
             RUN,
-            OWNER,
             payload={"reason": "validation_error"},
             success=False,
         )
@@ -69,7 +67,6 @@ def test_summary_is_json_serializable() -> None:
     summary = RunSummary.of(
         RunStats(unknowns={"relation_type": ["titre_tm", "lien_art"]}),
         context_run_id=RUN,
-        owner_id=OWNER,
         source=SourceName.CASS,
         started_at=datetime.now(UTC),
         status=RunStatus.OK,
@@ -83,17 +80,13 @@ def test_summary_is_json_serializable() -> None:
 
 def test_source_is_nullable() -> None:
     """L'agrégateur est typé SourceName | None : un run sans source reste légal."""
-    summary = RunStatsAggregator(RUN, OWNER, None, datetime.now(UTC)).finalize(
-        RunStatus.OK
-    )
+    summary = RunStatsAggregator(RUN, None, datetime.now(UTC)).finalize(RunStatus.OK)
     assert summary.source is None
 
 
 def test_unknowns_defaults_to_empty_not_none() -> None:
     """Un run qui a tout compris déclare un vide, pas une absence."""
-    summary = RunStatsAggregator(RUN, OWNER, None, datetime.now(UTC)).finalize(
-        RunStatus.OK
-    )
+    summary = RunStatsAggregator(RUN, None, datetime.now(UTC)).finalize(RunStatus.OK)
     assert summary.stats.unknowns == {}
 
 
@@ -125,7 +118,6 @@ def test_the_summary_projects_the_reduction_of_n_workers() -> None:
     summary = RunSummary.of(
         RunStats.reduce(workers),
         context_run_id=RUN,
-        owner_id=OWNER,
         source=SourceName.LEGI,
         started_at=datetime.now(UTC),
         status=RunStatus.OK,

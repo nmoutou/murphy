@@ -7,7 +7,7 @@ import crypto from 'crypto';
 import { logger as rootLogger } from '../utils/logger';
 import { embedQuestion, retrieveChunks, fetchPassages, buildContextString } from './ragService';
 import { getInfraClients } from '../infra/clients';
-import { RagError, serializeDocumentKey, toChatError } from '../types/rag';
+import { RagError, toChatError } from '../types/rag';
 import { serializeChatError } from '@murphy/contract/errors';
 import { config } from '../config';
 
@@ -38,10 +38,10 @@ const writeParentDocument = (writer: AppWriter, { document, chunk }: Passage): v
 const writeSources = (writer: AppWriter, passages: readonly Passage[]): void => {
   const writtenDocuments = new Set<string>();
   for (const passage of passages) {
-    const documentKey = serializeDocumentKey(passage.document);
-    if (!writtenDocuments.has(documentKey)) {
+    const { identifier } = passage.document;
+    if (!writtenDocuments.has(identifier)) {
       writeParentDocument(writer, passage);
-      writtenDocuments.add(documentKey);
+      writtenDocuments.add(identifier);
     }
     const { chunk, document, highlightStart, highlightEnd } = passage;
     writer.write({

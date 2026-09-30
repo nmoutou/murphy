@@ -30,7 +30,7 @@ from ragcore.adapters.telemetry.registry_aware import RegistryAwareTelemetry
 from ragcore.adapters.telemetry.worker_backends import WorkerBackends
 from ragcore.core.models.audit import AuditEvent, build_event
 from ragcore.core.models.enums import SourceName
-from ragcore.core.models.identifiers import OwnerId, RunId
+from ragcore.core.models.identifiers import RunId
 from ragcore.core.models.run_stats import RunStats
 from ragcore.core.models.run_summary import RunStatus, RunSummary
 from ragcore.core.services.telemetry_registry import EventBehavior, TelemetryRegistry
@@ -76,7 +76,6 @@ def _event(event_type: str = DOCUMENT_PERSISTED) -> AuditEvent:
     return build_event(
         event_type=event_type,
         run_id=RunId("r-1"),
-        owner_id=OwnerId("o-1"),
     )
 
 
@@ -119,7 +118,6 @@ def _telemetry(
             aggregate=aggregator
             or RunStatsAggregator(
                 run_id=RunId("r-1"),
-                owner_id=OwnerId("o-1"),
                 source=SourceName.LEGI,
                 started_at=datetime.now(UTC),
             ),
@@ -206,7 +204,6 @@ def _jsonl_telemetry(jsonl: JsonlFileTelemetry) -> RegistryAwareTelemetry:
             mongo=SilentBackend(),  # type: ignore[arg-type]
             aggregate=RunStatsAggregator(
                 run_id=RunId("r-1"),
-                owner_id=OwnerId("o-1"),
                 source=SourceName.LEGI,
                 started_at=datetime.now(UTC),
             ),
@@ -365,7 +362,6 @@ class TestTheStatusRefusesToTrustAPatchyAudit:
         return RunSummary.of(
             stats,
             context_run_id=RunId("r-1"),
-            owner_id=OwnerId("o-1"),
             source=SourceName.LEGI,
             started_at=datetime.now(UTC),
             status=RunStatus.OK,  # l'appelant CROIT que tout va bien
@@ -437,7 +433,6 @@ class TestTheCountTravelsAcrossWorkers:
         """
         aggregator = RunStatsAggregator(
             run_id=RunId("r-1"),
-            owner_id=OwnerId("o-1"),
             source=SourceName.LEGI,
             started_at=datetime.now(UTC),
         )

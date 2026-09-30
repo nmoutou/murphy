@@ -5,7 +5,6 @@ from pathlib import Path
 
 import pytest
 
-from ragcore.core.models.identifiers import OwnerId
 from ragcore.core.ports.connector import BaseConnector
 from ragcore.core.services.exclusion_reasons import (
     REASON_EXPORT_ARTIFACT,
@@ -20,11 +19,9 @@ from .conftest import (
     TEXTE_DEUX_FACETTES,
 )
 
-OWNER = OwnerId("u1")
-
 
 async def _collect(connector: LegiFileConnector) -> dict[str, object]:
-    return {doc.source_document_id: doc async for doc in connector.fetch_all(OWNER)}
+    return {doc.source_document_id: doc async for doc in connector.fetch_all()}
 
 
 def test_le_connecteur_satisfait_son_port() -> None:
@@ -39,7 +36,7 @@ async def test_fetch_all_est_un_generateur(corpus: Path) -> None:
     """Le corpus fait 2564 fichiers. Un ``list`` en retour le chargerait entièrement en
     mémoire — le port dit explicitement un ``AsyncIterator``.
     """
-    assert inspect.isasyncgen(LegiFileConnector(corpus).fetch_all(OWNER))
+    assert inspect.isasyncgen(LegiFileConnector(corpus).fetch_all())
 
 
 @pytest.mark.asyncio

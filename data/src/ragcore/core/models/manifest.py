@@ -3,9 +3,8 @@ from uuid import UUID, uuid4
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from .document import SCHEMA_VERSION
 from .enums import Operation, SourceName
-from .identifiers import Identifier, OwnerId
+from .identifiers import Identifier
 
 
 class ManifestEntry(BaseModel):
@@ -16,22 +15,20 @@ class ManifestEntry(BaseModel):
     - Rejetés : `identifier=None`, `source_path` obligatoire, `reason` obligatoire
 
     Deux modes d'indexation coexistent :
-    1. Pour idempotence (valides) : clé (identifier, owner_id)
-    2. Pour audit des rejets : clé (source_path, owner_id)
+    1. Pour idempotence (valides) : clé ``identifier``
+    2. Pour audit des rejets : clé ``source_path``
     """
 
     model_config = ConfigDict(frozen=True)
 
     # Identifiants
     entry_id: UUID = Field(default_factory=uuid4)
-    schema_version: int = SCHEMA_VERSION
 
     # Clés d'indexation (mutuellement exclusives selon operation)
     identifier: Identifier | None = None  # Non-null pour valides
     source_path: str | None = None  # Pour rejets et debug
 
     # Contexte
-    owner_id: OwnerId
     source: SourceName
     operation: Operation
 

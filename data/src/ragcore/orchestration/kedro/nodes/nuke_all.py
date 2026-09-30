@@ -47,8 +47,8 @@ def nuke_all_node(
     Ce que le nuke efface — et ce qu'il PRÉSERVE :
     - Mongo *données* : collections `documents` + `manifest` (base `LEGIFRANCE`).
     - Neo4j : le graphe entier.
-    - Qdrant : **toutes** les collections du store, pas seulement celle du fingerprint
-      courant — c'est là que se cache la place perdue.
+    - Qdrant : **toutes** les collections du store, pas seulement celle du run —
+      c'est là que se cache la place perdue.
     - **PRÉSERVÉ : la base méta Mongo** (`MURPHY_META` : audit, bilans de run,
       pendantes). Un nuke ne doit jamais emporter la mémoire de ce qu'on a fait —
       c'est elle qui rend un run *invérifiable* si elle disparaît, pas le corpus.
@@ -75,7 +75,7 @@ def nuke_all_node(
 
     dropped: dict[str, bool] = {"mongodb": True, "neo4j": True, "qdrant": True}
 
-    # Setup partagé, hors du drop : la collection du fingerprint courant doit exister
+    # Setup partagé, hors du drop : la collection du run doit exister
     # avant que le pool ne démarre, qu'on vienne de tout dropper ou non.
     pipeline_runtime.run(vector_repo.ensure_collection())
 
@@ -90,7 +90,6 @@ def _emit_nuked(
         build_event(
             event_type=MAINTENANCE_NUKE_ALL_EXECUTED,
             run_id=context.run_id,
-            owner_id=context.owner_id,
             source=context.source,
             payload=dropped,
         )
@@ -120,6 +119,6 @@ def _drop_mongo(
     pipeline_runtime.run(manifest_repo.drop_collection())
     # Dropper une collection détruit ses index avec elle. Ceux que le hook a posés en
     # `before_pipeline_run` viennent de disparaître : sans ce rappel, tout le run
-    # réécrit dans des collections nues, et l'unicité de (identifier, owner_id) ne
-    # protège plus rien — en silence.
+    # réécrit dans des collections nues, et l'unicité de `identifier` ne protège plus
+    # rien — en silence.
     pipeline_runtime.run(ensure_data_indexes(doc_repo.database))

@@ -11,7 +11,6 @@ from collections.abc import AsyncIterator
 from ragcore.application.run_context import PipelineContext
 from ragcore.core.models.document import RawDocument
 from ragcore.core.models.enums import SourceName
-from ragcore.core.models.identifiers import OwnerId
 from ragcore.core.services.exclusion_reasons import (
     REASON_EXPORT_ARTIFACT,
     REASON_UNREADABLE,
@@ -21,8 +20,6 @@ from ragcore.orchestration.kedro.nodes.connect import connect_node
 from ragcore.tests.fakes.runtime import FakeRuntime
 from ragcore.tests.fakes.telemetry import RecordingTelemetry
 
-OWNER = OwnerId("owner-1")
-
 
 class _ConnectorWithSkips:
     """Connecteur idiot : ne rend AUCUN document, mais déclare ses écarts."""
@@ -30,15 +27,14 @@ class _ConnectorWithSkips:
     def __init__(self, skipped: dict[str, int]) -> None:
         self.skipped = skipped
 
-    async def fetch_all(self, owner_id: OwnerId) -> AsyncIterator[RawDocument]:
-        del owner_id
+    async def fetch_all(self) -> AsyncIterator[RawDocument]:
         return
         yield  # pragma: no cover — fait de fetch_all un générateur vide
 
 
 def _run(connector: _ConnectorWithSkips) -> RecordingTelemetry:
     telemetry = RecordingTelemetry()
-    context = PipelineContext.create(owner_id=OWNER, source=SourceName.LEGI)
+    context = PipelineContext.create(source=SourceName.LEGI)
     connect_node(
         connector=connector,  # type: ignore[arg-type]
         pipeline_context=context,

@@ -12,14 +12,14 @@ les bases.
 
 ```
 data/
-├── conf/base/            # workflow/ingestion (partition ADR-026), catalog.yml (objets runtime)
+├── conf/base/            # ingestion/parameters.yml, catalog.yml (objets runtime)
 ├── src/data/             # le SHELL Kedro : délègue tout à ragcore
 │   ├── pipeline_registry.py   →  ragcore.orchestration.kedro.pipeline_registry
 │   └── settings.py            →  enregistre ragcore…hooks.TelemetryHooks + structlog
 └── src/ragcore/          # le CŒUR : toute la logique vit ici
     ├── core/             # domaine pur : modèles, ports, services — ne connaît AUCUNE base
     ├── application/      # cas d'usage : runner, saga, résolution de relations
-    ├── adapters/         # implémentations : Mongo, Neo4j, Qdrant, embedders, télémétrie, MLflow
+    ├── adapters/         # implémentations : Mongo, Neo4j, Qdrant, embedders, télémétrie
     ├── sources/          # connecteurs + tables de rôles par source, mécanique générique
     └── orchestration/    # le pont Kedro : hooks, DAG, nœuds, workload
 ```
@@ -87,24 +87,18 @@ Déroulé détaillé nœud par nœud : [reference/pipeline.md](reference/pipelin
    `vus == ingérés + exclus + échoués` — jamais de l'absence d'exception.
    Voir [reference/telemetrie.md](reference/telemetrie.md).
 
-3. **La collection Qdrant est dérivée, pas configurée.** Son nom est le hash blake2b de la
-   `WorkflowConfig` (normalisation + chunking + embedding — ce qui décide des vecteurs, et
-   rien d'autre). Changer `chunk_size` crée mécaniquement une collection neuve ; deux
-   stratégies coexistent, c'est la condition de l'A/B.
+3. **Une collection Qdrant, un nom fixe.** `QDRANT_COLLECTION` (`.env.dev`), lue aussi par
+   le backend (ADR-042). Un run réécrit la collection en place : après un changement de
+   `chunking` ou de modèle d'embedding, tout le corpus se réingère.
    Voir [reference/configuration.md](reference/configuration.md).
 
-4. **Publication conditionnelle.** Seul un run `ok` met à jour le pointeur
-   `meta_published_collection` que le backend lit au boot. Un run incomplet ne propage
-   jamais son corpus au serving.
-   Voir [reference/idempotence-et-publication.md](reference/idempotence-et-publication.md).
-
-5. **Une source = une ligne de données, pas une classe.** Le parser, le chunker et
+4. **Une source = une ligne de données, pas une classe.** Le parser, le chunker et
    l'extracteur sont **génériques** ; la spécificité d'une source tient dans une table de
    rôles déclarative et un connecteur (`sources/registry.py`). Ajouter une source n'ajoute
    pas une ligne au hook.
    Voir [reference/sources.md](reference/sources.md).
 
-6. **Les garde-fous penchent vers le refus.** `ENVIRONMENT` absent vaut `prod`, et hors
+5. **Les garde-fous penchent vers le refus.** `ENVIRONMENT` absent vaut `prod`, et hors
    `dev` : `nuke_all` refuse de tourner, l'embedding est toujours calculé (quoi que dise le
    flag), les nœuds Neo4j restent maigres. Une commodité de dev ne peut pas dégrader une
    prod par simple oubli d'une variable.
@@ -113,9 +107,8 @@ Déroulé détaillé nœud par nœud : [reference/pipeline.md](reference/pipelin
 
 | Contrat | Écrit par l'ingestion | Lu par le backend |
 |---|---|---|
-| Contenu | Mongo `LEGIFRANCE.documents` (+ `manifest`) | documents parents par `(identifier, owner_id)`, passage = `content[char_start:char_end]` |
-| Vecteurs | Qdrant, collection = empreinte de la config | via le pointeur publié |
-| Pointeur | `MURPHY_META.meta_published_collection` (clé `current`), avec `serving_contract_version` | au boot (`infra/collectionPointer.ts`), refus de démarrer sans pointeur ou sur une autre version (ADR-039) |
+| Contenu | Mongo `LEGIFRANCE.documents` (+ `manifest`) | documents parents par `identifier`, passage = `content[char_start:char_end]` |
+| Vecteurs | Qdrant, collection `QDRANT_COLLECTION` (nom fixe, ADR-042) | la même variable ; refus de démarrer si la collection n'existe pas |
 | Graphe | Neo4j (nœuds + arêtes typées par verbe) | pas encore câblé côté serving |
 
 Le modèle d'embedding et sa dimension (`all-mpnet-base-v2`, 768, Cosine) doivent être les

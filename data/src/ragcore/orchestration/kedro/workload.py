@@ -85,9 +85,7 @@ def build_document_workload(
     tournent normalement — c'est l'état recherché pour itérer sur le modèle de données
     sans payer le GPU (~99,9 % du temps d'un run). **Ce n'est PAS ``NoopEmbedder``** :
     lui produit N vecteurs NULS de la bonne dimension et les ÉCRIT dans Qdrant ; couper
-    l'embedding n'écrit rien du tout. Le flag est hors du hash de collection (§6) : ne
-    pas produire de vecteurs n'invalide aucun vecteur — c'est une décision de régime,
-    pas de workflow. La garde ``ENVIRONMENT != dev ⇒ toujours embarquer`` vit dans le
+    l'embedding n'écrit rien du tout. La garde ``ENVIRONMENT != dev ⇒ toujours embarquer`` vit dans le
     plan du run (`run_plan.plan_run`), pas ici : ce booléen arrive déjà arbitré.
     """
     use_cases = _UseCasePerWorker(use_case_factory)

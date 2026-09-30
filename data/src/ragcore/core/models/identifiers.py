@@ -5,7 +5,6 @@ from pydantic import BaseModel, ConfigDict, field_validator
 
 DocumentId = NewType("DocumentId", str)
 RunId = NewType("RunId", str)
-OwnerId = NewType("OwnerId", str)
 
 IDENTIFIER_PATTERN = r"^[A-Z]{8}[0-9]{12}$"
 

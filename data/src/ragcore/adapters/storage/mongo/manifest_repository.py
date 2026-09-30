@@ -1,7 +1,7 @@
 """Implémentation MongoDB du ManifestRepository — append-only avec deux modes d'indexation."""
 
 from ragcore.adapters.storage.mongo.client import MongoClient
-from ragcore.core.models.identifiers import Identifier, OwnerId
+from ragcore.core.models.identifiers import Identifier
 from ragcore.core.models.manifest import ManifestEntry
 
 
@@ -9,8 +9,8 @@ class MongoManifestRepository:
     """MongoDB implementation of ManifestRepository (append-only, dual-indexed).
 
     Deux modes d'indexation coexistent :
-    - Index sur (identifier_serialized, owner_id) pour l'idempotence (valides)
-    - Index sur (source_path, owner_id) pour l'audit des rejets
+    - Index sur ``identifier_serialized`` pour l'idempotence (valides)
+    - Index sur ``source_path`` pour l'audit des rejets
     """
 
     def __init__(
@@ -29,15 +29,10 @@ class MongoManifestRepository:
             data["identifier_serialized"] = entry.identifier.serialize()
         await self._collection.insert_one(data)
 
-    async def last_for_identifier(
-        self, identifier: Identifier, owner_id: OwnerId
-    ) -> ManifestEntry | None:
+    async def last_for_identifier(self, identifier: Identifier) -> ManifestEntry | None:
         """Récupère la dernière entrée pour cet identifier (tri par processed_at DESC)."""
         doc = await self._collection.find_one(
-            {
-                "identifier_serialized": identifier.serialize(),
-                "owner_id": owner_id,
-            },
+            {"identifier_serialized": identifier.serialize()},
             sort=[("processed_at", -1)],
         )
         if doc is None:
@@ -46,15 +41,12 @@ class MongoManifestRepository:
         doc.pop("identifier_serialized", None)  # Pas besoin après le fetch
         return ManifestEntry.model_validate(doc)
 
-    async def delete(self, identifier: Identifier, owner_id: OwnerId) -> None:
+    async def delete(self, identifier: Identifier) -> None:
         """Supprime toutes les entrées pour cet identifier."""
         await self._collection.delete_many(
-            {
-                "identifier_serialized": identifier.serialize(),
-                "owner_id": owner_id,
-            }
+            {"identifier_serialized": identifier.serialize()}
         )
 
     async def drop_collection(self) -> None:
-        """Drop the entire manifest collection. Irreversible — wipes all owners."""
+        """Drop the entire manifest collection. Irreversible."""
         await self._collection.drop()

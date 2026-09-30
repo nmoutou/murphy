@@ -9,7 +9,6 @@ import { EmbeddingClient } from './embedding';
 import { LLMProvider } from './llm';
 import { MongoDbClient } from './mongodb';
 import { QdrantVectorClient } from './qdrant';
-import { resolveCollection } from './collectionPointer';
 
 export interface InfraClients {
   readonly mongo: MongoDbClient;
@@ -21,25 +20,19 @@ export interface InfraClients {
 let clients: InfraClients | undefined;
 
 /**
- * Connects MongoDB, resolves the Qdrant collection to serve, then builds the
+ * Connects MongoDB, checks the Qdrant collection to serve, then builds the
  * other clients.
- * @throws when MongoDB is unreachable, no collection is published in the serving
- * contract version this code reads, or it does not exist: the boot must stop rather
- * than fail on the first question
+ * @throws when MongoDB is unreachable or the Qdrant collection does not exist:
+ * the boot must stop rather than fail on the first question
  */
 export const initInfraClients = async (config: AppConfig): Promise<void> => {
   const mongo = await MongoDbClient.connect(config.mongo);
-  // The collection name is a fingerprint of the ingestion config: it is read from
-  // the pointer published by the last `ok` run, never guessed nor configured
-  const collection = await resolveCollection({
-    mongoClient: mongo.getClient(),
-    metaDatabase: config.mongo.metaDatabase,
-    qdrant: config.qdrant,
-  });
+  const qdrant = new QdrantVectorClient({ ...config.qdrant, minScore: config.retrieval.minScore });
+  await qdrant.assertCollectionExists();
 
   clients = {
     mongo,
-    qdrant: new QdrantVectorClient({ ...config.qdrant, collection, minScore: config.retrieval.minScore }),
+    qdrant,
     embedding: new EmbeddingClient(config.embedding),
     llm: new LLMProvider(config.llm),
   };

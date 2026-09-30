@@ -69,8 +69,9 @@ avec un message qui nomme la variable. `checkEnvironment` journalise ensuite les
 variables manquantes et celles qui ont pris leur valeur par défaut.
 
 Critiques (erreur logguée si absentes, sans bloquer) : `LLM_API_ENDPOINT`, `LLM_API_KEY`, `LLM_MODEL`,
-`MONGODB_URI`. Principales optionnelles : `PORT` (5000), `MONGODB_DATABASE` (LEGIFRANCE),
-`MONGODB_META_DB_NAME` (MURPHY_META — le pointeur de collection), `QDRANT_URL`, `QDRANT_TIMEOUT` (10000 ms),
+`MONGODB_URI`, `QDRANT_COLLECTION` (le nom fixe de la collection, partagé avec l'ingestion).
+Principales optionnelles : `PORT` (5000), `MONGODB_DATABASE` (LEGIFRANCE),
+`QDRANT_URL`, `QDRANT_TIMEOUT` (10000 ms),
 `EMBEDDING_SERVICE_URL`, `EMBEDDING_MODEL_NAME`, `RETRIEVAL_TOP_K` (5), `RETRIEVAL_MIN_SCORE` (0.5),
 `LLM_TEMPERATURE`/`TIMEOUT`, `SYSTEM_PROMPT`, les rate limits et
 `CORS_ORIGIN`.
@@ -86,8 +87,7 @@ curl http://localhost:5000/api/v1/health   # ok | degraded (1 service down) | do
 
 | Symptôme | Piste |
 |---|---|
-| Refus de démarrer : « Aucun run d'ingestion n'a publié de collection » ou « collection Qdrant n'existe pas » | Pas de pointeur, ou il désigne une collection disparue. Lancer un run complet : `kedro run --params source=all` dans `data/`. |
-| Refus de démarrer : « contrat de serving vN » | Le corpus publié et le backend ne suivent pas la même version du contrat (ADR-039). Version plus ancienne ou absente : réingérer (run complet). Plus récente : mettre à jour le backend. |
+| Refus de démarrer : « The Qdrant collection "…" (QDRANT_COLLECTION) does not exist » | `QDRANT_COLLECTION` est absente ou ne désigne aucune collection. Vérifier `.env.dev`, puis lancer l'ingestion : `kedro run` dans `data/`. |
 | Part `error` « Serving contract violated » | Un point Qdrant, son document Mongo ou ses offsets ne respectent pas le contrat ; le message cite le `chunk_id`. Réingérer le corpus. |
 | 0 source sur toutes les questions | Collection vide, ou `RETRIEVAL_MIN_SCORE` trop haut. |
 | Embedding indisponible | Conteneur TEI (GPU requis) — `npm run logs` depuis la racine. |

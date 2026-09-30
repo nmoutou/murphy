@@ -16,14 +16,11 @@ import pytest
 
 from ragcore.core.models.document import RawDocument
 from ragcore.core.models.enums import SourceName
-from ragcore.core.models.identifiers import OwnerId
 from ragcore.sources.composite import (
     CompositeConnector,
     RoutingParser,
     RoutingRelationExtractor,
 )
-
-OWNER = OwnerId("test-owner")
 
 
 def _raw(source: SourceName, doc_id: str) -> RawDocument:
@@ -32,7 +29,6 @@ def _raw(source: SourceName, doc_id: str) -> RawDocument:
         source_document_id=doc_id,
         payload={"content": [], "files": []},
         fetched_at=datetime.now(UTC),
-        owner_id=OWNER,
     )
 
 
@@ -46,7 +42,7 @@ class _FakeConnector:
         self._count = count
         self.skipped = skipped or {}
 
-    async def fetch_all(self, owner_id: OwnerId) -> AsyncIterator[RawDocument]:
+    async def fetch_all(self) -> AsyncIterator[RawDocument]:
         for i in range(self._count):
             yield _raw(self._source, f"{self._source.value}-{i}")
 
@@ -75,7 +71,7 @@ async def test_composite_emits_every_source() -> None:
         }
     )
 
-    docs = [doc async for doc in composite.fetch_all(OWNER)]
+    docs = [doc async for doc in composite.fetch_all()]
 
     assert len(docs) == 5
     assert [d.source for d in docs].count(SourceName.LEGI) == 2
@@ -96,7 +92,7 @@ async def test_composite_preserves_source_stamp() -> None:
 
     by_id = {
         d.source_document_id: d.source
-        for d in [doc async for doc in composite.fetch_all(OWNER)]
+        for d in [doc async for doc in composite.fetch_all()]
     }
 
     assert by_id["jade-0"] is SourceName.JADE
@@ -121,7 +117,7 @@ async def test_composite_merges_skipped_counters() -> None:
         }
     )
 
-    _ = [doc async for doc in composite.fetch_all(OWNER)]
+    _ = [doc async for doc in composite.fetch_all()]
 
     assert composite.skipped == {"unreadable": 5}
 
@@ -132,8 +128,8 @@ async def test_composite_resets_skipped_between_runs() -> None:
         {SourceName.CASS: _FakeConnector(SourceName.CASS, 1, skipped={"unreadable": 2})}
     )
 
-    _ = [doc async for doc in composite.fetch_all(OWNER)]
-    _ = [doc async for doc in composite.fetch_all(OWNER)]
+    _ = [doc async for doc in composite.fetch_all()]
+    _ = [doc async for doc in composite.fetch_all()]
 
     assert composite.skipped == {"unreadable": 2}
 

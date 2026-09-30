@@ -2,7 +2,7 @@
 
 from ragcore.core.models.chunk import EmbeddedChunk
 from ragcore.core.models.document import ParsedDocument
-from ragcore.core.models.identifiers import Identifier, OwnerId, RunId
+from ragcore.core.models.identifiers import Identifier, RunId
 from ragcore.core.models.manifest import ManifestEntry
 from ragcore.core.models.pending import PendingKey, PendingRelation
 from ragcore.core.models.relation import Relation
@@ -11,14 +11,14 @@ from ragcore.core.ports.graph_repository import RelationWriteResult
 
 class InMemoryDocumentRepository:
     def __init__(self) -> None:
-        self.documents: dict[tuple[str, str], ParsedDocument] = {}
-        self.deleted: list[tuple[str, str]] = []
+        self.documents: dict[str, ParsedDocument] = {}
+        self.deleted: list[str] = []
 
     async def upsert(self, document: ParsedDocument) -> None:
-        self.documents[(document.identifier.serialize(), document.owner_id)] = document
+        self.documents[document.identifier.serialize()] = document
 
-    async def delete(self, identifier: Identifier, owner_id: OwnerId) -> None:
-        key = (identifier.serialize(), owner_id)
+    async def delete(self, identifier: Identifier) -> None:
+        key = identifier.serialize()
         self.deleted.append(key)
         self.documents.pop(key, None)
 
@@ -26,23 +26,16 @@ class InMemoryDocumentRepository:
 class InMemoryVectorRepository:
     def __init__(self) -> None:
         self.chunks: list[EmbeddedChunk] = []
-        self.deleted: list[tuple[str, str]] = []
+        self.deleted: list[str] = []
 
     async def upsert(self, embedded_chunks: list[EmbeddedChunk]) -> None:
         self.chunks.extend(embedded_chunks)
 
-    async def delete_by_document(
-        self, identifier: Identifier, owner_id: OwnerId
-    ) -> None:
+    async def delete_by_document(self, identifier: Identifier) -> None:
         key = identifier.serialize()
-        self.deleted.append((key, owner_id))
+        self.deleted.append(key)
         self.chunks = [
-            c
-            for c in self.chunks
-            if not (
-                c.chunk.parent_identifier.serialize() == key
-                and c.chunk.owner_id == owner_id
-            )
+            c for c in self.chunks if c.chunk.parent_identifier.serialize() != key
         ]
 
 
@@ -53,28 +46,21 @@ class InMemoryManifestRepository:
     async def append(self, entry: ManifestEntry) -> None:
         self.entries.append(entry)
 
-    async def last_for_identifier(
-        self, identifier: Identifier, owner_id: OwnerId
-    ) -> ManifestEntry | None:
+    async def last_for_identifier(self, identifier: Identifier) -> ManifestEntry | None:
         matches = [
             e
             for e in self.entries
             if e.identifier is not None
             and e.identifier.serialize() == identifier.serialize()
-            and e.owner_id == owner_id
         ]
         return matches[-1] if matches else None
 
-    async def delete(self, identifier: Identifier, owner_id: OwnerId) -> None:
+    async def delete(self, identifier: Identifier) -> None:
         key = identifier.serialize()
         self.entries = [
             e
             for e in self.entries
-            if not (
-                e.identifier is not None
-                and e.identifier.serialize() == key
-                and e.owner_id == owner_id
-            )
+            if not (e.identifier is not None and e.identifier.serialize() == key)
         ]
 
 
@@ -113,40 +99,28 @@ class InMemoryGraphRepository:
                 pending.append(relation)
         return RelationWriteResult(written=written, pending=pending)
 
-    async def existing_node_ids(
-        self, identifiers: list[Identifier], owner_id: OwnerId
-    ) -> set[str]:
-        del owner_id
+    async def existing_node_ids(self, identifiers: list[Identifier]) -> set[str]:
         return {i.serialize() for i in identifiers} & self.nodes
 
     async def delete_relations_from(
-        self, identifier: Identifier, owner_id: OwnerId, source: object
+        self, identifier: Identifier, source: object
     ) -> None:
         del source
         key = identifier.serialize()
         self.edges = [
-            (e, rid)
-            for e, rid in self.edges
-            if not (e.source_identifier.serialize() == key and e.owner_id == owner_id)
+            (e, rid) for e, rid in self.edges if e.source_identifier.serialize() != key
         ]
 
-    async def delete_relations_by_run(self, run_id: RunId, owner_id: OwnerId) -> None:
+    async def delete_relations_by_run(self, run_id: RunId) -> None:
         """§8 : ne défait QUE les arêtes taguées de ce run — pas toutes les sortantes."""
-        self.edges = [
-            (e, rid)
-            for e, rid in self.edges
-            if not (rid == run_id and e.owner_id == owner_id)
-        ]
+        self.edges = [(e, rid) for e, rid in self.edges if rid != run_id]
 
-    async def compensate_document_node(
-        self, identifier: Identifier, owner_id: OwnerId
-    ) -> None:
+    async def compensate_document_node(self, identifier: Identifier) -> None:
         """§8 : orphelin → supprimé ; cité → dé-hydraté (reste une cible `:Pending`).
 
         Le fake modélise la dé-hydratation par « le nœud reste dans `nodes` » : il
         demeure une cible matchable, ce qui est tout ce dont les appelants ont besoin.
         """
-        del owner_id
         key = identifier.serialize()
         has_incoming = any(
             e.target_identifier.serialize() == key for e, _ in self.edges
@@ -156,11 +130,11 @@ class InMemoryGraphRepository:
 
 
 class InMemoryPendingRepository:
-    """Cache des pendantes — union idempotente sur la clé à quatre champs (§13)."""
+    """Cache des pendantes — union idempotente sur la clé à trois champs (§13)."""
 
     def __init__(self) -> None:
         self.pendings: dict[PendingKey, PendingRelation] = {}
-        self.promotable_calls: list[tuple[frozenset[str], str]] = []
+        self.promotable_calls: list[frozenset[str]] = []
 
     async def upsert_many(self, pendings: list[PendingRelation]) -> None:
         for pending in pendings:
@@ -173,19 +147,13 @@ class InMemoryPendingRepository:
                     update={"last_seen_run": pending.last_seen_run}
                 )
 
-    async def promotable_for(
-        self, written_node_ids: set[str], owner_id: OwnerId
-    ) -> list[PendingRelation]:
-        self.promotable_calls.append((frozenset(written_node_ids), owner_id))
-        return [
-            p
-            for p in self.pendings.values()
-            if p.owner_id == owner_id and p.target_id in written_node_ids
-        ]
+    async def promotable_for(self, written_node_ids: set[str]) -> list[PendingRelation]:
+        self.promotable_calls.append(frozenset(written_node_ids))
+        return [p for p in self.pendings.values() if p.target_id in written_node_ids]
 
     async def delete_many(self, keys: list[PendingKey]) -> None:
         for key in keys:
             self.pendings.pop(key, None)
 
-    async def count_for_owner(self, owner_id: OwnerId) -> int:
-        return sum(1 for p in self.pendings.values() if p.owner_id == owner_id)
+    async def count(self) -> int:
+        return len(self.pendings)

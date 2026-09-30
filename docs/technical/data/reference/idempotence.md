@@ -1,7 +1,7 @@
-# Idempotence, saga, publication
+# Idempotence et saga
 
-Comment le pipeline garantit qu'un document est écrit une fois et bien, qu'un run peut
-être rejoué, et que le serving ne voit jamais un corpus incomplet.
+Comment le pipeline garantit qu'un document est écrit une fois et bien, et qu'un run peut
+être rejoué.
 
 ## L'idempotence : le manifest décide
 
@@ -75,53 +75,22 @@ erreur ni trace. D'où :
 - chaque arête écrite est **taguée du `run_id`** : compensable à la maille du run sans
   emporter celles d'autres runs.
 
-L'`owner_id` fait partie de la clé d'une pendante sans exception : « cette arête me
-manque » est relatif au propriétaire du graphe — sans lui, promouvoir la pendante d'un
-propriétaire effacerait celle d'un autre.
-
 ## `nuke_all` — le levier disque du développement
 
 `maintenance.nuke_all: true` + `ENVIRONMENT=dev` (sinon levée avant toute écriture) :
 
 - efface Mongo `LEGIFRANCE` (`documents` + `manifest`, puis **repose les index**),
-  le graphe Neo4j entier, et **toutes** les collections Qdrant (y compris celles
-  d'anciennes stratégies — c'est là que se cache la place perdue) ;
-- **préserve `MURPHY_META`** : audit, bilans de run, pendantes, pointeur. Un nuke ne doit
+  le graphe Neo4j entier, et **toutes** les collections Qdrant (pas seulement
+  `QDRANT_COLLECTION`) ;
+- **préserve `MURPHY_META`** : audit, bilans de run, pendantes. Un nuke ne doit
   jamais rendre les runs passés invérifiables.
 
 Après un nuke, le manifest est vide : tout redevient INSERT, et les résiduels de saga
 ci-dessus n'existent pas.
 
-## La publication : ce que le serving lira
+## Ce que le serving lit
 
-Fin de run nominal (`after_pipeline_run`), dans l'ordre : troncatures déclarées → drain
-de l'audit → **bilan persisté** (statut re-dérivé des compteurs) → **publication
-conditionnelle** :
-
-- bilan `ok` → le pointeur `MURPHY_META.meta_published_collection` (singleton, clé
-  `current`) est remplacé : `collection_name` (l'empreinte de ce run), `run_id`,
-  `document_count`, `published_at`. C'est **la** réponse à « quelle collection fait
-  foi ? » — les noms de collections étant des empreintes, le serving ne peut pas
-  deviner ;
-- bilan `degraded` ou `failed` → le pointeur **ne bouge pas**. Le corpus de ce run est
-  incomplet ; le serving continue de servir le dernier corpus complet, et l'utilisateur
-  ne voit jamais la fuite.
-
-Le pointeur publie aussi `serving_contract_version`, la version du contrat de payload
-que ce code écrit (`SERVING_CONTRACT_VERSION`,
-ADR-039 §3). D'où une
-seconde condition, pour les seuls runs **restreints** (`--params source=…`, ou `SOURCE`
-dans `.env.dev`) : ils ne réécrivent que leurs sources, donc ils ne publient que si le
-pointeur en place porte **déjà** la même version (`may_publish`). Sinon la collection
-mêlerait deux formats sous une version qui prétend le contraire. Un bump de version
-impose donc un run complet : `kedro run --params source=all`.
-
-Côté backend (`backend/src/infra/collectionPointer.ts`) : lecture du pointeur
-au boot, **sans repli**. Le backend refuse de démarrer si aucun run n'a publié, si le
-pointeur porte une autre version du contrat que la sienne, ou si la collection n'existe
-pas dans Qdrant — mieux vaut le découvrir au boot que sur la première question d'un
-utilisateur.
-
-C'est le point où l'équation de complétude (voir
-[telemetrie.md](telemetrie.md#le-statut-dun-run)) cesse d'être un outil de diagnostic
-pour devenir **la condition de publication**.
+Il n'y a pas d'étape de publication : le backend interroge la collection
+`QDRANT_COLLECTION`, que le run réécrit en place (ADR-042). Un run `degraded` ou `failed`
+laisse donc un corpus incomplet **dans la collection servie** : lire le bilan (voir
+[telemetrie.md](telemetrie.md#le-statut-dun-run)) et relancer le run.

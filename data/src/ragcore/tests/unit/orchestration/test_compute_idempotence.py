@@ -15,7 +15,6 @@ from ragcore.application.run_context import PipelineContext
 from ragcore.core.exceptions import ParseError
 from ragcore.core.models.document import RawDocument
 from ragcore.core.models.enums import Operation, SourceName
-from ragcore.core.models.identifiers import OwnerId
 from ragcore.core.ports.parser import ParseResult
 from ragcore.core.services.exclusion_reasons import REASON_PARSE_ERROR
 from ragcore.core.telemetry_events import DOCUMENT_INVALIDATED
@@ -25,8 +24,6 @@ from ragcore.orchestration.kedro.nodes.compute_idempotence import (
 from ragcore.tests.fakes.repositories import InMemoryManifestRepository
 from ragcore.tests.fakes.runtime import FakeRuntime
 from ragcore.tests.fakes.telemetry import RecordingTelemetry
-
-OWNER = OwnerId("owner-1")
 
 
 class _FailingParser:
@@ -46,7 +43,6 @@ def _raw_document() -> RawDocument:
         source_document_id="doc-1",
         payload={},
         fetched_at=datetime.now(UTC),
-        owner_id=OWNER,
     )
 
 
@@ -61,7 +57,7 @@ def _run(
             raw_documents=[_raw_document()],
             parser=parser,
             manifest_repo=manifest,
-            pipeline_context=PipelineContext.create(owner_id=OWNER),
+            pipeline_context=PipelineContext.create(),
             telemetry=telemetry,
             pipeline_runtime=runtime,
             exportation_params={},

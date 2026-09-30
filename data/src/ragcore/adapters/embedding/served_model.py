@@ -12,11 +12,11 @@ _INFO_TIMEOUT_SECONDS = 10.0
 
 
 async def assert_service_serves_model(base_url: str, expected_model: str) -> None:
-    """Le service sert-il bien le modèle dont le nom **baptise la collection** (§6) ?
+    """Le service sert-il bien le modèle que la configuration déclare ?
 
     TEI ignore le champ ``model`` de la requête : il ne sert que le modèle de son
     ``--model-id``. Une divergence entre le conteneur et ``parameters.yml`` écrit donc les
-    vecteurs d'un modèle dans la collection nommée d'après un autre, **sans rien lever**.
+    vecteurs d'un autre modèle que celui que le backend interroge, **sans rien lever**.
     ``GET /info`` est le seul endroit où le service *dit* ce qu'il sert : c'est la seule
     façon de fermer le trou.
 
@@ -50,8 +50,8 @@ async def assert_service_serves_model(base_url: str, expected_model: str) -> Non
             f"Le service sert « {served} », or la configuration déclare "
             f"« {expected_model} ». TEI ignore le champ `model` de la requête : il ne "
             f"sert QUE le modèle de son `--model-id`. Continuer écrirait les vecteurs de "
-            f"« {served} » dans la collection nommée d'après l'empreinte de "
+            f"« {served} » dans une collection que le backend interroge avec "
             f"« {expected_model} », sans que rien ne le signale. Aligner EMBEDDING_MODEL "
-            f"(.env.dev, à la racine) et embedding.embedding.embedding_model "
-            f"(conf/base/parameters.yml)."
+            f"(.env.dev, à la racine) et embedding.model_name "
+            f"(conf/base/ingestion/parameters.yml)."
         )

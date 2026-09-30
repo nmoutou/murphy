@@ -2,9 +2,8 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from .document import SCHEMA_VERSION
 from .enums import SourceName
-from .identifiers import Identifier, OwnerId
+from .identifiers import Identifier
 from .verbs import ValidatedVerb
 
 
@@ -13,7 +12,6 @@ class Relation(BaseModel):
 
     model_config = ConfigDict(frozen=True)
 
-    schema_version: int = SCHEMA_VERSION
     source_identifier: Identifier  # document source de la relation
     target_identifier: Identifier  # document cible de la relation
 
@@ -26,6 +24,5 @@ class Relation(BaseModel):
     une chaîne qui ne peut pas être un type d'arête — d'où la validation.
     """
 
-    owner_id: OwnerId
     source: SourceName  # source du document qui a déclaré cette relation
     metadata: dict[str, Any] = Field(default_factory=dict)

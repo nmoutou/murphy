@@ -20,14 +20,11 @@ from ragcore.adapters.config.settings import (
     get_infra_settings,
 )
 from ragcore.adapters.runtime import AsyncioRuntime, AsyncioRuntimeFactory
-from ragcore.adapters.tracking import build_experiment_tracker
-from ragcore.application.publish_collection import CollectionPublisher
 from ragcore.application.resolve_relations import ResolveRelationsService
 from ragcore.application.run_context import PipelineContext
-from ragcore.core.models.identifiers import RunId
+from ragcore.core.models.enums import SourceName
 from ragcore.core.models.run_summary import RunStatus
 from ragcore.core.ports.embedder import BaseEmbedder
-from ragcore.core.ports.experiment_tracker import ExperimentTracker
 from ragcore.core.telemetry_events import (
     PIPELINE_RUN_COMPLETED,
     PIPELINE_RUN_FAILED,
@@ -109,7 +106,7 @@ class TelemetryHooks:
         ensure_indexes(clients, settings, self._runtime)
         stores = open_document_stores(clients, settings, plan)
         meta = open_meta_stores(clients, settings)
-        session = self._open_session(settings, plan, meta, embedder)
+        session = self._open_session(settings, plan.context_source, meta, embedder)
         stack = build_processing_stack(plan, Path(settings.xml_source_path), embedder)
         return {
             "connector": stack.connector,
@@ -143,17 +140,15 @@ class TelemetryHooks:
     def _open_session(
         self,
         settings: InfraSettings,
-        plan: RunPlan,
+        source: SourceName | None,
         meta: MetaStores,
         embedder: BaseEmbedder,
     ) -> RunSession:
-        """Ouvre le contexte du run, sa télémétrie, son tracker et son publieur."""
+        """Ouvre le contexte du run et sa télémétrie."""
         meta_root = Path(settings.meta_jsonl_dir)
         stats_dir = meta_root / "stats"
         stats_dir.mkdir(parents=True, exist_ok=True)
-        context = PipelineContext.create(
-            owner_id=plan.owner_id, source=plan.context_source
-        )
+        context = PipelineContext.create(source=source)
         telemetry, aggregator = start_telemetry(
             meta_root, context, meta.audit, self._runtime
         )
@@ -163,10 +158,6 @@ class TelemetryHooks:
             aggregator=aggregator,
             stats_dir=stats_dir,
             summaries=meta.summaries,
-            publisher=CollectionPublisher(
-                meta.published, plan.collection, is_full_run=plan.is_full_run
-            ),
-            tracker=_start_tracking(settings, plan),
             embedder=embedder,
             runtime=self._runtime,
         )
@@ -194,17 +185,3 @@ class TelemetryHooks:
         """Ferme la boucle du hook — si elle a jamais été ouverte."""
         if self._runtime_instance is not None:
             self._runtime_instance.close()
-
-
-def _start_tracking(settings: InfraSettings, plan: RunPlan) -> ExperimentTracker:
-    """Ouvre le run d'expérience (§9).
-
-    Le run-id EST le nom de collection — donc le fingerprint du workflow — parce que
-    `collection_name` n'est rien d'autre que `fingerprint` : les deux ne peuvent pas
-    diverger, ils sortent du même calcul. C'est ce qui lie le run MLflow à sa collection
-    Qdrant, et lève l'opacité du hash en portant la `WorkflowConfig` en clair. `noop` par
-    défaut : aucun serveur requis, aucune dépendance ajoutée au chemin critique.
-    """
-    tracker = build_experiment_tracker(settings)
-    tracker.start_run(RunId(plan.collection), plan.workflow)
-    return tracker

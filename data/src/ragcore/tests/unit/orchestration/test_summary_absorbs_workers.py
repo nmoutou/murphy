@@ -24,7 +24,7 @@ from ragcore.adapters.telemetry.aggregator import RunStatsAggregator
 from ragcore.application.ingestion_runner import IngestionOutcome
 from ragcore.application.resolve_relations import ResolutionOutcome
 from ragcore.core.models.audit import build_event
-from ragcore.core.models.identifiers import OwnerId, RunId
+from ragcore.core.models.identifiers import RunId
 from ragcore.core.models.run_stats import RunStats
 from ragcore.core.models.run_summary import RunStatus
 from ragcore.core.telemetry_events import (
@@ -40,7 +40,6 @@ from ragcore.orchestration.kedro.nodes.report import report_node
 def _aggregator() -> RunStatsAggregator:
     return RunStatsAggregator(
         run_id=RunId("r1"),
-        owner_id=OwnerId("default"),
         source=None,
         started_at=datetime.now(UTC),
     )
@@ -139,7 +138,6 @@ def test_absorb_merges_with_what_the_hook_already_saw() -> None:
         build_event(
             event_type=DOCUMENT_FETCHED,
             run_id=RunId("r1"),
-            owner_id=OwnerId("default"),
             source=None,
             payload={"count": 1121},
         )
@@ -194,7 +192,6 @@ def test_a_batch_event_counts_its_payload_not_its_ring() -> None:
         build_event(
             event_type=DOCUMENT_FETCHED,
             run_id=RunId("r1"),
-            owner_id=OwnerId("default"),
             source=None,
             payload={"count": 1121},
         )
@@ -210,7 +207,6 @@ def test_an_event_without_count_still_weighs_one() -> None:
         build_event(
             event_type=DOCUMENT_PERSISTED,
             run_id=RunId("r1"),
-            owner_id=OwnerId("default"),
             source=None,
             document_id="x",
             payload={"operation": "INSERT"},
@@ -232,7 +228,6 @@ def test_a_malformed_count_does_not_break_the_run_report(bogus: object) -> None:
         build_event(
             event_type=DOCUMENT_FETCHED,
             run_id=RunId("r1"),
-            owner_id=OwnerId("default"),
             source=None,
             payload={"count": bogus},
         )
@@ -255,7 +250,6 @@ def test_a_stray_count_on_a_unitary_event_is_IGNORED() -> None:
         build_event(
             event_type=DOCUMENT_PERSISTED,
             run_id=RunId("r1"),
-            owner_id=OwnerId("default"),
             source=None,
             document_id="x",
             payload={"operation": "INSERT", "count": 40},

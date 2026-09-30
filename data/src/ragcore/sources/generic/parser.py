@@ -117,7 +117,6 @@ class GenericParser:
         return ParsedDocument(
             identifier=routing.identifier,
             source=self._source,
-            owner_id=raw.owner_id,
             title=self._title(facets),
             content=self._content(facets),
             structure={

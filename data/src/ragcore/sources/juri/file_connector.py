@@ -30,7 +30,6 @@ from pathlib import Path
 
 from ragcore.core.models.document import RawDocument
 from ragcore.core.models.enums import SourceName
-from ragcore.core.models.identifiers import OwnerId
 from ragcore.core.services.exclusion_reasons import REASON_UNREADABLE
 from ragcore.sources.generic import locate_id, read_root, to_tree
 
@@ -61,7 +60,7 @@ class JuriFileConnector:
     def source_name(self) -> SourceName:
         return self._source
 
-    async def fetch_all(self, owner_id: OwnerId) -> AsyncIterator[RawDocument]:
+    async def fetch_all(self) -> AsyncIterator[RawDocument]:
         """Itère les documents : un fichier XML, un ``RawDocument``.
 
         **Aucun regroupement.** Là où LEGI doit lire tous les fichiers avant d'émettre
@@ -90,7 +89,6 @@ class JuriFileConnector:
                     "files": [str(path)],
                 },
                 fetched_at=datetime.now(UTC),
-                owner_id=owner_id,
             )
 
     def _skip(self, reason: str) -> None:

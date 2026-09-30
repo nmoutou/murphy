@@ -74,12 +74,11 @@ class NodeLabels:
 
 @dataclass(frozen=True)
 class NodeHydration:
-    """Ce qu'un nœud document porte AU-DELÀ de ses trois props de base (ADR-022 §2).
+    """Ce qu'un nœud document porte AU-DELÀ de ses deux props de base (ADR-022 §2).
 
-    Le défaut est le régime PROD : nœud maigre (``title``, ``source``,
-    ``schema_version``), rien d'autre. C'est le constructeur — le hook — qui ouvre les
-    vannes en dev (``resolve_node_hydration``), jamais ce module : le défaut penche
-    vers le refus, comme ``nuke_all`` et l'interrupteur d'embedding.
+    Le défaut est le régime PROD : nœud maigre (``title``, ``source``), rien d'autre.
+    C'est le constructeur — le hook — qui ouvre les vannes en dev
+    (``resolve_node_hydration``), jamais ce module : le défaut penche vers le refus, comme ``nuke_all`` et l'interrupteur d'embedding.
 
     - ``metadata`` : les métadonnées du document en props (clés chemin-complet,
       valeurs chaînes). Neo4j est l'outil d'inspection privilégié de la v0 — un nœud
@@ -122,7 +121,7 @@ def _citation_props(document: ParsedDocument) -> dict[str, Any]:
 
 
 def node_props(document: ParsedDocument, hydration: NodeHydration) -> dict[str, Any]:
-    """Les propriétés du nœud : les trois de base, les citations, puis l'hydratation.
+    """Les propriétés du nœud : les deux de base, les citations, puis l'hydratation.
 
     L'hydratation de dev (ADR-022 §2). Les clés chemin-complet des métadonnées ne
     peuvent pas percuter les props de base — elles joignent ≥ 2 segments par `_`.
@@ -132,7 +131,6 @@ def node_props(document: ParsedDocument, hydration: NodeHydration) -> dict[str, 
     props: dict[str, Any] = {
         "title": document.title,
         "source": document.source.value,
-        "schema_version": document.schema_version,
         **_citation_props(document),
     }
     if hydration.metadata:

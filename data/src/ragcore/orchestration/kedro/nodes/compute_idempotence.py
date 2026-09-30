@@ -173,7 +173,6 @@ class _ParseSite:
             build_event(
                 event_type=DOCUMENT_INVALIDATED,
                 run_id=self.context.run_id,
-                owner_id=self.context.owner_id,
                 source=raw.source,
                 payload={
                     "reason": rejection.reason,
@@ -191,7 +190,6 @@ class _ParseSite:
                 ManifestEntry(
                     identifier=None,
                     source_path=raw.source_document_id,
-                    owner_id=self.context.owner_id,
                     source=raw.source,
                     operation=Operation.EXCLUDED,
                     reason=reason,
@@ -212,14 +210,13 @@ class _ParseSite:
     def decide_operation(self, raw: RawDocument, parsed: ParsedDocument) -> Operation:
         """Document valide — l'opération (INSERT ou UPDATE) se lit au manifeste."""
         manifest_entry = self.runtime.run(
-            self.manifest_repo.last_for_identifier(parsed.identifier, parsed.owner_id)
+            self.manifest_repo.last_for_identifier(parsed.identifier)
         )
         operation = determine_operation(manifest_entry)
         self.telemetry.emit(
             build_event(
                 event_type=DOCUMENT_PARSED,
                 run_id=self.context.run_id,
-                owner_id=self.context.owner_id,
                 source=raw.source,
                 document_id=parsed.identifier.serialize(),
                 payload={"operation": operation.value},

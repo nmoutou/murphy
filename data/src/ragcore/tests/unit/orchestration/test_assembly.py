@@ -20,7 +20,6 @@ from ragcore.adapters.embedding.noop_embedder import NoopEmbedder
 from ragcore.adapters.embedding.openai_embedder import OpenAIEmbedder
 from ragcore.application.ingestion_runner import IngestionRunner
 from ragcore.application.run_context import PipelineContext
-from ragcore.core.models.identifiers import OwnerId
 from ragcore.orchestration.kedro import assembly, stores
 from ragcore.orchestration.kedro.assembly import (
     ReportsTruncations,
@@ -56,11 +55,11 @@ def _offline_qdrant(monkeypatch: pytest.MonkeyPatch) -> None:
 def settings(tmp_path: Path) -> InfraSettings:
     return InfraSettings(
         source="all",
-        owner_id="default",
         environment="prod",
         mongodb_uri="mongodb://localhost:1",
         neo4j_uri="bolt://localhost:1",
         qdrant_url="http://localhost:1",
+        qdrant_collection="chunks",
         xml_source_path=tmp_path,
         meta_jsonl_dir=tmp_path / "meta",
     )
@@ -68,7 +67,11 @@ def settings(tmp_path: Path) -> InfraSettings:
 
 @pytest.fixture
 def plan(settings: InfraSettings) -> RunPlan:
-    params = {"exportation": {"neo4j": {"labels": {"default": "Document"}}}}
+    params = {
+        "chunking": {"size": 384, "overlap": 25},
+        "embedding": {"model_name": "un-modele", "dimension": 768},
+        "exportation": {"neo4j": {"labels": {"default": "Document"}}},
+    }
     return plan_run(params, settings, {"runtime_params": {"source": "cass"}})
 
 
@@ -143,7 +146,7 @@ def test_openai_verifie_le_modele_servi_AVANT_de_construire(
 
     embedder = prepare_embedder(_embedding_settings("openai"), plan, runtime)
 
-    assert checked == [("http://localhost:1", plan.workflow.embedding.model_name)]
+    assert checked == [("http://localhost:1", plan.embedding.model_name)]
     assert isinstance(embedder, OpenAIEmbedder)
     assert isinstance(embedder, ReportsTruncations)
 
@@ -157,6 +160,6 @@ def test_le_pool_s_assemble_sans_ouvrir_de_client(
     stack = build_processing_stack(
         plan, settings.xml_source_path, NoopEmbedder(dimension=768)
     )
-    context = PipelineContext.create(owner_id=OwnerId("default"))
+    context = PipelineContext.create()
 
     assert isinstance(build_runner(settings, plan, context, stack), IngestionRunner)

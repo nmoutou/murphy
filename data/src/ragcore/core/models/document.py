@@ -5,14 +5,7 @@ from pydantic import BaseModel, ConfigDict
 
 from .citation import Citation
 from .enums import SourceName
-from .identifiers import Identifier, OwnerId
-
-SCHEMA_VERSION = 3
-"""v3 (18 juil. 2026) : ``citations`` ajouté — les cibles décrites (``<LIEN>`` à ``@id``
-vide) deviennent un champ du document au lieu de nœuds ``:Unknown`` dans le graphe.
-
-v2 (ADR-022) : ``unknowns`` et ``parsed_at`` retirés, ``source_files`` ajouté,
-clés de métadonnées au CHEMIN COMPLET. Un bump = une ré-ingestion complète, groupée."""
+from .identifiers import Identifier
 
 
 class RawDocument(BaseModel):
@@ -24,7 +17,6 @@ class RawDocument(BaseModel):
     source_document_id: str
     payload: dict[str, Any]
     fetched_at: datetime
-    owner_id: OwnerId
 
 
 class ParsedDocument(BaseModel):
@@ -45,10 +37,8 @@ class ParsedDocument(BaseModel):
 
     model_config = ConfigDict(frozen=True)
 
-    schema_version: int = SCHEMA_VERSION
     identifier: Identifier
     source: SourceName
-    owner_id: OwnerId
 
     title: str
     content: str

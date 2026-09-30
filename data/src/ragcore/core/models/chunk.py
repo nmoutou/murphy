@@ -2,8 +2,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from .document import SCHEMA_VERSION
-from .identifiers import Identifier, OwnerId
+from .identifiers import Identifier
 
 
 class Chunk(BaseModel):
@@ -11,10 +10,8 @@ class Chunk(BaseModel):
 
     model_config = ConfigDict(frozen=True)
 
-    schema_version: int = SCHEMA_VERSION
     chunk_id: str
     parent_identifier: Identifier  # lien au document parent
-    owner_id: OwnerId
 
     ordinal: int
     text: str

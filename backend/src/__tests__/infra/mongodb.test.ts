@@ -31,11 +31,10 @@ jest.mock('../../utils/logger', () => {
 const SETTINGS: MongoConfig = {
   uri: 'mongodb://mongo.test:27017',
   database: 'LEGIFRANCE',
-  metaDatabase: 'MURPHY_META',
   timeoutMs: 1000,
 };
-const RECORD = { identifier: 'LEGIARTI1', owner_id: 'default', title: 'L2122-22', content: 'Le maire peut…' };
-const KEY = { identifier: 'LEGIARTI1', ownerId: 'default' };
+const RECORD = { identifier: 'LEGIARTI1', title: 'L2122-22', content: 'Le maire peut…' };
+const IDENTIFIER = 'LEGIARTI1';
 
 beforeEach(() => {
   mockFind.mockReturnValue({ project: () => ({ toArray: mockToArray }) });
@@ -43,32 +42,27 @@ beforeEach(() => {
 });
 
 describe('MongoDbClient.fetchParentDocuments', () => {
-  it('reads each distinct parent once, by identifier and owner', async () => {
+  it('reads each distinct parent once, by identifier', async () => {
     const mongo = await MongoDbClient.connect(SETTINGS);
 
-    const documents = await mongo.fetchParentDocuments([KEY, KEY, { identifier: 'JURITEXT2', ownerId: 'default' }]);
+    const documents = await mongo.fetchParentDocuments([IDENTIFIER, IDENTIFIER, 'JURITEXT2']);
 
-    expect(mockFind).toHaveBeenCalledWith({
-      $or: [
-        { identifier: 'LEGIARTI1', owner_id: 'default' },
-        { identifier: 'JURITEXT2', owner_id: 'default' },
-      ],
-    });
-    expect(documents).toEqual([{ identifier: 'LEGIARTI1', ownerId: 'default', title: 'L2122-22', content: 'Le maire peut…' }]);
+    expect(mockFind).toHaveBeenCalledWith({ identifier: { $in: ['LEGIARTI1', 'JURITEXT2'] } });
+    expect(documents).toEqual([{ identifier: 'LEGIARTI1', title: 'L2122-22', content: 'Le maire peut…' }]);
   });
 
   it('reports a stored document without content as a contract violation', async () => {
     mockToArray.mockResolvedValue([{ ...RECORD, content: undefined }]);
     const mongo = await MongoDbClient.connect(SETTINGS);
 
-    await expect(mongo.fetchParentDocuments([KEY])).rejects.toMatchObject({ stage: 'retrieval', code: 'CONTRACT_VIOLATION' });
+    await expect(mongo.fetchParentDocuments([IDENTIFIER])).rejects.toMatchObject({ stage: 'retrieval', code: 'CONTRACT_VIOLATION' });
   });
 
   it('fails with a retrieval RagError when the query fails', async () => {
     mockToArray.mockRejectedValue(new Error('connection reset'));
     const mongo = await MongoDbClient.connect(SETTINGS);
 
-    await expect(mongo.fetchParentDocuments([KEY])).rejects.toMatchObject({
+    await expect(mongo.fetchParentDocuments([IDENTIFIER])).rejects.toMatchObject({
       stage: 'retrieval',
       code: 'DB_FETCH_FAILED',
       message: 'Failed to fetch parent documents from MongoDB: connection reset',

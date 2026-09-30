@@ -17,7 +17,7 @@ from ragcore.application.run_context import PipelineContext
 from ragcore.core.links import CITES
 from ragcore.core.models.document import ParsedDocument
 from ragcore.core.models.enums import SourceName
-from ragcore.core.models.identifiers import Identifier, OwnerId
+from ragcore.core.models.identifiers import Identifier
 from ragcore.core.models.pending import PendingRelation
 from ragcore.core.models.relation import Relation
 from ragcore.core.telemetry_events import (
@@ -31,7 +31,6 @@ from ragcore.tests.fakes import (
     RecordingTelemetry,
 )
 
-OWNER = OwnerId("owner-1")
 A, B, MISSING = "000000000001", "000000000002", "000000000404"
 
 
@@ -42,7 +41,6 @@ def _identifier(suffix: str) -> Identifier:
 def _doc(suffix: str) -> ParsedDocument:
     return ParsedDocument(
         identifier=_identifier(suffix),
-        owner_id=OWNER,
         source=SourceName.LEGI,
         title="t",
         content="c",
@@ -57,7 +55,6 @@ def _rel(source: str, target: str) -> Relation:
         source_identifier=_identifier(source),
         target_identifier=_identifier(target),
         relation_type=CITES,
-        owner_id=OWNER,
         source=SourceName.LEGI,
     )
 
@@ -79,7 +76,7 @@ def telemetry() -> RecordingTelemetry:
 
 @pytest.fixture
 def context() -> PipelineContext:
-    return PipelineContext.create(owner_id=OWNER, source=SourceName.LEGI)
+    return PipelineContext.create(source=SourceName.LEGI)
 
 
 @pytest.fixture
@@ -169,7 +166,7 @@ async def test_replay_is_bounded_by_the_delta_not_the_backlog(
     assert outcome.promoted_count == 0
     assert len(pending.pendings) == 1  # la vieille pendante reste, intacte
     # Le repository n'a été interrogé QUE sur le delta de ce run.
-    assert pending.promotable_calls[-1][0] == frozenset({f"LEGIARTI{B}"})
+    assert pending.promotable_calls[-1] == frozenset({f"LEGIARTI{B}"})
 
 
 async def test_a_pending_seen_again_keeps_its_birth_date(
@@ -181,8 +178,8 @@ async def test_a_pending_seen_again_keeps_its_birth_date(
     et « depuis quand ce lien manque-t-il ? » n'aurait pas de réponse.
     """
     await graph.merge_document_node(_doc(A))
-    first = PipelineContext.create(owner_id=OWNER, source=SourceName.LEGI)
-    second = PipelineContext.create(owner_id=OWNER, source=SourceName.LEGI)
+    first = PipelineContext.create(source=SourceName.LEGI)
+    second = PipelineContext.create(source=SourceName.LEGI)
 
     await service.execute([_rel(A, MISSING)], set(), first)
     await service.execute([_rel(A, MISSING)], set(), second)

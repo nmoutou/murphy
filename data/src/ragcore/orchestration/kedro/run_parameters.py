@@ -12,19 +12,15 @@ from typing import Any
 from kedro.io import DataCatalog, DatasetError
 
 from ragcore.adapters.storage.neo4j.node_properties import NodeHydration, NodeLabels
-from ragcore.core.config import (
-    ChunkingConfig,
-    EmbeddingConfig,
-    NormalizationConfig,
-    WorkflowConfig,
-)
 from ragcore.core.models.enums import SourceName
+from ragcore.core.models.processing import ChunkingConfig, EmbeddingConfig
 from ragcore.sources.registry import all_sources
 
 __all__ = [
-    "build_workflow_config",
     "load_parameters",
+    "resolve_chunking",
     "resolve_embedding_enabled",
+    "resolve_embedding_model",
     "resolve_node_hydration",
     "resolve_node_labels",
     "resolve_sources",
@@ -34,12 +30,9 @@ __all__ = [
 def load_parameters(catalog: DataCatalog) -> dict[str, Any]:
     """Charge ``parameters.yml`` depuis le catalogue — ou ARRÊTE le run.
 
-    PAS de fallback silencieux vers ``{}`` : ``build_workflow_config({})`` produirait la
-    config par DÉFAUT (chunk_size=128…), donc un ``collection_name`` par défaut — et le
-    run écrirait tout le corpus dans une collection nommée d'après une stratégie que
-    l'utilisateur n'a pas choisie, en écrasant potentiellement l'A/B d'un autre run. Une
-    config illisible n'est pas un run par défaut : c'est un run qu'on ARRÊTE, avec une
-    erreur claire (fail-fast, cf. doctrine du projet).
+    PAS de fallback silencieux vers ``{}`` : une config illisible n'est pas un run par
+    défaut, c'est un run qu'on ARRÊTE, avec une erreur claire (fail-fast, cf. doctrine
+    du projet).
 
     Seule la ``DatasetError`` de Kedro (dont ``DatasetNotFoundError``) est traduite :
     c'est ainsi que le catalogue signale un chargement raté. Toute autre exception est
@@ -49,49 +42,29 @@ def load_parameters(catalog: DataCatalog) -> dict[str, Any]:
         params: dict[str, Any] = catalog.load("parameters")
     except DatasetError as exc:
         raise RuntimeError(
-            "Impossible de charger `parameters.yml` : le run est interrompu. "
-            "Continuer avec les défauts baptiserait la collection Qdrant d'après "
-            "une config que personne n'a choisie — une perte silencieuse de la "
-            "stratégie d'ingestion."
+            "Impossible de charger `parameters.yml` : le run est interrompu. Il n'y a "
+            "pas de réglages par défaut pour la découpe ni pour l'embedding."
         ) from exc
     return params
 
 
-def build_workflow_config(params: dict[str, Any]) -> WorkflowConfig:
-    """``parameters.yml`` → ``WorkflowConfig``. La seule traduction, et elle est ici.
+def resolve_chunking(params: dict[str, Any]) -> ChunkingConfig:
+    """La découpe (bloc ``chunking``) — ou un ARRÊT si un champ manque ou est mal typé."""
+    return ChunkingConfig.model_validate(_require_block(params, "chunking"))
 
-    C'est le point où Kedro cesse d'être la vérité (§9) : le YAML *peuple* la config,
-    il ne la *définit* pas. Cette fonction est le seul endroit du dépôt qui connaisse la
-    forme du YAML ; ``core/`` n'en sait rien et ne doit rien en savoir.
 
-    Les défauts ne sont pas des valeurs de confort : chacun est une décision qui sera
-    hashée. Un défaut qui change en silence change le nom de la collection, donc écrit
-    les vecteurs ailleurs — d'où le cliquet ``golden/test_fingerprint.py``.
-    """
-    workflow = params.get("workflow", {})
-    chunking = workflow.get("chunking", {})
-    normalization = workflow.get("normalization", {})
-    embedding = workflow.get("embedding", {})
+def resolve_embedding_model(params: dict[str, Any]) -> EmbeddingConfig:
+    """Le modèle d'embedding et sa dimension (bloc ``embedding``) — ou un ARRÊT."""
+    return EmbeddingConfig.model_validate(_require_block(params, "embedding"))
 
-    return WorkflowConfig(
-        normalization=NormalizationConfig(
-            # §4 n'est pas écrite : il n'y a aujourd'hui AUCUNE normalisation
-            # typographique. « none » le dit. Le jour où elle atterrit, elle exporte sa
-            # version, ce champ la lit, et la collection change toute seule.
-            version=normalization.get("version", "none"),
-        ),
-        chunking=ChunkingConfig(
-            strategy=chunking.get("strategy", "legi-structural-v1"),
-            size=chunking.get("chunk_size", 128),
-            overlap=chunking.get("chunk_overlap", 25),
-        ),
-        embedding=EmbeddingConfig(
-            model_name=embedding.get(
-                "embedding_model", "sentence-transformers/all-mpnet-base-v2"
-            ),
-            dimension=embedding.get("dimension", 768),
-        ),
-    )
+
+def _require_block(params: dict[str, Any], name: str) -> dict[str, Any]:
+    block = params.get(name)
+    if not isinstance(block, dict):
+        raise ValueError(
+            f"Le bloc `{name}` est absent de `parameters.yml` : le run est interrompu."
+        )
+    return block
 
 
 def resolve_embedding_enabled(params: dict[str, Any], environment: str) -> bool:
@@ -104,10 +77,8 @@ def resolve_embedding_enabled(params: dict[str, Any], environment: str) -> bool:
     la prod par simple oubli d'une variable. Un ``parameters.yml`` traîné de dev en prod
     avec ``enabled: false`` produirait sinon une collection vide sans que rien ne lève.
 
-    Le flag vit sous ``embedding_runtime`` (ADR-026 : séparé du bloc ``workflow.embedding``
-    qui porte modèle et dimension) et n'entre PAS dans le ``WorkflowConfig`` ni dans le
-    hash (§6) : ne pas produire de vecteurs n'invalide aucun vecteur —
-    ``build_workflow_config`` l'ignore, et c'est voulu.
+    Le flag vit sous ``embedding_runtime``, à part du bloc ``embedding`` qui porte le
+    modèle et sa dimension.
     """
     if environment != "dev":
         return True

@@ -10,7 +10,7 @@ import neo4j
 
 from ragcore.core.models.document import ParsedDocument
 from ragcore.core.models.enums import SourceName
-from ragcore.core.models.identifiers import Identifier, OwnerId, RunId
+from ragcore.core.models.identifiers import Identifier, RunId
 from ragcore.core.models.relation import Relation
 from ragcore.core.ports.graph_repository import RelationWriteResult
 
@@ -20,7 +20,7 @@ __all__ = ["PENDING_LABEL", "Neo4jGraphRepository", "NodeHydration", "NodeLabels
 
 
 _MERGE_NODE = (
-    "MERGE (d {identifier: $identifier, owner_id: $owner_id})"
+    "MERGE (d {identifier: $identifier})"
     " SET d:$($label)"
     # Le document est là : il n'est plus attendu. Neo4j ignore le retrait d'un label
     # absent, donc c'est sûr sur un nœud qui vient d'être créé.
@@ -30,14 +30,12 @@ _MERGE_NODE = (
 )
 
 _COUNT_INCOMING = (
-    "MATCH (n {identifier: $identifier, owner_id: $owner_id})"
+    "MATCH (n {identifier: $identifier})"
     " OPTIONAL MATCH (n)<-[incoming]-()"
     " RETURN count(incoming) AS entrantes"
 )
 
-_DETACH_DELETE_NODE = (
-    "MATCH (n {identifier: $identifier, owner_id: $owner_id}) DETACH DELETE n"
-)
+_DETACH_DELETE_NODE = "MATCH (n {identifier: $identifier}) DETACH DELETE n"
 
 
 def _dehydrate_node_query(labels: NodeLabels) -> str:
@@ -49,10 +47,10 @@ def _dehydrate_node_query(labels: NodeLabels) -> str:
     portait.
     """
     return (
-        "MATCH (n {identifier: $identifier, owner_id: $owner_id})"
+        "MATCH (n {identifier: $identifier})"
         f" REMOVE n:{':'.join(labels.known)}"
         f" SET n:{PENDING_LABEL}"
-        " REMOVE n.title, n.source, n.schema_version, n.citations"
+        " REMOVE n.title, n.source, n.citations"
     )
 
 
@@ -90,7 +88,6 @@ class Neo4jGraphRepository:
             await session.run(
                 _MERGE_NODE,
                 identifier=document.identifier.serialize(),
-                owner_id=document.owner_id,
                 label=self._labels.label_for(document.identifier),
                 props=node_props(document, self._hydration),
             )
@@ -126,10 +123,10 @@ class Neo4jGraphRepository:
         # (encore) dans le corpus, la requête ne rend rien et l'arête part au cache des
         # pendantes (§13) — elle sera rejouée quand la cible arrivera.
         matched = (
-            "MATCH (a {identifier: $source_identifier, owner_id: $owner_id})"
-            " MATCH (b {identifier: $target_identifier, owner_id: $owner_id})"
+            "MATCH (a {identifier: $source_identifier})"
+            " MATCH (b {identifier: $target_identifier})"
             " MERGE (a)-[r:$($relation_type)]->(b)"
-            " SET r += $props SET r.run_id = $run_id, r.owner_id = $owner_id RETURN r"
+            " SET r += $props SET r.run_id = $run_id RETURN r"
         )
 
         # Il n'y a plus qu'un cas. Une cible DÉCRITE ne devient plus une arête vers un
@@ -142,7 +139,6 @@ class Neo4jGraphRepository:
                     matched,
                     source_identifier=relation.source_identifier.serialize(),
                     target_identifier=relation.target_identifier.serialize(),
-                    owner_id=relation.owner_id,
                     relation_type=relation.relation_type,
                     props=dict(relation.metadata),
                     run_id=run_id,
@@ -155,27 +151,24 @@ class Neo4jGraphRepository:
 
         return RelationWriteResult(written=written, pending=pending)
 
-    async def existing_node_ids(
-        self, identifiers: list[Identifier], owner_id: OwnerId
-    ) -> set[str]:
+    async def existing_node_ids(self, identifiers: list[Identifier]) -> set[str]:
         """Les identifiants (sérialisés) qui existent bel et bien comme nœuds."""
         if not identifiers:
             return set()
 
         query = (
-            "MATCH (n) WHERE n.identifier IN $identifiers AND n.owner_id = $owner_id"
+            "MATCH (n) WHERE n.identifier IN $identifiers"
             " RETURN n.identifier AS identifier"
         )
         async with self._driver.session() as session:
             result = await session.run(
                 query,
                 identifiers=[i.serialize() for i in identifiers],
-                owner_id=owner_id,
             )
             return {record["identifier"] async for record in result}
 
     async def delete_relations_from(
-        self, identifier: Identifier, owner_id: OwnerId, source: SourceName
+        self, identifier: Identifier, source: SourceName
     ) -> None:
         """Supprime les seules relations SORTANTES du nœud, sans toucher au nœud.
 
@@ -185,17 +178,14 @@ class Neo4jGraphRepository:
         """
         identifier_value = identifier.serialize()
 
-        query = (
-            "MATCH (d {identifier: $identifier, owner_id: $owner_id})-[r]->() DELETE r"
-        )
+        query = "MATCH (d {identifier: $identifier})-[r]->() DELETE r"
         async with self._driver.session() as session:
             await session.run(
                 query,
                 identifier=identifier_value,
-                owner_id=owner_id,
             )
 
-    async def delete_relations_by_run(self, run_id: RunId, owner_id: OwnerId) -> None:
+    async def delete_relations_by_run(self, run_id: RunId) -> None:
         """Détache les arêtes taguées de ce ``run_id`` — et elles seules (§8).
 
         La maille de compensation. ``upsert_relations`` pose ``r.run_id`` sur chaque
@@ -204,21 +194,12 @@ class Neo4jGraphRepository:
         les sortantes d'un nœud, quel qu'en soit l'auteur — un run rejoué emporterait les
         arêtes qu'un autre run avait posées. Filtrer sur ``run_id`` borne la suppression
         à l'ouvrage du run, exactement.
-
-        ``owner_id`` reste une composante de la sélection : deux tenants n'ont aucune
-        raison de partager un ``run_id``, mais un filtre qui l'ignore serait la première
-        exception à l'invariant « ``owner_id`` est partout une clé ».
         """
-        query = (
-            "MATCH ()-[r]->() WHERE r.run_id = $run_id AND r.owner_id = $owner_id"
-            " DELETE r"
-        )
+        query = "MATCH ()-[r]->() WHERE r.run_id = $run_id DELETE r"
         async with self._driver.session() as session:
-            await session.run(query, run_id=run_id, owner_id=owner_id)
+            await session.run(query, run_id=run_id)
 
-    async def compensate_document_node(
-        self, identifier: Identifier, owner_id: OwnerId
-    ) -> None:
+    async def compensate_document_node(self, identifier: Identifier) -> None:
         """Défait le nœud d'un document raté sans arracher les citations d'autrui (§8).
 
         Conditionnel sur l'existence d'une arête ENTRANTE :
@@ -243,9 +224,7 @@ class Neo4jGraphRepository:
         """
         identifier_value = identifier.serialize()
         async with self._driver.session() as session:
-            result = await session.run(
-                _COUNT_INCOMING, identifier=identifier_value, owner_id=owner_id
-            )
+            result = await session.run(_COUNT_INCOMING, identifier=identifier_value)
             record = await result.single()
             # Le nœud n'existe pas (la saga a échoué AVANT le merge du nœud) : rien à
             # défaire. La compensation est idempotente — c'est ce que la saga attend.
@@ -256,9 +235,9 @@ class Neo4jGraphRepository:
                 if record["entrantes"] == 0
                 else self._dehydrate_node
             )
-            await session.run(query, identifier=identifier_value, owner_id=owner_id)
+            await session.run(query, identifier=identifier_value)
 
     async def drop_all(self) -> None:
-        """Detach-delete every node and relation. Irreversible — wipes all owners."""
+        """Detach-delete every node and relation. Irreversible."""
         async with self._driver.session() as session:
             await session.run("MATCH (n) DETACH DELETE n")

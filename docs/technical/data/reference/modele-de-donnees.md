@@ -2,8 +2,6 @@
 
 Ce que le pipeline écrit réellement, base par base. Modèles Pydantic :
 `src/ragcore/core/models/` (tous `frozen=True`). Dépôts : `src/ragcore/adapters/storage/`.
-Version de schéma : `SCHEMA_VERSION = 3` (`core/models/document.py` — l'historique des
-bumps est documenté sur la constante ; un bump = une ré-ingestion complète).
 
 ## L'identité d'un document
 
@@ -32,7 +30,7 @@ RawDocument ──parse──▶ ParsedDocument ──chunk──▶ Chunk ─�
     transcrit)            structure, source_files)  char_start/end)
 ```
 
-- `ParsedDocument` : `identifier`, `source`, `owner_id`, `title`, `content` (texte
+- `ParsedDocument` : `identifier`, `source`, `title`, `content` (texte
   intégral lisible), `structure` (sections/references/context — **jamais persisté**,
   voir plus bas), `metadata` (clés = chemin complet de balise), `citations` (tuple de
   `Citation`), `source_files` (provenance, jamais persistée en Mongo).
@@ -47,8 +45,8 @@ RawDocument ──parse──▶ ParsedDocument ──chunk──▶ Chunk ─�
 
 ### `documents`
 
-Un document par (identifier, owner_id) — index **unique** `uq_identifier_owner`, plus
-`idx_source_owner`. Écrit par `replace_one(upsert=True)` : remplacement atomique, aucun
+Un document par `identifier` — index **unique** `uq_identifier`, plus
+`idx_source`. Écrit par `replace_one(upsert=True)` : remplacement atomique, aucun
 instant où l'identifiant n'existe pas.
 
 Contenu : le dump JSON du `ParsedDocument`, **sauf** :
@@ -61,8 +59,8 @@ Contenu : le dump JSON du `ParsedDocument`, **sauf** :
   donnée d'arête (elles vivent dans Neo4j), et `sections` est `content` re-découpé — son
   seul apport propre (`path`) survit sur les chunks (`tag_path` + offsets).
 
-Donc : `schema_version`, `identifier` (sérialisé), `source`, `owner_id`, `title`,
-`content`, `metadata`, `citations`.
+Donc : `identifier` (sérialisé), `source`, `title`, `content`, `metadata`,
+`citations`.
 
 ### `manifest`
 
@@ -76,7 +74,7 @@ mise à jour, une entrée par tentative. Deux formes :
   obligatoires (invariant validé par le modèle).
 
 Index de lookup (pas uniques — plusieurs entrées par document, une par run) :
-`(identifier_serialized, owner_id)` sparse, `(source_path, owner_id)`.
+`identifier_serialized` sparse, `source_path`.
 
 ## MongoDB — base méta `MURPHY_META`
 
@@ -85,55 +83,46 @@ données.
 
 | Collection | Contenu | Index |
 |---|---|---|
-| `meta_audit_events` | Les événements d'audit (`AuditEvent` : event_type, run_id, owner_id, source, document_id, payload, success, error_message, occurred_at). Rétention infinie. | (owner_id, occurred_at), (document_id, occurred_at), (run_id), (event_type) |
-| `meta_run_summaries` | Un `RunSummary` par run : identité (run_id, owner, source, dates), `status` (`ok`/`degraded`/`failed`), `stats` (counts, breakdowns, unknowns), `error_message`. | unique (run_id), (started_at) |
-| `meta_pending_relations` | Les `PendingRelation` : arêtes différées (source_id, target_id, relation_type, metadata, first_seen_run, last_seen_run). Ni TTL ni retry_count : écrite une fois, promue une fois — ou jamais. | **unique** (owner_id, source_id, target_id, relation_type) — c'est lui qui fait de l'upsert une union ; (owner_id, target_id) pour le rejeu ciblé |
-| `meta_published_collection` | **Le pointeur** (`PublishedCollection`, singleton clé `current`) : `collection_name` (l'empreinte), `fingerprint`, `run_id`, `document_count`, `published_at`, `serving_contract_version` (absent des pointeurs antérieurs à l'ADR-039). Mis à jour par les seuls runs `ok`, et par un run restreint seulement si la version en place est déjà la sienne ; lu par le backend au boot. | — |
-
-`fingerprint` et `collection_name` sont identiques aujourd'hui **par décision** : le jour
-où le nom gagne un préfixe, le serving continue de lire un NOM et la traçabilité une
-EMPREINTE.
+| `meta_audit_events` | Les événements d'audit (`AuditEvent` : event_type, run_id, source, document_id, payload, success, error_message, occurred_at). Rétention infinie. | (occurred_at), (document_id, occurred_at), (run_id), (event_type) |
+| `meta_run_summaries` | Un `RunSummary` par run : identité (run_id, source, dates), `status` (`ok`/`degraded`/`failed`), `stats` (counts, breakdowns, unknowns), `error_message`. | unique (run_id), (started_at) |
+| `meta_pending_relations` | Les `PendingRelation` : arêtes différées (source_id, target_id, relation_type, metadata, first_seen_run, last_seen_run). Ni TTL ni retry_count : écrite une fois, promue une fois — ou jamais. | **unique** (source_id, target_id, relation_type) — c'est lui qui fait de l'upsert une union ; (target_id) pour le rejeu ciblé |
 
 ## Qdrant
 
-- **Nom de collection** : le fingerprint blake2b (32 hex) de la `WorkflowConfig` — jamais
-  configuré à la main. Deux configs ⇒ deux collections qui coexistent, chacune droppable
-  indépendamment (la condition de l'A/B).
-- **Vecteurs** : dimension du workflow (768), distance **Cosine** (codée en dur dans le
-  dépôt `QdrantVectorRepository`).
+- **Nom de collection** : `QDRANT_COLLECTION` (`.env.dev`), un nom fixe que le backend
+  lit aussi. Une seule collection, réécrite en place à chaque run.
+- **Vecteurs** : dimension de `embedding.dimension` (768), distance **Cosine** (codée en
+  dur dans le dépôt `QdrantVectorRepository`).
 - **ID de point** : SHA-256 du `chunk_id`, replié sur 63 bits — stable entre processus
   (jamais `hash()` natif, resemé par interpréteur).
 - **Payload** : les `metadata` du chunk à plat, puis les champs du **contrat de
-  serving** (ADR-039,
-  version `SERVING_CONTRACT_VERSION` = 2), posés en dernier pour qu'aucune métadonnée
+  serving** (ADR-039), posés en dernier pour qu'aucune métadonnée
   homonyme ne les écrase :
 
   | Champ | Rôle côté serving |
   |---|---|
   | `chunk_id` | identité du passage, envoyée au client |
   | `identifier` | document parent dans `documents` (sérialisé, = clé de suppression par document) |
-  | `owner_id` | complète la clé du document parent |
   | `char_start`, `char_end` | bornes du passage dans le `content` du parent, en **points de code** |
   | `type_document` (métadonnée, facultatif) | nature du document, affichée comme type de la source |
 
   Le texte du passage n'est **pas** dans le payload : c'est
   `documents.content[char_start:char_end]`. Les autres métadonnées sont présentes mais le
-  serving ne s'y appuie pas. Changer un de ces champs est un bump de version.
+  serving ne s'y appuie pas. Changer un de ces champs impose une réingestion complète.
 - **Écriture** : delete-puis-insert par document (`delete_by_document` puis `upsert`) —
   Qdrant n'a pas de « remplace tous les points de ce document » atomique, et un simple
   upsert laisserait des points orphelins quand la nouvelle version a moins de chunks.
 
 ## Neo4j
 
-- **Nœuds documents** : identifiés par `identifier` sérialisé + `owner_id`. Le `MERGE`
+- **Nœuds documents** : identifiés par `identifier` sérialisé. Le `MERGE`
   porte sur le seul identifiant (jamais le label — `MERGE (d:Article {…})` créerait un
   second nœud si le label a changé), puis le label réel est posé. Le label vient de
   la table `exportation.neo4j.labels` de `parameters.yml`, d'après les 8 lettres de
   l'identifiant : `LEGIARTI` → `Article`, `LEGITEXT` → `Texte`, `LEGISCTA` → `Section`,
   et `Document` (le `default`) pour tout autre préfixe, dont les décisions. Un nœud cité
   dont le document manque porte `Pending`.
-- **Hydratation** (ADR-022 §2) : en prod, nœud **maigre** (`title`, `source`,
-  `schema_version`). En dev (et seulement en dev), le hook ouvre les vannes : `metadata`
+- **Hydratation** (ADR-022 §2) : en prod, nœud **maigre** (`title`, `source`). En dev (et seulement en dev), le hook ouvre les vannes : `metadata`
   en props (clés chemin-complet), `include_path` (les fichiers XML source),
   `include_content` (le texte, prop `_text_content`), les citations. Neo4j est l'outil
   d'inspection de la v0.

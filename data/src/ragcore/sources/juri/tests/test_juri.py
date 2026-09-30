@@ -14,7 +14,6 @@ import pytest
 
 from ragcore.core.links import CITES, LinkSubject, extract_links
 from ragcore.core.models.enums import SourceName
-from ragcore.core.models.identifiers import OwnerId
 from ragcore.sources.generic import GenericParser
 from ragcore.sources.juri import (
     JURI_LINK_TABLE,
@@ -23,13 +22,12 @@ from ragcore.sources.juri import (
 )
 
 FIXTURES = Path(__file__).parent / "fixtures"
-OWNER = OwnerId("u1")
 
 
 def _parse_result(name: str, source: SourceName):
     async def run():
         connector = JuriFileConnector(FIXTURES, source)
-        async for raw in connector.fetch_all(OWNER):
+        async for raw in connector.fetch_all():
             if Path(raw.payload["files"][0]).name == name:
                 root = raw.payload["content"][0]["tag"]
                 return GenericParser(ROLE_TABLE_BY_ROOT[root], source).parse(raw)
@@ -64,9 +62,7 @@ def test_une_citation_decrite_devient_un_CHAMP_jamais_une_arete() -> None:
         references=document.structure["references"],
         ancestors=document.structure["context"],
         table=JURI_LINK_TABLE,
-        subject=LinkSubject(
-            current=document.identifier, owner_id=OWNER, source=SourceName.CASS
-        ),
+        subject=LinkSubject(current=document.identifier, source=SourceName.CASS),
     )
 
     assert not links.relations, (

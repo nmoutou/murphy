@@ -15,7 +15,7 @@ from ragcore.application.ingest_document import IngestDocumentUseCase, Ingestion
 from ragcore.application.run_context import PipelineContext
 from ragcore.core.models.document import ParsedDocument
 from ragcore.core.models.enums import Operation, SourceName
-from ragcore.core.models.identifiers import Identifier, OwnerId
+from ragcore.core.models.identifiers import Identifier
 from ragcore.core.telemetry_events import (
     DOCUMENT_PERSISTED,
     RELATION_UPSERTED,
@@ -30,13 +30,10 @@ from ragcore.tests.fakes import (
     RecordingTelemetry,
 )
 
-OWNER = OwnerId("owner-1")
-
 
 def _doc() -> ParsedDocument:
     return ParsedDocument(
         identifier=Identifier(raw="LEGIARTI000000000001"),
-        owner_id=OWNER,
         source=SourceName.LEGI,
         title="Article 1",
         content="contenu",
@@ -71,7 +68,7 @@ def _use_case(stores: dict) -> IngestDocumentUseCase:
 
 @pytest.fixture
 def context() -> PipelineContext:
-    return PipelineContext.create(owner_id=OWNER, source=SourceName.LEGI)
+    return PipelineContext.create(source=SourceName.LEGI)
 
 
 async def test_phase_one_writes_the_node_and_never_an_edge(stores, context) -> None:  # noqa: ANN001
@@ -181,9 +178,7 @@ async def test_an_update_replaces_in_place_without_a_preceding_delete(
     await use_case.execute(_doc(), [], Operation.UPDATE, context)
 
     assert stores["document_repo"].deleted == []
-    assert list(stores["document_repo"].documents) == [
-        ("LEGIARTI000000000001", "owner-1")
-    ]
+    assert list(stores["document_repo"].documents) == ["LEGIARTI000000000001"]
     assert len(stores["telemetry"].events_of(DOCUMENT_PERSISTED)) == 1
 
 

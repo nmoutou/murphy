@@ -169,7 +169,6 @@ def test_a_relation_normalizes_its_verb_at_the_model_boundary() -> None:
         source_identifier=Identifier(raw="LEGIARTI000006419264"),
         target_identifier=Identifier(raw="LEGIARTI000006419265"),
         relation_type="ZORGLUB",
-        owner_id="tenant",
         source=SourceName.LEGI,
     )
     assert relation.relation_type == "zorglub"
@@ -179,6 +178,5 @@ def test_a_relation_normalizes_its_verb_at_the_model_boundary() -> None:
             source_identifier=Identifier(raw="LEGIARTI000006419264"),
             target_identifier=Identifier(raw="LEGIARTI000006419265"),
             relation_type="a b",
-            owner_id="tenant",
             source=SourceName.LEGI,
         )

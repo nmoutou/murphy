@@ -9,7 +9,7 @@ ou crée le document s'il est absent. La saga n'a donc rien à détruire avant d
 
 from ragcore.adapters.storage.mongo.client import MongoClient, MongoDatabase
 from ragcore.core.models.document import ParsedDocument
-from ragcore.core.models.identifiers import Identifier, OwnerId
+from ragcore.core.models.identifiers import Identifier
 
 
 def _serialize_identifier(identifier: Identifier) -> str:
@@ -37,15 +37,12 @@ class MongoDocumentRepository:
     async def upsert(self, document: ParsedDocument) -> None:
         """Remplace le document en place (atomique), ou le crée s'il est absent.
 
-        ``replace_one(..., upsert=True)`` sur la clé ``(identifier, owner_id)`` : un seul
+        ``replace_one(..., upsert=True)`` sur la clé ``identifier`` : un seul
         aller-retour indivisible. Aucun instant où l'identifiant n'existe plus — c'est ce
         qui retire à la saga tout besoin de détruire l'ancien avant d'écrire le neuf.
         """
         identifier_key = _serialize_identifier(document.identifier)
-        filter_ = {
-            "identifier": identifier_key,
-            "owner_id": document.owner_id,
-        }
+        filter_ = {"identifier": identifier_key}
         # Épuration (ADR-022 §4) : `source_files` est de la provenance d'inspection
         # (Neo4j dev), pas du contenu — un chemin absolu du poste d'ingestion n'a rien
         # à faire en base. `structure` NE L'EST PLUS DU TOUT, ses trois clés étant
@@ -68,14 +65,11 @@ class MongoDocumentRepository:
         data["identifier"] = identifier_key
         await self._collection.replace_one(filter_, data, upsert=True)
 
-    async def delete(self, identifier: Identifier, owner_id: OwnerId) -> None:
+    async def delete(self, identifier: Identifier) -> None:
         await self._collection.delete_many(
-            {
-                "identifier": _serialize_identifier(identifier),
-                "owner_id": owner_id,
-            }
+            {"identifier": _serialize_identifier(identifier)}
         )
 
     async def drop_collection(self) -> None:
-        """Drop the entire collection. Irreversible — wipes all owners."""
+        """Drop the entire collection. Irreversible."""
         await self._collection.drop()

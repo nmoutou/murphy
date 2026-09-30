@@ -9,7 +9,7 @@ n'écrira pas une ligne de parser — elle écrira trois tables.
 """
 
 from .chunking import StructuralChunker
-from .normalize import NORMALIZATION_VERSION, normalize_text
+from .normalize import normalize_text
 from .parser import GenericParser
 from .relations import GenericRelationExtractor
 from .role_table import RoleTable
@@ -17,7 +17,6 @@ from .roles import Role
 from .xml_tree import locate_id, read_root, to_tree
 
 __all__ = [
-    "NORMALIZATION_VERSION",
     "GenericParser",
     "GenericRelationExtractor",
     "Role",

@@ -11,7 +11,6 @@ from ragcore.core.exceptions import ParseError, ValidationError
 from ragcore.core.models.document import RawDocument
 from ragcore.core.models.enums import SourceName
 from ragcore.core.models.enums import SourceName as _SN
-from ragcore.core.models.identifiers import OwnerId
 from ragcore.core.ports.parser import BaseParser
 from ragcore.sources.generic import GenericParser, to_tree
 from ragcore.sources.legi.table import LEGI_ROLE_TABLE
@@ -22,8 +21,6 @@ from .conftest import (
     SECTION_ARTICLES,
     TEXTE_DEUX_FACETTES,
 )
-
-OWNER = OwnerId("u1")
 
 
 def _raw(fixtures_dir: Path, *names: str) -> RawDocument:
@@ -38,7 +35,6 @@ def _raw(fixtures_dir: Path, *names: str) -> RawDocument:
             "files": list(names),
         },
         fetched_at=datetime.now(UTC),
-        owner_id=OWNER,
     )
 
 
@@ -255,7 +251,6 @@ def test_une_valeur_au_format_DILA_devient_un_LIEN_pas_une_metadonnee(
             source_document_id="x",
             payload={"content": [tree]},
             fetched_at=datetime.now(UTC),
-            owner_id=OWNER,
         )
     )
     parsed = result.document
@@ -287,7 +282,6 @@ def test_un_xml_illisible_leve_ParseError_pas_ValidationError(
                 source_document_id="x",
                 payload={"content": []},  # le connecteur n'a rien pu transcrire
                 fetched_at=datetime.now(UTC),
-                owner_id=OWNER,
             )
         )
 
@@ -303,7 +297,6 @@ def test_un_document_sans_identifiant_leve_ValidationError() -> None:
                 source_document_id="x",
                 payload={"content": [tree]},
                 fetched_at=datetime.now(UTC),
-                owner_id=OWNER,
             )
         )
 
@@ -322,7 +315,6 @@ def test_un_identifiant_mal_forme_leve_ValidationError() -> None:
                 source_document_id="x",
                 payload={"content": [tree]},
                 fetched_at=datetime.now(UTC),
-                owner_id=OWNER,
             )
         )
 

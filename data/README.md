@@ -37,9 +37,9 @@ if they were two variables they could diverge, and a divergence writes the *wron
 vectors into the collection named after the *right* one — silently. They are now the same
 variable, and the pipeline additionally checks TEI's `GET /info` before writing anything.
 
-Tuning surface: `conf/base/workflow/parameters.yml` (chunking, normalization, embedding —
-these are hashed into the Qdrant collection name; changing one creates a new collection by
-design).
+Tuning surface: `conf/base/ingestion/parameters.yml` (`chunking` and `embedding` blocks).
+The Qdrant collection has a fixed name, `QDRANT_COLLECTION` in `../.env.dev`, shared with
+the backend: after changing the chunking or the embedding model, re-ingest the whole corpus.
 
 ## Develop
 

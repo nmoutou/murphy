@@ -1,6 +1,15 @@
 # ADR-039 — Contrat ingestion ↔ serving : le texte d'un passage vit dans Mongo, désigné par ses offsets
 
-**Statut** : ✅ Accepté (25 septembre 2026)
+**Statut** : ✅ Accepté (25 septembre 2026), amendé le 30 septembre 2026
+
+> **Amendement du 30 septembre 2026.** `owner_id` et la version du contrat sont retirés :
+> le projet est mono-utilisateur et en développement, aucun des deux n'avait d'usage. Un
+> document se lit par son seul `identifier`, et le backend ne vérifie plus de version au
+> boot. Le texte ci-dessous décrit le contrat après cet amendement.
+>
+> **Amendement par ADR-042 (30 septembre 2026).** Le pointeur de collection est retiré :
+> la collection Qdrant porte un nom fixe, `QDRANT_COLLECTION`. Le contrat (§2) et le §3
+> ci-dessous sont réécrits en conséquence.
 
 ## Contexte
 
@@ -10,8 +19,8 @@ septembre 2026 sur la collection publiée `9424808d…` (3 303 points, 769 docum
 
 | | L'ingestion écrit | Le backend lit |
 |---|---|---|
-| Payload Qdrant | `chunk_id`, `identifier`, `owner_id` + métadonnées à plat (`type_document`, `num`…) | `chunkId`, `title`, `type` |
-| Mongo `LEGIFRANCE` | `documents` : un document **entier** par `(identifier, owner_id)` | `chunks`, par `chunkId` — la collection n'existe pas |
+| Payload Qdrant | `chunk_id`, `identifier` + métadonnées à plat (`type_document`, `num`…) | `chunkId`, `title`, `type` |
+| Mongo `LEGIFRANCE` | `documents` : un document **entier** par `identifier` | `chunks`, par `chunkId` — la collection n'existe pas |
 | Texte d'un passage | jamais persisté : `text`, `char_start`, `char_end` ne vivent qu'en mémoire | attendu dans `content` |
 
 Conséquence : le backend écarte tous les résultats Qdrant. Aucune source n'atteint le
@@ -30,15 +39,15 @@ Deux faits rendent les offsets exploitables :
 ### 1. Le texte d'un passage vit dans Mongo, désigné par ses offsets
 
 Le payload Qdrant porte `char_start` et `char_end`. Le texte d'un passage est
-`documents.content[char_start:char_end]`, lu dans le document parent par
-`(identifier, owner_id)`, clé déjà indexée.
+`documents.content[char_start:char_end]`, lu dans le document parent par son
+`identifier`, clé déjà indexée.
 
 Les offsets sont comptés en **points de code Unicode** (le `str` de Python). Le backend
 doit découper dans la même unité : `String.prototype.slice` compte en unités UTF-16 et
 se décalerait sur tout caractère hors du plan multilingue de base. `$substrCP` côté Mongo,
 ou un découpage par points de code côté Node, satisfait le contrat.
 
-### 2. Le contrat, version 1
+### 2. Le contrat
 
 **Payload Qdrant** : ce que le serving lit, et rien de plus.
 
@@ -46,32 +55,24 @@ ou un découpage par points de code côté Node, satisfait le contrat.
 |---|---|---|
 | `chunk_id` | string | Identité du passage, envoyée au client |
 | `identifier` | string | Clé du document parent dans Mongo |
-| `owner_id` | string | Complète la clé du document parent |
 | `char_start`, `char_end` | int | Bornes du passage dans `content`, en points de code |
 | `type_document` | string, facultatif | Nature du document (LEGI et JURI), affichée comme type de la source |
 
 Les autres métadonnées restent à plat dans le payload, mais le serving ne s'y appuie pas.
 
-**Mongo `documents`** : `identifier`, `owner_id`, `title`, `content`, déjà écrits
-aujourd'hui.
+**Mongo `documents`** : `identifier`, `title`, `content`, déjà écrits aujourd'hui.
 
-**Pointeur `MURPHY_META.meta_published_collection`** : il gagne un champ
-`serving_contract_version` (entier, `1`).
+**Collection Qdrant** : une seule, nommée par `QDRANT_COLLECTION`, la variable que les
+deux côtés lisent dans `.env.dev` (ADR-042).
 
-### 3. Le backend vérifie la version au boot
+### 3. Le backend ne sert qu'une collection qui existe
 
-L'ingestion publie la version du contrat qu'elle a écrite. Le backend attend une version
-précise et **refuse de démarrer** si le pointeur en porte une autre ou n'en porte pas,
-comme il refuse déjà une collection absente (`infra/collectionPointer.ts`).
+Le backend **refuse de démarrer** si la collection `QDRANT_COLLECTION` n'existe pas dans
+Qdrant (`infra/qdrant.ts:assertCollectionExists`).
 
-Deux conséquences :
-
-- **le repli `QDRANT_COLLECTION` est retiré.** Une collection que personne n'a publiée
-  n'a pas de version connue : la servir, c'est parier sur son format ;
-- **un changement de contrat est un bump de version, qui impose un run complet.** Un run
-  restreint (`--params source=…`) ne réécrit que ses sources : s'il publiait la nouvelle
-  version, la collection mêlerait deux formats. Il ne publie donc que si le pointeur en
-  place porte déjà la même version.
+**Un changement de contrat impose une réingestion complète.** Rien ne le vérifie au
+boot : une collection dans un ancien format se révèle à la première requête, par une
+violation de contrat (§5).
 
 ### 4. Le serving : ce que chaque étape lit
 
@@ -130,22 +131,16 @@ retrouvé. Le flux porte donc **deux types de parts**, chacun envoyé une fois :
 - **Contrôle par point à la requête** (écarter les points incomplets et journaliser).
   Rattrape une collection mêlée, mais l'utilisateur reçoit une réponse appauvrie sans le
   savoir : c'est le défaut même que cet ADR corrige.
-- **Version du contrat dans le fingerprint.** Un bump créerait une nouvelle collection,
-  et un run restreint publierait une collection ne contenant que ses sources. Le
-  fingerprint nomme une configuration de **recherche** (normalisation, découpage,
-  embedding) ; la forme du payload n'en fait pas partie.
 
 ## Conséquences
 
 - **Réingestion complète**, une fois. Le fingerprint ne change pas : la collection
   `9424808d…` est réécrite en place, puisqu'un run retraite tous les documents (pas de
   SKIP).
-- **Côté `data/`** : `QdrantVectorRepository.upsert` écrit `char_start` et `char_end` ; une
-  constante `SERVING_CONTRACT_VERSION` est publiée avec le pointeur ; la publication
-  applique la règle du run restreint (§3) ; `docs/technical/data/reference/modele-de-donnees.md` décrit
-  le contrat.
-- **Côté `backend/`** : `collectionPointer.ts` vérifie la version et perd son repli ;
-  `mongodb.ts` lit `documents` par `(identifier, owner_id)` et découpe les passages ;
+- **Côté `data/`** : `QdrantVectorRepository.upsert` écrit `char_start` et `char_end` ;
+  `docs/technical/data/reference/modele-de-donnees.md` décrit le contrat.
+- **Côté `backend/`** : `collectionPointer.ts` perd son repli ;
+  `mongodb.ts` lit `documents` par `identifier` et découpe les passages ;
   `chatService.ts` suit les §4 et §5. `MONGODB_COLLECTION` et
   `QDRANT_COLLECTION` disparaissent de la configuration. Le type `Document` est renommé
   d'après ce qu'il est désormais, un document parent. `types/messages.ts` gagne
@@ -164,7 +159,7 @@ retrouvé. Le flux porte donc **deux types de parts**, chacun envoyé une fois :
   Qdrant (saga, steps 1 et 2), les anciens offsets d'un document désignent son nouveau
   `content`. Si ce passage reste dans les bornes, rien ne le détecte. La fenêtre est celle
   d'un document, hors du chemin `nuke_all` ; elle rejoint les résiduels déjà assumés de
-  la saga (`docs/technical/data/reference/idempotence-et-publication.md`). Une empreinte du
+  la saga (`docs/technical/data/reference/idempotence.md`). Une empreinte du
   `content` dans le payload la fermerait, si elle devient un problème.
 
 ## Références

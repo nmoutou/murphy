@@ -44,7 +44,6 @@ from xml.etree import ElementTree as ET
 
 from ragcore.core.models.document import RawDocument
 from ragcore.core.models.enums import SourceName
-from ragcore.core.models.identifiers import OwnerId
 from ragcore.core.services.exclusion_reasons import (
     REASON_EXPORT_ARTIFACT,
     REASON_UNREADABLE,
@@ -75,7 +74,7 @@ class LegiFileConnector:
         Écarter sans compter serait un skip silencieux ; c'est le compte qui fait la
         différence entre « ignoré » et « caché »."""
 
-    async def fetch_all(self, owner_id: OwnerId) -> AsyncIterator[RawDocument]:
+    async def fetch_all(self) -> AsyncIterator[RawDocument]:
         """Itère les documents de la source, un par identifiant.
 
         Générateur : le corpus n'est jamais entièrement chargé en mémoire. Le
@@ -118,7 +117,6 @@ class LegiFileConnector:
                     "files": [str(path) for path, _ in facets],
                 },
                 fetched_at=datetime.now(UTC),
-                owner_id=owner_id,
             )
 
     def _is_export_artifact(self, path: Path, root: ET.Element) -> bool:

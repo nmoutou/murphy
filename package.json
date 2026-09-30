@@ -12,16 +12,19 @@
     "postinstall": "npm run build -w @murphy/contract",
     "check": "npm run build -w @murphy/contract && npm run type-check -w backend && npm run lint -w backend && npm test -w backend && npm run type-check -w frontend && npm run lint -w frontend && npm test -w frontend && npm run format:check -w frontend && npm run build -w frontend",
     "compose": "docker compose -f docker-compose.base.yml -f docker-compose.dev.yml --env-file .env.dev",
+    
     "ingest:up": "npm run compose -- --profile ingest up -d",
     "ingest:watch": "npm run compose -- --profile ingest up",
     "ingest:down": "npm run compose -- --profile ingest down",
     "ingest:logs": "npm run compose -- --profile ingest logs -f",
     "ingest:status": "npm run compose -- --profile ingest ps --format \"table {{.Name}}\\t{{.Status}}\"",
+
     "serve:up": "npm run compose -- --profile serve up -d",
     "serve:watch": "npm run compose -- --profile serve up",
     "serve:build": "npm run compose -- --profile serve build",
     "serve:down": "npm run compose -- --profile serve down",
     "serve:logs": "npm run compose -- --profile serve logs -f",
+
     "up": "npm run serve:up",
     "watch": "npm run serve:watch",
     "build": "npm run serve:build",

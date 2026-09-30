@@ -5,7 +5,7 @@ Trois décisions du cadrage se jouent ici, et chacune est une ligne de Mongo :
 1. **Union idempotente.** ``$setOnInsert`` fige ``first_seen_run`` : c'est la date
    de naissance du trou, elle ne bouge jamais. ``$set`` fait avancer
    ``last_seen_run``. Revoir dix fois la même pendante produit UNE entrée — c'est
-   l'index unique sur le quadruplet qui le garantit, pas notre bonne volonté.
+   l'index unique sur le triplet qui le garantit, pas notre bonne volonté.
 
 2. **Rejeu ciblé.** ``promotable_for`` filtre sur ``target_id ∈ written_node_ids``
    — le delta de LA run. On ne relit jamais le backlog entier : une pendante dont
@@ -20,20 +20,14 @@ Trois décisions du cadrage se jouent ici, et chacune est une ligne de Mongo :
 from pymongo import UpdateOne
 
 from ragcore.adapters.storage.mongo.client import MongoClient
-from ragcore.core.models.identifiers import OwnerId
 from ragcore.core.models.pending import PendingKey, PendingRelation
 
 __all__ = ["MongoPendingRelationRepository"]
 
 
 def _key_filter(key: PendingKey) -> dict[str, object]:
-    """Le quadruplet — celui de l'index unique, sans exception.
-
-    ``owner_id`` est dans la clé : une pendante n'est pas un fait du monde, c'est
-    un trou dans un graphe *donné*.
-    """
+    """Le triplet — celui de l'index unique."""
     return {
-        "owner_id": key.owner_id,
         "source_id": key.source_id,
         "target_id": key.target_id,
         "relation_type": key.relation_type,
@@ -74,15 +68,11 @@ class MongoPendingRelationRepository:
 
         await self._collection.bulk_write(operations, ordered=False)
 
-    async def promotable_for(
-        self, written_node_ids: set[str], owner_id: OwnerId
-    ) -> list[PendingRelation]:
+    async def promotable_for(self, written_node_ids: set[str]) -> list[PendingRelation]:
         if not written_node_ids:
             return []
 
-        cursor = self._collection.find(
-            {"owner_id": owner_id, "target_id": {"$in": list(written_node_ids)}}
-        )
+        cursor = self._collection.find({"target_id": {"$in": list(written_node_ids)}})
         return [
             PendingRelation.model_validate({k: v for k, v in doc.items() if k != "_id"})
             async for doc in cursor
@@ -93,5 +83,5 @@ class MongoPendingRelationRepository:
             return
         await self._collection.delete_many({"$or": [_key_filter(k) for k in keys]})
 
-    async def count_for_owner(self, owner_id: OwnerId) -> int:
-        return await self._collection.count_documents({"owner_id": owner_id})
+    async def count(self) -> int:
+        return await self._collection.count_documents({})

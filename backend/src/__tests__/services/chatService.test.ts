@@ -35,14 +35,12 @@ const FIRST_SENTENCE = 'Les actions personnelles se prescrivent par cinq ans.';
 const SECOND_SENTENCE = 'Le délai court du jour de la connaissance des faits.';
 const DOCUMENT: StoredDocument = {
   identifier: 'LEGIARTI000006419304',
-  ownerId: 'default',
   title: 'Code civil, art. 2224',
   content: `${FIRST_SENTENCE} ${SECOND_SENTENCE}`,
 };
 const chunkOf = (chunkId: string, charStart: number, text: string, score: number): RetrievedChunk => ({
   chunkId,
   identifier: DOCUMENT.identifier,
-  ownerId: DOCUMENT.ownerId,
   charStart,
   charEnd: charStart + text.length,
   score,
@@ -157,7 +155,7 @@ describe('createChatStream', () => {
     await readAllParts(await createChatStream([userMessage(QUESTION)], NOT_ABORTED));
 
     expect(qdrant.searchVectors).toHaveBeenCalledWith(EMBEDDING, 5);
-    expect(mongo.fetchParentDocuments).toHaveBeenCalledWith(CHUNKS);
+    expect(mongo.fetchParentDocuments).toHaveBeenCalledWith(CHUNKS.map((chunk) => chunk.identifier));
 
     const [llmMessages] = jest.mocked(llm.stream).mock.calls[0];
     expect(llmMessages[0].role).toBe('system');

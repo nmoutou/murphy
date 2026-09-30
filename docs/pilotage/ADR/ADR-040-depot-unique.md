@@ -77,8 +77,7 @@ des deux images).
   par dossier. Les dépôts `left-eyebr0w/murphy-{backend,frontend,data}` sont à archiver,
   avec un renvoi vers le dépôt unique.
 - Le **contrat Python ↔ TypeScript** (payload Qdrant, `documents`, pointeur ; ADR-039)
-  ne peut pas passer par un paquet npm. Il reste répliqué et versionné
-  (`SERVING_CONTRACT_VERSION` des deux côtés, refus de démarrer sur une autre version).
+  ne peut pas passer par un paquet npm. Il reste répliqué des deux côtés.
   S'il grossit, la piste est de l'écrire sous forme de schéma (un JSON Schema tiré des
   modèles pydantic, dont les types TypeScript sont générés).
 - **Changer le contrat, une dépendance ou une config d'app demande de reconstruire les

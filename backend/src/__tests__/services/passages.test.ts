@@ -16,7 +16,6 @@ const PASSAGE_CODE_POINT_START = [...`${ASTRAL_PREFIX}Article 2224. `].length;
 
 const DOCUMENT: StoredDocument = {
   identifier: 'LEGIARTI000006419304',
-  ownerId: 'default',
   title: '2224',
   content: CONTENT,
 };
@@ -24,7 +23,6 @@ const DOCUMENT: StoredDocument = {
 const chunk = (overrides: Partial<RetrievedChunk> = {}): RetrievedChunk => ({
   chunkId: 'LEGIARTI000006419304_0001',
   identifier: DOCUMENT.identifier,
-  ownerId: DOCUMENT.ownerId,
   charStart: PASSAGE_CODE_POINT_START,
   charEnd: PASSAGE_CODE_POINT_START + PASSAGE.length,
   score: 0.9,
@@ -71,7 +69,7 @@ describe('assemblePassages', () => {
   });
 
   it('reports a chunk without parent document, naming it', () => {
-    expect(() => assemblePassages([chunk({ ownerId: 'another-owner' })], [DOCUMENT])).toThrow(
+    expect(() => assemblePassages([chunk({ identifier: 'LEGIARTI000000000404' })], [DOCUMENT])).toThrow(
       expect.objectContaining({ code: 'CONTRACT_VIOLATION', message: expect.stringContaining('LEGIARTI000006419304_0001') }),
     );
   });

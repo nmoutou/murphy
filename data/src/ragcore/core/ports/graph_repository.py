@@ -3,7 +3,7 @@ from typing import Protocol, runtime_checkable
 
 from ..models.document import ParsedDocument
 from ..models.enums import SourceName
-from ..models.identifiers import Identifier, OwnerId, RunId
+from ..models.identifiers import Identifier, RunId
 from ..models.relation import Relation
 
 
@@ -49,7 +49,7 @@ class GraphRepository(Protocol):
         """
         ...
 
-    async def delete_relations_by_run(self, run_id: RunId, owner_id: OwnerId) -> None:
+    async def delete_relations_by_run(self, run_id: RunId) -> None:
         """Supprime les arêtes écrites par CE run — et elles seules (§8).
 
         C'est la compensation à la maille du run : ``stratégie A`` (compensation
@@ -61,9 +61,7 @@ class GraphRepository(Protocol):
         """
         ...
 
-    async def existing_node_ids(
-        self, identifiers: list[Identifier], owner_id: OwnerId
-    ) -> set[str]:
+    async def existing_node_ids(self, identifiers: list[Identifier]) -> set[str]:
         """Sous-ensemble (sérialisé) des identifiants qui existent comme nœuds.
 
         Retourne des chaînes sérialisées : la comparaison avec les clés du cache
@@ -76,14 +74,12 @@ class GraphRepository(Protocol):
         ...
 
     async def delete_relations_from(
-        self, identifier: Identifier, owner_id: OwnerId, source: SourceName
+        self, identifier: Identifier, source: SourceName
     ) -> None:
         """Supprime uniquement les relations sortantes (préserve les entrantes)."""
         ...
 
-    async def compensate_document_node(
-        self, identifier: Identifier, owner_id: OwnerId
-    ) -> None:
+    async def compensate_document_node(self, identifier: Identifier) -> None:
         """Défait le nœud d'un document dont la saga a échoué — **sans casser le graphe**
         (§8, fin du ``_noop``).
 

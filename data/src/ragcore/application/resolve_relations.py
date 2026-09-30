@@ -110,9 +110,7 @@ class ResolveRelationsService:
     async def _promote(
         self, written_node_ids: set[str], context: PipelineContext
     ) -> int:
-        candidates = await self._pending_repo.promotable_for(
-            written_node_ids, context.owner_id
-        )
+        candidates = await self._pending_repo.promotable_for(written_node_ids)
         if not candidates:
             return 0
 
@@ -163,7 +161,6 @@ class ResolveRelationsService:
             build_event(
                 event_type=RELATION_UPSERTED,
                 run_id=context.run_id,
-                owner_id=context.owner_id,
                 source=context.source,
                 payload={"count": len(written)},
             )
@@ -176,7 +173,6 @@ class ResolveRelationsService:
             build_event(
                 event_type=RELATION_PROMOTED,
                 run_id=context.run_id,
-                owner_id=candidate.owner_id,
                 source=candidate.source,
                 document_id=candidate.source_id,
                 payload={
@@ -194,7 +190,6 @@ class ResolveRelationsService:
             build_event(
                 event_type=event_type,
                 run_id=context.run_id,
-                owner_id=relation.owner_id,
                 source=relation.source,
                 document_id=relation.source_identifier.serialize(),
                 payload={

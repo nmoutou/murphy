@@ -19,7 +19,6 @@ from pathlib import Path
 
 from ragcore.core.links import CANONICAL_VERBS, CONTAINS
 from ragcore.core.models.enums import SourceName as _SN
-from ragcore.core.models.identifiers import OwnerId
 from ragcore.core.services.exclusion_reasons import (
     REASON_EXPORT_ARTIFACT,
     REASON_UNREADABLE,
@@ -42,7 +41,6 @@ from ragcore.sources.legi.tests.conftest import (
 # les dupliquer — deux jeux de fixtures dériveraient, et c'est le cliquet qui mentirait.
 FIXTURES = Path(__file__).parents[2] / "sources" / "legi" / "tests" / "fixtures"
 
-OWNER = OwnerId("u1")
 CHUNK_SIZE = 128  # conf/base/parameters.yml
 OVERLAP = 25
 
@@ -62,7 +60,7 @@ def _run() -> dict:
         relations = []
         unknowns: dict[str, set[str]] = collections.defaultdict(set)
 
-        async for raw in connector.fetch_all(OWNER):
+        async for raw in connector.fetch_all():
             documents += 1
             files += len(raw.payload["files"])
 

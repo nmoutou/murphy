@@ -26,7 +26,7 @@ from ragcore.core.links import CITES
 from ragcore.core.models.chunk import Chunk, EmbeddedChunk
 from ragcore.core.models.document import ParsedDocument
 from ragcore.core.models.enums import Operation, SourceName
-from ragcore.core.models.identifiers import Identifier, OwnerId
+from ragcore.core.models.identifiers import Identifier
 from ragcore.core.models.relation import Relation
 from ragcore.core.ports.relation_extractor import ExtractionResult
 from ragcore.orchestration.kedro.workload import WorkloadSteps, build_document_workload
@@ -39,7 +39,6 @@ from ragcore.tests.fakes import (
     RecordingTelemetry,
 )
 
-OWNER = OwnerId("owner-1")
 SELF = Identifier(raw="LEGIARTI000000000001")
 OTHER = Identifier(raw="LEGIARTI000000000002")
 
@@ -47,7 +46,6 @@ OTHER = Identifier(raw="LEGIARTI000000000002")
 def _doc() -> ParsedDocument:
     return ParsedDocument(
         identifier=SELF,
-        owner_id=OWNER,
         source=SourceName.LEGI,
         title="Article",
         content="Le contenu réel de l'article, en français.",
@@ -62,7 +60,6 @@ class _StubChunker:
             Chunk(
                 chunk_id=f"{document.identifier.raw}_0000",
                 parent_identifier=document.identifier,
-                owner_id=document.owner_id,
                 ordinal=0,
                 text=document.content,
                 tag_path=[],
@@ -104,7 +101,6 @@ class _StubExtractor:
                     source_identifier=SELF,
                     target_identifier=OTHER,
                     relation_type=CITES,
-                    owner_id=OWNER,
                     source=SourceName.LEGI,
                 )
             ],
@@ -142,7 +138,7 @@ def _run(
 ):
     graph = InMemoryGraphRepository()
     vectors = InMemoryVectorRepository()
-    context = PipelineContext.create(owner_id=OWNER, source=SourceName.LEGI)
+    context = PipelineContext.create(source=SourceName.LEGI)
     workload = build_document_workload(
         steps=WorkloadSteps(
             chunker=_StubChunker(),

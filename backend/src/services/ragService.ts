@@ -50,7 +50,7 @@ export const fetchPassages = async (chunks: readonly RetrievedChunk[]): Promise<
     return { passages: [], docFetchMs: 0 };
   }
   const start = Date.now();
-  const documents = await getInfraClients().mongo.fetchParentDocuments(chunks);
+  const documents = await getInfraClients().mongo.fetchParentDocuments(chunks.map((chunk) => chunk.identifier));
   return { passages: assemblePassages(chunks, documents), docFetchMs: Date.now() - start };
 };
 

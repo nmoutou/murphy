@@ -1,11 +1,7 @@
-"""``InfraSettings`` — lue de l'environnement, jamais du dépôt, jamais hashée.
+"""``InfraSettings`` — lue de l'environnement, jamais du dépôt.
 
-**Rien ici n'entre dans le hash de collection (§6).** C'est la définition même de ce
-package : si en changer la valeur modifiait un seul vecteur, le champ serait dans
-``core/config/`` et pas ici. Déménage Mongo sur une autre machine, tourne le pipeline
-depuis un conteneur, passe de 4 à 8 workers : les vecteurs produits sont identiques,
-et ils doivent atterrir dans la **même** collection. C'est tout le point de la
-scission — voir ``core/config/fingerprint.py``.
+Les bases, les secrets, les chemins : le *où* du pipeline. Les réglages du traitement
+(découpe, modèle d'embedding) vivent dans ``conf/base/ingestion/parameters.yml``.
 
 La forme de ces modèles est **dictée par ses appelants**. ``orchestration/kedro/stores.py`` appelle
 ``.get_secret_value()`` sur le mot de passe Neo4j et la clé Qdrant : ce sont donc des
@@ -52,8 +48,7 @@ dont ``provider="noop"`` : des vecteurs nuls écrits dans la collection du vrai 
 
 Un seul fichier, deux consommateurs : le modèle que sert le conteneur TEI et celui que le
 pipeline croit embarquer ne peuvent plus diverger, **parce qu'ils ne sont plus deux
-variables**. Même logique que la scission ``WorkflowConfig`` / ``InfraSettings`` : rendre
-l'erreur impossible, pas la déconseiller.
+variables**.
 """
 
 
@@ -79,7 +74,7 @@ def _require_env_file() -> Path:
 
 
 class InfraSettings(BaseSettings):
-    """Les bases, les chemins, le propriétaire par défaut. Le *où*, jamais le *quoi*."""
+    """Les bases, les chemins. Le *où*, jamais le *quoi*."""
 
     model_config = SettingsConfigDict(env_file=ROOT_ENV_FILE, extra="ignore")
 
@@ -106,6 +101,12 @@ class InfraSettings(BaseSettings):
 
     qdrant_url: str = "http://localhost:6333"
     qdrant_api_key: SecretStr | None = None
+    qdrant_collection: str
+    """Le nom de la collection Qdrant : fixe, et **sans défaut**.
+
+    Le backend lit la même variable (``QDRANT_COLLECTION``) dans le même fichier :
+    l'ingestion écrit la collection qu'il interroge. Absente, le run s'arrête au
+    chargement de la configuration."""
 
     xml_source_path: Path = Path("/mnt/data/Murphy/src")
     """La RACINE du corpus — un chemin **absolu**, hors du dépôt.
@@ -131,33 +132,9 @@ class InfraSettings(BaseSettings):
     terminant « ok ». Un run qui n'ingère pas ce qu'on croit qu'il ingère est exactement
     la famille d'échec silencieux que ce pipeline s'interdit.
 
-    Elle est ici — dans l'INFRA — et pas dans le `WorkflowConfig` : changer de source ne
-    change pas la façon de produire les vecteurs, donc n'invalide pas ceux déjà écrits.
-    LEGI et CASS partagent la même collection Qdrant, et c'est correct : même
-    normalisation, même chunking, même modèle."""
+    Toutes les sources partagent la même collection Qdrant : même normalisation, même
+    chunking, même modèle."""
     meta_jsonl_dir: Path = Path("data/08_reporting")
-
-    owner_id: str = "default"
-
-    tracking_provider: Literal["noop", "mlflow"] = "noop"
-    """Le backend de tracking d'expériences (§9). **Défaut `noop` : aucune dépendance.**
-
-    MLflow tire une lourde arborescence (scipy, pandas, un serveur) et vit dans l'extra
-    `tracking` — un `kedro run` nu ne l'exige pas. Passer à `mlflow` suppose l'extra
-    installé et lève l'opacité du hash de collection : le fingerprint devient un run
-    portant la `WorkflowConfig` en clair. C'est de l'infra, pas du workflow — choisir où
-    on lit l'A/B ne change aucun vecteur."""
-
-    mlflow_tracking_uri: str | None = None
-    """L'URI du serveur MLflow. `None` laisse MLflow sur sa config ambiante (`mlruns/`
-    local). Ignoré quand `tracking_provider=noop`."""
-
-    @field_validator("mlflow_tracking_uri", mode="after")
-    @classmethod
-    def _uri_vide_vaut_absent(cls, value: str | None) -> str | None:
-        """`MLFLOW_TRACKING_URI=` dans un `.env` produit `''`, pas `None` — même piège
-        que les autres champs optionnels : la chaîne vide est l'absence, pas une URI."""
-        return value or None
 
     @field_validator("qdrant_api_key", mode="after")
     @classmethod
@@ -177,20 +154,12 @@ class InfraSettings(BaseSettings):
 class EmbeddingRuntimeSettings(BaseSettings):
     """Comment on **atteint** le modèle — pas quel modèle, ni quelle dimension.
 
-    ``model_name`` et ``dimension`` ont déménagé dans
-    ``core.config.WorkflowConfig.embedding`` : ce sont eux qui décident des vecteurs,
-    donc eux qui sont hashés. Ce qui reste ici est le transport — une clé d'API, une
-    URL de service, une taille de lot — dont aucun ne change un seul vecteur.
+    Le modèle et sa dimension sont dans ``parameters.yml`` (bloc ``embedding``). Ce qui
+    reste ici est le transport : un fournisseur, une clé d'API, une URL de service, une
+    taille de lot.
 
-    ``provider`` reste **délibérément** ici : ``local`` et ``openai`` servant le même
-    modèle produisent les mêmes vecteurs. Le hasher fragmenterait les collections en
-    passant d'un embedder local à un service TEI — exactement le faux positif que la
-    scission cherche à empêcher.
-
-    ⚠️ Le revers connu : ``provider="noop"`` produit des vecteurs nuls sans que le hash
-    en porte la trace. Un run ``noop`` écrit donc dans la collection du *vrai* modèle.
-    C'est une hygiène de test, pas un défaut de schéma — mais elle n'est aujourd'hui
-    garantie par rien.
+    ⚠️ ``provider="noop"`` produit des vecteurs nuls et les écrit dans la collection du
+    *vrai* modèle. C'est une hygiène de test, qui n'est garantie par rien.
     """
 
     model_config = SettingsConfigDict(

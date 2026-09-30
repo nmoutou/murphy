@@ -20,7 +20,7 @@ cette stack) : les deux ne partagent que les bases.
 3. **Retrieval** (`ragService.retrieveChunks`) → Qdrant, top-K (`RETRIEVAL_TOP_K`,
    défaut 5), seuil `RETRIEVAL_MIN_SCORE` (défaut 0.5).
 4. **Lecture des passages** (`ragService.fetchPassages`) → MongoDB `documents`, par
-   `(identifier, owner_id)` (clé indexée). Le texte de chaque passage est découpé dans le
+   `identifier` (clé indexée). Le texte de chaque passage est découpé dans le
    `content` de son document parent, entre `char_start` et `char_end`
    (`services/passages.ts`, voir « Le contrat avec l'ingestion »).
 5. **Streaming des sources** — **avant l'appel LLM** : pour chaque passage, dans l'ordre du
@@ -75,14 +75,13 @@ héritent.
 
 ## Le contrat avec l'ingestion (ADR-039)
 
-L'ingestion et le serving ne partagent aucun code : leur contrat est écrit dans l'ADR-039
-et **versionné**. Ce que le backend lit :
+L'ingestion et le serving ne partagent aucun code : leur contrat est écrit dans l'ADR-039.
+Ce que le backend lit :
 
 | Où | Quoi |
 |---|---|
-| Payload Qdrant | `chunk_id`, `identifier`, `owner_id`, `char_start`, `char_end`, `type_document` (facultatif) — validé à la lecture (`infra/qdrant.ts`) |
-| Mongo `LEGIFRANCE.documents` | `identifier`, `owner_id`, `title`, `content` — un document **entier** par clé (`infra/mongodb.ts`) |
-| Pointeur `MURPHY_META.meta_published_collection` | `collection_name`, `serving_contract_version` |
+| Payload Qdrant | `chunk_id`, `identifier`, `char_start`, `char_end`, `type_document` (facultatif) — validé à la lecture (`infra/qdrant.ts`) |
+| Mongo `LEGIFRANCE.documents` | `identifier`, `title`, `content` — un document **entier** par `identifier` (`infra/mongodb.ts`) |
 
 - **Offsets** : `char_start`/`char_end` comptent des **points de code** (le `str` Python).
   `services/passages.ts` les convertit une fois en unités UTF-16 : `highlightStart` /
@@ -93,21 +92,12 @@ et **versionné**. Ce que le backend lit :
   logué, cite le `chunk_id`. La réponse s'arrête sur une part `error` : pas d'écart
   silencieux.
 
-## La résolution de collection Qdrant (`src/infra/collectionPointer.ts`)
+## La collection Qdrant
 
-Le pipeline d'ingestion nomme ses collections par une **empreinte** de sa config
-(ex. `9424808d…`) et publie, à chaque run `ok`, un **pointeur** dans Mongo
-`MURPHY_META.meta_published_collection` (clé `current`). Au boot, le backend lit ce
-pointeur et **refuse de démarrer** :
-
-1. s'il est absent ou illisible (aucun run n'a publié) ;
-2. s'il ne porte pas `serving_contract_version` = `SERVING_CONTRACT_VERSION` (2) — le
-   message dit s'il faut réingérer ou mettre à jour le backend ;
-3. si la collection qu'il désigne n'existe pas dans Qdrant.
-
-Il n'y a **pas de repli** sur un nom configuré : une collection que personne n'a publiée
-n'a pas de format connu. Mieux vaut le découvrir au boot que sur la première question
-d'un utilisateur.
+Son nom est **fixe** : `QDRANT_COLLECTION`, la variable que l'ingestion lit dans le même
+`.env.dev` (ADR-042). Au boot, `QdrantVectorClient.assertCollectionExists()` **refuse de
+démarrer** si Qdrant est injoignable ou si la collection n'existe pas : mieux vaut le
+découvrir au boot que sur la première question d'un utilisateur.
 
 ## Clients d'infrastructure (`src/infra/`)
 
@@ -116,8 +106,8 @@ type Mammouth.AI), `MongoDbClient`. Chaque constructeur reçoit sa section de `c
 (`src/config.ts`) ; aucun ne lit l'environnement.
 
 `infra/clients.ts:initInfraClients(config)` les crée **une fois au boot**, avant
-l'écoute (`server.ts`) : connexion Mongo, résolution de la collection Qdrant publiée
-(`collectionPointer.ts`), puis les trois autres clients. Il peut refuser le démarrage.
+l'écoute (`server.ts`) : connexion Mongo, vérification de la collection Qdrant
+(`assertCollectionExists`), puis les deux autres clients. Il peut refuser le démarrage.
 Les requêtes y accèdent par `getInfraClients()`, qui lève s'il est appelé avant
 l'initialisation ; `closeInfraClients()` ferme Mongo au shutdown gracieux. Ne jamais
 `new`-er un client par requête.
@@ -160,7 +150,7 @@ réponse, pas le streaming qui suit.
 | Service | Rôle | Note |
 |---|---|---|
 | TEI (HuggingFace Text Embeddings Inference) | Embedding de la question | `POST /v1/embeddings`, GPU NVIDIA requis. Le modèle (`all-mpnet-base-v2`, 768, Cosine) doit être celui de l'ingestion. |
-| Qdrant | Recherche vectorielle | Collection résolue par le pointeur publié. |
-| MongoDB | Contenu des documents (contexte LLM) + pointeur (base méta) | |
+| Qdrant | Recherche vectorielle | Collection `QDRANT_COLLECTION`, vérifiée au boot. |
+| MongoDB | Contenu des documents (contexte LLM) | |
 | LLM | Génération | API OpenAI-compatible, streaming. |
 | Neo4j | — | Provisionné, **pas encore câblé** dans le chemin de requête (réservé : enrichissement graphe). |

@@ -31,7 +31,6 @@ def cleanup_node(
         build_event(
             event_type=MAINTENANCE_CLEANUP_EXECUTED,
             run_id=pipeline_context.run_id,
-            owner_id=pipeline_context.owner_id,
             source=pipeline_context.source,
             payload=result,
         )

@@ -2,7 +2,6 @@ from collections.abc import AsyncIterator
 from typing import Protocol, runtime_checkable
 
 from ..models.document import RawDocument
-from ..models.identifiers import OwnerId
 
 
 @runtime_checkable
@@ -22,7 +21,7 @@ class BaseConnector(Protocol):
     écart — c'est la seule façon dont un fichier non-document apparaît au bilan.
     Rempli au fil de `fetch_all`, lisible une fois le générateur épuisé."""
 
-    def fetch_all(self, owner_id: OwnerId) -> AsyncIterator[RawDocument]:
+    def fetch_all(self) -> AsyncIterator[RawDocument]:
         """Itère les documents de la source. Générateur : le corpus n'est
         jamais entièrement chargé en mémoire."""
         ...

@@ -8,14 +8,11 @@ _DATA_INDEXES: dict[str, list[IndexModel]] = {
         # pas un sous-document : indexer
         # `identifier.raw` indexerait `null` pour tout le monde.
         IndexModel(
-            [("identifier", ASCENDING), ("owner_id", ASCENDING)],
+            [("identifier", ASCENDING)],
             unique=True,
-            name="uq_identifier_owner",
+            name="uq_identifier",
         ),
-        IndexModel(
-            [("source", ASCENDING), ("owner_id", ASCENDING)],
-            name="idx_source_owner",
-        ),
+        IndexModel([("source", ASCENDING)], name="idx_source"),
     ],
     "manifest": [
         # Le manifest est append-only : plusieurs entrées par document, une
@@ -24,16 +21,13 @@ _DATA_INDEXES: dict[str, list[IndexModel]] = {
         # Le champ écrit s'appelle `identifier_serialized` (cf.
         # MongoManifestRepository), et il est absent des entrées de rejet.
         IndexModel(
-            [("identifier_serialized", ASCENDING), ("owner_id", ASCENDING)],
-            name="idx_manifest_identifier_owner",
+            [("identifier_serialized", ASCENDING)],
+            name="idx_manifest_identifier",
             sparse=True,
         ),
         # Les rejets n'ont pas d'identifier : ils ne sont retrouvables que
         # par leur chemin source.
-        IndexModel(
-            [("source_path", ASCENDING), ("owner_id", ASCENDING)],
-            name="idx_manifest_source_path_owner",
-        ),
+        IndexModel([("source_path", ASCENDING)], name="idx_manifest_source_path"),
     ],
 }
 """Les index de la base de données (défaut : LEGIFRANCE), par collection."""
@@ -41,10 +35,7 @@ _DATA_INDEXES: dict[str, list[IndexModel]] = {
 _META_INDEXES: dict[str, list[IndexModel]] = {
     # Pas de TTL : rétention infinie de l'audit.
     "meta_audit_events": [
-        IndexModel(
-            [("owner_id", ASCENDING), ("occurred_at", ASCENDING)],
-            name="idx_audit_owner_occurred_at",
-        ),
+        IndexModel([("occurred_at", ASCENDING)], name="idx_audit_occurred_at"),
         IndexModel(
             [("document_id", ASCENDING), ("occurred_at", ASCENDING)],
             name="idx_audit_document_occurred_at",
@@ -67,20 +58,16 @@ _META_INDEXES: dict[str, list[IndexModel]] = {
         # mesurerait le nombre de runs au lieu du nombre de trous.
         IndexModel(
             [
-                ("owner_id", ASCENDING),
                 ("source_id", ASCENDING),
                 ("target_id", ASCENDING),
                 ("relation_type", ASCENDING),
             ],
             unique=True,
-            name="uq_pending_owner_source_target_type",
+            name="uq_pending_source_target_type",
         ),
-        # Le rejeu ciblé interroge (owner_id, target_id) : sans cet index, il
-        # ferait un COLLSCAN du backlog — exactement le coût que §13 refuse.
-        IndexModel(
-            [("owner_id", ASCENDING), ("target_id", ASCENDING)],
-            name="idx_pending_owner_target",
-        ),
+        # Le rejeu ciblé interroge `target_id` : sans cet index, il ferait un
+        # COLLSCAN du backlog — exactement le coût que §13 refuse.
+        IndexModel([("target_id", ASCENDING)], name="idx_pending_target"),
     ],
 }
 """Les index de la base méta (défaut : MURPHY_META), par collection."""

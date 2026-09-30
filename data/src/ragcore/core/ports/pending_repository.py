@@ -1,6 +1,5 @@
 from typing import Protocol, runtime_checkable
 
-from ..models.identifiers import OwnerId
 from ..models.pending import PendingKey, PendingRelation
 
 
@@ -14,16 +13,14 @@ class PendingRelationRepository(Protocol):
     """
 
     async def upsert_many(self, pendings: list[PendingRelation]) -> None:
-        """Union idempotente sur la clé (owner_id, source_id, target_id, relation_type).
+        """Union idempotente sur la clé (source_id, target_id, relation_type).
 
         Une pendante déjà connue voit son ``last_seen_run`` avancer ; son
         ``first_seen_run`` ne bouge jamais.
         """
         ...
 
-    async def promotable_for(
-        self, written_node_ids: set[str], owner_id: OwnerId
-    ) -> list[PendingRelation]:
+    async def promotable_for(self, written_node_ids: set[str]) -> list[PendingRelation]:
         """Les pendantes dont la cible fait partie des nœuds écrits par CETTE run.
 
         C'est le rejeu *ciblé* : une pendante dont la cible n'est pas arrivée cette
@@ -37,8 +34,8 @@ class PendingRelationRepository(Protocol):
         """Retire les pendantes enfin promues en arêtes réelles."""
         ...
 
-    async def count_for_owner(self, owner_id: OwnerId) -> int:
-        """Taille du backlog d'un propriétaire — un indicateur, pas une alarme.
+    async def count(self) -> int:
+        """Taille du backlog — un indicateur, pas une alarme.
 
         Aucun chemin de production ne la lit (le prod suit `pending_count`, le delta
         de la run, en mémoire). Elle est le point d'observation du backlog pour les

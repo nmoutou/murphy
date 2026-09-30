@@ -77,22 +77,14 @@ const CONTRACT_VIOLATION_CODE = 'CONTRACT_VIOLATION';
 export const contractViolation = (message: string): RagError =>
   new RagError('retrieval', CONTRACT_VIOLATION_CODE, `Serving contract violated (ADR-039): ${message}`);
 
-/** The key of a document in MongoDB `documents` (ADR-039 §2) */
-export interface DocumentKey {
-  readonly identifier: string;
-  readonly ownerId: string;
-}
-
-/** A `Map` key for a `DocumentKey`: JSON keeps the two parts apart whatever they contain */
-export const serializeDocumentKey = ({ identifier, ownerId }: DocumentKey): string =>
-  JSON.stringify([identifier, ownerId]);
-
 /**
  * A Qdrant hit, its payload checked against the serving contract (ADR-039 §2).
  * `charStart`/`charEnd` count Unicode code points in the parent's `content`.
  */
-export interface RetrievedChunk extends DocumentKey {
+export interface RetrievedChunk {
   readonly chunkId: string;
+  /** The key of the parent document in MongoDB `documents` */
+  readonly identifier: string;
   readonly charStart: number;
   readonly charEnd: number;
   readonly score: number;
@@ -101,7 +93,8 @@ export interface RetrievedChunk extends DocumentKey {
 }
 
 /** A parent document as the ingestion stored it in MongoDB `documents` */
-export interface StoredDocument extends DocumentKey {
+export interface StoredDocument {
+  readonly identifier: string;
   readonly title: string;
   readonly content: string;
 }

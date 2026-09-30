@@ -1,22 +1,21 @@
 /**
  * Qdrant Vector Database Client
- * Handles semantic search over the collection resolved at boot
+ * Handles semantic search over the configured collection
  */
 
 import { QdrantClient } from '@qdrant/qdrant-js';
+import type { QdrantConfig } from '../config';
 import type { EmbeddingVector, RagFailure, RetrievedChunk } from '../types/rag';
 import { logger as rootLogger } from '../utils/logger';
 import { contractViolation, toRagError } from '../types/rag';
 
 const logger = rootLogger.child({ context: 'qdrant' });
 
-export interface QdrantVectorClientOptions {
-  readonly url: string;
-  readonly timeoutMs: number;
-  /** The collection published by the last `ok` ingestion run (`infra/collectionPointer.ts`) */
-  readonly collection: string;
+export interface QdrantVectorClientOptions extends QdrantConfig {
   readonly minScore: number;
 }
+
+const INGESTION_COMMAND = 'kedro run';
 
 const SEARCH_FAILURE: RagFailure = { stage: 'retrieval', code: 'SEARCH_FAILED', operation: 'search Qdrant' };
 
@@ -45,15 +44,12 @@ const readInteger = (payload: Payload, field: string): number | undefined => {
 export const toRetrievedChunk = ({ id, score, payload }: ScoredPoint): RetrievedChunk => {
   const chunkId = readString(payload, 'chunk_id');
   const identifier = readString(payload, 'identifier');
-  const ownerId = readString(payload, 'owner_id');
   const charStart = readInteger(payload, 'char_start');
   const charEnd = readInteger(payload, 'char_end');
-  if (!chunkId || !identifier || !ownerId || charStart === undefined || charEnd === undefined) {
-    throw contractViolation(
-      `Qdrant point ${chunkId ?? String(id)} lacks chunk_id, identifier, owner_id, char_start or char_end`
-    );
+  if (!chunkId || !identifier || charStart === undefined || charEnd === undefined) {
+    throw contractViolation(`Qdrant point ${chunkId ?? String(id)} lacks chunk_id, identifier, char_start or char_end`);
   }
-  return { chunkId, identifier, ownerId, charStart, charEnd, score, type: readString(payload, 'type_document') };
+  return { chunkId, identifier, charStart, charEnd, score, type: readString(payload, 'type_document') };
 };
 
 /**
@@ -64,6 +60,23 @@ export class QdrantVectorClient {
 
   constructor(private readonly options: QdrantVectorClientOptions) {
     this.client = new QdrantClient({ url: options.url, timeout: options.timeoutMs });
+  }
+
+  /**
+   * Checks at boot that the configured collection can be served
+   * @throws Error when Qdrant is unreachable or the collection does not exist
+   */
+  async assertCollectionExists(): Promise<void> {
+    const { url, collection } = this.options;
+    const { exists } = await this.client.collectionExists(collection).catch((error) => {
+      throw new Error(`Qdrant unreachable (${url}): cannot check the collection "${collection}". Cause: ${String(error)}`);
+    });
+    if (!exists) {
+      throw new Error(
+        `The Qdrant collection "${collection}" (QDRANT_COLLECTION) does not exist. Run the ingestion: ${INGESTION_COMMAND}.`
+      );
+    }
+    logger.info({ collection }, 'Qdrant collection found');
   }
 
   /**

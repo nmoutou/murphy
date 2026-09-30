@@ -14,7 +14,7 @@ from typing import Any
 
 from ragcore.core.models.audit import AuditEvent
 from ragcore.core.models.enums import SourceName
-from ragcore.core.models.identifiers import OwnerId, RunId
+from ragcore.core.models.identifiers import RunId
 from ragcore.core.models.run_stats import RunStats
 from ragcore.core.models.run_summary import RunStatus, RunSummary
 from ragcore.core.telemetry_events import (
@@ -75,12 +75,10 @@ class RunStatsAggregator:
     def __init__(
         self,
         run_id: RunId,
-        owner_id: OwnerId,
         source: SourceName | None,
         started_at: datetime,
     ) -> None:
         self._run_id = run_id
-        self._owner_id = owner_id
         self._source = source
         self._started_at = started_at
         self._stats = RunStats.empty()
@@ -165,7 +163,6 @@ class RunStatsAggregator:
         return RunSummary.of(
             self._stats,
             context_run_id=self._run_id,
-            owner_id=self._owner_id,
             source=self._source,
             started_at=self._started_at,
             status=RunStatus(status),

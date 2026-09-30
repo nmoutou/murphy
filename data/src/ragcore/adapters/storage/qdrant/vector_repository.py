@@ -21,7 +21,7 @@ from qdrant_client.models import (
 )
 
 from ragcore.core.models.chunk import Chunk, EmbeddedChunk
-from ragcore.core.models.identifiers import Identifier, OwnerId
+from ragcore.core.models.identifiers import Identifier
 
 
 class QdrantVectorRepository:
@@ -74,7 +74,7 @@ class QdrantVectorRepository:
     def _payload(chunk: Chunk) -> dict[str, Any]:
         """Le payload d'un point : les métadonnées à plat, PUIS les champs du contrat.
 
-        Les champs que le serving lit (ADR-039, contrat v1) viennent en dernier : une
+        Les champs que le serving lit (ADR-039) viennent en dernier : une
         métadonnée homonyme ne peut pas les écraser. Le texte du passage n'y est pas —
         il vit dans le ``content`` du document Mongo, entre ``char_start`` et
         ``char_end`` (points de code).
@@ -83,7 +83,6 @@ class QdrantVectorRepository:
             **chunk.metadata,
             "chunk_id": chunk.chunk_id,
             "identifier": chunk.parent_identifier.serialize(),
-            "owner_id": chunk.owner_id,
             "char_start": chunk.char_start,
             "char_end": chunk.char_end,
         }
@@ -99,10 +98,8 @@ class QdrantVectorRepository:
         digest = hashlib.sha256(chunk_id.encode()).hexdigest()
         return int(digest, 16) % (2**63)
 
-    async def delete_by_document(
-        self, identifier: Identifier, owner_id: OwnerId
-    ) -> None:
-        """Delete all vectors belonging to a given document for a given owner."""
+    async def delete_by_document(self, identifier: Identifier) -> None:
+        """Delete all vectors belonging to a given document."""
         await self._client.delete(
             collection_name=self._collection_name,
             points_selector=Filter(
@@ -111,31 +108,16 @@ class QdrantVectorRepository:
                         key="identifier",
                         match=MatchValue(value=identifier.serialize()),
                     ),
-                    FieldCondition(
-                        key="owner_id",
-                        match=MatchValue(value=owner_id),
-                    ),
                 ]
             ),
         )
 
-    async def drop_collection(self) -> None:
-        """Drop the entire Qdrant collection. Irreversible — wipes all owners.
-
-        No-op if the collection does not exist.
-        """
-        if await self._client.collection_exists(self._collection_name):
-            await self._client.delete_collection(collection_name=self._collection_name)
-
     async def drop_all_collections(self) -> None:
         """Drop EVERY collection of the Qdrant store. Irreversible.
 
-        Contrairement à ``drop_collection`` (scopé à la collection dérivée du
-        fingerprint courant), ceci vide le store entier : les collections des
-        stratégies d'embedding abandonnées — un autre ``chunk_size``, un autre
-        modèle — traînent sinon sur le disque sans que le fingerprint courant les
-        connaisse. C'est le levier disque du mode ``nuke_all``. À ne jamais appeler
-        hors d'un environnement jetable.
+        Vide le store entier, pas seulement la collection du run : une collection
+        créée sous un autre nom traînerait sinon sur le disque. C'est le levier disque
+        du mode ``nuke_all``. À ne jamais appeler hors d'un environnement jetable.
         """
         collections = await self._client.get_collections()
         for descriptor in collections.collections:

@@ -4,7 +4,7 @@ Deux modèles, deux natures, et la frontière n'est pas cosmétique :
 
 - ``RunStats`` est *calculé*. Il n'a pas d'identité, il fusionne (monoïde), et il
   en existe N par run — un par worker.
-- ``RunSummary`` est *déclaré*. Il porte l'identité du run (run_id, owner, dates,
+- ``RunSummary`` est *déclaré*. Il porte l'identité du run (run_id, dates,
   statut) et il en existe exactement UN. Il ne fusionne pas.
 
 Confondre les deux obligerait à répondre à « quel ``run_id`` gagne quand on fusionne
@@ -26,9 +26,8 @@ from ragcore.core.telemetry_events import (
     DOCUMENT_PERSISTED,
 )
 
-from .document import SCHEMA_VERSION
 from .enums import SourceName
-from .identifiers import OwnerId, RunId
+from .identifiers import RunId
 from .run_stats import RunStats
 
 __all__ = ["RunStatus", "RunSummary"]
@@ -54,10 +53,7 @@ class RunSummary(BaseModel):
 
     model_config = ConfigDict(frozen=True)
 
-    schema_version: int = SCHEMA_VERSION
-
     run_id: RunId
-    owner_id: OwnerId
     source: SourceName | None
 
     status: RunStatus
@@ -79,7 +75,6 @@ class RunSummary(BaseModel):
         stats: RunStats,
         *,
         context_run_id: RunId,
-        owner_id: OwnerId,
         source: SourceName | None,
         started_at: datetime,
         status: RunStatus,
@@ -96,7 +91,6 @@ class RunSummary(BaseModel):
             status = _status_from(stats)
         return cls(
             run_id=context_run_id,
-            owner_id=owner_id,
             source=source,
             status=status,
             started_at=started_at,

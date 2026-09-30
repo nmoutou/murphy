@@ -6,12 +6,14 @@
 import { QdrantVectorClient } from '../../infra/qdrant';
 
 const mockSearch = jest.fn();
+const mockCollectionExists = jest.fn();
 const mockQdrantClientConstructor = jest.fn();
 
 // A class, not a `jest.fn`: `restoreMocks` would reset its implementation between tests
 jest.mock('@qdrant/qdrant-js', () => ({
   QdrantClient: class {
     search = mockSearch;
+    collectionExists = mockCollectionExists;
 
     constructor(args: unknown) {
       mockQdrantClientConstructor(args);
@@ -30,7 +32,6 @@ const TOP_K = 3;
 const PAYLOAD_WITHOUT_TYPE = {
   chunk_id: 'LEGIARTI000033972545_0001',
   identifier: 'LEGIARTI000033972545',
-  owner_id: 'default',
   char_start: 0,
   char_end: 42,
   num: 'L2122-22',
@@ -45,6 +46,29 @@ describe('QdrantVectorClient', () => {
   });
 });
 
+describe('QdrantVectorClient.assertCollectionExists', () => {
+  it('accepts a collection that exists', async () => {
+    mockCollectionExists.mockResolvedValue({ exists: true });
+
+    await expect(new QdrantVectorClient(OPTIONS).assertCollectionExists()).resolves.toBeUndefined();
+    expect(mockCollectionExists).toHaveBeenCalledWith('collection-test');
+  });
+
+  it('refuses a collection that does not exist, naming it', async () => {
+    mockCollectionExists.mockResolvedValue({ exists: false });
+
+    await expect(new QdrantVectorClient(OPTIONS).assertCollectionExists()).rejects.toThrow(
+      'The Qdrant collection "collection-test" (QDRANT_COLLECTION) does not exist'
+    );
+  });
+
+  it('reports an unreachable Qdrant', async () => {
+    mockCollectionExists.mockRejectedValue(new Error('connect ECONNREFUSED'));
+
+    await expect(new QdrantVectorClient(OPTIONS).assertCollectionExists()).rejects.toThrow('Qdrant unreachable');
+  });
+});
+
 describe('QdrantVectorClient.searchVectors', () => {
   it('searches the configured collection and reads the contract fields of each point', async () => {
     mockSearch.mockResolvedValue([
@@ -56,7 +80,6 @@ describe('QdrantVectorClient.searchVectors', () => {
       {
         chunkId: 'LEGIARTI000033972545_0001',
         identifier: 'LEGIARTI000033972545',
-        ownerId: 'default',
         charStart: 0,
         charEnd: 42,
         score: 0.9,
@@ -73,7 +96,7 @@ describe('QdrantVectorClient.searchVectors', () => {
   });
 
   it.each([
-    ['without offsets', { chunk_id: 'chunk-1', identifier: 'LEGIARTI1', owner_id: 'default' }, 'chunk-1'],
+    ['without offsets', { chunk_id: 'chunk-1', identifier: 'LEGIARTI1' }, 'chunk-1'],
     ['in the pre-contract format', { chunkId: 'chunk-1', title: 'Code civil' }, '7'],
     ['with a fractional offset', { ...CONTRACT_PAYLOAD, char_end: 4.5 }, CONTRACT_PAYLOAD.chunk_id],
     ['without payload', null, '7'],

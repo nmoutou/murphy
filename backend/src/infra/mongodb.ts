@@ -5,16 +5,16 @@
 
 import { MongoClient, Db, MongoClientOptions } from 'mongodb';
 import type { MongoConfig } from '../config';
-import type { DocumentKey, RagFailure, StoredDocument } from '../types/rag';
+import type { RagFailure, StoredDocument } from '../types/rag';
 import { logger as rootLogger } from '../utils/logger';
-import { contractViolation, serializeDocumentKey, toRagError } from '../types/rag';
+import { contractViolation, toRagError } from '../types/rag';
 
 const logger = rootLogger.child({ context: 'mongodb' });
 
 const MONGO_MAX_POOL_SIZE = 10;
-/** Written by the ingestion, one whole document per `(identifier, owner_id)` (ADR-039 §2) */
+/** Written by the ingestion, one whole document per `identifier` (ADR-039 §2) */
 const DOCUMENTS_COLLECTION = 'documents';
-const DOCUMENT_PROJECTION = { _id: 0, identifier: 1, owner_id: 1, title: 1, content: 1 };
+const DOCUMENT_PROJECTION = { _id: 0, identifier: 1, title: 1, content: 1 };
 const DOCUMENT_FETCH_FAILURE: RagFailure = {
   stage: 'retrieval',
   code: 'DB_FETCH_FAILED',
@@ -26,24 +26,16 @@ const hideCredentials = (uri: string): string => uri.replace(/\/\/[^@]*@/, '//<c
 /** A `documents` record as MongoDB returns it: external data, checked before use */
 type DocumentRecord = Readonly<Record<string, unknown>>;
 
-const distinctKeys = (keys: readonly DocumentKey[]): DocumentKey[] => [
-  ...new Map(keys.map((key) => [serializeDocumentKey(key), key])).values(),
-];
-
 /**
  * @throws RagError `CONTRACT_VIOLATION` when a field of the contract is not a string
  */
 const toStoredDocument = (record: DocumentRecord): StoredDocument => {
-  const { identifier, owner_id: ownerId, title, content } = record;
-  const isValid =
-    typeof identifier === 'string' &&
-    typeof ownerId === 'string' &&
-    typeof title === 'string' &&
-    typeof content === 'string';
+  const { identifier, title, content } = record;
+  const isValid = typeof identifier === 'string' && typeof title === 'string' && typeof content === 'string';
   if (!isValid) {
-    throw contractViolation(`MongoDB document ${String(identifier)} lacks identifier, owner_id, title or content`);
+    throw contractViolation(`MongoDB document ${String(identifier)} lacks identifier, title or content`);
   }
-  return { identifier, ownerId, title, content };
+  return { identifier, title, content };
 };
 
 export class MongoDbClient {
@@ -79,11 +71,6 @@ export class MongoDbClient {
     }
   }
 
-  /** The driver client, to reach another database than the data one (the meta database) */
-  getClient(): MongoClient {
-    return this.client;
-  }
-
   getDb(): Db {
     return this.db;
   }
@@ -102,16 +89,16 @@ export class MongoDbClient {
    * Reads the parent documents of the retrieved chunks, by their indexed key
    * @throws RagError with stage='retrieval'
    */
-  async fetchParentDocuments(keys: readonly DocumentKey[]): Promise<StoredDocument[]> {
+  async fetchParentDocuments(identifiers: readonly string[]): Promise<StoredDocument[]> {
     const startTime = Date.now();
-    const distinct = distinctKeys(keys);
+    const distinct = [...new Set(identifiers)];
     logger.info({ documentCount: distinct.length }, 'Fetching parent documents from MongoDB');
 
     let records: DocumentRecord[];
     try {
       records = await this.db
         .collection(DOCUMENTS_COLLECTION)
-        .find({ $or: distinct.map(({ identifier, ownerId }) => ({ identifier, owner_id: ownerId })) })
+        .find({ identifier: { $in: distinct } })
         .project<DocumentRecord>(DOCUMENT_PROJECTION)
         .toArray();
     } catch (error) {

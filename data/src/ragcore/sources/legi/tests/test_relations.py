@@ -21,7 +21,7 @@ from ragcore.core.links import (
 from ragcore.core.models.document import ParsedDocument, RawDocument
 from ragcore.core.models.enums import SourceName
 from ragcore.core.models.enums import SourceName as _SN
-from ragcore.core.models.identifiers import Identifier, OwnerId
+from ragcore.core.models.identifiers import Identifier
 from ragcore.core.ports.relation_extractor import BaseRelationExtractor
 from ragcore.core.services.unknown_categories import (
     CATEGORY_IDENTIFIER,
@@ -32,8 +32,6 @@ from ragcore.sources.generic import GenericParser, GenericRelationExtractor, to_
 from ragcore.sources.legi.table import LEGI_ROLE_TABLE
 
 from .conftest import ARTICLE_RICHE, ARTICLE_SIMPLE, SECTION_ARTICLES
-
-OWNER = OwnerId("u1")
 
 
 def _parse(fixtures_dir: Path, *names: str) -> ParsedDocument:
@@ -51,7 +49,6 @@ def _parse(fixtures_dir: Path, *names: str) -> ParsedDocument:
                     "files": list(names),
                 },
                 fetched_at=datetime.now(UTC),
-                owner_id=OWNER,
             )
         )
         .document
@@ -440,7 +437,6 @@ def _document_with_references(references: list[dict[str, Any]]) -> ParsedDocumen
     return ParsedDocument(
         identifier=Identifier(raw="LEGIARTI000000000001"),
         source=SourceName.LEGI,
-        owner_id=OWNER,
         title="t",
         content="c",
         structure={"references": references, "context": [], "sections": []},

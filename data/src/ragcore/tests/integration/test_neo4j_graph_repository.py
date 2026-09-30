@@ -27,20 +27,17 @@ from ragcore.core.links import CITES
 from ragcore.core.models.citation import Citation
 from ragcore.core.models.document import ParsedDocument
 from ragcore.core.models.enums import SourceName
-from ragcore.core.models.identifiers import Identifier, OwnerId, RunId
+from ragcore.core.models.identifiers import Identifier, RunId
 from ragcore.core.models.relation import Relation
 
 pytestmark = pytest.mark.integration
 
-OWNER = OwnerId("owner-1")
-OTHER_OWNER = OwnerId("owner-2")
 RUN = RunId("run-1")
 
 
 def _doc(n: int) -> ParsedDocument:
     return ParsedDocument(
         identifier=Identifier(raw=f"LEGIARTI{n:012d}"),
-        owner_id=OWNER,
         source=SourceName.LEGI,
         title=f"Article {n}",
         content=f"contenu {n}",
@@ -50,12 +47,11 @@ def _doc(n: int) -> ParsedDocument:
     )
 
 
-def _relation(source: int, target: int, owner: OwnerId = OWNER) -> Relation:
+def _relation(source: int, target: int) -> Relation:
     return Relation(
         source_identifier=Identifier(raw=f"LEGIARTI{source:012d}"),
         target_identifier=Identifier(raw=f"LEGIARTI{target:012d}"),
         relation_type=CITES,
-        owner_id=owner,
         source=SourceName.LEGI,
         metadata={},
     )
@@ -181,7 +177,6 @@ async def test_the_verb_IS_the_edge_type(repo) -> None:
         source_identifier=Identifier(raw=f"LEGIARTI{1:012d}"),
         target_identifier=Identifier(raw=f"LEGIARTI{3:012d}"),
         relation_type="ZORGLUB",  # normalisé à la frontière du modèle
-        owner_id=OWNER,
         source=SourceName.LEGI,
         metadata={"typelien": "ZORGLUB"},
     )
@@ -267,20 +262,6 @@ async def test_upserting_the_same_edge_twice_creates_one_edge(repo) -> None:
     assert await _edge_types(repo) == ["cites"], "une seule arête, pas deux"
 
 
-async def test_an_edge_never_crosses_owners(repo) -> None:
-    """Le nœud cible existe — mais chez QUELQU'UN D'AUTRE. L'arête ne doit pas
-    s'écrire : sans le filtre owner_id, un graphe emprunterait les nœuds d'un autre.
-    """
-    await repo.merge_document_node(_doc(1))
-    other = _doc(2).model_copy(update={"owner_id": OTHER_OWNER})
-    await repo.merge_document_node(other)
-
-    result = await repo.upsert_relations([_relation(1, 2, owner=OWNER)], RUN)
-
-    assert result.written == []
-    assert len(result.pending) == 1
-
-
 async def test_existing_node_ids_returns_only_what_exists(repo) -> None:
     await repo.merge_document_node(_doc(1))
     await repo.merge_document_node(_doc(2))
@@ -290,7 +271,6 @@ async def test_existing_node_ids_returns_only_what_exists(repo) -> None:
             Identifier(raw="LEGIARTI000000000001"),
             Identifier(raw="LEGIARTI000000000099"),
         ],
-        OWNER,
     )
 
     assert found == {"LEGIARTI000000000001"}
@@ -305,7 +285,7 @@ async def test_deleting_outgoing_edges_preserves_the_node(repo) -> None:
     await repo.upsert_relations([_relation(1, 2)], RUN)
 
     await repo.delete_relations_from(
-        Identifier(raw="LEGIARTI000000000001"), OWNER, SourceName.LEGI
+        Identifier(raw="LEGIARTI000000000001"), SourceName.LEGI
     )
 
     remaining = await repo.existing_node_ids(
@@ -313,7 +293,6 @@ async def test_deleting_outgoing_edges_preserves_the_node(repo) -> None:
             Identifier(raw="LEGIARTI000000000001"),
             Identifier(raw="LEGIARTI000000000002"),
         ],
-        OWNER,
     )
     assert remaining == {"LEGIARTI000000000001", "LEGIARTI000000000002"}
 
@@ -368,7 +347,7 @@ async def test_delete_by_run_removes_only_this_runs_edges(repo) -> None:
     assert await _edge_count(repo) == 2
 
     # On compense le run A. Son arête (1→2) part ; celle du run B (1→3) reste.
-    await repo.delete_relations_by_run(run_a, OWNER)
+    await repo.delete_relations_by_run(run_a)
 
     assert await _edge_count(repo) == 1, "seule l'arête du run A est défaite"
     async with repo._driver.session() as session:  # noqa: SLF001
@@ -381,35 +360,6 @@ async def test_delete_by_run_removes_only_this_runs_edges(repo) -> None:
     assert record["run"] == run_b, "l'arête survivante est bien celle du run B"
 
 
-async def test_delete_by_run_is_scoped_to_owner(repo) -> None:
-    """Deux tenants pourraient partager un ``run_id`` (rien ne l'interdit). La
-    compensation d'un run reste bornée à son propriétaire.
-
-    Chaque tenant a SON arête (une arête ne traverse pas les propriétaires — cf.
-    ``test_an_edge_never_crosses_owners``), et les deux partagent le même ``run_id``.
-    Compenser ce run chez OTHER_OWNER ne doit défaire que l'arête d'OTHER_OWNER.
-    """
-    # Deux nœuds chez OWNER, deux nœuds chez OTHER_OWNER.
-    await repo.merge_document_node(_doc(1))
-    await repo.merge_document_node(_doc(2))
-    await repo.merge_document_node(_doc(3).model_copy(update={"owner_id": OTHER_OWNER}))
-    await repo.merge_document_node(_doc(4).model_copy(update={"owner_id": OTHER_OWNER}))
-
-    # Une arête par tenant, sous le MÊME run_id.
-    await repo.upsert_relations([_relation(1, 2)], RUN)  # chez OWNER
-    await repo.upsert_relations([_relation(3, 4, owner=OTHER_OWNER)], RUN)  # chez OTHER
-    assert await _edge_count(repo) == 2
-
-    await repo.delete_relations_by_run(RUN, OTHER_OWNER)  # on ne compense QU'OTHER
-
-    assert await _edge_count(repo) == 1, "l'arête d'OWNER n'est pas touchée"
-    async with repo._driver.session() as session:  # noqa: SLF001
-        record = await (
-            await session.run("MATCH ()-[r]->() RETURN r.owner_id AS owner")
-        ).single()
-    assert record["owner"] == OWNER, "l'arête survivante est celle d'OWNER"
-
-
 async def test_compensating_an_orphan_node_deletes_it(repo) -> None:
     """Un nœud que personne ne cite n'existait que pour son document : ``DETACH DELETE``.
 
@@ -418,11 +368,9 @@ async def test_compensating_an_orphan_node_deletes_it(repo) -> None:
     """
     await repo.merge_document_node(_doc(1))
 
-    await repo.compensate_document_node(Identifier(raw="LEGIARTI000000000001"), OWNER)
+    await repo.compensate_document_node(Identifier(raw="LEGIARTI000000000001"))
 
-    remaining = await repo.existing_node_ids(
-        [Identifier(raw="LEGIARTI000000000001")], OWNER
-    )
+    remaining = await repo.existing_node_ids([Identifier(raw="LEGIARTI000000000001")])
     assert remaining == set(), "le nœud orphelin est supprimé"
 
 
@@ -441,12 +389,10 @@ async def test_compensating_a_cited_node_dehydrates_it(repo) -> None:
         [_relation(1, 2)], RUN
     )  # 1 cite 2 : arête entrante sur 2
 
-    await repo.compensate_document_node(Identifier(raw="LEGIARTI000000000002"), OWNER)
+    await repo.compensate_document_node(Identifier(raw="LEGIARTI000000000002"))
 
     # Le nœud SURVIT (la citation de 1 pointe encore dessus)…
-    remaining = await repo.existing_node_ids(
-        [Identifier(raw="LEGIARTI000000000002")], OWNER
-    )
+    remaining = await repo.existing_node_ids([Identifier(raw="LEGIARTI000000000002")])
     assert remaining == {"LEGIARTI000000000002"}, "le nœud cité n'est pas supprimé"
 
     # …mais dé-hydraté : il a perdu son label métier (`Article`) pour `:Pending`, et son
@@ -485,7 +431,7 @@ async def test_reingesting_a_dehydrated_node_rehydrates_it_in_place(repo) -> Non
     await repo.merge_document_node(_doc(1))
     await repo.merge_document_node(_doc(2))
     await repo.upsert_relations([_relation(1, 2)], RUN)
-    await repo.compensate_document_node(Identifier(raw="LEGIARTI000000000002"), OWNER)
+    await repo.compensate_document_node(Identifier(raw="LEGIARTI000000000002"))
     assert await _labels_of(repo, "LEGIARTI000000000002") == {"Pending"}
 
     # 2 est ré-ingéré avec succès : re-merge du nœud.
@@ -514,4 +460,4 @@ async def test_compensating_an_absent_node_is_a_noop(repo) -> None:
     pas ne doit pas lever. La compensation est idempotente — c'est ce que la saga
     attend d'un ``compensate``.
     """
-    await repo.compensate_document_node(Identifier(raw="LEGIARTI000000000404"), OWNER)
+    await repo.compensate_document_node(Identifier(raw="LEGIARTI000000000404"))

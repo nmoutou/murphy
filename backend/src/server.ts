@@ -17,7 +17,7 @@ const start = async () => {
   checkEnvironment(environmentReport);
   logger.info(`Environment: ${config.server.nodeEnv}`);
 
-  // Peut refuser le démarrage : Mongo injoignable, ou collection Qdrant désignée
+  // Peut refuser le démarrage : Mongo injoignable, ou collection Qdrant
   // absente. Mieux vaut le découvrir ici qu'à la première question d'un utilisateur.
   await initInfraClients(config);
   logger.info('All infrastructure initialized successfully');

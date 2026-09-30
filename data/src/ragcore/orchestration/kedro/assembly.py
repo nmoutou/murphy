@@ -102,11 +102,10 @@ def prepare_embedder(
 ) -> BaseEmbedder:
     """Vérifie les préconditions du fournisseur, puis construit son embedder.
 
-    Le MODÈLE et la DIMENSION viennent du workflow (ils décident des vecteurs, donc ils
-    sont hashés) ; le PROVIDER et son transport viennent de l'infra (ils ne changent
-    aucun vecteur). La couture passe exactement ici.
+    Le MODÈLE et la DIMENSION viennent de ``parameters.yml`` ; le PROVIDER et son
+    transport viennent de l'environnement. La couture passe exactement ici.
     """
-    embedding = plan.workflow.embedding
+    embedding = plan.embedding
     match embedding_settings.provider:
         case "openai":
             _assert_service_serves_model(embedding_settings, plan, runtime)
@@ -130,11 +129,11 @@ def prepare_embedder(
 def _assert_service_serves_model(
     embedding_settings: EmbeddingRuntimeSettings, plan: RunPlan, runtime: AsyncRuntime
 ) -> None:
-    """Le modèle qui vient de BAPTISER la collection est-il celui que le service SERT ?
+    """Le modèle déclaré dans `parameters.yml` est-il celui que le service SERT ?
 
     TEI ne sert qu'un modèle — celui de son `--model-id` — et ignore le champ `model` de
     la requête. Si le conteneur et `parameters.yml` divergent, on écrit les vecteurs d'un
-    modèle dans la collection nommée d'après un autre : rien ne lève, rien ne loggue, et
+    autre modèle que celui que le backend interroge : rien ne lève, rien ne loggue, et
     ça ne se voit qu'à la recherche.
 
     C'est une PRÉCONDITION du run, et c'est pourquoi elle est ici et pas dans
@@ -146,17 +145,15 @@ def _assert_service_serves_model(
     runtime.run(
         assert_service_serves_model(
             embedding_settings.service_url or "",
-            plan.workflow.embedding.model_name,
+            plan.embedding.model_name,
         )
     )
 
 
 def _warn_null_vectors(collection: str) -> None:
-    """`provider` n'entre PAS dans l'empreinte (§6) : deux façons d'atteindre le même
-    modèle produisent les mêmes vecteurs. Mais `noop` n'atteint aucun modèle — il produit
-    des vecteurs NULS, et les écrit dans la collection du vrai modèle, où plus rien ne
-    les distingue ensuite. La doctrine assume la verrue ; elle n'exige pas qu'elle soit
-    muette.
+    """`noop` n'atteint aucun modèle : il produit des vecteurs NULS, et les écrit dans la
+    collection du vrai modèle, où plus rien ne les distingue ensuite. La doctrine assume
+    la verrue ; elle n'exige pas qu'elle soit muette.
     """
     logger.warning(
         "EMBEDDING_PROVIDER=noop : les vecteurs seront NULS et seront écrits dans "
@@ -206,8 +203,8 @@ def _workload_steps(
 ) -> WorkloadSteps:
     return WorkloadSteps(
         chunker=StructuralChunker(
-            max_chunk_size=plan.workflow.chunking.size,
-            overlap=plan.workflow.chunking.overlap,
+            max_chunk_size=plan.chunking.size,
+            overlap=plan.chunking.overlap,
         ),
         embedder=embedder,
         extractor=RoutingRelationExtractor(
@@ -228,7 +225,7 @@ def build_runner(
     """Assemble le pool de la phase 1 : deux fabriques + un use case PAR worker (§11).
 
     La collection des workers est celle du ``plan`` — la même que le ``vector_repo`` du
-    hook : une seconde dérivation ferait écrire workers et phase 2 dans deux collections.
+    hook.
     """
     workload = build_document_workload(
         steps=stack.steps,
@@ -263,7 +260,6 @@ def _telemetry_factory(
     meta_db = settings.mongodb_meta_db_name
     return WorkerTelemetryFactory(
         run_id=context.run_id,
-        owner_id=context.owner_id,
         source=context.source,
         started_at=context.started_at,
         events_dir=Path(settings.meta_jsonl_dir) / "events",

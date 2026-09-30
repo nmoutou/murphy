@@ -34,13 +34,11 @@ from pathlib import Path
 import pytest
 
 from ragcore.core.models.enums import SourceName
-from ragcore.core.models.identifiers import OwnerId
 from ragcore.sources.generic import GenericParser, Role
 from ragcore.sources.legi.file_connector import LegiFileConnector
 from ragcore.sources.legi.table import LEGI_ROLE_TABLE
 
 FIXTURES = Path(__file__).parents[2] / "sources" / "legi" / "tests" / "fixtures"
-OWNER = OwnerId("u1")
 
 # La fixture `unknown_vocabulary.xml` porte DÉLIBÉRÉMENT du vocabulaire inconnu : une
 # balise <ZORG> et un typelien ZORGLUB. C'est l'instrument qu'elle teste, pas le cliquet
@@ -54,7 +52,7 @@ def _parse_all() -> list:
         connector = LegiFileConnector(FIXTURES)
         return [
             parser.parse(raw)
-            async for raw in connector.fetch_all(OWNER)
+            async for raw in connector.fetch_all()
             if not any(
                 Path(f).name == _FIXTURE_PATHOLOGIQUE for f in raw.payload["files"]
             )
@@ -101,7 +99,7 @@ def test_le_cliquet_est_CAPABLE_d_echouer() -> None:
     parser = GenericParser(LEGI_ROLE_TABLE, SourceName.LEGI)
 
     async def run():
-        async for raw in LegiFileConnector(FIXTURES).fetch_all(OWNER):
+        async for raw in LegiFileConnector(FIXTURES).fetch_all():
             if any(Path(f).name == _FIXTURE_PATHOLOGIQUE for f in raw.payload["files"]):
                 return parser.parse(raw)
         pytest.fail(f"La fixture {_FIXTURE_PATHOLOGIQUE} est introuvable")

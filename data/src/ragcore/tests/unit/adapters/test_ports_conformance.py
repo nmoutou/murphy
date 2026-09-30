@@ -49,16 +49,11 @@ from ragcore.adapters.telemetry import (
     RunStatsAggregator,
     WorkerTelemetryFactory,
 )
-from ragcore.adapters.tracking import (
-    MlflowExperimentTracker,
-    NoopExperimentTracker,
-)
-from ragcore.core.config import EmbeddingConfig
 from ragcore.core.models.enums import SourceName
+from ragcore.core.models.processing import EmbeddingConfig
 from ragcore.core.ports.audit_repository import AuditRepository
 from ragcore.core.ports.document_repository import DocumentRepository
 from ragcore.core.ports.embedder import BaseEmbedder
-from ragcore.core.ports.experiment_tracker import ExperimentTracker
 from ragcore.core.ports.graph_repository import GraphRepository
 from ragcore.core.ports.manifest_repository import ManifestRepository
 from ragcore.core.ports.pending_repository import PendingRelationRepository
@@ -72,7 +67,6 @@ from ragcore.core.ports.telemetry import (
 from ragcore.core.ports.vector_repository import VectorRepository
 
 RUN_ID = "abc123"
-OWNER = "owner-1"
 
 
 @pytest.fixture
@@ -83,7 +77,6 @@ def events_dir(tmp_path: Path) -> Path:
 def _telemetry_factory(events_dir: Path) -> WorkerTelemetryFactory:
     return WorkerTelemetryFactory(
         run_id=RUN_ID,
-        owner_id=OWNER,
         source=SourceName.LEGI,
         started_at=datetime.now(UTC),
         events_dir=events_dir,
@@ -214,7 +207,6 @@ class TestTelemetry:
     def test_the_aggregator_is_a_worker_telemetry(self) -> None:
         aggregator = RunStatsAggregator(
             run_id=RUN_ID,
-            owner_id=OWNER,
             source=SourceName.LEGI,
             started_at=datetime.now(UTC),
         )
@@ -277,19 +269,3 @@ class TestTelemetry:
             assert stack.snapshot().unknowns == {"balise": ["TRUC_INCONNU"]}
         finally:
             runtime.close()
-
-
-class TestExperimentTracker:
-    """Les deux trackers du §9 satisfont-ils le port ?
-
-    Construire ``MlflowExperimentTracker`` n'importe PAS ``mlflow`` (l'import est
-    paresseux, dans ``_mlflow()``) : la conformité se vérifie donc sans l'extra
-    ``tracking`` installé — exactement ce qu'on veut d'un adaptateur qui ne doit jamais
-    peser sur le chemin critique.
-    """
-
-    def test_noop_tracker(self) -> None:
-        assert isinstance(NoopExperimentTracker(), ExperimentTracker)
-
-    def test_mlflow_tracker(self) -> None:
-        assert isinstance(MlflowExperimentTracker(), ExperimentTracker)

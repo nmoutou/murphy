@@ -11,29 +11,20 @@ qu'ils tenaient pour acquis : la réduction n'a aucune légitimité sur une cita
 
 from ragcore.core.links import CITES, CONTAINS
 from ragcore.core.models.enums import SourceName
-from ragcore.core.models.identifiers import Identifier, OwnerId
+from ragcore.core.models.identifiers import Identifier
 from ragcore.core.models.relation import Relation
 from ragcore.core.services.relation_reduction import reduce_transitively
-
-OWNER = OwnerId("u1")
-OTHER_OWNER = OwnerId("u2")
 
 A = Identifier(raw="LEGIARTI000000000001")
 B = Identifier(raw="LEGIARTI000000000002")
 C = Identifier(raw="LEGIARTI000000000003")
 
 
-def _rel(
-    src: Identifier,
-    tgt: Identifier,
-    rtype: str = CONTAINS,
-    owner: OwnerId = OWNER,
-) -> Relation:
+def _rel(src: Identifier, tgt: Identifier, rtype: str = CONTAINS) -> Relation:
     return Relation(
         source_identifier=src,
         target_identifier=tgt,
         relation_type=rtype,
-        owner_id=owner,
         source=SourceName.LEGI,
     )
 
@@ -114,21 +105,6 @@ def test_les_types_ne_se_melangent_pas() -> None:
     }
 
 
-def test_les_proprietaires_ne_se_melangent_pas() -> None:
-    """Le graphe de u2 ne peut pas fournir le chemin qui ferait tomber une arête de u1.
-    Sinon la réduction serait une fuite entre propriétaires.
-    """
-    result = reduce_transitively(
-        [
-            _rel(A, B, owner=OWNER),
-            _rel(B, C, owner=OTHER_OWNER),  # le chemin passe par un AUTRE owner…
-            _rel(A, C, owner=OWNER),  # …donc celle-ci ne doit PAS tomber
-        ]
-    )
-
-    assert len(result) == 3
-
-
 def test_le_typelien_dorigine_survit_a_la_reduction() -> None:
     """networkx ne rend que des couples de chaînes : les métadonnées ne sont pas dans
     le graphe. Si la réduction les perdait, elle effacerait le vocabulaire d'origine
@@ -138,7 +114,6 @@ def test_le_typelien_dorigine_survit_a_la_reduction() -> None:
         source_identifier=A,
         target_identifier=B,
         relation_type=CONTAINS,
-        owner_id=OWNER,
         source=SourceName.LEGI,
         metadata={"typelien": "LIEN_ART"},
     )

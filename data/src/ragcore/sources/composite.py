@@ -28,7 +28,6 @@ from collections.abc import AsyncIterator, Iterable, Mapping
 
 from ragcore.core.models.document import ParsedDocument, RawDocument
 from ragcore.core.models.enums import SourceName
-from ragcore.core.models.identifiers import OwnerId
 from ragcore.core.ports.connector import BaseConnector
 from ragcore.core.ports.parser import ParseResult
 from ragcore.core.ports.relation_extractor import ExtractionResult
@@ -87,7 +86,7 @@ class CompositeConnector:
         """Les sources composées, dans l'ordre d'itération."""
         return tuple(self._connectors)
 
-    async def fetch_all(self, owner_id: OwnerId) -> AsyncIterator[RawDocument]:
+    async def fetch_all(self) -> AsyncIterator[RawDocument]:
         """Itère les documents de toutes les sources, source par source.
 
         Générateur de bout en bout : le corpus complet n'est jamais en mémoire, pas plus
@@ -96,7 +95,7 @@ class CompositeConnector:
         self.skipped = {}
 
         for connector in self._connectors.values():
-            async for document in connector.fetch_all(owner_id):
+            async for document in connector.fetch_all():
                 yield document
 
             # Après épuisement, jamais avant : `skipped` se remplit au fil de la lecture.

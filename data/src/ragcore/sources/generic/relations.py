@@ -11,7 +11,7 @@ extracteur.
 **Pourquoi il existe encore, alors qu'il ne fait presque rien.** Le port
 ``BaseRelationExtractor`` (``extract(document) -> ExtractionResult``) est ce que le worker
 appelle. ``core/links.extract_links`` a une signature plus riche (elle prend la table et
-le sujet : document, propriétaire, source). Ce module est l'adaptateur entre les deux — et
+le sujet : document, source). Ce module est l'adaptateur entre les deux — et
 c'est un rôle réel : il évite que le worker ait à connaître la table de la source qu'il
 traite.
 """
@@ -52,7 +52,6 @@ class GenericRelationExtractor:
             table=links,
             subject=LinkSubject(
                 current=document.identifier,
-                owner_id=document.owner_id,
                 source=self._source,
             ),
         )

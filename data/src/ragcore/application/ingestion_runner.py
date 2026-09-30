@@ -204,7 +204,6 @@ def _declare_failure(
         build_event(
             event_type=DOCUMENT_FAILED,
             run_id=context.run_id,
-            owner_id=context.owner_id,
             source=parsed.source,
             document_id=parsed.identifier.serialize(),
             payload={"reason": type(exc).__name__, "error": str(exc)},

@@ -4,9 +4,8 @@ from uuid import UUID, uuid4
 
 from pydantic import BaseModel, ConfigDict, model_validator
 
-from .document import SCHEMA_VERSION
 from .enums import SourceName, TargetStore
-from .identifiers import DocumentId, OwnerId, RunId
+from .identifiers import DocumentId, RunId
 
 __all__ = ["AuditEvent", "build_event"]
 
@@ -19,12 +18,10 @@ class AuditEvent(BaseModel):
 
     model_config = ConfigDict(frozen=True)
 
-    schema_version: int = SCHEMA_VERSION
     event_id: UUID
     event_type: str
     occurred_at: datetime
     run_id: RunId
-    owner_id: OwnerId
 
     document_id: DocumentId | None
     source: SourceName | None
@@ -50,7 +47,6 @@ class AuditEvent(BaseModel):
 def build_event(  # noqa: PLR0913 — façade : exposer tous les champs de l'événement EST le propos
     event_type: str,
     run_id: RunId,
-    owner_id: OwnerId,
     *,
     document_id: DocumentId | None = None,
     source: SourceName | None = None,
@@ -65,7 +61,6 @@ def build_event(  # noqa: PLR0913 — façade : exposer tous les champs de l'év
         event_type=event_type,
         occurred_at=datetime.now(UTC),
         run_id=run_id,
-        owner_id=owner_id,
         document_id=document_id,
         source=source,
         target=target,

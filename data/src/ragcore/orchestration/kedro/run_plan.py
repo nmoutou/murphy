@@ -14,17 +14,16 @@ from typing import Any
 
 from ragcore.adapters.config.settings import InfraSettings
 from ragcore.adapters.storage.neo4j.node_properties import NodeHydration, NodeLabels
-from ragcore.core.config import WorkflowConfig, collection_name
 from ragcore.core.models.enums import SourceName
-from ragcore.core.models.identifiers import OwnerId
+from ragcore.core.models.processing import ChunkingConfig, EmbeddingConfig
 from ragcore.orchestration.kedro.run_parameters import (
-    build_workflow_config,
+    resolve_chunking,
     resolve_embedding_enabled,
+    resolve_embedding_model,
     resolve_node_hydration,
     resolve_node_labels,
     resolve_sources,
 )
-from ragcore.sources.registry import all_sources
 
 __all__ = ["RunPlan", "plan_run"]
 
@@ -35,12 +34,11 @@ logger = logging.getLogger(__name__)
 class RunPlan:
     """Ce que ce run écrit, et comment."""
 
-    workflow: WorkflowConfig
-    """LA référence (§9). ``parameters.yml`` n'est qu'une façon de la peupler."""
+    chunking: ChunkingConfig
+    embedding: EmbeddingConfig
     collection: str
-    """La collection Qdrant, DÉRIVÉE du workflow (§6), jamais configurée."""
+    """La collection Qdrant : un nom fixe, lu de ``QDRANT_COLLECTION``."""
     sources: tuple[SourceName, ...]
-    owner_id: OwnerId
     node_hydration: NodeHydration
     """L'hydratation des nœuds Neo4j (ADR-022 §2) : résolue UNE fois, partagée entre le
     dépôt du hook et ceux des workers — deux résolutions seraient deux occasions de
@@ -49,12 +47,6 @@ class RunPlan:
     """Le label des nœuds Neo4j d'après le préfixe de l'identifiant, lu dans le YAML."""
     embedding_enabled: bool
     """L'interrupteur d'embedding (dev, ADR-023), arbitré par l'environnement."""
-
-    @property
-    def is_full_run(self) -> bool:
-        """Ce run traite-t-il TOUTES les sources ? Seul un run complet peut publier une
-        version du contrat que le pointeur en place ne porte pas encore (ADR-039 §3)."""
-        return set(self.sources) == set(all_sources())
 
     @property
     def context_source(self) -> SourceName | None:
@@ -73,27 +65,18 @@ def plan_run(
 ) -> RunPlan:
     """Dérive le plan du run. Sans I/O : rien n'est ouvert, seul le plan est journalisé.
 
-    Une source inconnue (``--params source=cas``) échoue ici, avant qu'aucun client ni
-    tracker ne soit ouvert.
+    Une source inconnue (``--params source=cas``) ou un réglage manquant échoue ici,
+    avant qu'aucun client ne soit ouvert.
     """
-    # La config de workflow — LA référence (§9). C'est ici que Kedro cesse d'être la
-    # vérité et redevient un shell. Un CLI ou un test construit le même objet sans
-    # qu'aucun YAML n'existe.
-    workflow = build_workflow_config(params)
-
     # Les `--params` de la ligne de commande. Kedro 1.x les passe sous
     # `runtime_params` ; l'ancienne clé `extra_params` n'existe plus, et la lire
     # faisait ignorer `--params source=…` en silence.
     extra = run_params.get("runtime_params") or {}
 
     plan = RunPlan(
-        workflow=workflow,
-        # La collection Qdrant est DÉRIVÉE, plus configurée (§6). Elle porte l'empreinte
-        # de ce qui produit les vecteurs : changer le chunk_size crée mécaniquement une
-        # collection neuve, et les deux coexistent — c'est ce qui rend l'A/B possible.
-        # Un `collection:` écrit à la main dans le YAML permettait au contraire d'écraser
-        # les vecteurs d'une stratégie avec ceux d'une autre, sans que rien ne le signale.
-        collection=collection_name(workflow),
+        chunking=resolve_chunking(params),
+        embedding=resolve_embedding_model(params),
+        collection=settings.qdrant_collection,
         # Les SOURCES du run. Un run nu les ingère TOUTES ; `--params source=cass` ou
         # `source=cass,jade` le restreint.
         #
@@ -103,7 +86,6 @@ def plan_run(
         # La restriction par paramètre garde la voie du rejeu ciblé ouverte, mais le
         # bilan ne dit pas encore *quoi* rejouer.
         sources=resolve_sources(extra.get("source", settings.source)),
-        owner_id=OwnerId(extra.get("owner_id", settings.owner_id)),
         node_hydration=resolve_node_hydration(params, settings.environment),
         node_labels=resolve_node_labels(params),
         embedding_enabled=resolve_embedding_enabled(params, settings.environment),
@@ -113,9 +95,7 @@ def plan_run(
 
 
 def _log_plan(plan: RunPlan) -> None:
-    logger.info(
-        "Collection Qdrant dérivée de la config de workflow : %s", plan.collection
-    )
+    logger.info("Collection Qdrant : %s", plan.collection)
     logger.info(
         "Sources du run (%d) : %s",
         len(plan.sources),

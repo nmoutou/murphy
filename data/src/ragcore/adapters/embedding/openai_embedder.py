@@ -11,8 +11,8 @@ from dataclasses import dataclass
 
 import httpx
 
-from ragcore.core.config import EmbeddingConfig
 from ragcore.core.models.chunk import Chunk, EmbeddedChunk
+from ragcore.core.models.processing import EmbeddingConfig
 
 __all__ = ["EmbeddingTransport", "OpenAIEmbedder"]
 
@@ -36,7 +36,7 @@ def _rejected(chunk: Chunk) -> ValueError:
 
 @dataclass(frozen=True)
 class EmbeddingTransport:
-    """Comment joindre le service : de l'infra, qui ne change aucun vecteur (§6)."""
+    """Comment joindre le service : de l'infra, lue de l'environnement."""
 
     base_url: str | None
     api_key: str | None = None
@@ -53,8 +53,8 @@ class OpenAIEmbedder:
         if not base_url:
             # L'ancien défaut retombait sur `https://api.openai.com/v1` : un
             # EMBEDDING_SERVICE_URL oublié envoyait SILENCIEUSEMENT tout le corpus chez
-            # OpenAI — facturé, et avec un autre modèle que celui dont le nom baptise la
-            # collection. Un défaut ne doit jamais désigner un service tiers payant.
+            # OpenAI — facturé, et avec un autre modèle que celui de la
+            # configuration. Un défaut ne doit jamais désigner un service tiers payant.
             raise ValueError(
                 "OpenAIEmbedder exige une `base_url` explicite. Renseigner "
                 "EMBEDDING_SERVICE_URL (p. ex. http://localhost:5001/v1)."

@@ -10,7 +10,7 @@ from qdrant_client.models import PointStruct
 
 from ragcore.adapters.storage.qdrant.vector_repository import QdrantVectorRepository
 from ragcore.core.models.chunk import Chunk, EmbeddedChunk
-from ragcore.core.models.identifiers import Identifier, OwnerId
+from ragcore.core.models.identifiers import Identifier
 
 DIM = 4
 
@@ -30,7 +30,6 @@ def _embedded(metadata: dict[str, Any]) -> EmbeddedChunk:
         chunk=Chunk(
             chunk_id="LEGIARTI000033972545_0001",
             parent_identifier=Identifier(raw="LEGIARTI000033972545"),
-            owner_id=OwnerId("default"),
             ordinal=1,
             text="passage",
             tag_path=[],
@@ -60,7 +59,6 @@ async def test_the_payload_carries_the_serving_contract() -> None:
 
     assert payload["chunk_id"] == "LEGIARTI000033972545_0001"
     assert payload["identifier"] == Identifier(raw="LEGIARTI000033972545").serialize()
-    assert payload["owner_id"] == "default"
     assert payload["char_start"] == 359
     assert payload["char_end"] == 742
     assert payload["type_document"] == "article"

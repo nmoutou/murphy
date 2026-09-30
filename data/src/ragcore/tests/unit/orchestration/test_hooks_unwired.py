@@ -1,7 +1,7 @@
 """Un hook qui n'a jamais atteint `before_pipeline_run` doit pouvoir finir un run.
 
 Kedro appelle `after_pipeline_run` / `on_pipeline_error` même quand l'assemblage a
-échoué en route : sans publieur, sans agrégateur ni tracker, la fin de run n'a rien à
+échoué en route : sans session, donc sans agrégateur, la fin de run n'a rien à
 faire — mais elle ne doit pas masquer l'erreur d'origine en explosant à son tour.
 """
 

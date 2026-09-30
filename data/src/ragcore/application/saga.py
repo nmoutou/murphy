@@ -56,7 +56,6 @@ class SagaExecutor:
             build_event(
                 event_type=SAGA_COMPENSATION_STARTED,
                 run_id=context.run_id,
-                owner_id=context.owner_id,
                 source=context.source,
                 payload={"failed_step": failed_name},
                 success=False,
@@ -93,7 +92,6 @@ class SagaExecutor:
                 build_event(
                     event_type=SAGA_COMPENSATION_FAILED,
                     run_id=context.run_id,
-                    owner_id=context.owner_id,
                     source=context.source,
                     payload={"step": step.name, "failed_step": failed_name},
                     success=False,
@@ -115,7 +113,6 @@ class SagaExecutor:
             build_event(
                 event_type=SAGA_COMPENSATION_COMPLETED,
                 run_id=context.run_id,
-                owner_id=context.owner_id,
                 source=context.source,
                 payload={
                     "failed_step": failed_name,

@@ -4,20 +4,28 @@
  */
 
 import { closeInfraClients, getInfraClients, initInfraClients } from '../../infra/clients';
-import { resolveCollection } from '../../infra/collectionPointer';
 import { loadConfig } from '../../config';
 
-const mockMongo = { getClient: () => 'driver-client', close: jest.fn() };
+const mockMongo = { close: jest.fn() };
+const mockCollectionExists = jest.fn();
 
 jest.mock('../../infra/mongodb', () => ({ MongoDbClient: { connect: async () => mockMongo } }));
-jest.mock('../../infra/collectionPointer', () => ({ resolveCollection: jest.fn() }));
-jest.mock('@qdrant/qdrant-js', () => ({ QdrantClient: class {} }));
+// A class, not a `jest.fn`: `restoreMocks` would reset its implementation between tests
+jest.mock('@qdrant/qdrant-js', () => ({
+  QdrantClient: class {
+    collectionExists = mockCollectionExists;
+  },
+}));
 jest.mock('../../utils/logger', () => {
   const silentLogger = { info: jest.fn(), debug: jest.fn(), warn: jest.fn(), error: jest.fn(), child: () => silentLogger };
   return { logger: silentLogger };
 });
 
-const { config } = loadConfig({ QDRANT_URL: 'http://qdrant.test' });
+const { config } = loadConfig({ QDRANT_URL: 'http://qdrant.test', QDRANT_COLLECTION: 'chunks' });
+
+beforeEach(() => {
+  mockCollectionExists.mockResolvedValue({ exists: true });
+});
 
 afterEach(async () => {
   await closeInfraClients();
@@ -28,21 +36,21 @@ describe('infrastructure clients', () => {
     expect(() => getInfraClients()).toThrow('Infrastructure clients not initialized');
   });
 
-  it('shares the clients created at boot, on the resolved collection', async () => {
-    jest.mocked(resolveCollection).mockResolvedValue('9424808d');
-
+  it('shares the clients created at boot, once the configured collection is found', async () => {
     await initInfraClients(config);
 
     expect(getInfraClients().mongo).toBe(mockMongo);
-    expect(resolveCollection).toHaveBeenCalledWith({
-      mongoClient: 'driver-client',
-      metaDatabase: 'MURPHY_META',
-      qdrant: config.qdrant,
-    });
+    expect(mockCollectionExists).toHaveBeenCalledWith('chunks');
+  });
+
+  it('refuses to boot when the configured collection does not exist', async () => {
+    mockCollectionExists.mockResolvedValue({ exists: false });
+
+    await expect(initInfraClients(config)).rejects.toThrow('The Qdrant collection "chunks"');
+    expect(() => getInfraClients()).toThrow('Infrastructure clients not initialized');
   });
 
   it('closes MongoDB at shutdown, then refuses access again', async () => {
-    jest.mocked(resolveCollection).mockResolvedValue('9424808d');
     await initInfraClients(config);
 
     await closeInfraClients();

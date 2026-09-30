@@ -7,7 +7,7 @@
  */
 
 import type { Passage, RetrievedChunk, StoredDocument } from '../types/rag';
-import { contractViolation, serializeDocumentKey } from '../types/rag';
+import { contractViolation } from '../types/rag';
 
 export interface Utf16Range {
   readonly start: number;
@@ -61,9 +61,9 @@ export const assemblePassages = (
   chunks: readonly RetrievedChunk[],
   documents: readonly StoredDocument[]
 ): Passage[] => {
-  const documentsByKey = new Map(documents.map((document) => [serializeDocumentKey(document), document]));
+  const documentsByIdentifier = new Map(documents.map((document) => [document.identifier, document]));
   return chunks.map((chunk) => {
-    const document = documentsByKey.get(serializeDocumentKey(chunk));
+    const document = documentsByIdentifier.get(chunk.identifier);
     if (!document) {
       throw contractViolation(`chunk ${chunk.chunkId} has no parent document ${chunk.identifier} in MongoDB`);
     }
