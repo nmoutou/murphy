@@ -4,7 +4,8 @@
 
 # Changer une valeur invalide les vecteurs déjà écrits : réingérer tout le corpus.
 chunking:
-  # Le plus grand qui tienne dans la fenêtre du modèle (mesuré, cf. configuration.md).
+  # Le plus grand qui tienne dans la fenêtre de all-mpnet-base-v2 (mesuré, cf.
+  # configuration.md). À remesurer si EMBEDDING_MODEL change.
   max_chars: 384
   # Ne joue que dans un bloc plus long que `max_chars`, coupé en plein mot : 3 ou 4
   # mots, de quoi garder entier un mot coupé à la frontière, pas une phrase. Non mesuré.
@@ -16,8 +17,9 @@ chunking:
 # ============================================================
 
 # Le label d'un nœud, d'après les 8 lettres de son identifiant. Un préfixe absent de la
-# table reçoit `default`. Changer la table sans `nuke_all` laisse l'ancien label sur les
-# nœuds déjà écrits.
+# table reçoit `default`. L'écriture ajoute le label sans retirer l'ancien : après un
+# changement de la table, un nœud déjà écrit garde l'ancien label, même réingéré (il
+# porte alors les deux). Repartir de zéro demande `nuke_all`.
 node_labels:
   default: "Document"
   by_prefix:
@@ -37,15 +39,18 @@ dev:
   # Efface TOUTES les données de TOUTES les bases (sauf la base méta) en tête de run.
   nuke_all: true
 
-  # `false` : aucun vecteur calculé ni écrit (ADR-023) ; Mongo et Neo4j normaux.
+  # `false` : aucun vecteur calculé ni écrit (ADR-023) ; Mongo et Neo4j normaux. TEI
+  # doit quand même tourner : le modèle servi est vérifié au démarrage.
   embedding_enabled: true
 
   # `true` retire du document les métadonnées des balises non configurées ; le signal
   # `tag.unconfigured` est émis dans les deux cas (ADR-022 §1).
   skip_unconfigured: false
 
-  # Ce que les nœuds Neo4j portent en plus (ADR-022 §2) : chemins des fichiers XML
-  # source, texte du document (`_text_content`).
+  # Ce que les nœuds Neo4j portent en plus de leurs métadonnées, toujours présentes en
+  # dev (ADR-022 §2) : chemins des fichiers XML source (`source_files`), texte du
+  # document (`_text_content`). L'écriture n'efface aucune propriété : repasser à
+  # `false` sans `nuke_all` laisse celles déjà écrites.
   node_hydration:
     include_path: true
     include_content: true

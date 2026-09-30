@@ -208,6 +208,15 @@ Depuis P4 et P11, la clé est `dev.skip_unconfigured` : la proposition `unconfig
 - « À NE PAS activer en prod » : `nuke_all` est de toute façon refusé hors dev. Le commentaire devrait décrire ce refus. **Traité** (P2), puis P11 : hors dev, le bloc `dev` entier est ignoré, et son commentaire d'en-tête le dit.
 - Rien n'indique l'unité de `embedding_service_timeout`. **Sans objet** (P18) : la clé, non lue, a été supprimée.
 
+> **Traité** : les commentaires restants ont été relus contre le code, et quatre complétés :
+>
+> - `max_chars` : la mesure vaut pour `all-mpnet-base-v2`, à refaire si `EMBEDDING_MODEL` change ;
+> - `node_labels` : l'écriture (`SET d:$($label)`) ajoute le label sans retirer l'ancien ; même réingéré, un nœud garde l'ancien label ;
+> - `embedding_enabled` : TEI doit tourner même coupé, puisque le démarrage vérifie le modèle servi (P14) ;
+> - `node_hydration` : les métadonnées sont toujours portées en dev, et `SET d += $props` n'efface rien : repasser à `false` sans `nuke_all` laisse les propriétés écrites.
+>
+> `configuration.md` est aligné.
+
 ---
 
 ## E. Validation

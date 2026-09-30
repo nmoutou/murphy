@@ -41,7 +41,7 @@ mesurée auprès de TEI.
 
 | Clé | Valeur | Effet |
 |---|---|---|
-| `default` / `by_prefix` | `Document` / `LEGIARTI: Article`, `LEGITEXT: Texte`, `LEGISCTA: Section` | Le label d'un nœud Neo4j d'après les 8 lettres de son identifiant ; un préfixe absent de la table reçoit `default`. `by_prefix` est obligatoire (`{}` accepté). Préfixe qui n'est pas 8 majuscules ou label mal formé = échec au démarrage. Changer la table sans `nuke_all` laisse l'ancien label sur les nœuds déjà écrits. |
+| `default` / `by_prefix` | `Document` / `LEGIARTI: Article`, `LEGITEXT: Texte`, `LEGISCTA: Section` | Le label d'un nœud Neo4j d'après les 8 lettres de son identifiant ; un préfixe absent de la table reçoit `default`. `by_prefix` est obligatoire (`{}` accepté). Préfixe qui n'est pas 8 majuscules ou label mal formé = échec au démarrage. L'écriture ajoute le label sans retirer l'ancien : après un changement de la table, un nœud déjà écrit garde l'ancien label, même réingéré (il porte alors les deux). Repartir de zéro demande `nuke_all`. |
 
 ### `dev` — les commodités de développement, ignorées hors `dev`
 
@@ -54,9 +54,9 @@ coquille arrête le run même en prod.
 | Clé | Valeur | En `dev` | Hors `dev` |
 |---|---|---|---|
 | `nuke_all` | `true` | Efface TOUTES les données de TOUTES les bases en tête de run (Mongo documents+manifest, graphe Neo4j, **toutes** les collections Qdrant), en **préservant `MURPHY_META`**. Le levier disque du développement. | Rien n'est effacé. |
-| `embedding_enabled` | `true` | **L'interrupteur d'embedding (ADR-023).** `false` = aucun vecteur calculé ni écrit (Qdrant vide, Mongo/Neo4j normaux) — le régime d'itération sur le modèle de données. | On embarque toujours. |
+| `embedding_enabled` | `true` | **L'interrupteur d'embedding (ADR-023).** `false` = aucun vecteur calculé ni écrit (Qdrant vide, Mongo/Neo4j normaux) — le régime d'itération sur le modèle de données. TEI doit quand même tourner : le modèle servi est vérifié et la dimension mesurée au démarrage. | On embarque toujours. |
 | `skip_unconfigured` | `false` | Le sort des balises non configurées (cadrage « trois portes ») : `false` = la balise entre en metadata sous sa clé chemin-complet ; `true` = retirée du document. Le signal `tag.unconfigured`, lui, est TOUJOURS émis — on compte d'abord, on filtre ensuite. | Toujours retirées (ADR-022 §1). |
-| `node_hydration.include_path` / `include_content` | `true` / `true` | Ce que portent en plus les nœuds Neo4j (avec leurs métadonnées) : chemins des fichiers XML source, texte du document (`_text_content`). | Nœud maigre (ADR-022 §2). |
+| `node_hydration.include_path` / `include_content` | `true` / `true` | Ce que portent en plus les nœuds Neo4j (leurs métadonnées, elles, sont toujours là en dev) : chemins des fichiers XML source (`source_files`), texte du document (`_text_content`). L'écriture (`SET +=`) n'efface aucune propriété : repasser à `false` sans `nuke_all` laisse celles déjà écrites. | Nœud maigre (ADR-022 §2). |
 
 Rien de l'embedding n'est dans `parameters.yml` : le modèle, l'URL de TEI, la taille de
 lot et le timeout sont dans l'environnement (voir `EmbeddingRuntimeSettings`).
