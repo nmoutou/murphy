@@ -24,7 +24,7 @@
 | [ADR-040](ADR-040-depot-unique.md) | Un seul dépôt : fin des sous-modules, contrat du flux dans un paquet partagé | ✅ Accepté (25 septembre 2026) |
 | [ADR-041](ADR-041-erreurs-du-chat-en-modale.md) | Erreurs du chat : une modale, l'étape en cause, un arrêt propagé au backend | ✅ Accepté (26 septembre 2026) — étend le contrat d'ADR-040 (`@murphy/contract/errors`) |
 | [ADR-042](ADR-042-collection-qdrant-nom-fixe.md) | Une collection Qdrant au nom fixe : fin de l'empreinte, du pointeur et du tracking | ✅ Accepté (30 septembre 2026) — remplace ADR-026, amende ADR-039 §3, §3 amendé par ADR-043 |
-| [ADR-043](ADR-043-configuration-ingestion-environment.md) | Configuration de l'ingestion : un fichier, un bloc `dev`, `ENVIRONMENT` seul arbitre | ✅ Accepté (30 septembre 2026) — amende ADR-022 §5-§6, ADR-023, ADR-042 §3 |
+| [ADR-043](ADR-043-configuration-ingestion-environment.md) | Configuration de l'ingestion : un fichier, un bloc `dev`, `ENVIRONMENT` seul arbitre | ✅ Accepté (30 septembre 2026) — amende ADR-022 §5-§6, ADR-023, ADR-042 §3 ; §4 amendé (labels Neo4j déclarés par les sources) |
 
 ## Points ouverts rattachés
 

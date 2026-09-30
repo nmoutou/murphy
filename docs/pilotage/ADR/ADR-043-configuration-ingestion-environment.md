@@ -1,6 +1,6 @@
 # ADR-043 — Configuration de l'ingestion : un fichier, un bloc `dev`, `ENVIRONMENT` seul arbitre
 
-**Statut** : ✅ Accepté (30 septembre 2026) — amende ADR-022 §5-§6, ADR-023 et ADR-042 §3
+**Statut** : ✅ Accepté (30 septembre 2026) — amende ADR-022 §5-§6, ADR-023 et ADR-042 §3 · **§4 amendé le 30 septembre 2026** (labels Neo4j déclarés par les sources)
 
 ## Contexte
 
@@ -41,7 +41,13 @@ balises non configurées sont retirées, les nœuds Neo4j restent maigres) et un
 avertissement le signale au log. Ses clés sont obligatoires et validées dans les deux
 environnements : une coquille arrête le run même en prod.
 
-**4. Ce qui vaut partout est hors du bloc** : `chunking` et `node_labels`.
+**4. Ce qui vaut partout est hors du bloc** : `chunking`.
+
+> **Amendement (30 septembre 2026)** : `node_labels` en est sorti. Un label Neo4j est un
+> fait de schéma, pas un réglage : le changer demande `nuke_all`, puisque l'écriture
+> ajoute un label sans retirer l'ancien. Chaque source le déclare dans le registre
+> (`SourceDefinition.node_labels`), et un préfixe qu'aucune source ne déclare reçoit
+> `Document` (critique de `parameters.yml`, P15).
 
 ## Alternatives rejetées
 

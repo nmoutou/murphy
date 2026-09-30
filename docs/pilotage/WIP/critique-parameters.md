@@ -20,7 +20,7 @@ Priorité : P1 à P4, puis P18 (qui règle P1, P2, P6 et P12).
 
 ## Clés lues et non lues
 
-- **Lues** : `chunking`, `node_labels`, `dev.*` (depuis P11 : `nuke_all`, `embedding_enabled`, `skip_unconfigured`, `node_hydration.*`).
+- **Lues** : `chunking`, `dev.*` (depuis P11 : `nuke_all`, `embedding_enabled`, `skip_unconfigured`, `node_hydration.*`).
 - **Non lues** : aucune depuis P18. Les clés mortes ont été supprimées, et le modèle strict refuse désormais toute clé inconnue.
 
 ---
@@ -129,6 +129,8 @@ Priorité : P1 à P4, puis P18 (qui règle P1, P2, P6 et P12).
 Depuis P18, `exportation` ne contient plus que `skip_unconfigured` et `neo4j` (`mongodb` et `qdrant`, morts, ont été supprimés).
 
 > **Traité** (avec P11) : `exportation` a disparu. `skip_unconfigured` et `neo4j.include_*` sont dans le bloc `dev` ; les labels, qui s'appliquent en dev comme en prod, forment le bloc `node_labels`.
+>
+> Depuis P15, les labels ont quitté le YAML : chaque source les déclare dans le registre.
 
 ### P10. `embedding` / `embedding_runtime` : séparation sans objet
 
@@ -192,6 +194,13 @@ Depuis P18, `embedding_runtime` ne contient plus que `enabled` : le timeout et l
 - `by_prefix` ne liste que trois préfixes LEGI. Les documents des cinq autres sources (`JURITEXT`, `JORFCONT`…) reçoivent tous `Document`.
 - Changer un label impose un `nuke_all` : c'est un choix de schéma, pas un réglage. Il devrait être déclaré avec les sources.
 - Le commentaire « 8 lettres » répète `IDENTIFIER_PREFIX_LENGTH`.
+
+> **Traité** : le bloc `node_labels` a quitté `parameters.yml`, et le commentaire « 8 lettres » avec lui.
+>
+> - La table est déclarée avec la source : `LEGI_NODE_LABELS` (`sources/legi/table.py`), portée par `SourceDefinition.node_labels`. `registry.node_labels_by_prefix` fusionne les tables de toutes les sources, pas seulement celles du run (la dé-hydratation doit connaître tous les labels), et lève si deux sources donnent deux labels au même préfixe.
+> - Le repli `Document` est une constante, `node_properties.DEFAULT_LABEL`.
+> - Aucun label n'est ajouté : les décisions (`JURITEXT`, `CETATEXT`, `CONSTEXT`) gardent `Document`, par choix. En donner un reviendra à remplir la table de leur source.
+> - Un `parameters.yml` qui porte encore `node_labels` est refusé comme clé inconnue. ADR-043 §4 est amendé.
 
 ### P16. Noms ambigus
 

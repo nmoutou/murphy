@@ -29,8 +29,9 @@ Le hook est le **point d'assemblage** du run. Dans l'ordre :
      tel quel en `dev`, et le remplace ailleurs par les valeurs sûres (`nuke_all` coupé,
      embedding calculé, métadonnées non configurées retirées, nœuds Neo4j maigres), avec
      un avertissement au log ;
-   - les labels des nœuds Neo4j (`NodeLabels`) : la table `node_labels`.
-     Préfixe ou label mal formé = échec au démarrage ;
+   - les labels des nœuds Neo4j (`NodeLabels`) : les tables des sources, fusionnées par
+     `registry.node_labels_by_prefix`. Deux labels pour un même préfixe, préfixe ou label
+     mal formé = échec au démarrage ;
 4. **L'embedder** (`assembly.prepare_embedder`) : TEI, seul embedder. Précondition
    d'abord : `served_model.inspect_served_model` interroge `GET /info` et compare le
    modèle servi à `EMBEDDING_MODEL`. TEI ignore le champ `model` des requêtes ; sans

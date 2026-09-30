@@ -118,11 +118,13 @@ données.
 
 - **Nœuds documents** : identifiés par `identifier` sérialisé. Le `MERGE`
   porte sur le seul identifiant (jamais le label — `MERGE (d:Article {…})` créerait un
-  second nœud si le label a changé), puis le label réel est posé. Le label vient de
-  la table `node_labels` de `parameters.yml`, d'après les 8 lettres de
-  l'identifiant : `LEGIARTI` → `Article`, `LEGITEXT` → `Texte`, `LEGISCTA` → `Section`,
-  et `Document` (le `default`) pour tout autre préfixe, dont les décisions. Un nœud cité
-  dont le document manque porte `Pending`.
+  second nœud si le label a changé), puis le label réel est posé. Le label vient du
+  préfixe de l'identifiant, d'après la table que chaque source déclare dans le registre
+  (`SourceDefinition.node_labels`) : `LEGIARTI` → `Article`, `LEGITEXT` → `Texte`,
+  `LEGISCTA` → `Section`, et `Document` (`DEFAULT_LABEL`) pour tout autre préfixe, dont
+  les décisions. L'écriture ajoute le label sans retirer l'ancien : après un changement
+  de table, un nœud déjà écrit porte les deux, même réingéré ; repartir de zéro demande
+  `nuke_all`. Un nœud cité dont le document manque porte `Pending`.
 - **Hydratation** (ADR-022 §2) : en prod, nœud **maigre** (`title`, `source`). En dev (et seulement en dev), le bloc `dev.node_hydration` ouvre les vannes : `metadata`
   en props (clés chemin-complet), `include_path` (les fichiers XML source),
   `include_content` (le texte, prop `_text_content`), les citations. Neo4j est l'outil

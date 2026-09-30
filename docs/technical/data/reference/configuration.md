@@ -4,7 +4,7 @@ Deux surfaces :
 
 | Surface | Fichier | Contenu |
 |---|---|---|
-| **Réglages du pipeline** | `conf/base/parameters.yml` | Découpe, labels du graphe, réglages de dev |
+| **Réglages du pipeline** | `conf/base/parameters.yml` | Découpe, réglages de dev |
 | **Infra** (`InfraSettings`, `EmbeddingRuntimeSettings`) | `.env.dev` à la **racine du dépôt** | Le *où* et le *comment* : bases, secrets, chemins, nom de la collection Qdrant, modèle d'embedding servi par TEI |
 
 `parameters.yml` illisible = run arrêté, jamais de défauts silencieux. Le fichier est
@@ -36,12 +36,6 @@ mesurée auprès de TEI.
 |---|---|---|
 | `chunking.max_chars` | `384` | Taille maximale d'un chunk, en **caractères** (la fenêtre du modèle est en tokens ; ratio mesuré : 3,08 car/token en moyenne, 0,33 au pire). 384 est le plus grand qui tienne : ≤ 300 tokens mesurés au tokenizer du modèle sur les six sources, **zéro document perdu** (512 en perdait 1, 1024 en perdait 98). C'est aussi le levier de coût : l'embedding est ~99,9 % du temps d'un run, et 128 → 384 l'a divisé par ~5 (838 s → 173 s). |
 | `chunking.overlap_chars` | `25` | Recouvrement de la fenêtre glissante, en caractères. Doit rester < `max_chars` : sinon le curseur n'avance pas, et le run s'arrête au démarrage. Ne joue que dans un bloc plus long que `max_chars`, que la fenêtre coupe en plein mot : 25 caractères (3 ou 4 mots) gardent entier un mot coupé à la frontière, pas une phrase. **Non mesuré** : aucun jeu d'évaluation du retrieval n'existe pour le régler. |
-
-### `node_labels` — le graphe, en dev comme en prod
-
-| Clé | Valeur | Effet |
-|---|---|---|
-| `default` / `by_prefix` | `Document` / `LEGIARTI: Article`, `LEGITEXT: Texte`, `LEGISCTA: Section` | Le label d'un nœud Neo4j d'après les 8 lettres de son identifiant ; un préfixe absent de la table reçoit `default`. `by_prefix` est obligatoire (`{}` accepté). Préfixe qui n'est pas 8 majuscules ou label mal formé = échec au démarrage. L'écriture ajoute le label sans retirer l'ancien : après un changement de la table, un nœud déjà écrit garde l'ancien label, même réingéré (il porte alors les deux). Repartir de zéro demande `nuke_all`. |
 
 ### `dev` — les commodités de développement, ignorées hors `dev`
 
