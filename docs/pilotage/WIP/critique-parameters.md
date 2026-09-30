@@ -244,15 +244,21 @@ Depuis P4 et P11, la clé est `dev.skip_unconfigured` : la proposition `unconfig
 - Il a déplacé `chunking` et `embedding` dans `ingestion/` au lieu de supprimer la partition.
 - Il en reste le sous-dossier et le nom `embedding_runtime`.
 
+> **Traité** : le code était déjà corrigé (sous-dossier supprimé en P7, `embedding_runtime` en P10, bloc `embedding` en P14). ADR-043 amende ADR-042 §3 : un seul fichier, `conf/base/parameters.yml`, et le modèle lu d'`EMBEDDING_MODEL`.
+
 ### P20. ADR-022 appliqué partiellement
 
 - §1 (`unconfigured` selon l'environnement) : non implémenté comme écrit (P4).
 - §6 (nettoyer la conf morte) : appliqué à `field_mappings` seulement.
 
+> **Traité** : §1 est appliqué tel qu'écrit depuis P4, et §6 au-delà de sa lettre depuis P18 (toute la conf morte est supprimée, et le modèle strict refuse les clés inconnues). ADR-043 le consigne, et retire un écart que la critique n'avait pas relevé : §5 prévoyait d'exposer le routage d'audit (`EventBehavior`) dans `parameters.yml` ; il reste dans `EVENT_CATALOG`.
+
 ### P21. ADR-023 : un second interrupteur de fait
 
 - L'ADR rejetait deux interrupteurs, mais `EMBEDDING_PROVIDER=noop` en est un second.
 - `noop` est la valeur par défaut, alors que `ENVIRONMENT` applique « le défaut penche vers le refus ». Par défaut, on écrit donc des vecteurs nuls.
+
+> **Traité** : `EMBEDDING_PROVIDER` et `noop` ont disparu en P14 (TEI seul embedder), et l'interrupteur est devenu `dev.embedding_enabled` en P11, sans effet hors dev. ADR-043 amende ADR-023 en ce sens.
 
 ### P22. Deux notions d'environnement
 
@@ -260,3 +266,5 @@ Depuis P4 et P11, la clé est `dev.skip_unconfigured` : la proposition `unconfig
 - **Avantage** : l'absence de la variable vaut `prod`, donc protégé.
 - **Coût** : aucune surcouche de valeurs pour la prod, d'où P4.
 - **À faire** : trancher explicitement ce choix dans un ADR plutôt que d'en hériter.
+
+> **Traité** : ADR-043 tranche. Pas d'environnement Kedro ; un seul `parameters.yml` ; ce qui diffère entre dev et prod vit dans le bloc `dev`, remplacé hors dev par les valeurs sûres. `ENVIRONMENT` ne vaut plus que `dev` ou `prod` (absente ou vide = `prod`) : toute autre valeur arrête le run au chargement de la configuration, alors qu'une coquille valait prod en silence.
