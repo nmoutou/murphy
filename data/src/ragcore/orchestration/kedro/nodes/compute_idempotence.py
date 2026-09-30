@@ -76,7 +76,7 @@ def compute_idempotence_node(
     TOUJOURS), puis applique le curseur ``skip_unconfigured`` — ``True`` retire
     les métadonnées non-configurées du document juste avant qu'il parte vers
     l'ingestion. Compter d'abord, filtrer ensuite : le signal précède le filtre.
-    Le curseur arrive déjà validé par le plan du run (``run_plan.plan_run``).
+    Le curseur arrive déjà validé et arbitré par le plan du run (``run_plan.plan_run``).
     """
     site = _ParseSite(manifest_repo, pipeline_context, telemetry, pipeline_runtime)
     to_process: list[tuple[ParsedDocument, Operation]] = []

@@ -114,7 +114,8 @@ Pour chaque `RawDocument` :
    DILA : elle compte, que la donnée soit ensuite gardée ou retirée.
 3. **Curseur `exportation.skip_unconfigured`** (booléen, validé par `plan_run` en tête de
    run, avant tout nœud) : à `true`, les métadonnées non-configurées sont
-   retirées du document juste avant l'ingestion. On compte d'abord, on filtre ensuite.
+   retirées du document juste avant l'ingestion. Hors `ENVIRONMENT=dev`, le plan force
+   `true`. On compte d'abord, on filtre ensuite.
 4. **Idempotence** : `manifest_repo.last_for_identifier(identifier)` →
    `determine_operation` : identifiant inconnu du manifest = `INSERT`, connu = `UPDATE`.
    Pas de hash de contenu : la présence de l'identifiant décide, et elle seule.

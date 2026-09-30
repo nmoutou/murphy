@@ -123,10 +123,18 @@ def test_un_booleen_mal_type_arrete_le_run_meme_hors_dev(
 
 
 @pytest.mark.parametrize("value", [True, False])
-def test_le_curseur_des_balises_non_configurees_vient_du_yaml(value: bool) -> None:
+def test_le_curseur_des_balises_non_configurees_vient_du_yaml_en_dev(
+    value: bool,
+) -> None:
     params = _with("exportation.skip_unconfigured", value)
 
-    assert plan_run(params, _settings(), {}).skip_unconfigured is value
+    assert plan_run(params, _settings("dev"), {}).skip_unconfigured is value
+
+
+def test_hors_dev_les_balises_non_configurees_sont_toujours_retirees() -> None:
+    params = _with("exportation.skip_unconfigured", False)
+
+    assert plan_run(params, _settings("prod"), {}).skip_unconfigured is True
 
 
 def test_couper_l_embedding_n_a_d_effet_qu_en_dev() -> None:

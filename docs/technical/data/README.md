@@ -40,8 +40,8 @@ chemin absolu, et **lève** s'il est absent (fail-fast, pas de défauts silencie
 Les variables et leur sémantique : voir [reference/configuration.md](reference/configuration.md).
 Points critiques :
 
-- `ENVIRONMENT=dev` est requis pour `nuke_all`, l'interrupteur d'embedding et
-  l'hydratation Neo4j — l'absence de la variable vaut `prod`, donc tout est verrouillé.
+- `ENVIRONMENT=dev` est requis pour `nuke_all`, l'interrupteur d'embedding,
+  l'hydratation Neo4j et l'ingestion des balises non configurées — l'absence de la variable vaut `prod`, donc tout est verrouillé.
 - `EMBEDDING_PROVIDER` : `openai` (TEI) pour un vrai run ; le défaut est `noop`
   (vecteurs **nuls**, hygiène de test uniquement).
 

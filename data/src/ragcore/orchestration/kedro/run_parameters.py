@@ -141,12 +141,18 @@ def resolve_node_labels(params: dict[str, Any]) -> NodeLabels:
     )
 
 
-def resolve_skip_unconfigured(params: dict[str, Any]) -> bool:
-    """Le curseur des balises non configurées — un booléen strict, ou un ARRÊT.
+def resolve_skip_unconfigured(params: dict[str, Any], environment: str) -> bool:
+    """Les métadonnées des balises non configurées sont-elles retirées ? (ADR-022 §1)
 
-    L'environnement n'arbitre rien ici : le curseur vaut en dev comme en prod.
+    Le flag YAML ``exportation.skip_unconfigured`` (obligatoire, validé dans tous les
+    environnements) n'a d'effet qu'en ``dev`` ; partout ailleurs on retire toujours.
+    Même asymétrie que l'embedding : ingérer les balises non configurées est une
+    commodité d'itération sur le modèle de données, et un ``false`` traîné de dev en
+    prod ne doit pas remplir la prod de métadonnées que personne n'a choisies. Le
+    signal ``tag.unconfigured``, lui, est émis dans les deux régimes.
     """
-    return _require_bool(params, "exportation.skip_unconfigured")
+    is_skipped = _require_bool(params, "exportation.skip_unconfigured")
+    return is_skipped or environment != "dev"
 
 
 def resolve_nuke_all(params: dict[str, Any], environment: str) -> bool:

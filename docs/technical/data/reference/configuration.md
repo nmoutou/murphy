@@ -56,7 +56,7 @@ champ manquant, mal typé ou inconnu arrête le run au démarrage.
 
 | Clé | Valeur | Effet |
 |---|---|---|
-| `skip_unconfigured` | `false` | Le sort des balises non-configurées (cadrage « trois portes ») : `false` = la balise entre en metadata sous sa clé chemin-complet ; `true` = retirée du document. Le signal `tag.unconfigured`, lui, est TOUJOURS émis — on compte d'abord, on filtre ensuite. **Obligatoire**, booléen strict (`"false"` est refusé) : clé absente ou mal typée = échec dans le plan du run, avant tout nœud. |
+| `skip_unconfigured` | `false` | Le sort des balises non-configurées (cadrage « trois portes ») : `false` = la balise entre en metadata sous sa clé chemin-complet ; `true` = retirée du document. **Sans effet hors `ENVIRONMENT=dev`** : la balise est toujours retirée (ADR-022 §1, arbitré par le plan du run). Le signal `tag.unconfigured`, lui, est TOUJOURS émis — on compte d'abord, on filtre ensuite. **Obligatoire**, booléen strict (`"false"` est refusé) : clé absente ou mal typée = échec dans le plan du run, avant tout nœud. |
 | `neo4j.include_path` / `include_content` | `true` / `true` | Hydratation des nœuds Neo4j **en dev seulement** (forcés à `false` ailleurs — ADR-022 §2) : chemins des fichiers XML source, texte du document (`_text_content`). **Obligatoire**, booléen strict, validé par le plan du run dans tous les environnements (clé absente ou `"false"` = échec avant tout nœud). |
 | `neo4j.labels.default` / `labels.by_prefix` | `Document` / `LEGIARTI: Article`, `LEGITEXT: Texte`, `LEGISCTA: Section` | Le label d'un nœud Neo4j d'après les 8 lettres de son identifiant ; un préfixe absent de la table reçoit `default`. **Obligatoire** (aucun défaut dans le code) : bloc absent, préfixe qui n'est pas 8 majuscules ou label mal formé = échec au démarrage. S'applique en dev comme en prod. Changer la table sans `nuke_all` laisse l'ancien label sur les nœuds déjà écrits. |
 | `mongodb.database` / `collection` | `LEGIFRANCE` / `chunks` | ⚠️ **Vestige non lu** : les noms réels viennent du `.env` (`MONGODB_DATA_DB_NAME`) et des dépôts (`documents`, `manifest`). |
@@ -86,7 +86,7 @@ service.
 
 | Variable | Défaut | Rôle |
 |---|---|---|
-| `ENVIRONMENT` | `prod` | **Le défaut penche vers le refus** : il garde `nuke_all`, l'interrupteur d'embedding et l'hydratation Neo4j. Un `.env` incomplet est traité comme protégé. |
+| `ENVIRONMENT` | `prod` | **Le défaut penche vers le refus** : il garde `nuke_all`, l'interrupteur d'embedding, l'hydratation Neo4j et l'ingestion des balises non configurées. Un `.env` incomplet est traité comme protégé. |
 | `MONGODB_URI` | `mongodb://localhost:27017` | |
 | `MONGODB_DATA_DB_NAME` | `LEGIFRANCE` | Données : `documents`, `manifest`. |
 | `MONGODB_META_DB_NAME` | `MURPHY_META` | Méta : audit, bilans, pendantes. |
@@ -108,9 +108,9 @@ Comment on **atteint** le modèle — jamais quel modèle (lui est dans `paramet
 | `EMBEDDING_API_KEY` | — | Clé éventuelle (vide = absente — sinon `Bearer` vide et 401 inexpliqué). |
 | `EMBEDDING_BATCH_SIZE` | `32` | Taille de lot du provider. |
 
-## Les trois garde-fous dev/prod
+## Les quatre garde-fous dev/prod
 
-Même asymétrie pour les trois : le YAML propose, l'environnement **arbitre**, et hors
+Même asymétrie pour les quatre : le YAML propose, l'environnement **arbitre**, et hors
 `dev` le comportement sûr gagne quoi que dise le fichier. Les clés sont validées partout,
 avant l'arbitrage : une coquille arrête le run même en prod.
 
@@ -119,3 +119,4 @@ avant l'arbitrage : une coquille arrête le run même en prod.
 | `maintenance.nuke_all` | Efface tout (sauf MURPHY_META) | **Lève** `NukeAllOutsideDevError` dans le plan du run, avant tout nœud |
 | `embedding_runtime.enabled` | Peut couper l'embedding | Ignoré : on embarque toujours |
 | `exportation.neo4j.*` | Hydratation ouverte par défaut | Ignorés : nœud maigre |
+| `exportation.skip_unconfigured` | Peut ingérer les balises non configurées | Ignoré : toujours retirées |

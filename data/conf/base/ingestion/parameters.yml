@@ -80,6 +80,7 @@ embedding_runtime:
 exportation:
   # `true` retire du document les métadonnées des balises non configurées ; le signal
   # `tag.unconfigured` est émis dans les deux cas. Booléen obligatoire.
+  # Hors ENVIRONMENT=dev, ignoré : les métadonnées sont toujours retirées.
   skip_unconfigured: false
 
   neo4j:

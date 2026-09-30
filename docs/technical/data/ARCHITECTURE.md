@@ -98,7 +98,7 @@ Déroulé détaillé nœud par nœud : [reference/pipeline.md](reference/pipelin
 
 5. **Les garde-fous penchent vers le refus.** `ENVIRONMENT` absent vaut `prod`, et hors
    `dev` : `nuke_all` refuse de tourner, l'embedding est toujours calculé (quoi que dise le
-   flag), les nœuds Neo4j restent maigres. Une commodité de dev ne peut pas dégrader une
+   flag), les nœuds Neo4j restent maigres, les balises non configurées ne sont pas ingérées. Une commodité de dev ne peut pas dégrader une
    prod par simple oubli d'une variable.
 
 ## Frontières avec le serving

@@ -58,6 +58,8 @@ Priorité : P1 à P4, puis P18 (qui règle P1, P2, P6 et P12).
 - **Conséquence** : un seul fichier de paramètres, sans surcouche par environnement, donc **la prod ingère les balises non configurées**.
 - **Piste** : arbitrer par `ENVIRONMENT`, comme les autres (voir P11).
 
+> **Traité** : `plan_run` arbitre `skip_unconfigured` par `ENVIRONMENT` : en dev, le YAML décide ; ailleurs, les métadonnées des balises non configurées sont toujours retirées. La clé reste validée dans tous les environnements.
+
 ---
 
 ## B. Paramètres morts

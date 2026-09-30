@@ -51,7 +51,7 @@ class RunPlan:
     """L'interrupteur d'embedding (dev, ADR-023), arbitré par l'environnement."""
     skip_unconfigured: bool
     """Le curseur des balises non configurées : ``True`` retire leurs métadonnées du
-    document. Validé ici, avant tout nœud — une coquille n'attend pas ``nukeAll``."""
+    document. Validé ici, avant tout nœud, et forcé à ``True`` hors ``dev`` (ADR-022)."""
     nuke_all: bool
     """L'effacement de toutes les bases en tête de run. Déjà refusé hors ``dev`` : un
     ``True`` ici n'existe qu'en développement."""
@@ -97,7 +97,7 @@ def plan_run(
         node_hydration=resolve_node_hydration(params, settings.environment),
         node_labels=resolve_node_labels(params),
         embedding_enabled=resolve_embedding_enabled(params, settings.environment),
-        skip_unconfigured=resolve_skip_unconfigured(params),
+        skip_unconfigured=resolve_skip_unconfigured(params, settings.environment),
         nuke_all=resolve_nuke_all(params, settings.environment),
     )
     _log_plan(plan)
