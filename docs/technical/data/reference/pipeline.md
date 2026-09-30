@@ -26,7 +26,7 @@ Le hook est le **point d'assemblage** du run. Dans l'ordre :
    - les sources (`run_parameters.resolve_sources`) : `--params source=…` ou `SOURCE` du
      `.env`, défaut `all` = les six ingérables. Valeur inconnue = échec au démarrage en
      nommant les valides, **avant** qu'aucun client ne soit ouvert ;
-   - l'arbitrage dev/prod : `run_parameters.resolve_dev_settings` applique le bloc `dev`
+   - l'arbitrage dev/prod : `run_parameters.resolve_dev_settings` applique `parameters.yml`
      tel quel en `dev`, et le remplace ailleurs par les valeurs sûres (`nuke_all` coupé,
      embedding calculé, métadonnées non configurées retirées, nœuds Neo4j maigres), avec
      un avertissement au log ;
@@ -71,7 +71,7 @@ Entrées : les quatre dépôts du hook, `nuke_all` (du plan du run).
   avant le pool — la laisser aux workers les mettrait en course (Qdrant répond 409 à tous
   sauf un).
 - `nuke_all: true` → le garde-fou a déjà joué en amont : hors `ENVIRONMENT=dev`, `plan_run`
-  ignore le bloc `dev` et `nuke_all` arrive ici à `false` (l'absence de la variable vaut
+  ignore `parameters.yml` et `nuke_all` arrive ici à `false` (l'absence de la variable vaut
   `prod`). Le nœud n'efface donc qu'en dev :
   - Mongo `LEGIFRANCE` : collections `documents` + `manifest` (et **repose les index**,
     qu'un drop détruit avec la collection) ;
@@ -115,7 +115,7 @@ Pour chaque `RawDocument` :
    `record_unknown("tag.unconfigured", …)` et `record_unknown("root", …)` pour ce que la
    cascade du parser a rangé sans que la table le lui apprenne. C'est la vigie de dérive
    DILA : elle compte, que la donnée soit ensuite gardée ou retirée.
-3. **Curseur `dev.skip_unconfigured`** (booléen, arbitré par `plan_run` en tête de
+3. **Curseur `skip_unconfigured`** (booléen, arbitré par `plan_run` en tête de
    run, avant tout nœud) : à `true`, les métadonnées non-configurées sont
    retirées du document juste avant l'ingestion. Hors `ENVIRONMENT=dev`, le plan impose
    `true`. On compte d'abord, on filtre ensuite.

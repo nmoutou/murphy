@@ -77,7 +77,7 @@ erreur ni trace. D'où :
 
 ## `nuke_all` — le levier disque du développement
 
-`dev.nuke_all: true` + `ENVIRONMENT=dev` (ailleurs, le bloc `dev` est ignoré : rien n'est effacé) :
+`nuke_all: true` + `ENVIRONMENT=dev` (ailleurs, `parameters.yml` est ignoré : rien n'est effacé) :
 
 - efface Mongo `LEGIFRANCE` (`documents` + `manifest`, puis **repose les index**),
   le graphe Neo4j entier, et **toutes** les collections Qdrant (pas seulement

@@ -1,30 +1,27 @@
+# Des commodités de développement, et rien d'autre. IGNORÉ hors ENVIRONMENT=dev : tout le
+# fichier est alors remplacé par les valeurs sûres (rien n'est effacé, l'embedding est
+# calculé, les métadonnées non configurées sont retirées, les nœuds Neo4j restent
+# maigres) et un avertissement le signale au log. Les clés restent obligatoires et
+# validées partout : une coquille arrête le run même en prod.
+#
 # La découpe n'est pas ici : elle vit dans `.env.dev` (CHUNKING_MAX_CHARS,
 # CHUNKING_OVERLAP_CHARS), à côté d'EMBEDDING_MODEL dont elle dépend.
 
-# ============================================================
-# Dev — IGNORÉ hors ENVIRONMENT=dev
-# ============================================================
+# Efface TOUTES les données de TOUTES les bases (sauf la base méta) en tête de run.
+nuke_all: true
 
-# Hors dev, tout le bloc est remplacé par les valeurs sûres (rien n'est effacé,
-# l'embedding est calculé, les métadonnées non configurées sont retirées, les nœuds
-# Neo4j restent maigres) et un avertissement le signale au log. Les clés restent
-# obligatoires et validées partout : une coquille arrête le run même en prod.
-dev:
-  # Efface TOUTES les données de TOUTES les bases (sauf la base méta) en tête de run.
-  nuke_all: true
+# `false` : aucun vecteur calculé ni écrit (ADR-023) ; Mongo et Neo4j normaux. TEI
+# doit quand même tourner : le modèle servi est vérifié au démarrage.
+embedding_enabled: true
 
-  # `false` : aucun vecteur calculé ni écrit (ADR-023) ; Mongo et Neo4j normaux. TEI
-  # doit quand même tourner : le modèle servi est vérifié au démarrage.
-  embedding_enabled: true
+# `true` retire du document les métadonnées des balises non configurées ; le signal
+# `tag.unconfigured` est émis dans les deux cas (ADR-022 §1).
+skip_unconfigured: false
 
-  # `true` retire du document les métadonnées des balises non configurées ; le signal
-  # `tag.unconfigured` est émis dans les deux cas (ADR-022 §1).
-  skip_unconfigured: false
-
-  # Ce que les nœuds Neo4j portent en plus de leurs métadonnées, toujours présentes en
-  # dev (ADR-022 §2) : chemins des fichiers XML source (`source_files`), texte du
-  # document (`_text_content`). L'écriture n'efface aucune propriété : repasser à
-  # `false` sans `nuke_all` laisse celles déjà écrites.
-  node_hydration:
-    include_path: true
-    include_content: true
+# Ce que les nœuds Neo4j portent en plus de leurs métadonnées, toujours présentes en
+# dev (ADR-022 §2) : chemins des fichiers XML source (`source_files`), texte du
+# document (`_text_content`). L'écriture n'efface aucune propriété : repasser à
+# `false` sans `nuke_all` laisse celles déjà écrites.
+node_hydration:
+  include_path: true
+  include_content: true

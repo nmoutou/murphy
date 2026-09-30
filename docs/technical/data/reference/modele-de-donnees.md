@@ -125,7 +125,7 @@ données.
   les décisions. L'écriture ajoute le label sans retirer l'ancien : après un changement
   de table, un nœud déjà écrit porte les deux, même réingéré ; repartir de zéro demande
   `nuke_all`. Un nœud cité dont le document manque porte `Pending`.
-- **Hydratation** (ADR-022 §2) : en prod, nœud **maigre** (`title`, `source`). En dev (et seulement en dev), le bloc `dev.node_hydration` ouvre les vannes : `metadata`
+- **Hydratation** (ADR-022 §2) : en prod, nœud **maigre** (`title`, `source`). En dev (et seulement en dev), `node_hydration` (`parameters.yml`) ouvre les vannes : `metadata`
   en props (clés chemin-complet), `include_path` (les fichiers XML source),
   `include_content` (le texte, prop `_text_content`), les citations. Neo4j est l'outil
   d'inspection de la v0.

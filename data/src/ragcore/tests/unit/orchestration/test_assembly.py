@@ -68,12 +68,10 @@ def settings(tmp_path: Path) -> InfraSettings:
 @pytest.fixture
 def plan(settings: InfraSettings) -> RunPlan:
     params = {
-        "dev": {
-            "nuke_all": False,
-            "embedding_enabled": True,
-            "skip_unconfigured": False,
-            "node_hydration": {"include_path": True, "include_content": True},
-        },
+        "nuke_all": False,
+        "embedding_enabled": True,
+        "skip_unconfigured": False,
+        "node_hydration": {"include_path": True, "include_content": True},
         "source": "cass",
     }
     chunking = ChunkingConfig(max_chars=384, overlap_chars=25)

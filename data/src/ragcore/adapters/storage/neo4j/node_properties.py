@@ -80,7 +80,7 @@ class NodeHydration:
     """Ce qu'un nœud document porte AU-DELÀ de ses deux props de base (ADR-022 §2).
 
     Le défaut est le régime PROD : nœud maigre (``title``, ``source``), rien d'autre.
-    C'est le plan du run qui ouvre les vannes en dev (bloc ``dev.node_hydration`` de
+    C'est le plan du run qui ouvre les vannes en dev (``node_hydration`` de
     ``parameters.yml``), jamais ce module : le défaut penche vers le refus, comme
     ``nuke_all`` et l'interrupteur d'embedding.
 

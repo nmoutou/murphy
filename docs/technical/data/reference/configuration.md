@@ -4,16 +4,17 @@ Deux surfaces :
 
 | Surface | Fichier | Contenu |
 |---|---|---|
-| **Réglages de dev** | `conf/base/parameters.yml` | Le bloc `dev` |
+| **Réglages de dev** | `conf/base/parameters.yml` | Les commodités de développement, ignorées hors `dev` |
 | **Environnement** (`InfraSettings`, `EmbeddingRuntimeSettings`, `ChunkingSettings`) | `.env.dev` à la **racine du dépôt** | Le *où* et le *comment* : bases, secrets, chemins, nom de la collection Qdrant, modèle d'embedding servi par TEI, et la découpe, qui en dépend |
 
 `parameters.yml` illisible = run arrêté, jamais de défauts silencieux. Le fichier est
 validé **en entier** par un modèle strict (`orchestration/kedro/parameters_model.py`),
 avant tout nœud : une clé inconnue, absente ou mal typée arrête le run, et toutes les
-erreurs sont listées ensemble, chacune par son chemin (`` `dev.nuke_all` ``).
-Strict veut dire sans conversion : `"false"` n'est pas un booléen, `"384"` n'est pas un
-entier. Kedro fusionne les `--params` dans les paramètres : le modèle les voit aussi, et
-seul `source` y est accepté (`--params sorce=cass` est refusé).
+erreurs sont listées ensemble, chacune par son chemin (`` `node_hydration.include_path` ``).
+Strict veut dire sans conversion : `"false"` n'est pas un booléen. Kedro fusionne les
+`--params` à la racine des paramètres : le modèle les voit aussi. Seul `source` y est
+accepté, et il est rangé à part avant la validation, parce qu'il vaut aussi en prod
+(`--params sorce=cass` est une clé inconnue).
 
 ## La collection Qdrant : un nom fixe
 
@@ -25,14 +26,12 @@ corpus** (`nuke_all` en dev).
 
 ## `parameters.yml`, champ par champ
 
-Il ne porte plus que le bloc `dev`. Un bloc `chunking` resté d'une ancienne forme est une
-clé inconnue : le run s'arrête (la découpe vit dans l'environnement, voir
-`ChunkingSettings`).
-
-### `dev` — les commodités de développement, ignorées hors `dev`
+Il ne porte que des commodités de développement, à la racine du fichier. Un bloc
+`chunking` ou `dev` resté d'une ancienne forme est une clé inconnue : le run s'arrête (la
+découpe vit dans l'environnement, voir `ChunkingSettings`).
 
 Le YAML propose, l'environnement **arbitre** (`run_parameters.resolve_dev_settings`) :
-en `ENVIRONMENT=dev`, le bloc s'applique tel quel ; ailleurs (l'absence de la variable
+en `ENVIRONMENT=dev`, le fichier s'applique tel quel ; ailleurs (l'absence de la variable
 vaut `prod`), il est **remplacé en entier** par les valeurs sûres, et le plan du run
 journalise un avertissement. Les clés restent obligatoires et validées partout : une
 coquille arrête le run même en prod.
@@ -65,7 +64,7 @@ service.
 
 | Variable | Défaut | Rôle |
 |---|---|---|
-| `ENVIRONMENT` | `prod` | `dev` ou `prod` (ADR-043). **Le défaut penche vers le refus** : seul `dev` applique le bloc `dev` de `parameters.yml` (`nuke_all`, interrupteur d'embedding, balises non configurées, hydratation Neo4j). Absente ou vide, la variable vaut `prod` : un `.env` incomplet est traité comme protégé. Toute autre valeur (`Dev`, `development`…) arrête le run au chargement de la configuration, avant tout nœud. |
+| `ENVIRONMENT` | `prod` | `dev` ou `prod` (ADR-043). **Le défaut penche vers le refus** : seul `dev` applique `parameters.yml` (`nuke_all`, interrupteur d'embedding, balises non configurées, hydratation Neo4j). Absente ou vide, la variable vaut `prod` : un `.env` incomplet est traité comme protégé. Toute autre valeur (`Dev`, `development`…) arrête le run au chargement de la configuration, avant tout nœud. |
 | `MONGODB_URI` | `mongodb://localhost:27017` | |
 | `MONGODB_DATA_DB_NAME` | `LEGIFRANCE` | Données : `documents`, `manifest`. |
 | `MONGODB_META_DB_NAME` | `MURPHY_META` | Méta : audit, bilans, pendantes. |

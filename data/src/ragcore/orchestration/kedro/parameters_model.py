@@ -2,8 +2,8 @@
 
 C'est le seul endroit du dépôt qui connaisse la forme du YAML. Une clé inconnue,
 absente ou mal typée arrête le run avant tout nœud, et toutes les erreurs sont listées
-ensemble. Strict veut dire sans conversion : ``"false"`` n'est pas un booléen, ``"384"``
-n'est pas un entier.
+ensemble, chacune par son chemin dans le fichier. Strict veut dire sans conversion :
+``"false"`` n'est pas un booléen.
 """
 
 from __future__ import annotations
@@ -15,12 +15,14 @@ from pydantic_core import ErrorDetails
 
 __all__ = [
     "DevParameters",
-    "IngestionParameters",
     "NodeHydrationParameters",
+    "RunParameters",
     "validate_parameters",
 ]
 
 _MISSING_ERROR_TYPE = "missing"
+_SOURCE_KEY = "source"
+_DEV_FIELD = "dev"
 
 
 class _StrictParameters(BaseModel):
@@ -35,8 +37,9 @@ class NodeHydrationParameters(_StrictParameters):
 
 
 class DevParameters(_StrictParameters):
-    """Les commodités de dev. Hors ``dev``, tout le bloc est remplacé par les valeurs
-    sûres (``run_parameters.resolve_dev_settings``) ; il est validé partout."""
+    """Tout ``parameters.yml`` : des commodités de dev. Hors ``dev``, le fichier entier
+    est remplacé par les valeurs sûres (``run_parameters.resolve_dev_settings``) ; il
+    est validé partout."""
 
     nuke_all: bool
     embedding_enabled: bool
@@ -44,23 +47,28 @@ class DevParameters(_StrictParameters):
     node_hydration: NodeHydrationParameters
 
 
-class IngestionParameters(_StrictParameters):
-    """Tout ``parameters.yml``, plus les ``--params`` de la ligne de commande.
+class RunParameters(_StrictParameters):
+    """``parameters.yml`` plus les ``--params`` de la ligne de commande.
 
-    La découpe n'y est plus : elle vit dans l'environnement, à côté du modèle
-    d'embedding (``ChunkingSettings``). Un bloc ``chunking`` est une clé inconnue."""
+    Kedro fusionne les ``--params`` à la racine, avec les clés du fichier. ``source``
+    n'est pas une commodité de dev : elle vaut en prod aussi, donc elle est rangée à
+    part, et le reste passe sous ``dev`` (``validate_parameters``). Une faute
+    (``sorce=cass``) est une clé inconnue du fichier."""
 
     dev: DevParameters
     source: str | None = None
-    """``--params source=cass``. Kedro fusionne les ``--params`` dans les paramètres :
-    ils arrivent ici avec le YAML, et une faute (``sorce=cass``) est une clé inconnue.
-    ``None`` : pas de ``--params source``, le run prend ``SOURCE`` du ``.env``."""
+    """``--params source=cass``. ``None`` : pas de ``--params source``, le run prend
+    ``SOURCE`` du ``.env``."""
 
 
-def validate_parameters(params: dict[str, Any]) -> IngestionParameters:
+def validate_parameters(params: dict[str, Any]) -> RunParameters:
     """Les paramètres du run, typés — ou un ARRÊT qui liste toutes les erreurs."""
+    dev_params = {key: value for key, value in params.items() if key != _SOURCE_KEY}
+    run_params = {_DEV_FIELD: dev_params}
+    if _SOURCE_KEY in params:
+        run_params[_SOURCE_KEY] = params[_SOURCE_KEY]
     try:
-        return IngestionParameters.model_validate(params)
+        return RunParameters.model_validate(run_params)
     except ValidationError as exc:
         details = "\n".join(_describe(error) for error in exc.errors())
         raise ValueError(
@@ -69,7 +77,11 @@ def validate_parameters(params: dict[str, Any]) -> IngestionParameters:
 
 
 def _describe(error: ErrorDetails) -> str:
-    path = ".".join(str(part) for part in error["loc"])
+    """L'erreur au chemin du fichier : ``dev`` est une rangée du modèle, pas une clé."""
+    loc = error["loc"]
+    if loc[:1] == (_DEV_FIELD,):
+        loc = loc[1:]
+    path = ".".join(str(part) for part in loc)
     line = f"- `{path}` : {error['msg']}"
     if error["type"] == _MISSING_ERROR_TYPE:
         return line

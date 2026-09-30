@@ -77,8 +77,8 @@ def plan_run(
     ``params`` contient déjà les ``--params`` de la ligne de commande : Kedro les
     fusionne dans les paramètres. Un ``parameters.yml`` invalide ou une source inconnue
     (``--params source=cas``) échoue ici, avant qu'aucun client ne soit ouvert. Hors
-    ``dev``, le bloc ``dev`` est remplacé par les valeurs sûres, et un avertissement le
-    signale.
+    ``dev``, ``parameters.yml`` est remplacé par les valeurs sûres, et un avertissement
+    le signale.
     """
     parameters = validate_parameters(params)
     is_dev = settings.environment == DEV_ENVIRONMENT
@@ -120,7 +120,7 @@ def _node_hydration(hydration: NodeHydrationParameters, is_dev: bool) -> NodeHyd
 
 def _warn_dev_ignored(environment: Environment) -> None:
     logger.warning(
-        "ENVIRONMENT=%s : le bloc `dev` de parameters.yml est ignoré. Rien n'est "
+        "ENVIRONMENT=%s : parameters.yml est ignoré. Rien n'est "
         "effacé, l'embedding est calculé, les métadonnées des balises non configurées "
         "sont retirées et les nœuds Neo4j restent maigres.",
         environment,

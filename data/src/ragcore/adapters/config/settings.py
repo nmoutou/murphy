@@ -2,7 +2,7 @@
 
 Les bases, les secrets, les chemins : le *où* du pipeline. S'y ajoutent le modèle
 d'embedding et la découpe, qui changent ensemble : ``max_chars`` est mesuré pour la
-fenêtre du modèle. ``conf/base/parameters.yml`` ne garde que le bloc ``dev``.
+fenêtre du modèle. ``conf/base/parameters.yml`` ne garde que les réglages de dev.
 
 La forme de ces modèles est **dictée par ses appelants**. ``orchestration/kedro/stores.py`` appelle
 ``.get_secret_value()`` sur le mot de passe Neo4j et la clé Qdrant : ce sont donc des
@@ -96,9 +96,9 @@ class InfraSettings(BaseSettings):
     """L'environnement d'exécution, `dev` ou `prod`. **Le défaut est `prod`, et c'est
     délibéré.**
 
-    Il ne sert qu'à *une* chose : ouvrir le bloc `dev` de `parameters.yml` (voir
+    Il ne sert qu'à *une* chose : appliquer `parameters.yml` (voir
     `run_parameters.resolve_dev_settings`), dont `nuke_all`, qui efface TOUTES les
-    données de TOUTES les bases. Hors `dev`, le bloc est ignoré.
+    données de TOUTES les bases. Hors `dev`, le fichier est ignoré.
 
     Le défaut penche vers le refus, pas vers l'autorisation : un `.env` sans
     `ENVIRONMENT` est traité comme de la prod, donc protégé. Un garde-fou dont le
@@ -106,8 +106,8 @@ class InfraSettings(BaseSettings):
     pour vider une prod. On rend l'effacement accidentel impossible, pas déconseillé.
 
     Toute autre valeur (`Dev`, `development`…) arrête le run au chargement de la
-    configuration, avant tout nœud : une coquille valait prod en silence, et le bloc
-    `dev` était ignoré sans que rien ne s'arrête. Vide, la variable vaut absente."""
+    configuration, avant tout nœud : une coquille valait prod en silence, et
+    `parameters.yml` était ignoré sans que rien ne s'arrête. Vide, la variable vaut absente."""
 
     mongodb_uri: str = "mongodb://localhost:27017"
     mongodb_data_db_name: str = "LEGIFRANCE"

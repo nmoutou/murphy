@@ -28,7 +28,7 @@ __all__ = [
 ]
 
 DEV_ENVIRONMENT: Environment = "dev"
-"""La seule valeur d'``ENVIRONMENT`` qui ouvre le bloc ``dev`` de ``parameters.yml``."""
+"""La seule valeur d'``ENVIRONMENT`` qui applique ``parameters.yml``."""
 
 SAFE_DEV_SETTINGS = DevParameters(
     nuke_all=False,
@@ -36,8 +36,9 @@ SAFE_DEV_SETTINGS = DevParameters(
     skip_unconfigured=True,
     node_hydration=NodeHydrationParameters(include_path=False, include_content=False),
 )
-"""Le bloc ``dev`` tel qu'il s'applique hors ``dev`` : rien n'est effacé, l'embedding
-est calculé, les métadonnées non configurées sont retirées, les nœuds restent maigres."""
+"""``parameters.yml`` tel qu'il s'applique hors ``dev`` : rien n'est effacé,
+l'embedding est calculé, les métadonnées non configurées sont retirées, les nœuds
+restent maigres."""
 
 
 def load_parameters(catalog: DataCatalog) -> dict[str, Any]:
@@ -56,17 +57,17 @@ def load_parameters(catalog: DataCatalog) -> dict[str, Any]:
     except DatasetError as exc:
         raise RuntimeError(
             "Impossible de charger `parameters.yml` : le run est interrompu. Il n'y a "
-            "pas de réglages par défaut pour la découpe ni pour l'embedding."
+            "pas de réglages de dev par défaut."
         ) from exc
     return params
 
 
 def resolve_dev_settings(dev: DevParameters, environment: Environment) -> DevParameters:
-    """Le bloc ``dev`` effectif : celui du YAML en ``dev``, les valeurs sûres ailleurs.
+    """Les réglages de dev effectifs : le YAML en ``dev``, les valeurs sûres ailleurs.
 
     L'environnement PRIME, et le défaut penche vers le refus : l'absence
     d'``ENVIRONMENT`` vaut ``prod`` (voir ``InfraSettings.environment``). Chaque clé du
-    bloc est une commodité de développement : effacer toutes les bases, couper
+    fichier est une commodité de développement : effacer toutes les bases, couper
     l'embedding (ADR-023), ingérer les métadonnées des balises non configurées ou
     hydrater les nœuds Neo4j (ADR-022). Un ``parameters.yml`` traîné de dev en prod ne
     doit pouvoir ni effacer une base, ni produire une collection vide, ni écrire sur

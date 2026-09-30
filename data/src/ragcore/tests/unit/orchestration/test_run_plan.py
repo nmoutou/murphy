@@ -21,21 +21,19 @@ CHUNKING = ChunkingConfig(max_chars=384, overlap_chars=25)
 """La découpe, lue de l'environnement par ``ChunkingSettings``, hors de ces tests."""
 
 PARAMS: dict[str, Any] = {
-    "dev": {
-        "nuke_all": False,
-        "embedding_enabled": True,
-        "skip_unconfigured": False,
-        "node_hydration": {"include_path": True, "include_content": True},
-    },
+    "nuke_all": False,
+    "embedding_enabled": True,
+    "skip_unconfigured": False,
+    "node_hydration": {"include_path": True, "include_content": True},
 }
 """Les clés de `parameters.yml` sans défaut dans le code."""
 
 BOOLEAN_PATHS = [
-    "dev.nuke_all",
-    "dev.embedding_enabled",
-    "dev.skip_unconfigured",
-    "dev.node_hydration.include_path",
-    "dev.node_hydration.include_content",
+    "nuke_all",
+    "embedding_enabled",
+    "skip_unconfigured",
+    "node_hydration.include_path",
+    "node_hydration.include_content",
 ]
 """Les booléens du YAML : stricts, obligatoires, validés dans tous les environnements."""
 
@@ -45,7 +43,7 @@ RISKIEST_DEV: dict[str, Any] = {
     "skip_unconfigured": False,
     "node_hydration": {"include_path": True, "include_content": True},
 }
-"""Le bloc `dev` réglé au plus risqué pour une prod."""
+"""`parameters.yml` réglé au plus risqué pour une prod."""
 
 SHIPPED_PARAMETERS = Path(__file__).parents[5] / "conf/base/parameters.yml"
 """Le `parameters.yml` livré, celui que lit `kedro run`."""
@@ -120,8 +118,8 @@ def test_un_booleen_mal_type_arrete_le_run_meme_hors_dev(
         plan_run(_with(path, value), _settings("prod"), CHUNKING)
 
 
-def test_en_dev_le_bloc_dev_s_applique_tel_quel() -> None:
-    plan = plan_run(_with("dev", RISKIEST_DEV), _settings("dev"), CHUNKING)
+def test_en_dev_le_fichier_s_applique_tel_quel() -> None:
+    plan = plan_run(RISKIEST_DEV, _settings("dev"), CHUNKING)
 
     assert plan.nuke_all is True
     assert plan.embedding_enabled is False
@@ -132,16 +130,16 @@ def test_en_dev_le_bloc_dev_s_applique_tel_quel() -> None:
 
 
 def test_l_hydratation_neo4j_vient_du_yaml_en_dev() -> None:
-    params = _with("dev.node_hydration.include_path", False)
+    params = _with("node_hydration.include_path", False)
 
     hydration = plan_run(params, _settings("dev"), CHUNKING).node_hydration
 
     assert (hydration.include_path, hydration.include_content) == (False, True)
 
 
-def test_hors_dev_le_bloc_dev_est_ignore() -> None:
-    """Même réglé au plus risqué, le bloc `dev` ne touche pas une prod."""
-    plan = plan_run(_with("dev", RISKIEST_DEV), _settings("prod"), CHUNKING)
+def test_hors_dev_le_fichier_est_ignore() -> None:
+    """Même réglé au plus risqué, `parameters.yml` ne touche pas une prod."""
+    plan = plan_run(RISKIEST_DEV, _settings("prod"), CHUNKING)
 
     assert plan.nuke_all is SAFE_DEV_SETTINGS.nuke_all is False
     assert plan.embedding_enabled is True
@@ -149,16 +147,16 @@ def test_hors_dev_le_bloc_dev_est_ignore() -> None:
     assert plan.node_hydration == NodeHydration()
 
 
-def test_hors_dev_un_avertissement_signale_le_bloc_ignore(
+def test_hors_dev_un_avertissement_signale_le_fichier_ignore(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
     with caplog.at_level(logging.WARNING):
         plan_run(PARAMS, _settings("prod"), CHUNKING)
 
-    assert "le bloc `dev` de parameters.yml est ignoré" in caplog.text
+    assert "parameters.yml est ignoré" in caplog.text
 
 
-def test_en_dev_aucun_avertissement_de_bloc_ignore(
+def test_en_dev_aucun_avertissement_de_fichier_ignore(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
     with caplog.at_level(logging.WARNING):
@@ -175,9 +173,7 @@ def test_les_labels_neo4j_viennent_des_sources() -> None:
     assert labels.known == ("Document", "Article", "Texte", "Section")
 
 
-@pytest.mark.parametrize(
-    "path", ["nlp", "dev.node_hydration.include_pth", "dev.nuke_al"]
-)
+@pytest.mark.parametrize("path", ["nlp", "node_hydration.include_pth", "nuke_al"])
 def test_une_cle_inconnue_arrete_le_run(path: str) -> None:
     """Une clé morte ou mal orthographiée ne passe plus en silence, à aucun niveau."""
     with pytest.raises(ValueError, match=_path(path)):
@@ -193,15 +189,35 @@ def test_une_cle_inconnue_arrete_le_run(path: str) -> None:
         "embedding",
         "node_labels",
         "chunking",
+        "dev",
     ],
 )
 def test_l_ancienne_forme_est_refusee(block: str) -> None:
     """Un `parameters.yml` resté à une ancienne forme arrête le run. Le bloc `embedding`
     est parti dans l'environnement : `EMBEDDING_MODEL`, et une dimension mesurée ; le
     bloc `chunking` aussi, à côté du modèle (`CHUNKING_*`) ; le bloc `node_labels` dans
-    le registre des sources."""
+    le registre des sources. Le bloc `dev` est devenu le fichier entier."""
     with pytest.raises(ValueError, match=_path(block)):
         plan_run(_with(block, {}), _settings(), CHUNKING)
+
+
+def test_une_source_mal_typee_est_signalee_a_son_chemin() -> None:
+    """``source`` est rangée à part, mais son erreur est listée avec celles du fichier."""
+    params = _with("source", 3)
+    del params["nuke_all"]
+
+    with pytest.raises(ValueError) as raised:
+        plan_run(params, _settings(), CHUNKING)
+
+    assert "`source`" in str(raised.value)
+    assert "`nuke_all`" in str(raised.value)
+
+
+def test_hors_dev_la_source_s_applique() -> None:
+    """``source`` n'est pas une commodité de dev : la prod la respecte."""
+    plan = plan_run(_with("source", "cass"), _settings("prod"), CHUNKING)
+
+    assert plan.sources == (SourceName.CASS,)
 
 
 def test_un_params_mal_orthographie_arrete_le_run() -> None:
@@ -212,14 +228,14 @@ def test_un_params_mal_orthographie_arrete_le_run() -> None:
 
 
 def test_toutes_les_erreurs_sont_signalees_ensemble() -> None:
-    params = _without("dev.skip_unconfigured")
-    params["dev"]["nuke_all"] = "false"
+    params = _with("nuke_all", "false")
+    del params["skip_unconfigured"]
 
     with pytest.raises(ValueError) as raised:
         plan_run(params, _settings(), CHUNKING)
 
-    assert "`dev.nuke_all`" in str(raised.value)
-    assert "`dev.skip_unconfigured`" in str(raised.value)
+    assert "`nuke_all`" in str(raised.value)
+    assert "`skip_unconfigured`" in str(raised.value)
 
 
 def test_le_parameters_yml_livre_est_valide() -> None:

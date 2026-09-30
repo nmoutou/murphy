@@ -112,7 +112,7 @@ Une balise absente de la table est **routée**, pas jetée :
 - sinon → **métadonnée**, sous sa clé chemin-complet.
 
 Dans les deux cas, le signal `tag.unconfigured` est déclaré au site de parse
-(`computeIdempotence`), et le curseur `dev.skip_unconfigured` (booléen, validé en
+(`computeIdempotence`), et le curseur `skip_unconfigured` (booléen, validé en
 tête de run, sans effet hors `ENVIRONMENT=dev` où la métadonnée est toujours retirée)
 décide ensuite du sort de la métadonnée — le signal survit toujours au filtre.
 

@@ -1,6 +1,6 @@
 # ADR-043 — Configuration de l'ingestion : un fichier, un bloc `dev`, `ENVIRONMENT` seul arbitre
 
-**Statut** : ✅ Accepté (30 septembre 2026) — amende ADR-022 §5-§6, ADR-023 et ADR-042 §3 · **§4 amendé le 30 septembre 2026** (labels Neo4j déclarés par les sources ; découpe dans l'environnement)
+**Statut** : ✅ Accepté (30 septembre 2026) — amende ADR-022 §5-§6, ADR-023 et ADR-042 §3 · **§3 et §4 amendés le 30 septembre 2026** (labels Neo4j déclarés par les sources ; découpe dans l'environnement ; bloc `dev` aplati)
 
 ## Contexte
 
@@ -40,6 +40,16 @@ s'applique tel quel ; en `prod`, il est remplacé par des valeurs sûres
 balises non configurées sont retirées, les nœuds Neo4j restent maigres) et un
 avertissement le signale au log. Ses clés sont obligatoires et validées dans les deux
 environnements : une coquille arrête le run même en prod.
+
+> **Amendement (30 septembre 2026)** : depuis que `chunking` est parti dans
+> l'environnement (§4), le bloc `dev` était tout le fichier. Il est aplati : ses clés
+> sont à la racine de `parameters.yml` (`nuke_all`, `embedding_enabled`,
+> `skip_unconfigured`, `node_hydration`), et c'est le fichier entier qui s'applique en
+> `dev` et qu'on remplace par `SAFE_DEV_SETTINGS` en `prod`. Une clé `dev` est une clé
+> inconnue. Les `--params` arrivent à la même racine : `source`, qui vaut aussi en prod,
+> est rangé à part avant la validation (`parameters_model.validate_parameters`), et ses
+> erreurs sont listées avec celles du fichier. Un réglage qui vaudrait partout ne peut
+> plus aller dans ce fichier : il va dans l'environnement ou dans le code.
 
 **4. Ce qui vaut partout est hors du bloc** : `chunking`.
 
@@ -87,7 +97,8 @@ environnements : une coquille arrête le run même en prod.
 
 **ADR-023.**
 
-- L'interrupteur s'appelle `dev.embedding_enabled`. Il n'a d'effet qu'en `dev` : la prod
+- L'interrupteur s'appelle `dev.embedding_enabled` (`embedding_enabled` depuis l'amendement
+  de §3). Il n'a d'effet qu'en `dev` : la prod
   calcule toujours l'embedding.
 - Il est le seul : `EMBEDDING_PROVIDER` et son fournisseur `noop`, qui écrivait par défaut
   des vecteurs nuls, ont disparu. TEI est le seul embedder.
@@ -105,7 +116,8 @@ environnements : une coquille arrête le run même en prod.
 ## Conséquences
 
 - Il n'y a pas de surcouche de valeurs pour la prod. Un réglage qui doit différer entre
-  les deux environnements va dans le bloc `dev`, avec sa valeur sûre dans
+  les deux environnements va dans le bloc `dev` (depuis l'amendement de §3 : dans
+  `parameters.yml`), avec sa valeur sûre dans
   `SAFE_DEV_SETTINGS`, ou dans l'environnement (`.env.dev`).
 - Un troisième environnement (staging, recette) demande d'amender cet ADR : aujourd'hui,
   il est `prod`.
