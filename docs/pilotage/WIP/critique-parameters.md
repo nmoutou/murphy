@@ -203,6 +203,8 @@ Depuis P18, `embedding_runtime` ne contient plus que `enabled` : le timeout et l
 
 Depuis P4 et P11, la clé est `dev.skip_unconfigured` : la proposition `unconfigured_tags` est à revoir. `include_path` et `include_content` sont désormais sous `dev.node_hydration`.
 
+> **Traité — non retenu** : la critique a été lue et jugée nulle et non avenue. Les noms restent en l'état.
+
 ### P17. Commentaires décalés
 
 - « À NE PAS activer en prod » : `nuke_all` est de toute façon refusé hors dev. Le commentaire devrait décrire ce refus. **Traité** (P2), puis P11 : hors dev, le bloc `dev` entier est ignoré, et son commentaire d'en-tête le dit.
