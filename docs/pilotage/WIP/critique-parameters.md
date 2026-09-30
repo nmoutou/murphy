@@ -1,4 +1,6 @@
-# Critique de `data/conf/base/ingestion/parameters.yml`
+# Critique de `data/conf/base/parameters.yml`
+
+> Le fichier était `data/conf/base/ingestion/parameters.yml` jusqu'à P7.
 
 Rédigée le 2026-09-30. Elle porte sur le fichier, sur le code qui le lit et sur les ADR 022, 023, 026 et 042.
 Chemins relatifs à `data/`.
@@ -99,6 +101,8 @@ Priorité : P1 à P4, puis P18 (qui règle P1, P2, P6 et P12).
 - `ingestion/` est un vestige de la partition d'ADR-026. ADR-042 a supprimé `workflow/` sans défaire la partition.
 - Tout `data/` est de l'ingestion : ce nom ne distingue rien.
 - **Piste** : `conf/base/parameters.yml`.
+
+> **Traité** : le fichier est à la racine, `conf/base/parameters.yml`, et le dossier `ingestion/` a disparu. Kedro cherche `parameters*` à la racine de `conf/base/` par défaut : aucune configuration à changer.
 
 ### P8. Des « phases » sans rapport avec le pipeline
 

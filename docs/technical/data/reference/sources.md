@@ -159,7 +159,7 @@ concurrentes : on ne coupe jamais à travers un bloc structurel, et on ne dépas
   jamais : deux blocs au texte identique reçoivent des offsets différents. Si l'invariant
   du parser est rompu (section non littérale), le bloc est ignoré plutôt que doté d'un
   offset faux.
-- Le calibrage vit dans `conf/base/ingestion/parameters.yml` — voir
+- Le calibrage vit dans `conf/base/parameters.yml` — voir
   [configuration.md](configuration.md#chunking-et-embedding--ce-qui-décide-des-vecteurs)
   pour le raisonnement mesuré derrière `chunking.size: 384`.
 

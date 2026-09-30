@@ -4,7 +4,7 @@ Deux surfaces :
 
 | Surface | Fichier | Contenu |
 |---|---|---|
-| **Réglages du pipeline** | `conf/base/ingestion/parameters.yml` | Découpe, modèle d'embedding, exportation, maintenance |
+| **Réglages du pipeline** | `conf/base/parameters.yml` | Découpe, modèle d'embedding, exportation, maintenance |
 | **Infra** (`InfraSettings`, `EmbeddingRuntimeSettings`) | `.env.dev` à la **racine du dépôt** | Le *où* et le *comment* : bases, secrets, chemins, nom de la collection Qdrant |
 
 `parameters.yml` illisible = run arrêté, jamais de défauts silencieux. Le fichier est

@@ -40,7 +40,7 @@ BOOLEAN_PATHS = [
 ]
 """Les booléens du YAML : stricts, obligatoires, validés dans tous les environnements."""
 
-SHIPPED_PARAMETERS = Path(__file__).parents[5] / "conf/base/ingestion/parameters.yml"
+SHIPPED_PARAMETERS = Path(__file__).parents[5] / "conf/base/parameters.yml"
 """Le `parameters.yml` livré, celui que lit `kedro run`."""
 
 

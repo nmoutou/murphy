@@ -53,5 +53,5 @@ async def assert_service_serves_model(base_url: str, expected_model: str) -> Non
             f"« {served} » dans une collection que le backend interroge avec "
             f"« {expected_model} », sans que rien ne le signale. Aligner EMBEDDING_MODEL "
             f"(.env.dev, à la racine) et embedding.model_name "
-            f"(conf/base/ingestion/parameters.yml)."
+            f"(conf/base/parameters.yml)."
         )

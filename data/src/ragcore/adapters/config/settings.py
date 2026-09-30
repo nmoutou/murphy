@@ -1,7 +1,7 @@
 """``InfraSettings`` — lue de l'environnement, jamais du dépôt.
 
 Les bases, les secrets, les chemins : le *où* du pipeline. Les réglages du traitement
-(découpe, modèle d'embedding) vivent dans ``conf/base/ingestion/parameters.yml``.
+(découpe, modèle d'embedding) vivent dans ``conf/base/parameters.yml``.
 
 La forme de ces modèles est **dictée par ses appelants**. ``orchestration/kedro/stores.py`` appelle
 ``.get_secret_value()`` sur le mot de passe Neo4j et la clé Qdrant : ce sont donc des
