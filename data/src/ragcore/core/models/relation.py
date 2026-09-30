@@ -4,7 +4,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from .document import SCHEMA_VERSION
 from .enums import SourceName
-from .identifiers import OwnerId, SourceIdentifier
+from .identifiers import Identifier, OwnerId
 from .verbs import ValidatedVerb
 
 
@@ -14,8 +14,8 @@ class Relation(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     schema_version: int = SCHEMA_VERSION
-    source_identifier: SourceIdentifier  # document source de la relation
-    target_identifier: SourceIdentifier  # document cible de la relation
+    source_identifier: Identifier  # document source de la relation
+    target_identifier: Identifier  # document cible de la relation
 
     relation_type: ValidatedVerb
     """Le verbe de l'arête — une chaîne validée, plus un membre d'enum.

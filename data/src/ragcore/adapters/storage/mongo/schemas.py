@@ -4,8 +4,8 @@ from ragcore.adapters.storage.mongo.client import MongoDatabase
 
 _DATA_INDEXES: dict[str, list[IndexModel]] = {
     "documents": [
-        # `identifier` est la chaîne sérialisée `{kind}:{raw}` (cf.
-        # MongoDocumentRepository), pas un sous-document : indexer
+        # `identifier` est la chaîne sérialisée (cf. MongoDocumentRepository),
+        # pas un sous-document : indexer
         # `identifier.raw` indexerait `null` pour tout le monde.
         IndexModel(
             [("identifier", ASCENDING), ("owner_id", ASCENDING)],

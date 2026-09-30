@@ -68,7 +68,8 @@ def settings(tmp_path: Path) -> InfraSettings:
 
 @pytest.fixture
 def plan(settings: InfraSettings) -> RunPlan:
-    return plan_run({}, settings, {"runtime_params": {"source": "cass"}})
+    params = {"exportation": {"neo4j": {"labels": {"default": "Document"}}}}
+    return plan_run(params, settings, {"runtime_params": {"source": "cass"}})
 
 
 @pytest.fixture

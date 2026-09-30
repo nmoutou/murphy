@@ -28,7 +28,10 @@ Le hook est le **point d'assemblage** du run. Dans l'ordre :
    - l'`owner_id` (`--params owner_id=…` prime sur `OWNER_ID`) ;
    - les arbitrages dev/prod : `run_parameters.resolve_embedding_enabled` (ADR-023 — le
      flag YAML n'a d'effet qu'en `dev`) et `run_parameters.resolve_node_hydration`
-     (ADR-022 — nœuds Neo4j maigres hors `dev`).
+     (ADR-022 — nœuds Neo4j maigres hors `dev`) ;
+   - les labels des nœuds Neo4j (`run_parameters.resolve_node_labels`) : la table
+     `exportation.neo4j.labels`, sans défaut dans le code. Bloc absent ou label mal
+     formé = échec au démarrage ;
 4. **L'embedder** (`assembly.prepare_embedder`), une seule branche sur le provider :
    - `openai` : précondition TEI d'abord. `assert_service_serves_model` interroge
      `GET /info` du service et compare au modèle du workflow. TEI ignore le champ `model`
@@ -110,7 +113,7 @@ Entrées : `raw_documents`, `parser`, `manifest_repo`, contexte, télémétrie (
 Pour chaque `RawDocument` :
 
 1. **Parse** (`parser.parse(raw)` → `ParseResult`). Deux familles d'échec, distinguées :
-   - `ValidationError` (lisible mais irrecevable : ELI absent/mal formé) → événement
+   - `ValidationError` (lisible mais irrecevable : identifiant absent/mal formé) → événement
      `document.invalidated` (`reason=validation_error`) + entrée manifest `EXCLUDED`
      (identifier `None`, `source_path` + `reason` obligatoires) ;
    - toute autre exception (illisible) → idem avec `reason=parse_error`.

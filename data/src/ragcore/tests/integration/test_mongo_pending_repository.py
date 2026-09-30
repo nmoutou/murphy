@@ -39,8 +39,8 @@ def _pending(
 ) -> PendingRelation:
     return PendingRelation(
         owner_id=owner,
-        source_id=f"eli:{source}",
-        target_id=f"eli:{target}",
+        source_id=source,
+        target_id=target,
         relation_type=CITES,
         source=SourceName.LEGI,
         metadata={},
@@ -97,7 +97,7 @@ async def test_first_seen_run_never_moves_but_last_seen_does(repo) -> None:
     await repo.upsert_many([_pending("A", "B", "run-1")])
     await repo.upsert_many([_pending("A", "B", "run-2")])
 
-    stored = await repo.promotable_for({"eli:B"}, OWNER)
+    stored = await repo.promotable_for({"B"}, OWNER)
 
     assert len(stored) == 1
     assert stored[0].first_seen_run == "run-1"
@@ -131,17 +131,17 @@ async def test_the_replay_is_bounded_by_the_delta_not_the_backlog(repo) -> None:
         ]
     )
 
-    promotable = await repo.promotable_for({"eli:D"}, OWNER)
+    promotable = await repo.promotable_for({"D"}, OWNER)
 
     assert len(promotable) == 1
-    assert promotable[0].target_id == "eli:D"
+    assert promotable[0].target_id == "D"
     assert await repo.count_for_owner(OWNER) == 3  # rien n'a été retiré
 
 
 async def test_a_promoted_pending_leaves_the_backlog(repo) -> None:
     await repo.upsert_many([_pending("A", "B", "run-1"), _pending("C", "D", "run-1")])
 
-    promotable = await repo.promotable_for({"eli:B"}, OWNER)
+    promotable = await repo.promotable_for({"B"}, OWNER)
     await repo.delete_many([p.key for p in promotable])
 
     assert await repo.count_for_owner(OWNER) == 1
@@ -160,7 +160,7 @@ async def test_owner_id_is_in_the_key_without_exception(repo) -> None:
     assert await repo.count_for_owner(OWNER) == 1
     assert await repo.count_for_owner(OTHER_OWNER) == 1
 
-    promotable = await repo.promotable_for({"eli:B"}, OWNER)
+    promotable = await repo.promotable_for({"B"}, OWNER)
     await repo.delete_many([p.key for p in promotable])
 
     assert await repo.count_for_owner(OWNER) == 0

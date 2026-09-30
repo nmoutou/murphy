@@ -10,7 +10,7 @@ from qdrant_client.models import PointStruct
 
 from ragcore.adapters.storage.qdrant.vector_repository import QdrantVectorRepository
 from ragcore.core.models.chunk import Chunk, EmbeddedChunk
-from ragcore.core.models.identifiers import ELI, OwnerId
+from ragcore.core.models.identifiers import Identifier, OwnerId
 
 DIM = 4
 
@@ -29,7 +29,7 @@ def _embedded(metadata: dict[str, Any]) -> EmbeddedChunk:
     return EmbeddedChunk(
         chunk=Chunk(
             chunk_id="LEGIARTI000033972545_0001",
-            parent_identifier=ELI(raw="LEGIARTI000033972545"),
+            parent_identifier=Identifier(raw="LEGIARTI000033972545"),
             owner_id=OwnerId("default"),
             ordinal=1,
             text="passage",
@@ -59,7 +59,7 @@ async def test_the_payload_carries_the_serving_contract() -> None:
     payload = await _payload_of(_embedded({"type_document": "article"}))
 
     assert payload["chunk_id"] == "LEGIARTI000033972545_0001"
-    assert payload["identifier"] == ELI(raw="LEGIARTI000033972545").serialize()
+    assert payload["identifier"] == Identifier(raw="LEGIARTI000033972545").serialize()
     assert payload["owner_id"] == "default"
     assert payload["char_start"] == 359
     assert payload["char_end"] == 742
@@ -71,4 +71,4 @@ async def test_a_metadata_key_can_NOT_overwrite_a_contract_field() -> None:
     payload = await _payload_of(_embedded({"char_start": 0, "identifier": "faux"}))
 
     assert payload["char_start"] == 359
-    assert payload["identifier"] == ELI(raw="LEGIARTI000033972545").serialize()
+    assert payload["identifier"] == Identifier(raw="LEGIARTI000033972545").serialize()

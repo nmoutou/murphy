@@ -70,8 +70,8 @@ describe('resolveCollection', () => {
 
   it.each([
     ['without version', PUBLISHED_BEFORE_THE_CONTRACT, 'v(aucune)', 'Réingérer le corpus'],
-    ['in an older version', { ...PUBLISHED, serving_contract_version: SERVING_CONTRACT_VERSION - 1 }, 'v0', 'Réingérer le corpus'],
-    ['in a newer version', { ...PUBLISHED, serving_contract_version: SERVING_CONTRACT_VERSION + 1 }, 'v2', 'Mettre à jour le backend'],
+    ['in an older version', { ...PUBLISHED, serving_contract_version: SERVING_CONTRACT_VERSION - 1 }, 'v1', 'Réingérer le corpus'],
+    ['in a newer version', { ...PUBLISHED, serving_contract_version: SERVING_CONTRACT_VERSION + 1 }, 'v3', 'Mettre à jour le backend'],
   ])('refuses a collection published %s', async (_case, pointer, version, remedy) => {
     const refusal = resolveCollection(sourcesWith(async () => pointer));
 

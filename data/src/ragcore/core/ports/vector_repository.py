@@ -1,7 +1,7 @@
 from typing import Protocol, runtime_checkable
 
 from ..models.chunk import EmbeddedChunk
-from ..models.identifiers import OwnerId, SourceIdentifier
+from ..models.identifiers import Identifier, OwnerId
 
 
 @runtime_checkable
@@ -11,5 +11,5 @@ class VectorRepository(Protocol):
     async def upsert(self, embedded_chunks: list[EmbeddedChunk]) -> None: ...
 
     async def delete_by_document(
-        self, identifier: SourceIdentifier, owner_id: OwnerId
+        self, identifier: Identifier, owner_id: OwnerId
     ) -> None: ...

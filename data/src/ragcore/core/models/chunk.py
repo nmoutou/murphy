@@ -3,7 +3,7 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field
 
 from .document import SCHEMA_VERSION
-from .identifiers import OwnerId, SourceIdentifier
+from .identifiers import Identifier, OwnerId
 
 
 class Chunk(BaseModel):
@@ -13,7 +13,7 @@ class Chunk(BaseModel):
 
     schema_version: int = SCHEMA_VERSION
     chunk_id: str
-    parent_identifier: SourceIdentifier  # lien au document parent
+    parent_identifier: Identifier  # lien au document parent
     owner_id: OwnerId
 
     ordinal: int

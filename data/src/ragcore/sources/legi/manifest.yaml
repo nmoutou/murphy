@@ -16,7 +16,7 @@ capabilities:
   incremental: true
   relations: true
   # Il n'existe AUCUNE balise <ELI> dans le corpus (vérifié : 0 sur 2564 fichiers).
-  # L'identifiant est un <ID> — le nom du modèle `ELI` est historique.
+  # L'identifiant est un <ID>.
   eli: false
 
 # Ce que la source livre et que le domaine n'ingère pas : 1637 `versions.xml` sur 2564

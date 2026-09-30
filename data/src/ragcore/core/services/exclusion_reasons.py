@@ -4,14 +4,10 @@ Source de vérité : les sites d'émission importent ces constantes plutôt que
 d'écrire les chaînes. Une raison qui n'est pas ici n'existe pas.
 """
 
-# Raisons d'exclusion liées à l'identifiant ELI (LEGI)
-REASON_NO_ELI = "no_eli"
-REASON_INVALID_ELI = "invalid_eli_format"
-
-# Raisons d'exclusion générales
+# Rejets au parse : lecture impossible (`parse_error`) ou document lisible mais
+# irrecevable, p. ex. identifiant absent ou mal formé (`validation_error`).
 REASON_PARSE_ERROR = "parse_error"
 REASON_VALIDATION_ERROR = "validation_error"
-REASON_MISSING_CONTENT = "missing_content"
 
 # Artefact d'export : un fichier que la source livre mais qui n'est pas un document
 # (LEGI : les 1637 `versions.xml`, qui ne contiennent qu'un ID nu). Le connecteur les

@@ -1,7 +1,7 @@
 """Le connecteur de fichiers LEGI — il localise, il lit, il emballe. Il n'interprète pas.
 
 **Ce que « idiot » veut dire ici.** Le connecteur ne sait pas ce qu'est un ``<LIEN>``,
-ni un ELI, ni une section. Il sait une seule chose : *un XML est un arbre, un dict est
+ni un identifiant, ni une section. Il sait une seule chose : *un XML est un arbre, un dict est
 un arbre, je transcris*. Aucune sémantique LEGI ne vit dans ce module. Si demain LEGI
 ajoute une balise, il la transporte sans broncher — et c'est le parser qui la déclarera
 inconnue.
@@ -30,7 +30,7 @@ les ``*.xml`` ».
 **2. Il fusionne les deux facettes d'un même texte.** ``TEXTE_VERSION`` et ``TEXTELR``
 sont le MÊME document — mesuré : 98 IDs chacun, intersection 98/98. Le premier porte le
 titre et les métadonnées, le second la structure et AUCUN titre. Émettre un
-``RawDocument`` par fichier donnerait 98 collisions d'ELI : le dispatch par clé les
+``RawDocument`` par fichier donnerait 98 collisions d'identifiant : le dispatch par clé les
 enverrait au même worker, la saga écrirait l'un puis l'autre l'écraserait — et **les 98
 textes du corpus finiraient sans titre**. Grouper par identifiant n'est pas une
 optimisation, c'est ce qui empêche une perte de données silencieuse.

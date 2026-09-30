@@ -10,7 +10,7 @@ from ragcore.core.models.run_stats import RunStats
 
 A = RunStats(
     counts={"persisted": 2, "invalidated": 1},
-    breakdowns={"invalidated": {"no_eli": 1}},
+    breakdowns={"invalidated": {"validation_error": 1}},
     unknowns={"field": ["NOTA"]},
 )
 B = RunStats(
@@ -43,7 +43,7 @@ def test_counts_are_summed() -> None:
 
 def test_breakdowns_are_summed_per_key() -> None:
     merged = A.merge(B)
-    assert merged.breakdowns["invalidated"] == {"no_eli": 1, "parse_error": 2}
+    assert merged.breakdowns["invalidated"] == {"validation_error": 1, "parse_error": 2}
 
 
 def test_unknowns_are_a_deduplicated_union() -> None:

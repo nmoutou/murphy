@@ -11,7 +11,7 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from typing import Any
 
-from ..models.identifiers import SourceIdentifier
+from ..models.identifiers import Identifier
 from ..models.relation import Relation
 from .subject import LinkSubject
 from .vocabulary import SUCCEEDED_BY
@@ -42,7 +42,7 @@ Poids juridique nul (personne n'a jamais été régi par elle) : elle est HORS d
 chaîne, accrochée en branche latérale — l'``etat`` voyage sur l'arête pour la filtrer.
 """
 
-VersionEntry = tuple[Mapping[str, Any], SourceIdentifier]
+VersionEntry = tuple[Mapping[str, Any], Identifier]
 """Une version identifiée : sa référence brute (datation, ``etat``) et son identifiant."""
 
 

@@ -5,13 +5,10 @@ tombaient dans un ``except ValueError: continue``. Ces tests sont ce qui empêch
 silence de revenir.
 """
 
-from dataclasses import replace
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 from xml.etree import ElementTree as ET
-
-import pytest
 
 from ragcore.core.links import (
     CITES,
@@ -24,7 +21,7 @@ from ragcore.core.links import (
 from ragcore.core.models.document import ParsedDocument, RawDocument
 from ragcore.core.models.enums import SourceName
 from ragcore.core.models.enums import SourceName as _SN
-from ragcore.core.models.identifiers import ELI, JorfId, OwnerId
+from ragcore.core.models.identifiers import Identifier, OwnerId
 from ragcore.core.ports.relation_extractor import BaseRelationExtractor
 from ragcore.core.services.unknown_categories import (
     CATEGORY_IDENTIFIER,
@@ -275,13 +272,9 @@ def test_un_verbe_inconnu_ENTRE_mais_un_sens_inconnu_NON(
     assert unknown_edge.metadata["typelien"] == "ZORGLUB", "l'original survit"
 
 
-def test_une_cible_JORF_ne_devient_JAMAIS_un_ELI() -> None:
-    """Le piège des 568 arêtes, côté extracteur.
-
-    Le motif de l'ELI (``^[A-Z]{8}[0-9]{12}$``) ne regarde pas le préfixe :
-    ``JORFTEXT000000357650`` le satisfait parfaitement. Sans routage, ces arêtes seraient
-    sérialisées ``eli:JORFTEXT…`` alors que le nœud JORF s'écrit ``jorf:JORFTEXT…`` —
-    elles ne matcheraient jamais rien, et aucune exception ne serait levée.
+def test_une_cible_JORF_garde_son_identifiant_tel_quel() -> None:
+    """568 arêtes du corpus pointent vers JORF. Leur cible est nommée par son identifiant
+    brut, la clé même sous laquelle un document JORF serait écrit.
     """
     document = _document_with_references(
         [
@@ -300,8 +293,7 @@ def test_une_cible_JORF_ne_devient_JAMAIS_un_ELI() -> None:
         .relations
     )
 
-    assert isinstance(relation.target_identifier, JorfId)
-    assert relation.target_identifier.serialize() == "jorf:JORFTEXT000000357650"
+    assert relation.target_identifier.serialize() == "JORFTEXT000000357650"
 
 
 def test_un_id_vide_ne_pollue_PAS_les_inconnus() -> None:
@@ -337,37 +329,6 @@ def test_un_id_PRESENT_mais_illisible_est_DECLARE_pas_jete() -> None:
 
     assert result.relations == [], "l'arête n'est pas inventée : la cible est illisible"
     assert result.unknowns == {CATEGORY_IDENTIFIER: ["GARBAGE"]}
-
-
-def test_un_BUG_de_la_table_d_identifiants_n_est_pas_un_id_illisible() -> None:
-    """Seule la ``pydantic.ValidationError`` d'un identifiant mal formé fait un inconnu.
-
-    Une autre exception levée par ``identifier_for`` est un bug de la table : la
-    déclarer en ``identifiant`` la ferait passer pour un défaut du corpus, et le bilan
-    accuserait la source d'une faute du code.
-    """
-
-    def _buggy_identifier_for(raw_id: str) -> ELI:
-        raise RuntimeError(f"bug de table sur {raw_id}")
-
-    assert LEGI_ROLE_TABLE.links is not None
-    buggy_table = replace(
-        LEGI_ROLE_TABLE,
-        links=replace(LEGI_ROLE_TABLE.links, identifier_for=_buggy_identifier_for),
-    )
-    document = _document_with_references(
-        [
-            {
-                "kind": "LIEN",
-                "id": "LEGIARTI000000000002",
-                "typelien": "CITATION",
-                "sens": "source",
-            }
-        ]
-    )
-
-    with pytest.raises(RuntimeError, match="bug de table"):
-        GenericRelationExtractor(buggy_table, SourceName.LEGI).extract(document)
 
 
 def test_une_mort_nee_saccroche_en_branche_LATERALE_hors_chaine() -> None:
@@ -477,7 +438,7 @@ def test_une_mort_nee_recoit_son_arete_et_nen_emet_AUCUNE() -> None:
 
 def _document_with_references(references: list[dict[str, Any]]) -> ParsedDocument:
     return ParsedDocument(
-        identifier=ELI(raw="LEGIARTI000000000001"),
+        identifier=Identifier(raw="LEGIARTI000000000001"),
         source=SourceName.LEGI,
         owner_id=OWNER,
         title="t",

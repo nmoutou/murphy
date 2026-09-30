@@ -3,7 +3,7 @@ from typing import Protocol, runtime_checkable
 
 from ..models.document import ParsedDocument
 from ..models.enums import SourceName
-from ..models.identifiers import OwnerId, RunId, SourceIdentifier
+from ..models.identifiers import Identifier, OwnerId, RunId
 from ..models.relation import Relation
 
 
@@ -62,7 +62,7 @@ class GraphRepository(Protocol):
         ...
 
     async def existing_node_ids(
-        self, identifiers: list[SourceIdentifier], owner_id: OwnerId
+        self, identifiers: list[Identifier], owner_id: OwnerId
     ) -> set[str]:
         """Sous-ensemble (sérialisé) des identifiants qui existent comme nœuds.
 
@@ -76,13 +76,13 @@ class GraphRepository(Protocol):
         ...
 
     async def delete_relations_from(
-        self, identifier: SourceIdentifier, owner_id: OwnerId, source: SourceName
+        self, identifier: Identifier, owner_id: OwnerId, source: SourceName
     ) -> None:
         """Supprime uniquement les relations sortantes (préserve les entrantes)."""
         ...
 
     async def compensate_document_node(
-        self, identifier: SourceIdentifier, owner_id: OwnerId
+        self, identifier: Identifier, owner_id: OwnerId
     ) -> None:
         """Défait le nœud d'un document dont la saga a échoué — **sans casser le graphe**
         (§8, fin du ``_noop``).

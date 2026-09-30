@@ -17,7 +17,7 @@ from ragcore.application.run_context import PipelineContext
 from ragcore.core.links import CITES
 from ragcore.core.models.document import ParsedDocument
 from ragcore.core.models.enums import SourceName
-from ragcore.core.models.identifiers import ELI, OwnerId
+from ragcore.core.models.identifiers import Identifier, OwnerId
 from ragcore.core.models.pending import PendingRelation
 from ragcore.core.models.relation import Relation
 from ragcore.core.telemetry_events import (
@@ -35,13 +35,13 @@ OWNER = OwnerId("owner-1")
 A, B, MISSING = "000000000001", "000000000002", "000000000404"
 
 
-def _eli(suffix: str) -> ELI:
-    return ELI(raw=f"LEGIARTI{suffix}")
+def _identifier(suffix: str) -> Identifier:
+    return Identifier(raw=f"LEGIARTI{suffix}")
 
 
 def _doc(suffix: str) -> ParsedDocument:
     return ParsedDocument(
-        identifier=_eli(suffix),
+        identifier=_identifier(suffix),
         owner_id=OWNER,
         source=SourceName.LEGI,
         title="t",
@@ -54,8 +54,8 @@ def _doc(suffix: str) -> ParsedDocument:
 
 def _rel(source: str, target: str) -> Relation:
     return Relation(
-        source_identifier=_eli(source),
-        target_identifier=_eli(target),
+        source_identifier=_identifier(source),
+        target_identifier=_identifier(target),
         relation_type=CITES,
         owner_id=OWNER,
         source=SourceName.LEGI,
@@ -93,7 +93,7 @@ async def test_a_resolvable_edge_is_written_and_counted(
     await graph.merge_document_node(_doc(A))
     await graph.merge_document_node(_doc(B))
 
-    outcome = await service.execute([_rel(A, B)], {f"eli:LEGIARTI{A}"}, context)
+    outcome = await service.execute([_rel(A, B)], {f"LEGIARTI{A}"}, context)
 
     assert outcome.written_count == 1
     assert outcome.pending_count == 0
@@ -143,7 +143,7 @@ async def test_a_pending_is_promoted_when_its_target_finally_arrives(
 
     # Run suivant : B arrive.
     await graph.merge_document_node(_doc(B))
-    outcome = await service.execute([], {f"eli:LEGIARTI{B}"}, context)
+    outcome = await service.execute([], {f"LEGIARTI{B}"}, context)
 
     assert outcome.promoted_count == 1
     assert pending.pendings == {}  # la pendante résolue quitte le cache
@@ -164,12 +164,12 @@ async def test_replay_is_bounded_by_the_delta_not_the_backlog(
     )
     await graph.merge_document_node(_doc(B))
 
-    outcome = await service.execute([], {f"eli:LEGIARTI{B}"}, context)
+    outcome = await service.execute([], {f"LEGIARTI{B}"}, context)
 
     assert outcome.promoted_count == 0
     assert len(pending.pendings) == 1  # la vieille pendante reste, intacte
     # Le repository n'a été interrogé QUE sur le delta de ce run.
-    assert pending.promotable_calls[-1][0] == frozenset({f"eli:LEGIARTI{B}"})
+    assert pending.promotable_calls[-1][0] == frozenset({f"LEGIARTI{B}"})
 
 
 async def test_a_pending_seen_again_keeps_its_birth_date(

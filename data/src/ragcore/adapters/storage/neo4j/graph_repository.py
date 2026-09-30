@@ -1,44 +1,23 @@
 """Implémentation Neo4j du GraphRepository.
 
-Un nœud est identifié par son seul ``identifier`` sérialisé (``kind:raw``, p. ex.
-``eli:LEGIARTI…``) — jamais par un champ deviné parmi plusieurs candidats : un identifiant
-unique et explicite est ce qui rend le ``MERGE`` déterministe. Le label du nœud dérive du
-``document_type`` de l'identifiant.
+Un nœud est identifié par son seul ``identifier`` sérialisé (p. ex.
+``LEGIARTI000006419264``) — jamais par un champ deviné parmi plusieurs candidats : un
+identifiant unique et explicite est ce qui rend le ``MERGE`` déterministe. Le label du
+nœud vient de la table ``NodeLabels``, d'après les 8 lettres de l'identifiant.
 """
 
 import neo4j
 
 from ragcore.core.models.document import ParsedDocument
 from ragcore.core.models.enums import SourceName
-from ragcore.core.models.identifiers import OwnerId, RunId, SourceIdentifier
+from ragcore.core.models.identifiers import Identifier, OwnerId, RunId
 from ragcore.core.models.relation import Relation
 from ragcore.core.ports.graph_repository import RelationWriteResult
 
-from .node_properties import NodeHydration, node_label, node_props
+from .node_properties import PENDING_LABEL, NodeHydration, NodeLabels, node_props
 
-__all__ = ["PENDING_LABEL", "Neo4jGraphRepository", "NodeHydration"]
+__all__ = ["PENDING_LABEL", "Neo4jGraphRepository", "NodeHydration", "NodeLabels"]
 
-
-# Labels Neo4j connus, utilisés pour la création des index.
-#
-# Plus de label `Unknown` (18 juil. 2026) : une cible décrite n'est pas une entité du
-# graphe mais une propriété de celui qui l'énonce — cf. `core.models.citation`. Le
-# placeholder créait un nœud par formulation, jamais résolu.
-_KNOWN_LABELS = ("Document", "Article", "Texte", "Section")
-
-
-PENDING_LABEL = "Pending"
-"""L'état d'un nœud CITÉ dont le document a été compensé — ou n'est pas encore arrivé.
-
-Ne pas confondre avec l'ancien ``:Unknown``, qui confondait deux choses très
-différentes : (a) une cible *décrite en français*, qui n'arrivera jamais et n'est pas un
-document — elle est désormais une ``Citation`` sur le document qui l'énonce ; (b) une
-cible *identifiée* dont le document manque à l'appel, et qui peut parfaitement arriver
-au prochain run. Seul (b) mérite un nœud, et c'est celui-ci.
-
-``merge_document_node`` le ré-hydrate sans rien de spécial : son ``MERGE`` porte sur le
-seul ``identifier`` et retombe sur ce nœud quel que soit son label.
-"""
 
 _MERGE_NODE = (
     "MERGE (d {identifier: $identifier, owner_id: $owner_id})"
@@ -60,16 +39,21 @@ _DETACH_DELETE_NODE = (
     "MATCH (n {identifier: $identifier, owner_id: $owner_id}) DETACH DELETE n"
 )
 
-# `apoc.create.removeLabels` n'est pas garanti (pas d'APOC en prod) : on retire les
-# labels connus par `REMOVE`. Neo4j ignore silencieusement le retrait d'un label absent
-# — la liste couvre donc tous les labels métier sans avoir à savoir lequel ce nœud
-# portait.
-_DEHYDRATE_NODE = (
-    "MATCH (n {identifier: $identifier, owner_id: $owner_id})"
-    f" REMOVE n:{':'.join(_KNOWN_LABELS)}"
-    f" SET n:{PENDING_LABEL}"
-    " REMOVE n.title, n.source, n.schema_version, n.citations"
-)
+
+def _dehydrate_node_query(labels: NodeLabels) -> str:
+    """Ramène un nœud à l'état de cible attendue : ni label métier, ni props de document.
+
+    `apoc.create.removeLabels` n'est pas garanti (pas d'APOC en prod) : on retire les
+    labels connus par `REMOVE`. Neo4j ignore silencieusement le retrait d'un label absent
+    — la liste couvre donc tous les labels métier sans avoir à savoir lequel ce nœud
+    portait.
+    """
+    return (
+        "MATCH (n {identifier: $identifier, owner_id: $owner_id})"
+        f" REMOVE n:{':'.join(labels.known)}"
+        f" SET n:{PENDING_LABEL}"
+        " REMOVE n.title, n.source, n.schema_version, n.citations"
+    )
 
 
 class Neo4jGraphRepository:
@@ -79,14 +63,19 @@ class Neo4jGraphRepository:
     """
 
     def __init__(
-        self, driver: neo4j.AsyncDriver, hydration: NodeHydration | None = None
+        self,
+        driver: neo4j.AsyncDriver,
+        labels: NodeLabels,
+        hydration: NodeHydration | None = None,
     ) -> None:
         self._driver = driver
+        self._labels = labels
+        self._dehydrate_node = _dehydrate_node_query(labels)
         # Défaut = régime prod (nœud maigre). Le hook passe l'hydratation de dev.
         self._hydration = hydration or NodeHydration()
 
     async def merge_document_node(self, document: ParsedDocument) -> None:
-        """Merge un nœud document. Le label est calculé depuis ``identifier.document_type``.
+        """Merge un nœud document. Le label vient de ``NodeLabels``, d'après l'identifiant.
 
         **Le ``MERGE`` ne porte PAS le label — et c'est le point.** ``MERGE`` matche le
         motif ENTIER, label compris : ``MERGE (d:Article {identifier: X})`` ne retrouve
@@ -102,7 +91,7 @@ class Neo4jGraphRepository:
                 _MERGE_NODE,
                 identifier=document.identifier.serialize(),
                 owner_id=document.owner_id,
-                label=node_label(document),
+                label=self._labels.label_for(document.identifier),
                 props=node_props(document, self._hydration),
             )
 
@@ -167,7 +156,7 @@ class Neo4jGraphRepository:
         return RelationWriteResult(written=written, pending=pending)
 
     async def existing_node_ids(
-        self, identifiers: list[SourceIdentifier], owner_id: OwnerId
+        self, identifiers: list[Identifier], owner_id: OwnerId
     ) -> set[str]:
         """Les identifiants (sérialisés) qui existent bel et bien comme nœuds."""
         if not identifiers:
@@ -186,7 +175,7 @@ class Neo4jGraphRepository:
             return {record["identifier"] async for record in result}
 
     async def delete_relations_from(
-        self, identifier: SourceIdentifier, owner_id: OwnerId, source: SourceName
+        self, identifier: Identifier, owner_id: OwnerId, source: SourceName
     ) -> None:
         """Supprime les seules relations SORTANTES du nœud, sans toucher au nœud.
 
@@ -228,7 +217,7 @@ class Neo4jGraphRepository:
             await session.run(query, run_id=run_id, owner_id=owner_id)
 
     async def compensate_document_node(
-        self, identifier: SourceIdentifier, owner_id: OwnerId
+        self, identifier: Identifier, owner_id: OwnerId
     ) -> None:
         """Défait le nœud d'un document raté sans arracher les citations d'autrui (§8).
 
@@ -262,7 +251,11 @@ class Neo4jGraphRepository:
             # défaire. La compensation est idempotente — c'est ce que la saga attend.
             if record is None:
                 return
-            query = _DETACH_DELETE_NODE if record["entrantes"] == 0 else _DEHYDRATE_NODE
+            query = (
+                _DETACH_DELETE_NODE
+                if record["entrantes"] == 0
+                else self._dehydrate_node
+            )
             await session.run(query, identifier=identifier_value, owner_id=owner_id)
 
     async def drop_all(self) -> None:

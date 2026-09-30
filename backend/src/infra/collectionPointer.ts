@@ -29,7 +29,7 @@ const FULL_RUN_COMMAND = 'kedro run --params source=all';
  * `documents`, pointeur. Même valeur que `SERVING_CONTRACT_VERSION` côté `data/`
  * (`ragcore/core/models/published_collection.py`) : les deux changent ensemble.
  */
-export const SERVING_CONTRACT_VERSION = 1;
+export const SERVING_CONTRACT_VERSION = 2;
 
 export interface PublishedCollection {
   collection_name: string;

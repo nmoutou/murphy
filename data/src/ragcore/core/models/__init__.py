@@ -5,12 +5,10 @@ from .document import SCHEMA_VERSION, ParsedDocument, RawDocument
 from .drain_report import DrainReport
 from .enums import Operation, SourceName, TargetStore
 from .identifiers import (
-    DecisionId,
     DocumentId,
+    Identifier,
     OwnerId,
     RunId,
-    SourceIdentifier,
-    deserialize_identifier,
 )
 from .manifest import ManifestEntry
 from .pending import PendingKey, PendingRelation
@@ -24,9 +22,9 @@ __all__ = [
     "AuditEvent",
     "Chunk",
     "Citation",
-    "DecisionId",
     "DocumentId",
     "DrainReport",
+    "Identifier",
     "EmbeddedChunk",
     "ManifestEntry",
     "Operation",
@@ -43,9 +41,7 @@ __all__ = [
     "RunStatus",
     "RunSummary",
     "SCHEMA_VERSION",
-    "SourceIdentifier",
     "SourceName",
     "TargetStore",
     "ValidatedVerb",
-    "deserialize_identifier",
 ]

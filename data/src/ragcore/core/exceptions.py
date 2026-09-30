@@ -32,7 +32,7 @@ class EmbeddingModelMismatchError(RagCoreError):
 
 class ValidationError(RagCoreError):
     """Le document est lisible, mais il ne satisfait pas une règle métier
-    (ELI absent, ELI mal formé, contenu manquant)."""
+    (identifiant absent, identifiant mal formé, contenu manquant)."""
 
 
 class ParseError(RagCoreError):

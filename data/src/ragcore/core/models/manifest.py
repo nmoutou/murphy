@@ -5,7 +5,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from .document import SCHEMA_VERSION
 from .enums import Operation, SourceName
-from .identifiers import OwnerId, SourceIdentifier
+from .identifiers import Identifier, OwnerId
 
 
 class ManifestEntry(BaseModel):
@@ -27,7 +27,7 @@ class ManifestEntry(BaseModel):
     schema_version: int = SCHEMA_VERSION
 
     # Clés d'indexation (mutuellement exclusives selon operation)
-    identifier: SourceIdentifier | None = None  # Non-null pour valides
+    identifier: Identifier | None = None  # Non-null pour valides
     source_path: str | None = None  # Pour rejets et debug
 
     # Contexte

@@ -43,9 +43,8 @@ relire 352 fichiers.
 """
 
 from ragcore.core.links import CITES, LinkTable, RelationVerb
-from ragcore.core.models.identifiers import DecisionId, SourceIdentifier
 
-__all__ = ["JURI_LINK_TABLE", "TYPELIEN_TO_VERB", "identifier_for"]
+__all__ = ["JURI_LINK_TABLE", "TYPELIEN_TO_VERB"]
 
 
 TYPELIEN_TO_VERB: dict[str, RelationVerb] = {
@@ -63,31 +62,12 @@ dans le ``RunSummary``. La table apprend ; rien ne se perd entre-temps.
 """
 
 
-def identifier_for(raw_id: str) -> SourceIdentifier:
-    """Type l'identifiant d'une décision — ``DecisionId``, **jamais** ``ELI``.
-
-    **Le piège, et il est réel.** ``JURITEXT000019333891`` satisfait parfaitement le motif
-    de l'ELI (``^[A-Z]{8}[0-9]{12}$``) : le motif ne regarde pas le préfixe. Un arrêt aurait
-    donc été sérialisé ``eli:JURITEXT…`` sans qu'aucune exception ne soit levée, et le
-    graphe aurait porté des « textes de loi » dotés d'une formation de jugement.
-
-    C'est exactement le piège des 568 arêtes JORF, qui a déjà été payé une fois du côté de
-    LEGI. On ne le repaie pas.
-
-    **Cette fonction ne sert PAS aux cibles de liens** — la juri n'en identifie aucune,
-    elles deviennent des ``Citation``. Elle ne type que l'identifiant du document
-    lui-même, lu dans ``<ID>``.
-    """
-    return DecisionId(raw=raw_id)
-
-
 JURI_LINK_TABLE = LinkTable(
     translation=TYPELIEN_TO_VERB,
     # La juri n'a **aucun** lien structurel : un arrêt ne contient pas d'autres arrêts.
     # Là où LEGI déclare un arbre (texte ⊃ section ⊃ article), la jurisprudence est plate.
     structural_kinds=frozenset(),
     ancestor_kinds=frozenset(),
-    identifier_for=identifier_for,
 )
 """Tout ce que la jurisprudence déclare de ses liens — **et c'est peu**.
 

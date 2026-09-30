@@ -9,7 +9,7 @@ import pytest
 
 from ragcore.core.models.document import ParsedDocument, RawDocument
 from ragcore.core.models.enums import SourceName
-from ragcore.core.models.identifiers import ELI, OwnerId
+from ragcore.core.models.identifiers import Identifier, OwnerId
 from ragcore.core.ports.chunker import BaseChunker
 from ragcore.sources.generic import GenericParser, StructuralChunker, to_tree
 from ragcore.sources.generic.chunking import _windows
@@ -199,7 +199,7 @@ def test_les_fenetres_couvrent_toujours_tout() -> None:
 
 def _document(content: str, sections: list[dict[str, Any]]) -> ParsedDocument:
     return ParsedDocument(
-        identifier=ELI(raw="LEGIARTI000000000001"),
+        identifier=Identifier(raw="LEGIARTI000000000001"),
         source=SourceName.LEGI,
         owner_id=OWNER,
         title="t",

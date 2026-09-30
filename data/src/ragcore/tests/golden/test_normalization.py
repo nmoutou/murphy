@@ -9,13 +9,10 @@ import pytest
 
 from ragcore.core.links import CANONICAL_VERBS, translate, verb
 from ragcore.core.models.enums import Operation, SourceName, TargetStore
-from ragcore.core.models.identifiers import ELI, JorfId, UploadId
+from ragcore.core.models.identifiers import Identifier
 from ragcore.core.models.relation import Relation
 from ragcore.core.services.exclusion_reasons import (
     REASON_EXPORT_ARTIFACT,
-    REASON_INVALID_ELI,
-    REASON_MISSING_CONTENT,
-    REASON_NO_ELI,
     REASON_PARSE_ERROR,
     REASON_UNREADABLE,
     REASON_VALIDATION_ERROR,
@@ -40,11 +37,8 @@ SOURCE_NAMES = {
 OPERATIONS = {"insert", "update", "delete", "excluded"}
 TARGET_STORES = {"mongo", "neo4j", "qdrant"}
 EXCLUSION_REASONS = {
-    "no_eli",
-    "invalid_eli_format",
     "parse_error",
     "validation_error",
-    "missing_content",
     "export_artifact",
     # Un XML qui ne parse pas : exclusion de LECTURE, distincte du `parse_error` qui est un
     # échec d'INTERPRÉTATION. Les confondre masquerait une source corrompue derrière un bug
@@ -58,10 +52,9 @@ EXCLUSION_REASONS = {
 UNKNOWN_CATEGORIES = {"typelien", "sens", "tag.unconfigured", "racine"}
 
 
-def test_identifiers_serialize_with_their_kind() -> None:
-    assert ELI(raw="LEGIARTI000006419264").serialize() == "eli:LEGIARTI000006419264"
-    assert JorfId(raw="JORFTEXT000000465978").serialize() == "jorf:JORFTEXT000000465978"
-    assert UploadId(raw="abc123").serialize() == "upload:abc123"
+def test_identifiers_serialize_as_their_raw_value() -> None:
+    assert Identifier(raw="LEGIARTI000006419264").serialize() == "LEGIARTI000006419264"
+    assert Identifier(raw="JORFTEXT000000465978").serialize() == "JORFTEXT000000465978"
 
 
 def test_source_names_are_frozen() -> None:
@@ -78,11 +71,8 @@ def test_target_stores_are_frozen() -> None:
 
 def test_exclusion_reasons_are_frozen() -> None:
     declared = {
-        REASON_NO_ELI,
-        REASON_INVALID_ELI,
         REASON_PARSE_ERROR,
         REASON_VALIDATION_ERROR,
-        REASON_MISSING_CONTENT,
         REASON_EXPORT_ARTIFACT,
         REASON_UNREADABLE,
     }
@@ -176,8 +166,8 @@ def test_a_relation_normalizes_its_verb_at_the_model_boundary() -> None:
     ``Relation`` ne *peut pas* exister avec un verbe mal formé.
     """
     relation = Relation(
-        source_identifier=ELI(raw="LEGIARTI000006419264"),
-        target_identifier=ELI(raw="LEGIARTI000006419265"),
+        source_identifier=Identifier(raw="LEGIARTI000006419264"),
+        target_identifier=Identifier(raw="LEGIARTI000006419265"),
         relation_type="ZORGLUB",
         owner_id="tenant",
         source=SourceName.LEGI,
@@ -186,8 +176,8 @@ def test_a_relation_normalizes_its_verb_at_the_model_boundary() -> None:
 
     with pytest.raises(ValueError, match="Verbe de relation invalide"):
         Relation(
-            source_identifier=ELI(raw="LEGIARTI000006419264"),
-            target_identifier=ELI(raw="LEGIARTI000006419265"),
+            source_identifier=Identifier(raw="LEGIARTI000006419264"),
+            target_identifier=Identifier(raw="LEGIARTI000006419265"),
             relation_type="a b",
             owner_id="tenant",
             source=SourceName.LEGI,

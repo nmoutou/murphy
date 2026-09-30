@@ -7,16 +7,18 @@ bumps est documenté sur la constante ; un bump = une ré-ingestion complète).
 
 ## L'identité d'un document
 
-Un seul `identifier` (union discriminée Pydantic sur le champ `kind`) nomme le document
-partout : clé Mongo, payload Qdrant, nœud Neo4j, événements d'audit. Forme sérialisée :
-`{kind}:{raw}` (ex. `eli:LEGIARTI000006419264`), réversible par `deserialize_identifier`.
+Un seul `identifier` (le type `Identifier`) nomme le document partout : clé Mongo,
+payload Qdrant, nœud Neo4j, événements d'audit. Sa forme sérialisée est la valeur brute
+de la DILA, sans rien ajouter : `LEGIARTI000006419264`.
 
-| Type | `kind` | Source | Note |
-|---|---|---|---|
-| `ELI` | `eli` | LEGI | Format validé à la construction (`^[A-Z]{8}[0-9]{12}$`) ; préfixe → `document_type` (`article`/`texte`/`section`). |
-| `DecisionId` | `decision` | les 5 juri | Même motif, type distinct (une décision n'est pas un texte de loi) ; préfixe → ordre de juridiction. |
-| `JorfId` | `jorf` | — | Squelette, pas de connecteur. |
-| `UploadId` | `upload` | — | Squelette (SHA-256 de contenu). |
+Le format est validé à la construction (`^[A-Z]{8}[0-9]{12}$`) pour toutes les sources.
+Les 8 lettres de tête (`Identifier.prefix`) disent le fonds et la nature du document :
+
+| Préfixe | Source | Nature |
+|---|---|---|
+| `LEGIARTI` / `LEGITEXT` / `LEGISCTA` | LEGI | article, texte, section |
+| `JURITEXT` / `CETATEXT` / `CONSTEXT` | les 5 juri | décision judiciaire, administrative, constitutionnelle |
+| `JORFTEXT` / `JORFARTI` | — | cible de liens LEGI uniquement (pas de connecteur JORF) |
 
 Pas de hash de contenu nulle part : l'idempotence se joue sur la **présence de
 l'identifiant** dans le manifest.
@@ -51,8 +53,8 @@ instant où l'identifiant n'existe pas.
 
 Contenu : le dump JSON du `ParsedDocument`, **sauf** :
 
-- `identifier` est remplacé par sa forme sérialisée (`eli:…`) — c'est elle qui est
-  indexée ;
+- `identifier` est remplacé par sa forme sérialisée (la chaîne brute) — c'est elle qui
+  est indexée ;
 - `source_files` est exclu (provenance d'inspection, chemins absolus du poste
   d'ingestion) ;
 - `structure` est exclue **entièrement** (ADR-022 §4) : `references`/`context` sont de la
@@ -103,7 +105,7 @@ EMPREINTE.
   (jamais `hash()` natif, resemé par interpréteur).
 - **Payload** : les `metadata` du chunk à plat, puis les champs du **contrat de
   serving** (ADR-039,
-  version `SERVING_CONTRACT_VERSION` = 1), posés en dernier pour qu'aucune métadonnée
+  version `SERVING_CONTRACT_VERSION` = 2), posés en dernier pour qu'aucune métadonnée
   homonyme ne les écrase :
 
   | Champ | Rôle côté serving |
@@ -125,9 +127,11 @@ EMPREINTE.
 
 - **Nœuds documents** : identifiés par `identifier` sérialisé + `owner_id`. Le `MERGE`
   porte sur le seul identifiant (jamais le label — `MERGE (d:Article {…})` créerait un
-  second nœud si le label a changé), puis le label réel est posé : `Article`, `Texte`,
-  `Section` (dérivé de `document_type`), `Decision`, ou `Document` par défaut. Index sur
-  `identifier` pour chaque label connu + `Pending`.
+  second nœud si le label a changé), puis le label réel est posé. Le label vient de
+  la table `exportation.neo4j.labels` de `parameters.yml`, d'après les 8 lettres de
+  l'identifiant : `LEGIARTI` → `Article`, `LEGITEXT` → `Texte`, `LEGISCTA` → `Section`,
+  et `Document` (le `default`) pour tout autre préfixe, dont les décisions. Un nœud cité
+  dont le document manque porte `Pending`.
 - **Hydratation** (ADR-022 §2) : en prod, nœud **maigre** (`title`, `source`,
   `schema_version`). En dev (et seulement en dev), le hook ouvre les vannes : `metadata`
   en props (clés chemin-complet), `include_path` (les fichiers XML source),

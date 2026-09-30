@@ -19,12 +19,15 @@ import pytest
 from testcontainers.neo4j import Neo4jContainer
 
 from ragcore.adapters.storage.neo4j.client import create_neo4j_driver
-from ragcore.adapters.storage.neo4j.graph_repository import Neo4jGraphRepository
+from ragcore.adapters.storage.neo4j.graph_repository import (
+    Neo4jGraphRepository,
+    NodeLabels,
+)
 from ragcore.core.links import CITES
 from ragcore.core.models.citation import Citation
 from ragcore.core.models.document import ParsedDocument
 from ragcore.core.models.enums import SourceName
-from ragcore.core.models.identifiers import ELI, OwnerId, RunId
+from ragcore.core.models.identifiers import Identifier, OwnerId, RunId
 from ragcore.core.models.relation import Relation
 
 pytestmark = pytest.mark.integration
@@ -36,7 +39,7 @@ RUN = RunId("run-1")
 
 def _doc(n: int) -> ParsedDocument:
     return ParsedDocument(
-        identifier=ELI(raw=f"LEGIARTI{n:012d}"),
+        identifier=Identifier(raw=f"LEGIARTI{n:012d}"),
         owner_id=OWNER,
         source=SourceName.LEGI,
         title=f"Article {n}",
@@ -49,8 +52,8 @@ def _doc(n: int) -> ParsedDocument:
 
 def _relation(source: int, target: int, owner: OwnerId = OWNER) -> Relation:
     return Relation(
-        source_identifier=ELI(raw=f"LEGIARTI{source:012d}"),
-        target_identifier=ELI(raw=f"LEGIARTI{target:012d}"),
+        source_identifier=Identifier(raw=f"LEGIARTI{source:012d}"),
+        target_identifier=Identifier(raw=f"LEGIARTI{target:012d}"),
         relation_type=CITES,
         owner_id=owner,
         source=SourceName.LEGI,
@@ -81,7 +84,8 @@ async def repo(neo4j_url):
     driver = create_neo4j_driver(url, "neo4j", password)
     async with driver.session() as session:
         await session.run("MATCH (n) DETACH DELETE n")
-    repository = Neo4jGraphRepository(driver)
+    labels = NodeLabels(default="Document", by_prefix={"LEGIARTI": "Article"})
+    repository = Neo4jGraphRepository(driver, labels)
     yield repository
     await driver.close()
 
@@ -174,8 +178,8 @@ async def test_the_verb_IS_the_edge_type(repo) -> None:
 
     canonical = _relation(1, 2)  # cites
     raw = Relation(
-        source_identifier=ELI(raw=f"LEGIARTI{1:012d}"),
-        target_identifier=ELI(raw=f"LEGIARTI{3:012d}"),
+        source_identifier=Identifier(raw=f"LEGIARTI{1:012d}"),
+        target_identifier=Identifier(raw=f"LEGIARTI{3:012d}"),
         relation_type="ZORGLUB",  # normalisé à la frontière du modèle
         owner_id=OWNER,
         source=SourceName.LEGI,
@@ -282,10 +286,14 @@ async def test_existing_node_ids_returns_only_what_exists(repo) -> None:
     await repo.merge_document_node(_doc(2))
 
     found = await repo.existing_node_ids(
-        [ELI(raw="LEGIARTI000000000001"), ELI(raw="LEGIARTI000000000099")], OWNER
+        [
+            Identifier(raw="LEGIARTI000000000001"),
+            Identifier(raw="LEGIARTI000000000099"),
+        ],
+        OWNER,
     )
 
-    assert found == {"eli:LEGIARTI000000000001"}
+    assert found == {"LEGIARTI000000000001"}
 
 
 async def test_deleting_outgoing_edges_preserves_the_node(repo) -> None:
@@ -297,13 +305,17 @@ async def test_deleting_outgoing_edges_preserves_the_node(repo) -> None:
     await repo.upsert_relations([_relation(1, 2)], RUN)
 
     await repo.delete_relations_from(
-        ELI(raw="LEGIARTI000000000001"), OWNER, SourceName.LEGI
+        Identifier(raw="LEGIARTI000000000001"), OWNER, SourceName.LEGI
     )
 
     remaining = await repo.existing_node_ids(
-        [ELI(raw="LEGIARTI000000000001"), ELI(raw="LEGIARTI000000000002")], OWNER
+        [
+            Identifier(raw="LEGIARTI000000000001"),
+            Identifier(raw="LEGIARTI000000000002"),
+        ],
+        OWNER,
     )
-    assert remaining == {"eli:LEGIARTI000000000001", "eli:LEGIARTI000000000002"}
+    assert remaining == {"LEGIARTI000000000001", "LEGIARTI000000000002"}
 
     # Compté SANS nommer de type : `MATCH ()-[r:REFERENCES]->()` — ce que ce test faisait
     # — ne compte plus rien depuis que le verbe est le type d'arête. Il aurait donc validé
@@ -365,7 +377,7 @@ async def test_delete_by_run_removes_only_this_runs_edges(repo) -> None:
                 "MATCH (a)-[r]->(b) RETURN b.identifier AS cible, r.run_id AS run"
             )
         ).single()
-    assert record["cible"] == "eli:LEGIARTI000000000003"
+    assert record["cible"] == "LEGIARTI000000000003"
     assert record["run"] == run_b, "l'arête survivante est bien celle du run B"
 
 
@@ -406,9 +418,11 @@ async def test_compensating_an_orphan_node_deletes_it(repo) -> None:
     """
     await repo.merge_document_node(_doc(1))
 
-    await repo.compensate_document_node(ELI(raw="LEGIARTI000000000001"), OWNER)
+    await repo.compensate_document_node(Identifier(raw="LEGIARTI000000000001"), OWNER)
 
-    remaining = await repo.existing_node_ids([ELI(raw="LEGIARTI000000000001")], OWNER)
+    remaining = await repo.existing_node_ids(
+        [Identifier(raw="LEGIARTI000000000001")], OWNER
+    )
     assert remaining == set(), "le nœud orphelin est supprimé"
 
 
@@ -427,21 +441,23 @@ async def test_compensating_a_cited_node_dehydrates_it(repo) -> None:
         [_relation(1, 2)], RUN
     )  # 1 cite 2 : arête entrante sur 2
 
-    await repo.compensate_document_node(ELI(raw="LEGIARTI000000000002"), OWNER)
+    await repo.compensate_document_node(Identifier(raw="LEGIARTI000000000002"), OWNER)
 
     # Le nœud SURVIT (la citation de 1 pointe encore dessus)…
-    remaining = await repo.existing_node_ids([ELI(raw="LEGIARTI000000000002")], OWNER)
-    assert remaining == {"eli:LEGIARTI000000000002"}, "le nœud cité n'est pas supprimé"
+    remaining = await repo.existing_node_ids(
+        [Identifier(raw="LEGIARTI000000000002")], OWNER
+    )
+    assert remaining == {"LEGIARTI000000000002"}, "le nœud cité n'est pas supprimé"
 
     # …mais dé-hydraté : il a perdu son label métier (`Article`) pour `:Pending`, et son
     # contenu de document (`title`, `source`) a disparu — il n'est plus qu'une cible.
-    labels = await _labels_of(repo, "eli:LEGIARTI000000000002")
+    labels = await _labels_of(repo, "LEGIARTI000000000002")
     assert labels == {"Pending"}, "le nœud cité est ramené au statut de cible attendue"
 
     async with repo._driver.session() as session:  # noqa: SLF001
         record = await (
             await session.run(
-                "MATCH (n {identifier: 'eli:LEGIARTI000000000002'})"
+                "MATCH (n {identifier: 'LEGIARTI000000000002'})"
                 " RETURN n.title AS title, n.source AS source"
             )
         ).single()
@@ -465,12 +481,12 @@ async def test_reingesting_a_dehydrated_node_rehydrates_it_in_place(repo) -> Non
     rend réelle.
     """
     # Mise en place : 1 cite 2, puis 2 échoue et se fait dé-hydrater en :Pending
-    # (identifier `eli:…002` conservé, label métier perdu, arête entrante gardée).
+    # (identifier `…002` conservé, label métier perdu, arête entrante gardée).
     await repo.merge_document_node(_doc(1))
     await repo.merge_document_node(_doc(2))
     await repo.upsert_relations([_relation(1, 2)], RUN)
-    await repo.compensate_document_node(ELI(raw="LEGIARTI000000000002"), OWNER)
-    assert await _labels_of(repo, "eli:LEGIARTI000000000002") == {"Pending"}
+    await repo.compensate_document_node(Identifier(raw="LEGIARTI000000000002"), OWNER)
+    assert await _labels_of(repo, "LEGIARTI000000000002") == {"Pending"}
 
     # 2 est ré-ingéré avec succès : re-merge du nœud.
     await repo.merge_document_node(_doc(2))
@@ -479,14 +495,14 @@ async def test_reingesting_a_dehydrated_node_rehydrates_it_in_place(repo) -> Non
     async with repo._driver.session() as session:  # noqa: SLF001
         record = await (
             await session.run(
-                "MATCH (n {identifier: 'eli:LEGIARTI000000000002'})"
+                "MATCH (n {identifier: 'LEGIARTI000000000002'})"
                 " RETURN count(n) AS n, collect(n.title)[0] AS title"
             )
         ).single()
     assert record["n"] == 1, "un seul nœud — la ré-hydratation ne DOUBLE pas le nœud"
 
     # …ré-hydraté : label métier retrouvé, :Pending retiré, contenu réel revenu.
-    assert await _labels_of(repo, "eli:LEGIARTI000000000002") == {"Article"}
+    assert await _labels_of(repo, "LEGIARTI000000000002") == {"Article"}
     assert record["title"] == "Article 2", "le contenu du document est de retour"
 
     # …et la citation entrante de 1 tient toujours sur ce même nœud.
@@ -498,4 +514,4 @@ async def test_compensating_an_absent_node_is_a_noop(repo) -> None:
     pas ne doit pas lever. La compensation est idempotente — c'est ce que la saga
     attend d'un ``compensate``.
     """
-    await repo.compensate_document_node(ELI(raw="LEGIARTI000000000404"), OWNER)
+    await repo.compensate_document_node(Identifier(raw="LEGIARTI000000000404"), OWNER)

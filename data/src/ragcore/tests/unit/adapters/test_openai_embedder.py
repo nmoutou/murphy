@@ -19,7 +19,7 @@ from ragcore.adapters.embedding.served_model import assert_service_serves_model
 from ragcore.core.config import EmbeddingConfig
 from ragcore.core.exceptions import EmbeddingModelMismatchError
 from ragcore.core.models.chunk import Chunk
-from ragcore.core.models.identifiers import ELI, OwnerId
+from ragcore.core.models.identifiers import Identifier, OwnerId
 
 ATTENDU = "sentence-transformers/all-mpnet-base-v2"
 BASE_URL = "http://tei.test:80/v1"
@@ -29,7 +29,7 @@ DIM = 4
 def _chunk(chunk_id: str, text: str) -> Chunk:
     return Chunk(
         chunk_id=chunk_id,
-        parent_identifier=ELI(raw="LEGIARTI000006419264"),
+        parent_identifier=Identifier(raw="LEGIARTI000006419264"),
         owner_id=OwnerId("owner-1"),
         ordinal=0,
         text=text,

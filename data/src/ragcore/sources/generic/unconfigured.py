@@ -24,7 +24,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from ragcore.core.links import HEURISTIC_KIND
-from ragcore.core.models.identifiers import SourceIdentifier
+from ragcore.core.models.identifiers import Identifier
 
 from .role_table import RoleTable
 from .tree import Node, path_key, walk_with_path
@@ -33,7 +33,7 @@ __all__ = ["UnconfiguredRouting", "route_unconfigured"]
 
 _DILA_ID = re.compile(r"[A-Z]{8}[0-9]{12}\Z")
 """La forme d'un identifiant DILA (``LEGIARTI000006219120``) — le même motif que
-``importation.validation.format_regex`` dans ``parameters.yml``.
+``IDENTIFIER_PATTERN`` du modèle ``Identifier``.
 
 C'est le déclencheur de la règle 4 de la cascade : du duck-typing sur
 la VALEUR, jamais sur le nom d'attribut. Mesuré sur le corpus : ``origine="LEGI"`` ne
@@ -51,7 +51,7 @@ class UnconfiguredRouting:
     n'en fabrique pas d'autres.
     """
 
-    identifier: SourceIdentifier
+    identifier: Identifier
     metadata: dict[str, Any]
     references: list[dict[str, Any]]
     tags: list[str] = field(default_factory=list)
@@ -99,7 +99,7 @@ def _route_value(routing: UnconfiguredRouting, value: str, key: str, tag: str) -
         routing.keys.append(key)
 
 
-def _is_reference_value(value: str, identifier: SourceIdentifier) -> bool:
+def _is_reference_value(value: str, identifier: Identifier) -> bool:
     """Règles 3-4 de la cascade : la forme DILA, sauf soi-même.
 
     La comparaison à l'identité du document courant est STRUCTURELLE — pas une liste

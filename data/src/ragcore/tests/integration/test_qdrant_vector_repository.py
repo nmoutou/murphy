@@ -16,7 +16,7 @@ from testcontainers.qdrant import QdrantContainer
 from ragcore.adapters.storage.qdrant.client import create_qdrant_client
 from ragcore.adapters.storage.qdrant.vector_repository import QdrantVectorRepository
 from ragcore.core.models.chunk import Chunk, EmbeddedChunk
-from ragcore.core.models.identifiers import ELI, OwnerId
+from ragcore.core.models.identifiers import Identifier, OwnerId
 
 pytestmark = pytest.mark.integration
 
@@ -27,7 +27,7 @@ COLLECTION = "chunks_test"
 
 
 def _embedded(document: str, ordinal: int, owner: OwnerId = OWNER) -> EmbeddedChunk:
-    identifier = ELI(raw=document)
+    identifier = Identifier(raw=document)
     return EmbeddedChunk(
         chunk=Chunk(
             chunk_id=f"{document}#{ordinal}#{owner}",
@@ -111,7 +111,7 @@ async def test_deleting_a_document_removes_only_its_own_vectors(repo) -> None:
     )
     assert await _count(repo) == 3
 
-    await repo.delete_by_document(ELI(raw="LEGIARTI000000000001"), OWNER)
+    await repo.delete_by_document(Identifier(raw="LEGIARTI000000000001"), OWNER)
 
     # Les 2 chunks du doc 1 sont partis, celui du doc 2 est intact.
     assert await _count(repo) == 1
@@ -129,7 +129,7 @@ async def test_deleting_never_crosses_owners(repo) -> None:
     )
     assert await _count(repo) == 2
 
-    await repo.delete_by_document(ELI(raw="LEGIARTI000000000001"), OWNER)
+    await repo.delete_by_document(Identifier(raw="LEGIARTI000000000001"), OWNER)
 
     assert await _count(repo) == 1
 

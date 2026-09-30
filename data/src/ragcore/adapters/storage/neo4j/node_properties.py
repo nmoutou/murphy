@@ -1,14 +1,75 @@
 """Ce que porte un nœud document dans Neo4j : son label et ses propriétés."""
 
+import re
+from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
 
 from ragcore.core.models.document import ParsedDocument
+from ragcore.core.models.identifiers import IDENTIFIER_PREFIX_LENGTH, Identifier
 
-__all__ = ["CITATIONS_PROP", "NodeHydration", "node_label", "node_props"]
+__all__ = [
+    "CITATIONS_PROP",
+    "PENDING_LABEL",
+    "NodeHydration",
+    "NodeLabels",
+    "node_props",
+]
 
-_DEFAULT_LABEL = "Document"
-_UNKNOWN_DOCUMENT_TYPE = "inconnu"
+PENDING_LABEL = "Pending"
+"""L'état d'un nœud CITÉ dont le document a été compensé — ou n'est pas encore arrivé.
+
+Ne pas confondre avec l'ancien ``:Unknown``, qui confondait deux choses très
+différentes : (a) une cible *décrite en français*, qui n'arrivera jamais et n'est pas un
+document — elle est désormais une ``Citation`` sur le document qui l'énonce ; (b) une
+cible *identifiée* dont le document manque à l'appel, et qui peut parfaitement arriver
+au prochain run. Seul (b) mérite un nœud, et c'est celui-ci.
+
+``merge_document_node`` le ré-hydrate sans rien de spécial : son ``MERGE`` porte sur le
+seul ``identifier`` et retombe sur ce nœud quel que soit son label.
+"""
+
+_LABEL_PATTERN = re.compile(r"[A-Z][A-Za-z0-9]*")
+_PREFIX_PATTERN = re.compile(rf"[A-Z]{{{IDENTIFIER_PREFIX_LENGTH}}}")
+
+
+@dataclass(frozen=True)
+class NodeLabels:
+    """Le label d'un nœud document, décidé par les 8 lettres de son identifiant.
+
+    Une DONNÉE, lue dans ``exportation.neo4j.labels`` de ``parameters.yml`` : le préfixe
+    ``LEGIARTI`` donne ``Article``, et un préfixe que la table ne connaît pas reçoit
+    ``default``. Donner un label aux décisions, c'est ajouter une ligne au YAML.
+
+    Les labels sont validés à la construction, parce qu'ils finissent dans le TEXTE
+    d'une requête Cypher (``REMOVE n:Article:Texte…`` à la dé-hydratation) : un label
+    mal formé arrête le run ici, avec un message, plutôt que dans Neo4j.
+    """
+
+    default: str
+    by_prefix: Mapping[str, str]
+
+    def __post_init__(self) -> None:
+        for prefix in self.by_prefix:
+            if not _PREFIX_PATTERN.fullmatch(prefix):
+                raise ValueError(
+                    f"Préfixe d'identifiant invalide dans les labels Neo4j : {prefix!r} "
+                    f"(attendu : {IDENTIFIER_PREFIX_LENGTH} majuscules, p. ex. LEGIARTI)."
+                )
+        for label in self.known:
+            if not _LABEL_PATTERN.fullmatch(label) or label == PENDING_LABEL:
+                raise ValueError(
+                    f"Label Neo4j invalide : {label!r} (attendu : une majuscule puis "
+                    f"des lettres ou chiffres ; {PENDING_LABEL!r} est réservé)."
+                )
+
+    @property
+    def known(self) -> tuple[str, ...]:
+        """Tous les labels que cette table peut poser, sans doublon."""
+        return tuple(dict.fromkeys((self.default, *self.by_prefix.values())))
+
+    def label_for(self, identifier: Identifier) -> str:
+        return self.by_prefix.get(identifier.prefix, self.default)
 
 
 @dataclass(frozen=True)
@@ -58,14 +119,6 @@ def _citation_props(document: ParsedDocument) -> dict[str, Any]:
     return {
         CITATIONS_PROP: [c.model_dump_json() for c in document.citations],
     }
-
-
-def node_label(document: ParsedDocument) -> str:
-    """Le label du nœud, déduit du ``document_type`` de l'identifiant."""
-    doc_type = getattr(document.identifier, "document_type", None)
-    if doc_type and doc_type != _UNKNOWN_DOCUMENT_TYPE:
-        return str(doc_type).capitalize()
-    return _DEFAULT_LABEL
 
 
 def node_props(document: ParsedDocument, hydration: NodeHydration) -> dict[str, Any]:

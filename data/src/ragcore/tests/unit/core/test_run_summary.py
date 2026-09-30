@@ -45,7 +45,7 @@ def test_counts_and_breakdown_reach_the_stats(aggregator: RunStatsAggregator) ->
             DOCUMENT_INVALIDATED,
             RUN,
             OWNER,
-            payload={"reason": "no_eli"},
+            payload={"reason": "validation_error"},
             success=False,
         )
     )
@@ -53,7 +53,7 @@ def test_counts_and_breakdown_reach_the_stats(aggregator: RunStatsAggregator) ->
     summary = aggregator.finalize(RunStatus.OK)
 
     assert summary.stats.counts[DOCUMENT_PERSISTED] == 1
-    assert summary.stats.breakdowns[DOCUMENT_INVALIDATED]["no_eli"] == 1
+    assert summary.stats.breakdowns[DOCUMENT_INVALIDATED]["validation_error"] == 1
 
 
 def test_status_accepts_the_literals_the_hooks_pass(

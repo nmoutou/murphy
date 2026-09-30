@@ -65,8 +65,6 @@ URI, secret, chemin ou paramètre d'infra n'y a sa place.
 | Clé | Valeur | Effet |
 |---|---|---|
 | `extraction.content_tag` | `CONTENU` | Balise de contenu à l'extraction. |
-| `validation.validation_rules.require_eli` | `true` | Un document LEGI sans ELI est rejeté (EXCLUDED). |
-| `validation.validation_rules.format_regex` | `^[A-Z]{8}[0-9]{12}$` | Le motif d'un identifiant DILA — le même que `ELI_PATTERN` dans le code et que le déclencheur lien de la cascade. |
 | `normalization.title_mapping` | mappings par racine | D'où vient le `title` de chaque type de document. |
 
 ### `formatting` — infra uniquement (le hashé a migré vers `workflow`)
@@ -89,6 +87,7 @@ URI, secret, chemin ou paramètre d'infra n'y a sa place.
 |---|---|---|
 | `unconfigured` | `ingest` | Le sort des balises non-configurées (cadrage « trois portes ») : `ingest` = la balise entre en metadata sous sa clé chemin-complet ; `skip` = retirée du document (prod). Le signal `tag.unconfigured`, lui, est TOUJOURS émis — on compte d'abord, on filtre ensuite. Valeur invalide = échec au démarrage. |
 | `neo4j.include_path` / `include_content` | `true` / `true` | Hydratation des nœuds Neo4j **en dev seulement** (forcés à `false` ailleurs — ADR-022 §2) : chemins des fichiers XML source, texte du document (`_text_content`). |
+| `neo4j.labels.default` / `labels.by_prefix` | `Document` / `LEGIARTI: Article`, `LEGITEXT: Texte`, `LEGISCTA: Section` | Le label d'un nœud Neo4j d'après les 8 lettres de son identifiant ; un préfixe absent de la table reçoit `default`. **Obligatoire** (aucun défaut dans le code) : bloc absent, préfixe qui n'est pas 8 majuscules ou label mal formé = échec au démarrage. S'applique en dev comme en prod. Changer la table sans `nuke_all` laisse l'ancien label sur les nœuds déjà écrits. |
 | `mongodb.database` / `collection` | `LEGIFRANCE` / `chunks` | ⚠️ **Vestige non lu** : les noms réels viennent du `.env` (`MONGODB_DATA_DB_NAME`) et des dépôts (`documents`, `manifest`). |
 | `qdrant.distance` / `batch_size` | `Cosine` / `100` | ⚠️ **Vestige non lu** : la distance est codée en dur (COSINE) et il n'y a pas de `collection:` — elle est **dérivée** du fingerprint, la nommer ici permettrait d'écraser les vecteurs d'une stratégie avec ceux d'une autre. |
 

@@ -13,7 +13,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from .document import SCHEMA_VERSION
 from .enums import SourceName
-from .identifiers import DocumentId, OwnerId, RunId, deserialize_identifier
+from .identifiers import DocumentId, Identifier, OwnerId, RunId
 from .relation import Relation
 from .verbs import ValidatedVerb
 
@@ -104,8 +104,8 @@ class PendingRelation(BaseModel):
     def to_relation(self) -> Relation:
         """Reconstruit la relation d'origine pour la rejouer."""
         return Relation(
-            source_identifier=deserialize_identifier(self.source_id),
-            target_identifier=deserialize_identifier(self.target_id),
+            source_identifier=Identifier(raw=self.source_id),
+            target_identifier=Identifier(raw=self.target_id),
             relation_type=self.relation_type,
             owner_id=self.owner_id,
             source=self.source,

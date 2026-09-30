@@ -101,7 +101,9 @@ def open_document_stores(
     return IngestionStores(
         documents=MongoDocumentRepository(clients.mongo, data_db),
         manifest=MongoManifestRepository(clients.mongo, data_db),
-        graph=Neo4jGraphRepository(clients.neo4j, plan.node_hydration),
+        graph=Neo4jGraphRepository(
+            clients.neo4j, plan.node_labels, plan.node_hydration
+        ),
         vectors=QdrantVectorRepository(
             clients.qdrant, plan.collection, plan.workflow.embedding.dimension
         ),

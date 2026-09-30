@@ -14,7 +14,7 @@ import pytest
 
 from ragcore.core.links import CITES, LinkSubject, extract_links
 from ragcore.core.models.enums import SourceName
-from ragcore.core.models.identifiers import DecisionId, OwnerId
+from ragcore.core.models.identifiers import OwnerId
 from ragcore.sources.generic import GenericParser
 from ragcore.sources.juri import (
     JURI_LINK_TABLE,
@@ -85,21 +85,14 @@ def test_une_citation_decrite_devient_un_CHAMP_jamais_une_arete() -> None:
     )
 
 
-def test_un_arret_n_est_JAMAIS_un_ELI() -> None:
-    """Le piège du préfixe, deuxième édition — et il aurait été payé deux fois.
-
-    ``JURITEXT000019333891`` satisfait **parfaitement** le motif de l'ELI
-    (``^[A-Z]{8}[0-9]{12}$``) : le motif ne regarde pas le préfixe. Un arrêt aurait donc
-    été sérialisé ``eli:JURITEXT…`` sans qu'aucune exception ne soit levée, et le graphe
-    aurait porté des « textes de loi » dotés d'une formation de jugement.
-
-    C'est exactement le piège des 568 arêtes JORF, déjà payé une fois côté LEGI.
+def test_un_arret_est_nomme_par_son_identifiant_brut() -> None:
+    """Un arrêt se distingue d'un texte de loi par les 8 lettres de son identifiant
+    (``JURITEXT``), pas par un marqueur ajouté à la sérialisation.
     """
     document = _parse("cass_avec_liens.xml", SourceName.CASS)
 
-    assert isinstance(document.identifier, DecisionId)
-    assert document.identifier.serialize().startswith("decision:")
-    assert document.identifier.jurisdiction == "judiciaire"
+    assert document.identifier.prefix == "JURITEXT"
+    assert document.identifier.serialize() == document.identifier.raw
 
 
 def test_la_juri_n_a_AUCUNE_balise_sans_role() -> None:

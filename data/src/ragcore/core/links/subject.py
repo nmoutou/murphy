@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from ..models.enums import SourceName
-from ..models.identifiers import OwnerId, SourceIdentifier
+from ..models.identifiers import Identifier, OwnerId
 from ..models.relation import Relation
 from .vocabulary import RelationVerb
 
@@ -25,14 +25,14 @@ class LinkSubject:
     des pendantes (§13) dit déjà par ailleurs.
     """
 
-    current: SourceIdentifier
+    current: Identifier
     owner_id: OwnerId
     source: SourceName
 
     def relation(
         self,
-        edge_source: SourceIdentifier,
-        edge_target: SourceIdentifier,
+        edge_source: Identifier,
+        edge_target: Identifier,
         relation_verb: RelationVerb,
         metadata: Mapping[str, Any],
     ) -> Relation:

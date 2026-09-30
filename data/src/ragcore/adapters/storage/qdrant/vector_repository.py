@@ -21,7 +21,7 @@ from qdrant_client.models import (
 )
 
 from ragcore.core.models.chunk import Chunk, EmbeddedChunk
-from ragcore.core.models.identifiers import OwnerId, SourceIdentifier
+from ragcore.core.models.identifiers import Identifier, OwnerId
 
 
 class QdrantVectorRepository:
@@ -100,7 +100,7 @@ class QdrantVectorRepository:
         return int(digest, 16) % (2**63)
 
     async def delete_by_document(
-        self, identifier: SourceIdentifier, owner_id: OwnerId
+        self, identifier: Identifier, owner_id: OwnerId
     ) -> None:
         """Delete all vectors belonging to a given document for a given owner."""
         await self._client.delete(

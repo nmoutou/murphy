@@ -11,8 +11,7 @@ fera pas échouer ce test — il ressortira à l'exécution, dans le bilan du ru
 """
 
 from ragcore.core.links import CITES
-from ragcore.core.models.identifiers import ELI, JorfId
-from ragcore.sources.legi.vocabulary import TYPELIEN_TO_VERB, identifier_for
+from ragcore.sources.legi.vocabulary import TYPELIEN_TO_VERB
 
 TYPELIENS = {
     "CITATION",
@@ -55,20 +54,3 @@ def test_la_citation_est_le_verbe_dominant() -> None:
     graphe qui bascule sans qu'un test de couverture s'en aperçoive.
     """
     assert TYPELIEN_TO_VERB["CITATION"] == CITES
-
-
-def test_un_identifiant_JORF_ne_devient_JAMAIS_un_ELI() -> None:
-    """Le piège des 568 arêtes.
-
-    ``ELI`` valide sur ``^[A-Z]{8}[0-9]{12}$`` — un motif que ``JORFTEXT000000357650``
-    satisfait parfaitement. Sans routage par préfixe, ces arêtes seraient sérialisées
-    ``eli:JORFTEXT…`` alors que le nœud JORF s'écrit ``jorf:JORFTEXT…`` : elles ne
-    matcheraient jamais rien. Une corruption qui ne lève aucune exception.
-    """
-    assert isinstance(identifier_for("LEGIARTI000019839772"), ELI)
-    assert isinstance(identifier_for("JORFTEXT000000357650"), JorfId)
-    assert isinstance(identifier_for("JORFARTI000020154224"), JorfId)
-
-    assert identifier_for("JORFTEXT000000357650").serialize() == (
-        "jorf:JORFTEXT000000357650"
-    )

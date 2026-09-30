@@ -24,9 +24,8 @@ from ragcore.core.links import (
     LinkTable,
     RelationVerb,
 )
-from ragcore.core.models.identifiers import ELI, JorfId, SourceIdentifier
 
-__all__ = ["LEGI_LINK_TABLE", "TYPELIEN_TO_VERB", "identifier_for"]
+__all__ = ["LEGI_LINK_TABLE", "TYPELIEN_TO_VERB"]
 
 
 TYPELIEN_TO_VERB: dict[str, RelationVerb] = {
@@ -73,21 +72,6 @@ ne soit perdu entre-temps.
 """
 
 
-def identifier_for(raw_id: str) -> SourceIdentifier:
-    """Route un identifiant brut vers le bon type — LEGI vers ``ELI``, JORF vers ``JorfId``.
-
-    **Ce routage n'est pas une élégance, c'est un garde-fou.** ``ELI`` valide sur
-    ``^[A-Z]{8}[0-9]{12}$``, qui ne regarde PAS le préfixe : ``ELI(raw="JORFTEXT…")``
-    est accepté sans broncher. Les 568 arêtes du corpus qui pointent vers JORF seraient
-    donc sérialisées ``eli:JORFTEXT…`` — et ne matcheraient JAMAIS un nœud, puisque le
-    vrai JORF s'écrit ``jorf:JORFTEXT…``. Une corruption qui ne lève rien et qu'aucun
-    test de format n'attraperait.
-    """
-    if raw_id.startswith("JORF"):
-        return JorfId(raw=raw_id)
-    return ELI(raw=raw_id)
-
-
 LEGI_LINK_TABLE = LinkTable(
     translation=TYPELIEN_TO_VERB,
     # Les liens structurels : ils n'ont NI typelien NI sens, parce que leur orientation
@@ -97,7 +81,6 @@ LEGI_LINK_TABLE = LinkTable(
     # Les ancêtres déclarés par <CONTEXTE> : l'arête va de l'ancêtre VERS le document.
     # C'est la fermeture transitive de la contenance — d'où la réduction, en aval.
     ancestor_kinds=frozenset({"TITRE_TXT", "TITRE_TM"}),
-    identifier_for=identifier_for,
 )
 """Tout ce que LEGI déclare de ses liens, en UNE donnée.
 

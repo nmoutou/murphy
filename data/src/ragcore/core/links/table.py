@@ -2,10 +2,8 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from dataclasses import dataclass
 
-from ..models.identifiers import SourceIdentifier
 from .vocabulary import TranslationTable
 
 __all__ = ["LinkTable"]
@@ -41,13 +39,4 @@ class LinkTable:
 
     L'arête va de l'ancêtre VERS le document courant : orientation fixe, jamais ambiguë.
     C'est la fermeture transitive de la contenance — d'où la réduction, en phase 2.
-    """
-
-    identifier_for: Callable[[str], SourceIdentifier] | None = None
-    """Comment la source type ses identifiants bruts.
-
-    **Ce n'est pas une élégance, c'est un garde-fou.** Le motif de l'ELI ne regarde pas
-    le préfixe : ``ELI(raw="JORFTEXT…")`` est accepté sans broncher, et les 568 arêtes du
-    corpus qui pointent vers JORF seraient sérialisées ``eli:JORFTEXT…`` — elles ne
-    matcheraient jamais un nœud. Une corruption qui ne lève rien.
     """

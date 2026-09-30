@@ -30,7 +30,7 @@ from typing import Any
 from pydantic import ValidationError as PydanticValidationError
 
 from ..models.citation import Citation
-from ..models.identifiers import SourceIdentifier
+from ..models.identifiers import Identifier
 from ..models.relation import Relation
 from ..services.unknown_categories import (
     CATEGORY_IDENTIFIER,
@@ -216,7 +216,7 @@ class _Extraction:
         )
 
     def _typed(
-        self, reference: Mapping[str, Any], linked: SourceIdentifier
+        self, reference: Mapping[str, Any], linked: Identifier
     ) -> Relation | None:
         """Un lien déclaré par la source : son `typelien` donne le verbe, son `sens`
         l'orientation."""
@@ -267,25 +267,23 @@ class _Extraction:
             linked, self.subject.current, CONTAINS, {"kind": ancestor.get("kind", "")}
         )
 
-    def identifier(self, raw_id: str) -> SourceIdentifier | None:
-        if not raw_id or self.table.identifier_for is None:
-            # `@id` vide ou source qui n'identifie pas : une ABSENCE, pas un inconnu.
+    def identifier(self, raw_id: str) -> Identifier | None:
+        if not raw_id:
+            # `@id` vide : une ABSENCE, pas un inconnu.
             return None
         try:
-            return self.table.identifier_for(raw_id)
+            return Identifier(raw=raw_id)
         except PydanticValidationError:
             # `@id` présent mais illisible : la source a écrit une référence qu'on ne
             # sait pas transformer. La taire ferait disparaître l'arête en silence ; on
-            # la DÉCLARE, pour que le bilan la porte et que la table apprenne. Toute
-            # autre exception est un bug de la table, pas un défaut du corpus : elle
-            # remonte.
+            # la DÉCLARE, pour que le bilan la porte.
             declare_unknown(self.unknowns, CATEGORY_IDENTIFIER, raw_id)
             return None
 
 
 def _orient(
-    current: SourceIdentifier, linked: SourceIdentifier, sens: str
-) -> tuple[SourceIdentifier, SourceIdentifier] | None:
+    current: Identifier, linked: Identifier, sens: str
+) -> tuple[Identifier, Identifier] | None:
     """Oriente l'arête selon le RÔLE que le document courant y joue.
 
     Rend ``None`` si le ``sens`` est inconnu — l'appelant le déclare. C'est ce qui

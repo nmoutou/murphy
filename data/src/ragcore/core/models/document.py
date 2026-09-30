@@ -5,7 +5,7 @@ from pydantic import BaseModel, ConfigDict
 
 from .citation import Citation
 from .enums import SourceName
-from .identifiers import OwnerId, SourceIdentifier
+from .identifiers import Identifier, OwnerId
 
 SCHEMA_VERSION = 3
 """v3 (18 juil. 2026) : ``citations`` ajouté — les cibles décrites (``<LIEN>`` à ``@id``
@@ -30,8 +30,7 @@ class RawDocument(BaseModel):
 class ParsedDocument(BaseModel):
     """Document après parsing : structuré, prêt pour le chunking.
 
-    Un seul ``identifier`` (union discriminée ``SourceIdentifier``) nomme le document,
-    quelle que soit sa source : c'est lui, et lui seul, qui sert de clé partout en aval
+    Un seul ``identifier`` nomme le document, quelle que soit sa source : c'est lui, et lui seul, qui sert de clé partout en aval
     (Mongo, Qdrant, nœud Neo4j). Pas de hash de contenu : l'idempotence se joue sur la
     présence de l'identifiant, pas sur une comparaison d'octets.
 
@@ -47,7 +46,7 @@ class ParsedDocument(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     schema_version: int = SCHEMA_VERSION
-    identifier: SourceIdentifier
+    identifier: Identifier
     source: SourceName
     owner_id: OwnerId
 

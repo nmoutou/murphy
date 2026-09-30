@@ -9,10 +9,10 @@ ou crée le document s'il est absent. La saga n'a donc rien à détruire avant d
 
 from ragcore.adapters.storage.mongo.client import MongoClient, MongoDatabase
 from ragcore.core.models.document import ParsedDocument
-from ragcore.core.models.identifiers import OwnerId, SourceIdentifier
+from ragcore.core.models.identifiers import Identifier, OwnerId
 
 
-def _serialize_identifier(identifier: SourceIdentifier) -> str:
+def _serialize_identifier(identifier: Identifier) -> str:
     """Sérialise un identifier pour la persistance."""
     return identifier.serialize()
 
@@ -68,7 +68,7 @@ class MongoDocumentRepository:
         data["identifier"] = identifier_key
         await self._collection.replace_one(filter_, data, upsert=True)
 
-    async def delete(self, identifier: SourceIdentifier, owner_id: OwnerId) -> None:
+    async def delete(self, identifier: Identifier, owner_id: OwnerId) -> None:
         await self._collection.delete_many(
             {
                 "identifier": _serialize_identifier(identifier),

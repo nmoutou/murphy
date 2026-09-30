@@ -101,7 +101,7 @@ Le pipeline d'ingestion nomme ses collections par une **empreinte** de sa config
 pointeur et **refuse de démarrer** :
 
 1. s'il est absent ou illisible (aucun run n'a publié) ;
-2. s'il ne porte pas `serving_contract_version` = `SERVING_CONTRACT_VERSION` (1) — le
+2. s'il ne porte pas `serving_contract_version` = `SERVING_CONTRACT_VERSION` (2) — le
    message dit s'il faut réingérer ou mettre à jour le backend ;
 3. si la collection qu'il désigne n'existe pas dans Qdrant.
 

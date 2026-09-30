@@ -26,7 +26,7 @@ from ragcore.core.links import CITES
 from ragcore.core.models.chunk import Chunk, EmbeddedChunk
 from ragcore.core.models.document import ParsedDocument
 from ragcore.core.models.enums import Operation, SourceName
-from ragcore.core.models.identifiers import ELI, OwnerId
+from ragcore.core.models.identifiers import Identifier, OwnerId
 from ragcore.core.models.relation import Relation
 from ragcore.core.ports.relation_extractor import ExtractionResult
 from ragcore.orchestration.kedro.workload import WorkloadSteps, build_document_workload
@@ -40,8 +40,8 @@ from ragcore.tests.fakes import (
 )
 
 OWNER = OwnerId("owner-1")
-SELF = ELI(raw="LEGIARTI000000000001")
-OTHER = ELI(raw="LEGIARTI000000000002")
+SELF = Identifier(raw="LEGIARTI000000000001")
+OTHER = Identifier(raw="LEGIARTI000000000002")
 
 
 def _doc() -> ParsedDocument:

@@ -35,7 +35,7 @@ from pydantic import ValidationError as PydanticValidationError
 
 from ragcore.core.exceptions import ParseError, ValidationError
 from ragcore.core.models import ParsedDocument, RawDocument, SourceName
-from ragcore.core.models.identifiers import SourceIdentifier
+from ragcore.core.models.identifiers import Identifier
 from ragcore.core.ports.parser import ParseResult
 
 from .normalize import normalize_text
@@ -137,8 +137,8 @@ class GenericParser:
             raise ParseError("Payload vide ou mal formé : aucune facette à lire")
         return content
 
-    def _identifier(self, facets: list[Node]) -> SourceIdentifier:
-        """L'identifiant, typé par la source (``identifier_for`` de sa ``LinkTable``)."""
+    def _identifier(self, facets: list[Node]) -> Identifier:
+        """L'identifiant du document, lu dans la balise que la table de rôles désigne."""
         for facet in facets:
             node = first(facet, self._table.identifier_tag)
             if node is None or not node["text"].strip():
@@ -146,7 +146,7 @@ class GenericParser:
 
             raw_id = node["text"].strip()
             try:
-                return self._build_identifier(raw_id)
+                return Identifier(raw=raw_id)
             except PydanticValidationError as exc:
                 # Sans ce relais, la pydantic.ValidationError échapperait au
                 # `except ValidationError` des appelants et se ferait compter comme une
@@ -154,14 +154,6 @@ class GenericParser:
                 raise ValidationError(f"Identifiant invalide : {raw_id!r}") from exc
 
         raise ValidationError("Identifiant absent du document")
-
-    def _build_identifier(self, raw_id: str) -> SourceIdentifier:
-        links = self._table.links
-        if links is None or links.identifier_for is None:
-            raise ValidationError(
-                "La table de rôles ne sait pas typer les identifiants de cette source"
-            )
-        return links.identifier_for(raw_id)
 
     def _title(self, facets: list[Node]) -> str:
         """Le premier titre trouvé, dans l'ordre de préférence de la table.

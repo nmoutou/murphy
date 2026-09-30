@@ -2,7 +2,7 @@
 
 from ragcore.core.models.chunk import EmbeddedChunk
 from ragcore.core.models.document import ParsedDocument
-from ragcore.core.models.identifiers import OwnerId, RunId, SourceIdentifier
+from ragcore.core.models.identifiers import Identifier, OwnerId, RunId
 from ragcore.core.models.manifest import ManifestEntry
 from ragcore.core.models.pending import PendingKey, PendingRelation
 from ragcore.core.models.relation import Relation
@@ -17,7 +17,7 @@ class InMemoryDocumentRepository:
     async def upsert(self, document: ParsedDocument) -> None:
         self.documents[(document.identifier.serialize(), document.owner_id)] = document
 
-    async def delete(self, identifier: SourceIdentifier, owner_id: OwnerId) -> None:
+    async def delete(self, identifier: Identifier, owner_id: OwnerId) -> None:
         key = (identifier.serialize(), owner_id)
         self.deleted.append(key)
         self.documents.pop(key, None)
@@ -32,7 +32,7 @@ class InMemoryVectorRepository:
         self.chunks.extend(embedded_chunks)
 
     async def delete_by_document(
-        self, identifier: SourceIdentifier, owner_id: OwnerId
+        self, identifier: Identifier, owner_id: OwnerId
     ) -> None:
         key = identifier.serialize()
         self.deleted.append((key, owner_id))
@@ -54,7 +54,7 @@ class InMemoryManifestRepository:
         self.entries.append(entry)
 
     async def last_for_identifier(
-        self, identifier: SourceIdentifier, owner_id: OwnerId
+        self, identifier: Identifier, owner_id: OwnerId
     ) -> ManifestEntry | None:
         matches = [
             e
@@ -65,7 +65,7 @@ class InMemoryManifestRepository:
         ]
         return matches[-1] if matches else None
 
-    async def delete(self, identifier: SourceIdentifier, owner_id: OwnerId) -> None:
+    async def delete(self, identifier: Identifier, owner_id: OwnerId) -> None:
         key = identifier.serialize()
         self.entries = [
             e
@@ -114,13 +114,13 @@ class InMemoryGraphRepository:
         return RelationWriteResult(written=written, pending=pending)
 
     async def existing_node_ids(
-        self, identifiers: list[SourceIdentifier], owner_id: OwnerId
+        self, identifiers: list[Identifier], owner_id: OwnerId
     ) -> set[str]:
         del owner_id
         return {i.serialize() for i in identifiers} & self.nodes
 
     async def delete_relations_from(
-        self, identifier: SourceIdentifier, owner_id: OwnerId, source: object
+        self, identifier: Identifier, owner_id: OwnerId, source: object
     ) -> None:
         del source
         key = identifier.serialize()
@@ -139,7 +139,7 @@ class InMemoryGraphRepository:
         ]
 
     async def compensate_document_node(
-        self, identifier: SourceIdentifier, owner_id: OwnerId
+        self, identifier: Identifier, owner_id: OwnerId
     ) -> None:
         """§8 : orphelin → supprimé ; cité → dé-hydraté (reste une cible `:Pending`).
 

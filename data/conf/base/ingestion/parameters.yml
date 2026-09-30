@@ -14,12 +14,6 @@ importation:
   extraction:
     content_tag: "CONTENU"
 
-  validation:
-    validation_rules:
-      require_eli: true
-      format_regex: "^[A-Z]{8}[0-9]{12}$"
-    log_invalidated: false
-
   normalization:
     title_mapping:
       enabled: true
@@ -73,6 +67,14 @@ exportation:
   neo4j:
     include_path: true
     include_content: true
+    # Le label d'un nœud, d'après les 8 lettres de son identifiant. Un préfixe absent
+    # de la table reçoit `default`.
+    labels:
+      default: "Document"
+      by_prefix:
+        LEGIARTI: "Article"
+        LEGITEXT: "Texte"
+        LEGISCTA: "Section"
 
   mongodb:
     database: "LEGIFRANCE"

@@ -33,15 +33,18 @@ __all__ = [
     "may_publish",
 ]
 
-SERVING_CONTRACT_VERSION = 1
+SERVING_CONTRACT_VERSION = 2
 """La version du contrat ingestion ↔ serving que ce code écrit (ADR-039).
 
-La v1 couvre :
+Le contrat couvre :
 
 - le payload Qdrant : ``chunk_id``, ``identifier``, ``owner_id``, ``char_start``,
   ``char_end`` (points de code dans ``content``), ``type_document`` facultatif ;
 - Mongo ``documents`` : ``identifier``, ``owner_id``, ``title``, ``content`` ;
 - ce pointeur, qui publie la version.
+
+La v2 change la forme d'``identifier`` : la valeur brute (``LEGIARTI000006419264``), là
+où la v1 la préfixait d'un type (``eli:LEGIARTI000006419264``).
 
 Le backend refuse de démarrer sur une autre version. Toute modification de ces champs
 est donc un **bump**, et un bump impose un run complet (voir ``may_publish``).

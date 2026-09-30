@@ -11,7 +11,7 @@ from typing import Any
 
 from kedro.io import DataCatalog, DatasetError
 
-from ragcore.adapters.storage.neo4j.node_properties import NodeHydration
+from ragcore.adapters.storage.neo4j.node_properties import NodeHydration, NodeLabels
 from ragcore.core.config import (
     ChunkingConfig,
     EmbeddingConfig,
@@ -26,6 +26,7 @@ __all__ = [
     "load_parameters",
     "resolve_embedding_enabled",
     "resolve_node_hydration",
+    "resolve_node_labels",
     "resolve_sources",
 ]
 
@@ -134,6 +135,28 @@ def resolve_node_hydration(params: dict[str, Any], environment: str) -> NodeHydr
         metadata=True,
         include_path=bool(neo4j.get("include_path", True)),
         include_content=bool(neo4j.get("include_content", True)),
+    )
+
+
+def resolve_node_labels(params: dict[str, Any]) -> NodeLabels:
+    """Les labels des nœuds Neo4j, d'après le préfixe de l'identifiant — ou un ARRÊT.
+
+    PAS de table par défaut dans le code : ``exportation.neo4j.labels`` est la seule
+    source. Un bloc absent arrête le run, plutôt que d'écrire tout le graphe sous un
+    label que personne n'a choisi. Contrairement à l'hydratation, l'environnement
+    n'arbitre rien ici : le label d'un nœud est le même en dev et en prod.
+    """
+    labels = params.get("exportation", {}).get("neo4j", {}).get("labels")
+    if not isinstance(labels, dict) or not labels.get("default"):
+        raise ValueError(
+            "`exportation.neo4j.labels` est absent de `parameters.yml`, ou n'a pas de "
+            "`default` : le run est interrompu. Attendu : un label `default` et une "
+            "table `by_prefix` (p. ex. `LEGIARTI: Article`)."
+        )
+    by_prefix = labels.get("by_prefix") or {}
+    return NodeLabels(
+        default=str(labels["default"]),
+        by_prefix={str(prefix): str(label) for prefix, label in by_prefix.items()},
     )
 
 

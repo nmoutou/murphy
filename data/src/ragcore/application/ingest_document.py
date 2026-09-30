@@ -15,11 +15,11 @@ from datetime import UTC, datetime
 
 from ragcore.core.models import (
     EmbeddedChunk,
+    Identifier,
     ManifestEntry,
     Operation,
     OwnerId,
     ParsedDocument,
-    SourceIdentifier,
 )
 from ragcore.core.models.audit import build_event
 from ragcore.core.ports.document_repository import DocumentRepository
@@ -154,7 +154,7 @@ class IngestDocumentUseCase:
 
     async def _qdrant_delete_then_insert(
         self,
-        identifier: SourceIdentifier,
+        identifier: Identifier,
         owner_id: OwnerId,
         embedded_chunks: list[EmbeddedChunk],
     ) -> None:

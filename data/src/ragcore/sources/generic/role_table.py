@@ -80,7 +80,7 @@ class RoleTable:
     """La balise qui porte l'identifiant du document.
 
     **Il n'existe aucune balise ``<ELI>`` dans le corpus LEGI** — vérifié : zéro
-    occurrence sur 2564 fichiers. Le nom du modèle est historique ; la donnée est un ID.
+    occurrence sur 2564 fichiers. La donnée est un ID.
     """
 
     meta_containers: Sequence[str] = ()

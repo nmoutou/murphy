@@ -15,7 +15,7 @@ from ragcore.application.ingest_document import IngestDocumentUseCase, Ingestion
 from ragcore.application.run_context import PipelineContext
 from ragcore.core.models.document import ParsedDocument
 from ragcore.core.models.enums import Operation, SourceName
-from ragcore.core.models.identifiers import ELI, OwnerId
+from ragcore.core.models.identifiers import Identifier, OwnerId
 from ragcore.core.telemetry_events import (
     DOCUMENT_PERSISTED,
     RELATION_UPSERTED,
@@ -35,7 +35,7 @@ OWNER = OwnerId("owner-1")
 
 def _doc() -> ParsedDocument:
     return ParsedDocument(
-        identifier=ELI(raw="LEGIARTI000000000001"),
+        identifier=Identifier(raw="LEGIARTI000000000001"),
         owner_id=OWNER,
         source=SourceName.LEGI,
         title="Article 1",
@@ -80,7 +80,7 @@ async def test_phase_one_writes_the_node_and_never_an_edge(stores, context) -> N
 
     await use_case.execute(_doc(), [], Operation.INSERT, context)
 
-    assert stores["graph_repo"].nodes == {"eli:LEGIARTI000000000001"}
+    assert stores["graph_repo"].nodes == {"LEGIARTI000000000001"}
     assert stores["graph_repo"].edges == []
     assert stores["telemetry"].events_of(RELATION_UPSERTED) == []
     assert len(stores["telemetry"].events_of(DOCUMENT_PERSISTED)) == 1
@@ -182,7 +182,7 @@ async def test_an_update_replaces_in_place_without_a_preceding_delete(
 
     assert stores["document_repo"].deleted == []
     assert list(stores["document_repo"].documents) == [
-        ("eli:LEGIARTI000000000001", "owner-1")
+        ("LEGIARTI000000000001", "owner-1")
     ]
     assert len(stores["telemetry"].events_of(DOCUMENT_PERSISTED)) == 1
 
@@ -203,4 +203,4 @@ async def test_the_node_survives_a_later_failure(stores, context) -> None:  # no
         await use_case.execute(_doc(), [], Operation.INSERT, context)
 
     # L'échec est hors saga : le nœud reste, et c'est voulu.
-    assert stores["graph_repo"].nodes == {"eli:LEGIARTI000000000001"}
+    assert stores["graph_repo"].nodes == {"LEGIARTI000000000001"}

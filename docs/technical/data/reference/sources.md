@@ -49,7 +49,7 @@ Quatre tables pour six sources : LEGI a la sienne ; CAPP, CASS et INCA partagent
 ## Les connecteurs — « idiots » par principe
 
 Un connecteur localise, lit et **transcrit l'arbre XML en dict, sans perte et sans
-interprétation**. Il ne sait pas ce qu'est un `<LIEN>` ni un ELI ; si la DILA ajoute une
+interprétation**. Il ne sait pas ce qu'est un `<LIEN>` ni un identifiant ; si la DILA ajoute une
 balise demain, il la transporte — c'est le parser qui la déclarera inconnue. La
 transcription est un arbre (pas un dict à plat : `<LIENS>` contient N `<LIEN>` frères
 qu'un aplatissement écraserait mutuellement).
@@ -117,12 +117,10 @@ ensuite du sort de la métadonnée — le signal survit toujours au filtre.
 
 ### Les invariants du parse
 
-- **Identité** : un seul `identifier` (union discriminée) nomme le document partout en
-  aval. LEGI → `ELI` (validé à la construction : 8 majuscules + 12 chiffres, préfixe
-  `ARTI`/`TEXT`/`SCTA` → type de document). Jurisprudence → `DecisionId` (même motif,
-  type distinct : `JURITEXT…` satisfait la regex ELI, et sans type dédié une décision se
-  sérialiserait `eli:…` en prétendant être un texte de loi ; le préfixe
-  `JURITEXT`/`CETATEXT`/`CONSTEXT` → ordre de juridiction). ELI absent ou mal formé =
+- **Identité** : un seul `identifier` (type `Identifier`) nomme le document partout en
+  aval, sous sa valeur brute (`LEGIARTI000006419264`, `JURITEXT000019333891`). Il est
+  validé à la construction (8 majuscules + 12 chiffres), pour toutes les sources ; ses
+  8 lettres distinguent un article d'une décision. Identifiant absent ou mal formé =
   `ValidationError` = rejet métier (manifest `EXCLUDED`), distinct d'une panne de lecture
   (`ParseError`).
 - **`content` et `structure["sections"]` sortent de la même lecture, dans le même

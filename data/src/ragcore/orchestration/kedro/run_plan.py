@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from ragcore.adapters.config.settings import InfraSettings
-from ragcore.adapters.storage.neo4j.node_properties import NodeHydration
+from ragcore.adapters.storage.neo4j.node_properties import NodeHydration, NodeLabels
 from ragcore.core.config import WorkflowConfig, collection_name
 from ragcore.core.models.enums import SourceName
 from ragcore.core.models.identifiers import OwnerId
@@ -21,6 +21,7 @@ from ragcore.orchestration.kedro.run_parameters import (
     build_workflow_config,
     resolve_embedding_enabled,
     resolve_node_hydration,
+    resolve_node_labels,
     resolve_sources,
 )
 from ragcore.sources.registry import all_sources
@@ -44,6 +45,8 @@ class RunPlan:
     """L'hydratation des nœuds Neo4j (ADR-022 §2) : résolue UNE fois, partagée entre le
     dépôt du hook et ceux des workers — deux résolutions seraient deux occasions de
     diverger."""
+    node_labels: NodeLabels
+    """Le label des nœuds Neo4j d'après le préfixe de l'identifiant, lu dans le YAML."""
     embedding_enabled: bool
     """L'interrupteur d'embedding (dev, ADR-023), arbitré par l'environnement."""
 
@@ -102,6 +105,7 @@ def plan_run(
         sources=resolve_sources(extra.get("source", settings.source)),
         owner_id=OwnerId(extra.get("owner_id", settings.owner_id)),
         node_hydration=resolve_node_hydration(params, settings.environment),
+        node_labels=resolve_node_labels(params),
         embedding_enabled=resolve_embedding_enabled(params, settings.environment),
     )
     _log_plan(plan)

@@ -11,21 +11,21 @@ qu'ils tenaient pour acquis : la réduction n'a aucune légitimité sur une cita
 
 from ragcore.core.links import CITES, CONTAINS
 from ragcore.core.models.enums import SourceName
-from ragcore.core.models.identifiers import ELI, OwnerId
+from ragcore.core.models.identifiers import Identifier, OwnerId
 from ragcore.core.models.relation import Relation
 from ragcore.core.services.relation_reduction import reduce_transitively
 
 OWNER = OwnerId("u1")
 OTHER_OWNER = OwnerId("u2")
 
-A = ELI(raw="LEGIARTI000000000001")
-B = ELI(raw="LEGIARTI000000000002")
-C = ELI(raw="LEGIARTI000000000003")
+A = Identifier(raw="LEGIARTI000000000001")
+B = Identifier(raw="LEGIARTI000000000002")
+C = Identifier(raw="LEGIARTI000000000003")
 
 
 def _rel(
-    src: ELI,
-    tgt: ELI,
+    src: Identifier,
+    tgt: Identifier,
     rtype: str = CONTAINS,
     owner: OwnerId = OWNER,
 ) -> Relation:

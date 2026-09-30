@@ -1,7 +1,7 @@
 """Implémentation MongoDB du ManifestRepository — append-only avec deux modes d'indexation."""
 
 from ragcore.adapters.storage.mongo.client import MongoClient
-from ragcore.core.models.identifiers import OwnerId, SourceIdentifier
+from ragcore.core.models.identifiers import Identifier, OwnerId
 from ragcore.core.models.manifest import ManifestEntry
 
 
@@ -30,7 +30,7 @@ class MongoManifestRepository:
         await self._collection.insert_one(data)
 
     async def last_for_identifier(
-        self, identifier: SourceIdentifier, owner_id: OwnerId
+        self, identifier: Identifier, owner_id: OwnerId
     ) -> ManifestEntry | None:
         """Récupère la dernière entrée pour cet identifier (tri par processed_at DESC)."""
         doc = await self._collection.find_one(
@@ -46,7 +46,7 @@ class MongoManifestRepository:
         doc.pop("identifier_serialized", None)  # Pas besoin après le fetch
         return ManifestEntry.model_validate(doc)
 
-    async def delete(self, identifier: SourceIdentifier, owner_id: OwnerId) -> None:
+    async def delete(self, identifier: Identifier, owner_id: OwnerId) -> None:
         """Supprime toutes les entrées pour cet identifier."""
         await self._collection.delete_many(
             {

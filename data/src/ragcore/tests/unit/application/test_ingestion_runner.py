@@ -20,7 +20,7 @@ from ragcore.application.run_context import PipelineContext
 from ragcore.core.models.audit import build_event
 from ragcore.core.models.document import ParsedDocument
 from ragcore.core.models.enums import Operation, SourceName
-from ragcore.core.models.identifiers import ELI, OwnerId
+from ragcore.core.models.identifiers import Identifier, OwnerId
 from ragcore.core.ports.runtime import AsyncRuntimeFactory
 from ragcore.core.ports.telemetry import TelemetryFactory, WorkerTelemetry
 from ragcore.core.telemetry_events import DOCUMENT_PERSISTED
@@ -35,7 +35,7 @@ OWNER = OwnerId("owner-1")
 
 def _doc(n: int) -> ParsedDocument:
     return ParsedDocument(
-        identifier=ELI(raw=f"LEGIARTI{n:012d}"),
+        identifier=Identifier(raw=f"LEGIARTI{n:012d}"),
         owner_id=OWNER,
         source=SourceName.LEGI,
         title=f"Article {n}",
@@ -108,7 +108,7 @@ class TestPartition:
         """
         script = (
             "from ragcore.application.ingestion_runner import _shard_of;"
-            "print([_shard_of(f'eli:LEGIARTI{i:012d}', 4) for i in range(20)])"
+            "print([_shard_of(f'LEGIARTI{i:012d}', 4) for i in range(20)])"
         )
         runs = [
             subprocess.run(  # noqa: S603
