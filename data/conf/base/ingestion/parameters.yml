@@ -1,59 +1,5 @@
 # ============================================================
-# PARAMÈTRE GÉNÉRAUX
-# ============================================================
-
-nlp:
-  spacy_model: "fr_core_news_sm"
-
-
-# ============================================================
-# Phase 1: Importation
-# ============================================================
-
-importation:
-  extraction:
-    content_tag: "CONTENU"
-
-  normalization:
-    title_mapping:
-      enabled: true
-      sources:
-        Article:
-          - "article_meta_meta_spec_meta_article_num"
-        Texte:
-          - "texte_version_meta_meta_spec_meta_texte_version_titre"
-        TexteAdmin:
-          - "section_ta_titre_ta"
-
-# ============================================================
-# Phase 3: Formatage
-# ============================================================
-
-formatting:
-  tokenizing:
-    tokenizing_model: ${nlp.spacy_model}
-    batch_size: 50
-
-  relations:
-    filtering: []
-    invert:
-      - txt_source
-      - lien_art
-      - lien_section_ta
-    mappings:
-      titre_tm: titre
-      titre_txt: titre
-      texte: titre
-      lien_art: titre
-      lien_section_ta: titre
-      txt_source: source
-    reduction:
-      enabled: true
-      types:
-        - titre
-
-# ============================================================
-# Phase 3 bis: Découpe
+# Découpe
 # ============================================================
 
 # Tailles en caractères. Changer une valeur invalide les vecteurs déjà écrits :
@@ -63,7 +9,7 @@ chunking:
   overlap: 25
 
 # ============================================================
-# Phase 4: Export - embedding
+# Embedding
 # ============================================================
 
 # Le modèle doit être celui que sert TEI (EMBEDDING_MODEL dans .env.dev) et que le
@@ -73,9 +19,11 @@ embedding:
   dimension: 768
 
 embedding_runtime:
-  embedding_service_timeout: 30
-  batch_size: 32
   enabled: true
+
+# ============================================================
+# Export
+# ============================================================
 
 exportation:
   # `true` retire du document les métadonnées des balises non configurées ; le signal
@@ -95,17 +43,8 @@ exportation:
         LEGITEXT: "Texte"
         LEGISCTA: "Section"
 
-  mongodb:
-    database: "LEGIFRANCE"
-    collection: "chunks"
-
-  qdrant:
-    distance: "Cosine"
-    batch_size: 100
-
-
 # ============================================================
-# Phase 5: Maintenance
+# Maintenance
 # ============================================================
 
 maintenance:

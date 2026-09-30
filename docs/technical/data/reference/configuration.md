@@ -4,10 +4,16 @@ Deux surfaces :
 
 | Surface | Fichier | Contenu |
 |---|---|---|
-| **Réglages du pipeline** | `conf/base/ingestion/parameters.yml` | Découpe, modèle d'embedding, relations, exportation, maintenance |
+| **Réglages du pipeline** | `conf/base/ingestion/parameters.yml` | Découpe, modèle d'embedding, exportation, maintenance |
 | **Infra** (`InfraSettings`, `EmbeddingRuntimeSettings`) | `.env.dev` à la **racine du dépôt** | Le *où* et le *comment* : bases, secrets, chemins, nom de la collection Qdrant |
 
-`parameters.yml` illisible = run arrêté, jamais de défauts silencieux.
+`parameters.yml` illisible = run arrêté, jamais de défauts silencieux. Le fichier est
+validé **en entier** par un modèle strict (`orchestration/kedro/parameters_model.py`),
+avant tout nœud : une clé inconnue, absente ou mal typée arrête le run, et toutes les
+erreurs sont listées ensemble, chacune par son chemin (`` `maintenance.nuke_all` ``).
+Strict veut dire sans conversion : `"false"` n'est pas un booléen, `"384"` n'est pas un
+entier. Kedro fusionne les `--params` dans les paramètres : le modèle les voit aussi, et
+seul `source` y est accepté (`--params sorce=cass` est refusé).
 
 ## La collection Qdrant : un nom fixe
 
@@ -31,42 +37,25 @@ champ manquant, mal typé ou inconnu arrête le run au démarrage.
 | `embedding.model_name` | `sentence-transformers/all-mpnet-base-v2` | Doit être le modèle que sert le conteneur TEI — vérifié au démarrage (`GET /info`). |
 | `embedding.dimension` | `768` | Taille des vecteurs (et de la collection Qdrant). |
 
-### `importation` (`conf/base/ingestion/parameters.yml`)
+### `embedding_runtime` — l'interrupteur
 
 | Clé | Valeur | Effet |
 |---|---|---|
-| `extraction.content_tag` | `CONTENU` | Balise de contenu à l'extraction. |
-| `normalization.title_mapping` | mappings par racine | D'où vient le `title` de chaque type de document. |
-
-### `formatting`
-
-| Clé | Valeur | Effet |
-|---|---|---|
-| `tokenizing.*` | spaCy `fr_core_news_sm` | Vestige : spaCy a quitté le chemin critique (plus de lemmatisation). |
-| `relations.filtering` / `invert` / `mappings` / `reduction` | — | La table de traitement des liens : types inversés (`txt_source`, `lien_art`, `lien_section_ta`), mapping des `typelien` vers les verbes (`titre`, `source`…), réduction transitive activée sur `titre` (la contenance). |
-
-### `embedding_runtime` — le transport et l'interrupteur
-
-| Clé | Valeur | Effet |
-|---|---|---|
-| `embedding_service_timeout` / `batch_size` | `30` / `32` | Transport (le batch effectif du provider `openai` vient de `EMBEDDING_BATCH_SIZE` côté env). |
-| `enabled` | `true` | **L'interrupteur d'embedding (ADR-023).** `false` = aucun vecteur calculé ni écrit (Qdrant vide, Mongo/Neo4j normaux) — le régime d'itération dev sur le modèle de données. **Sans effet hors `ENVIRONMENT=dev`** (arbitré par le plan du run). Distinct de `EMBEDDING_PROVIDER=noop`, qui calcule et ÉCRIT des vecteurs nuls. **Obligatoire**, booléen strict, validé par le plan du run dans tous les environnements (clé absente ou `"false"` = échec avant tout nœud). |
+| `enabled` | `true` | **L'interrupteur d'embedding (ADR-023).** `false` = aucun vecteur calculé ni écrit (Qdrant vide, Mongo/Neo4j normaux) — le régime d'itération dev sur le modèle de données. **Sans effet hors `ENVIRONMENT=dev`** (arbitré par le plan du run). Distinct de `EMBEDDING_PROVIDER=noop`, qui calcule et ÉCRIT des vecteurs nuls. Le transport n'est pas ici : taille de lot dans `EMBEDDING_BATCH_SIZE`, timeout codé en dur (120 s). |
 
 ### `exportation`
 
 | Clé | Valeur | Effet |
 |---|---|---|
-| `skip_unconfigured` | `false` | Le sort des balises non-configurées (cadrage « trois portes ») : `false` = la balise entre en metadata sous sa clé chemin-complet ; `true` = retirée du document. **Sans effet hors `ENVIRONMENT=dev`** : la balise est toujours retirée (ADR-022 §1, arbitré par le plan du run). Le signal `tag.unconfigured`, lui, est TOUJOURS émis — on compte d'abord, on filtre ensuite. **Obligatoire**, booléen strict (`"false"` est refusé) : clé absente ou mal typée = échec dans le plan du run, avant tout nœud. |
-| `neo4j.include_path` / `include_content` | `true` / `true` | Hydratation des nœuds Neo4j **en dev seulement** (forcés à `false` ailleurs — ADR-022 §2) : chemins des fichiers XML source, texte du document (`_text_content`). **Obligatoire**, booléen strict, validé par le plan du run dans tous les environnements (clé absente ou `"false"` = échec avant tout nœud). |
-| `neo4j.labels.default` / `labels.by_prefix` | `Document` / `LEGIARTI: Article`, `LEGITEXT: Texte`, `LEGISCTA: Section` | Le label d'un nœud Neo4j d'après les 8 lettres de son identifiant ; un préfixe absent de la table reçoit `default`. **Obligatoire** (aucun défaut dans le code) : bloc absent, préfixe qui n'est pas 8 majuscules ou label mal formé = échec au démarrage. S'applique en dev comme en prod. Changer la table sans `nuke_all` laisse l'ancien label sur les nœuds déjà écrits. |
-| `mongodb.database` / `collection` | `LEGIFRANCE` / `chunks` | ⚠️ **Vestige non lu** : les noms réels viennent du `.env` (`MONGODB_DATA_DB_NAME`) et des dépôts (`documents`, `manifest`). |
-| `qdrant.distance` / `batch_size` | `Cosine` / `100` | ⚠️ **Vestige non lu** : la distance est codée en dur (COSINE), et le nom de la collection vient de `QDRANT_COLLECTION` (`.env.dev`). |
+| `skip_unconfigured` | `false` | Le sort des balises non-configurées (cadrage « trois portes ») : `false` = la balise entre en metadata sous sa clé chemin-complet ; `true` = retirée du document. **Sans effet hors `ENVIRONMENT=dev`** : la balise est toujours retirée (ADR-022 §1, arbitré par le plan du run). Le signal `tag.unconfigured`, lui, est TOUJOURS émis — on compte d'abord, on filtre ensuite. |
+| `neo4j.include_path` / `include_content` | `true` / `true` | Hydratation des nœuds Neo4j **en dev seulement** (forcés à `false` ailleurs — ADR-022 §2) : chemins des fichiers XML source, texte du document (`_text_content`). |
+| `neo4j.labels.default` / `labels.by_prefix` | `Document` / `LEGIARTI: Article`, `LEGITEXT: Texte`, `LEGISCTA: Section` | Le label d'un nœud Neo4j d'après les 8 lettres de son identifiant ; un préfixe absent de la table reçoit `default`. `by_prefix` est obligatoire (`{}` accepté). Préfixe qui n'est pas 8 majuscules ou label mal formé = échec au démarrage. S'applique en dev comme en prod. Changer la table sans `nuke_all` laisse l'ancien label sur les nœuds déjà écrits. |
 
 ### `maintenance`
 
 | Clé | Valeur | Effet |
 |---|---|---|
-| `nuke_all` | `true` | Efface TOUTES les données de TOUTES les bases en tête de run (Mongo documents+manifest, graphe Neo4j, **toutes** les collections Qdrant), en **préservant `MURPHY_META`**. Le levier disque du développement. Hors `ENVIRONMENT=dev` (l'absence de la variable vaut `prod`), `true` arrête le run dans le plan du run, avant tout nœud (`NukeAllOutsideDevError`). **Obligatoire**, booléen strict, validé par le plan du run dans tous les environnements (clé absente ou `"false"` = échec avant tout nœud). |
+| `nuke_all` | `true` | Efface TOUTES les données de TOUTES les bases en tête de run (Mongo documents+manifest, graphe Neo4j, **toutes** les collections Qdrant), en **préservant `MURPHY_META`**. Le levier disque du développement. Hors `ENVIRONMENT=dev` (l'absence de la variable vaut `prod`), `true` arrête le run dans le plan du run, avant tout nœud (`NukeAllOutsideDevError`). |
 
 ## `.env.dev` (racine du dépôt)
 

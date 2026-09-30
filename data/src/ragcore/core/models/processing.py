@@ -1,7 +1,8 @@
 """Les réglages du traitement : la découpe, et le modèle d'embedding.
 
 Lus de ``parameters.yml`` (blocs ``chunking`` et ``embedding``) en tête de run. Un champ
-absent, mal typé ou inconnu arrête le run : aucun défaut dans le code.
+absent, mal typé ou inconnu arrête le run : aucun défaut dans le code, et aucune
+conversion (``"384"`` n'est pas un entier).
 """
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -10,7 +11,7 @@ __all__ = ["ChunkingConfig", "EmbeddingConfig"]
 
 
 class _Frozen(BaseModel):
-    model_config = ConfigDict(frozen=True, extra="forbid")
+    model_config = ConfigDict(frozen=True, extra="forbid", strict=True)
 
 
 class ChunkingConfig(_Frozen):

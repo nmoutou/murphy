@@ -81,7 +81,7 @@ class TelemetryHooks:
     ) -> None:
         """Assemble le run et le POSE au catalogue : le DAG nomme, le hook fournit."""
         settings = get_infra_settings()
-        plan = plan_run(load_parameters(catalog), settings, run_params)
+        plan = plan_run(load_parameters(catalog), settings)
         embedder = prepare_embedder(
             get_embedding_runtime_settings(), plan, self._runtime
         )

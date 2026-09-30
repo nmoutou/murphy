@@ -3,8 +3,8 @@
 Référence exhaustive du pipeline d'ingestion. Le DAG vit dans
 `src/ragcore/orchestration/kedro/pipeline.py`, les nœuds dans
 `src/ragcore/orchestration/kedro/nodes/`, le câblage dans
-`src/ragcore/orchestration/kedro/hooks.py`, qui délègue à `run_parameters.py` (lecture des
-paramètres), `run_plan.py` (le plan du run), `stores.py` (clients et dépôts) et
+`src/ragcore/orchestration/kedro/hooks.py`, qui délègue à `parameters_model.py` (la forme
+de `parameters.yml`), `run_parameters.py` (lecture et arbitrages), `run_plan.py` (le plan du run), `stores.py` (clients et dépôts) et
 `assembly.py` (embedder, briques, pool de la phase 1) et `run_session.py` (l'état du
 run et sa clôture).
 
@@ -17,9 +17,10 @@ Le hook est le **point d'assemblage** du run. Dans l'ordre :
 2. **Chargement de `parameters.yml`** (`run_parameters.load_parameters`) — sans fallback :
    un YAML illisible arrête le run.
 3. **Le plan du run** (`run_plan.plan_run`), une donnée figée dérivée une seule fois :
-   - la découpe et le modèle d'embedding (`run_parameters.resolve_chunking`,
-     `resolve_embedding_model`) : les blocs `chunking` et `embedding`, sans défaut dans le
-     code. Bloc absent ou champ mal formé = échec au démarrage ;
+   - la validation du fichier entier (`parameters_model.validate_parameters`), `--params`
+     compris : un modèle strict, sans défaut dans le code. Clé inconnue, absente ou mal
+     typée = échec au démarrage, toutes les erreurs listées ensemble ;
+   - la découpe et le modèle d'embedding : les blocs `chunking` et `embedding` ;
    - la collection Qdrant : `QDRANT_COLLECTION`, un nom fixe lu des settings ;
    - les sources (`run_parameters.resolve_sources`) : `--params source=…` ou `SOURCE` du
      `.env`, défaut `all` = les six ingérables. Valeur inconnue = échec au démarrage en
@@ -27,9 +28,8 @@ Le hook est le **point d'assemblage** du run. Dans l'ordre :
    - les arbitrages dev/prod : `run_parameters.resolve_embedding_enabled` (ADR-023 — le
      flag YAML n'a d'effet qu'en `dev`) et `run_parameters.resolve_node_hydration`
      (ADR-022 — nœuds Neo4j maigres hors `dev`) ;
-   - les labels des nœuds Neo4j (`run_parameters.resolve_node_labels`) : la table
-     `exportation.neo4j.labels`, sans défaut dans le code. Bloc absent ou label mal
-     formé = échec au démarrage ;
+   - les labels des nœuds Neo4j (`NodeLabels`) : la table `exportation.neo4j.labels`.
+     Préfixe ou label mal formé = échec au démarrage ;
 4. **L'embedder** (`assembly.prepare_embedder`), une seule branche sur le provider :
    - `openai` : précondition TEI d'abord. `assert_service_serves_model` interroge
      `GET /info` du service et compare au modèle de `parameters.yml`. TEI ignore le champ `model`

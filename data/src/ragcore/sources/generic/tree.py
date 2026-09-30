@@ -55,9 +55,9 @@ def walk_with_path(
 def path_key(path: tuple[str, ...]) -> str:
     """Un chemin de balises → la clé plate canonique (snake_case, jointure ``_``).
 
-    ``("ARTICLE", "META", …, "NUM")`` → ``article_meta_…_num``. La MÊME convention que
-    ``title_mapping.sources`` dans ``parameters.yml`` — elle préexistait dans la conf,
-    le parser la rejoint.
+    ``("ARTICLE", "META", …, "NUM")`` → ``article_meta_…_num``. La convention de l'ancien
+    ``title_mapping.sources`` de ``parameters.yml`` (supprimé depuis) : le parser l'a
+    reprise.
     """
     return "_".join(tag.lower() for tag in path)
 

@@ -16,12 +16,10 @@ from ragcore.adapters.config.settings import InfraSettings
 from ragcore.adapters.storage.neo4j.node_properties import NodeHydration, NodeLabels
 from ragcore.core.models.enums import SourceName
 from ragcore.core.models.processing import ChunkingConfig, EmbeddingConfig
+from ragcore.orchestration.kedro.parameters_model import validate_parameters
 from ragcore.orchestration.kedro.run_parameters import (
-    resolve_chunking,
     resolve_embedding_enabled,
-    resolve_embedding_model,
     resolve_node_hydration,
-    resolve_node_labels,
     resolve_nuke_all,
     resolve_skip_unconfigured,
     resolve_sources,
@@ -68,37 +66,43 @@ class RunPlan:
         return self.sources[0] if len(self.sources) == 1 else None
 
 
-def plan_run(
-    params: dict[str, Any], settings: InfraSettings, run_params: dict[str, Any]
-) -> RunPlan:
+def plan_run(params: dict[str, Any], settings: InfraSettings) -> RunPlan:
     """Dérive le plan du run. Sans I/O : rien n'est ouvert, seul le plan est journalisé.
 
-    Une source inconnue (``--params source=cas``), un réglage manquant ou mal typé, ou
-    ``nuke_all`` hors ``dev`` échoue ici, avant qu'aucun client ne soit ouvert.
+    ``params`` contient déjà les ``--params`` de la ligne de commande : Kedro les
+    fusionne dans les paramètres. Un ``parameters.yml`` invalide, une source inconnue
+    (``--params source=cas``) ou ``nuke_all`` hors ``dev`` échoue ici, avant qu'aucun
+    client ne soit ouvert.
     """
-    # Les `--params` de la ligne de commande. Kedro 1.x les passe sous
-    # `runtime_params` ; l'ancienne clé `extra_params` n'existe plus, et la lire
-    # faisait ignorer `--params source=…` en silence.
-    extra = run_params.get("runtime_params") or {}
-
+    parameters = validate_parameters(params)
+    environment = settings.environment
+    neo4j = parameters.exportation.neo4j
+    # Un run nu ingère TOUTES les sources ; `--params source=cass` le restreint.
+    #
+    # ⚠️ DETTE OUVERTE : un run qui mélange des sources doit pouvoir dire *laquelle* a
+    # échoué, et il ne le peut pas encore. `RunStats.breakdowns` ne ventile que `reason`
+    # et `operation` (cf. `adapters/telemetry/aggregator.py`), PAS la source. La
+    # restriction garde la voie du rejeu ciblé ouverte, mais le bilan ne dit pas encore
+    # *quoi* rejouer.
+    requested_source = (
+        settings.source if parameters.source is None else parameters.source
+    )
     plan = RunPlan(
-        chunking=resolve_chunking(params),
-        embedding=resolve_embedding_model(params),
+        chunking=parameters.chunking,
+        embedding=parameters.embedding,
         collection=settings.qdrant_collection,
-        # Les SOURCES du run. Un run nu les ingère TOUTES ; `--params source=cass` ou
-        # `source=cass,jade` le restreint.
-        #
-        # ⚠️ DETTE OUVERTE : un run qui mélange des sources doit pouvoir dire *laquelle*
-        # a échoué, et il ne le peut pas encore. `RunStats.breakdowns` ne ventile que
-        # `reason` et `operation` (cf. `adapters/telemetry/aggregator.py`), PAS la source.
-        # La restriction par paramètre garde la voie du rejeu ciblé ouverte, mais le
-        # bilan ne dit pas encore *quoi* rejouer.
-        sources=resolve_sources(extra.get("source", settings.source)),
-        node_hydration=resolve_node_hydration(params, settings.environment),
-        node_labels=resolve_node_labels(params),
-        embedding_enabled=resolve_embedding_enabled(params, settings.environment),
-        skip_unconfigured=resolve_skip_unconfigured(params, settings.environment),
-        nuke_all=resolve_nuke_all(params, settings.environment),
+        sources=resolve_sources(requested_source),
+        node_hydration=resolve_node_hydration(neo4j, environment),
+        node_labels=NodeLabels(
+            default=neo4j.labels.default, by_prefix=neo4j.labels.by_prefix
+        ),
+        embedding_enabled=resolve_embedding_enabled(
+            parameters.embedding_runtime.enabled, environment
+        ),
+        skip_unconfigured=resolve_skip_unconfigured(
+            parameters.exportation.skip_unconfigured, environment
+        ),
+        nuke_all=resolve_nuke_all(parameters.maintenance.nuke_all, environment),
     )
     _log_plan(plan)
     return plan

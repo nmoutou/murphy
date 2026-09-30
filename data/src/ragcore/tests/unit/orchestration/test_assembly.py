@@ -76,12 +76,13 @@ def plan(settings: InfraSettings) -> RunPlan:
             "neo4j": {
                 "include_path": True,
                 "include_content": True,
-                "labels": {"default": "Document"},
+                "labels": {"default": "Document", "by_prefix": {}},
             },
         },
         "maintenance": {"nuke_all": False},
+        "source": "cass",
     }
-    return plan_run(params, settings, {"runtime_params": {"source": "cass"}})
+    return plan_run(params, settings)
 
 
 @pytest.fixture

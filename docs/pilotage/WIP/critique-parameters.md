@@ -19,7 +19,7 @@ Priorité : P1 à P4, puis P18 (qui règle P1, P2, P6 et P12).
 ## Clés lues et non lues
 
 - **Lues** : `chunking`, `embedding`, `embedding_runtime.enabled`, `exportation.skip_unconfigured`, `exportation.neo4j.*`, `maintenance.nuke_all`.
-- **Non lues** : `nlp`, `importation`, `formatting`, `embedding_runtime.embedding_service_timeout`, `embedding_runtime.batch_size`, `exportation.mongodb`, `exportation.qdrant`.
+- **Non lues** : aucune depuis P18. Les clés mortes ont été supprimées, et le modèle strict refuse désormais toute clé inconnue.
 
 ---
 
@@ -81,10 +81,14 @@ Priorité : P1 à P4, puis P18 (qui règle P1, P2, P6 et P12).
 
 **Conclusion** : les faits propres à une source (balises, titres, liens, verbes) ont été déplacés à bon escient dans les tables par source. Le YAML ne devrait contenir que ce qu'un opérateur change d'un run à l'autre.
 
+> **Traité en grande partie** (P18) : toutes les clés du tableau ont été supprimées du YAML. Restent ouverts le passage du timeout d'embedding dans l'environnement (aujourd'hui la constante de 120 s) et le sort de `qdrant.distance` (`Distance.COSINE` en dur).
+
 ### P6. Pourquoi ces clés ont survécu
 
 - Seuls `chunking` et `embedding` refusent les clés inconnues (`extra="forbid"`).
 - Partout ailleurs, une clé inconnue ou mal orthographiée passe en silence.
+
+> **Traité** (P18) : le modèle strict refuse les clés inconnues à tous les niveaux, `--params` compris.
 
 ---
 
@@ -103,6 +107,8 @@ Priorité : P1 à P4, puis P18 (qui règle P1, P2, P6 et P12).
 - Le code appelle déjà « phase 1 / phase 2 » l'ingestion et la résolution des relations : deux numérotations entrent en conflit.
 - Détails : « PARAMÈTRE GÉNÉRAUX » (faute d'accord), casse irrégulière des titres.
 
+> **Traité** (P18) : avec les clés mortes, les numéros de phase ont disparu. Les titres ne nomment plus que les blocs (Découpe, Embedding, Export, Maintenance).
+
 ### P9. `exportation` est un fourre-tout
 
 | Clé | Relève en réalité de |
@@ -111,11 +117,15 @@ Priorité : P1 à P4, puis P18 (qui règle P1, P2, P6 et P12).
 | `neo4j.labels` | le modèle de données |
 | `neo4j.include_*` | le régime dev |
 
+Depuis P18, `exportation` ne contient plus que `skip_unconfigured` et `neo4j` (`mongodb` et `qdrant`, morts, ont été supprimés).
+
 ### P10. `embedding` / `embedding_runtime` : séparation sans objet
 
 - La séparation « quoi / comment » servait l'empreinte d'ADR-026, qui a été supprimée.
 - `embedding_runtime` n'a plus qu'une clé lue, `enabled`, qui est un choix de régime dev, pas un réglage de transport.
 - Le « comment » vit en réalité dans l'environnement (`EmbeddingRuntimeSettings`) : même notion, deux emplacements.
+
+Depuis P18, `embedding_runtime` ne contient plus que `enabled` : le timeout et la taille de lot, non lus, ont été supprimés.
 
 ### P11. Réglages propres au dev éparpillés
 
@@ -129,7 +139,7 @@ Priorité : P1 à P4, puis P18 (qui règle P1, P2, P6 et P12).
 - Les nœuds reçoivent des blocs entiers (`params:exportation`, `params:maintenance`) pour n'en lire qu'une clé.
 - `nuke_all` relit `ENVIRONMENT` lui-même au lieu de passer par le `RunPlan`.
 
-> **En partie traité** (P1, P2) : `nukeAll` et `computeIdempotence` reçoivent un booléen du `RunPlan`, et `nuke_all` ne relit plus `ENVIRONMENT`. Depuis P3 (suppression de `cleanup`), plus aucun nœud ne reçoit de paramètre brut du YAML.
+> **Traité** (P1, P2, P3, P18) : `nukeAll` et `computeIdempotence` reçoivent un booléen du `RunPlan`, et `nuke_all` ne relit plus `ENVIRONMENT`. Depuis P3 (suppression de `cleanup`), plus aucun nœud ne reçoit de paramètre brut du YAML. Depuis P18, seul `orchestration/kedro/parameters_model.py` connaît la forme du fichier ; `run_parameters.py` n'arbitre plus que des valeurs typées.
 
 ---
 
@@ -164,7 +174,7 @@ Priorité : P1 à P4, puis P18 (qui règle P1, P2, P6 et P12).
 ### P17. Commentaires décalés
 
 - « À NE PAS activer en prod » : `nuke_all` est de toute façon refusé hors dev. Le commentaire devrait décrire ce refus. **Traité** (P2).
-- Rien n'indique l'unité de `embedding_service_timeout`.
+- Rien n'indique l'unité de `embedding_service_timeout`. **Sans objet** (P18) : la clé, non lue, a été supprimée.
 
 ---
 
@@ -179,6 +189,8 @@ Priorité : P1 à P4, puis P18 (qui règle P1, P2, P6 et P12).
 | `.get()` avec défaut, puis `bool()` | tout le reste |
 
 **Piste** : un modèle pydantic unique pour tout le fichier (`extra="forbid"`, booléens stricts), validé dans `plan_run`. Les nœuds reçoivent un plan typé au lieu de dictionnaires bruts. Cela règle P1, P2, P6 et P12.
+
+> **Traité** : `IngestionParameters` (`orchestration/kedro/parameters_model.py`) décrit tout le fichier, en `strict`, `extra="forbid"` et `frozen`. `ChunkingConfig` et `EmbeddingConfig` sont devenus stricts eux aussi. `validate_parameters` liste toutes les erreurs ensemble, chacune par son chemin pointé. Kedro fusionnant les `--params` dans les paramètres, `source` est déclaré dans le modèle : `--params sorce=cass` est refusé. Un test valide le `parameters.yml` livré.
 
 ---
 
