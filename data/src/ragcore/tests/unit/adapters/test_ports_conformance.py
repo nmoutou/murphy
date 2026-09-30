@@ -142,7 +142,7 @@ class TestEmbedders:
         assert isinstance(
             OpenAIEmbedder(
                 EmbeddingConfig(model_name="whatever", dimension=768),
-                EmbeddingTransport(base_url="http://tei.invalid/v1"),
+                EmbeddingTransport(base_url="http://tei.invalid/v1", timeout_ms=1),
             ),
             BaseEmbedder,
         )

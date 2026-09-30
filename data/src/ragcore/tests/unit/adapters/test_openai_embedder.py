@@ -24,6 +24,7 @@ from ragcore.core.models.processing import EmbeddingConfig
 ATTENDU = "sentence-transformers/all-mpnet-base-v2"
 BASE_URL = "http://tei.test:80/v1"
 DIM = 4
+TIMEOUT_MS = 2500
 
 
 def _chunk(chunk_id: str, text: str) -> Chunk:
@@ -136,16 +137,25 @@ def test_une_base_url_absente_est_refusee() -> None:
     with pytest.raises(ValueError, match="base_url"):
         OpenAIEmbedder(
             EmbeddingConfig(model_name=ATTENDU, dimension=768),
-            EmbeddingTransport(base_url=None),
+            EmbeddingTransport(base_url=None, timeout_ms=TIMEOUT_MS),
         )
 
 
 async def test_embed_d_une_liste_vide_ne_touche_pas_au_reseau() -> None:
     embedder = OpenAIEmbedder(
         EmbeddingConfig(model_name=ATTENDU, dimension=768),
-        EmbeddingTransport(base_url=BASE_URL),
+        EmbeddingTransport(base_url=BASE_URL, timeout_ms=TIMEOUT_MS),
     )
     assert await embedder.embed([]) == []
+
+
+async def test_le_timeout_du_transport_s_applique_au_client_http() -> None:
+    embedder = OpenAIEmbedder(
+        EmbeddingConfig(model_name=ATTENDU, dimension=768),
+        EmbeddingTransport(base_url=BASE_URL, timeout_ms=TIMEOUT_MS),
+    )
+
+    assert embedder._client().timeout.read == TIMEOUT_MS / 1000
 
 
 class _ServiceAFenetre:
@@ -169,7 +179,7 @@ class _ServiceAFenetre:
     def embedder(self) -> OpenAIEmbedder:
         emb = OpenAIEmbedder(
             EmbeddingConfig(model_name=ATTENDU, dimension=DIM),
-            EmbeddingTransport(base_url=BASE_URL, batch_size=32),
+            EmbeddingTransport(base_url=BASE_URL, timeout_ms=TIMEOUT_MS, batch_size=32),
         )
         # On câble le transport factice dans le client que l'embedder construira.
         vrai = httpx.AsyncClient

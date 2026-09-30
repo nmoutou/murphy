@@ -85,7 +85,10 @@ Priorité : P1 à P4, puis P18 (qui règle P1, P2, P6 et P12).
 
 **Conclusion** : les faits propres à une source (balises, titres, liens, verbes) ont été déplacés à bon escient dans les tables par source. Le YAML ne devrait contenir que ce qu'un opérateur change d'un run à l'autre.
 
-> **Traité en grande partie** (P18) : toutes les clés du tableau ont été supprimées du YAML. Restent ouverts le passage du timeout d'embedding dans l'environnement (aujourd'hui la constante de 120 s) et le sort de `qdrant.distance` (`Distance.COSINE` en dur).
+> **Traité** : toutes les clés du tableau ont été supprimées du YAML (P18).
+>
+> - Le timeout d'embedding de l'ingestion est lu de `EMBEDDING_INGESTION_TIMEOUT` (ms, défaut 120000), avec le reste du transport. Il reste distinct d'`EMBEDDING_SERVICE_TIMEOUT`, celui du backend (10 s pour une question) : les deux charges n'ont pas la même durée.
+> - `qdrant.distance` reste codé en dur (`Distance.COSINE`) : il découle du modèle, et un opérateur n'a pas à le changer d'un run à l'autre.
 
 ### P6. Pourquoi ces clés ont survécu
 

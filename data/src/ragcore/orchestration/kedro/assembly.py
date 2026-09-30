@@ -113,6 +113,7 @@ def prepare_embedder(
                 embedding,
                 EmbeddingTransport(
                     base_url=embedding_settings.service_url,
+                    timeout_ms=embedding_settings.ingestion_timeout,
                     api_key=embedding_settings.api_key,
                     batch_size=embedding_settings.batch_size,
                 ),

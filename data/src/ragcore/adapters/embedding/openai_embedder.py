@@ -18,7 +18,7 @@ __all__ = ["EmbeddingTransport", "OpenAIEmbedder"]
 
 _LOGGER = logging.getLogger(__name__)
 
-_TIMEOUT_SECONDS = 120.0
+_MS_PER_SECOND = 1000
 
 # Le service refuse un lot qui dépasse la fenêtre du modèle. Ce n'est PAS une panne : c'est
 # lui qui nous apprend la limite, et c'est la seule façon fiable de la connaître — le
@@ -39,6 +39,8 @@ class EmbeddingTransport:
     """Comment joindre le service : de l'infra, lue de l'environnement."""
 
     base_url: str | None
+    timeout_ms: int
+    """Le timeout d'une requête au service (``EMBEDDING_INGESTION_TIMEOUT``)."""
     api_key: str | None = None
     batch_size: int = 32
 
@@ -63,6 +65,7 @@ class OpenAIEmbedder:
         self._dimension = embedding.dimension
         self._api_key = transport.api_key
         self._batch_size = transport.batch_size
+        self._timeout_seconds = transport.timeout_ms / _MS_PER_SECOND
         self._base_url = base_url.rstrip("/")
         # Quels CHUNKS ont dû être raccourcis pour tenir dans la fenêtre du modèle. Non
         # vide = le `chunk_size` configuré n'est PAS compatible avec le modèle, et une part
@@ -112,7 +115,7 @@ class OpenAIEmbedder:
         loop = asyncio.get_running_loop()
         client = self._clients.get(loop)
         if client is None:
-            client = httpx.AsyncClient(timeout=_TIMEOUT_SECONDS)
+            client = httpx.AsyncClient(timeout=self._timeout_seconds)
             self._clients[loop] = client
         return client
 

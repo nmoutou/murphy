@@ -58,8 +58,8 @@ coquille arrête le run même en prod.
 | `skip_unconfigured` | `false` | Le sort des balises non configurées (cadrage « trois portes ») : `false` = la balise entre en metadata sous sa clé chemin-complet ; `true` = retirée du document. Le signal `tag.unconfigured`, lui, est TOUJOURS émis — on compte d'abord, on filtre ensuite. | Toujours retirées (ADR-022 §1). |
 | `node_hydration.include_path` / `include_content` | `true` / `true` | Ce que portent en plus les nœuds Neo4j (avec leurs métadonnées) : chemins des fichiers XML source, texte du document (`_text_content`). | Nœud maigre (ADR-022 §2). |
 
-Le transport de l'embedding n'est pas dans `parameters.yml` : taille de lot dans
-`EMBEDDING_BATCH_SIZE`, timeout codé en dur (120 s).
+Le transport de l'embedding n'est pas dans `parameters.yml` : taille de lot et timeout
+sont dans l'environnement (`EMBEDDING_BATCH_SIZE`, `EMBEDDING_INGESTION_TIMEOUT`).
 
 ## `.env.dev` (racine du dépôt)
 
@@ -100,3 +100,4 @@ Comment on **atteint** le modèle — jamais quel modèle (lui est dans `paramet
 | `EMBEDDING_SERVICE_URL` | — | L'URL du service (vide = absente). |
 | `EMBEDDING_API_KEY` | — | Clé éventuelle (vide = absente — sinon `Bearer` vide et 401 inexpliqué). |
 | `EMBEDDING_BATCH_SIZE` | `32` | Taille de lot du provider. |
+| `EMBEDDING_INGESTION_TIMEOUT` | `120000` | Timeout d'une requête au service, en **ms** (> 0). Distinct d'`EMBEDDING_SERVICE_TIMEOUT` (10 s), celui du backend : le backend embarque une question, l'ingestion envoie en parallèle tous les lots d'un document, qui font la queue côté GPU. |
