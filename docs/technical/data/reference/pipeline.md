@@ -59,13 +59,7 @@ touche en premier. Chaque worker construit donc **ses** clients sur **sa** boucl
 `stores.open_clients` que le hook : le code est partagé, pas les instances) ; ceux
 du hook servent les nœuds non parallélisés (maintenance, phase 2).
 
-## 1. `cleanup`
-
-Entrées : `params:maintenance.cache_paths`. Supprime récursivement les fichiers sous les
-chemins configurés (`data/cache`, `data/meta/events`). Émet
-`maintenance.cleanup.executed`. Sortie : `cleanup_results` (compte + répertoires nettoyés).
-
-## 2. `nukeAll`
+## 1. `nukeAll`
 
 Entrées : les quatre dépôts du hook, `nuke_all` (du plan du run).
 
@@ -87,7 +81,7 @@ Entrées : les quatre dépôts du hook, `nuke_all` (du plan du run).
 Émet `maintenance.nuke_all.executed`. Sortie : `nuke_done` — consommé par `connect`
 uniquement comme **signal d'ordre** (arête du DAG).
 
-## 3. `connect`
+## 2. `connect`
 
 Entrées : `connector`, le contexte, la télémétrie, le runtime du hook, `nuke_done`
 (signal). Draine `connector.fetch_all()` → `list[RawDocument]`.
@@ -100,7 +94,7 @@ Entrées : `connector`, le contexte, la télémétrie, le runtime du hook, `nuke
 
 Sortie : `raw_documents`.
 
-## 4. `computeIdempotence`
+## 3. `computeIdempotence`
 
 Entrées : `raw_documents`, `parser`, `manifest_repo`, contexte, télémétrie (de type
 `WorkerTelemetry` : ce nœud *déclare* des inconnus), runtime, `skip_unconfigured` (du plan du run).
@@ -131,7 +125,7 @@ fichier), jamais `context.source` — qui vaut `None` en run multi-source.
 
 Sorties : `to_process` (`list[(ParsedDocument, Operation)]`) et `to_skip` (`list[str]`).
 
-## 5. `ingest` — la phase 1
+## 4. `ingest` — la phase 1
 
 Entrées : `to_process`, `runner`, contexte. Le nœud est mince : il lance
 `IngestionRunner.run()` et rend son `IngestionOutcome`.
@@ -177,7 +171,7 @@ Sortie : `IngestionOutcome` — `stats` (réduction monoïde des N agrégats loc
 `relations` (l'union), `written_node_ids` (le delta du run, qui borne le rejeu ciblé),
 `failures`.
 
-## 6. `resolveRelations` — la phase 2
+## 5. `resolveRelations` — la phase 2
 
 Entrées : `ingestion_outcome` (LA barrière), `resolve_service`, runtime du hook, contexte.
 Non parallélisé : un batch, sur la boucle du hook. Quatre temps
@@ -207,7 +201,7 @@ Invariant de lisibilité : `written + pending == entrée réduite`.
 
 Sortie : `ResolutionOutcome` (stats, written/pending/promoted/reduced counts).
 
-## 7. `report` — le nœud terminal
+## 6. `report` — le nœud terminal
 
 Entrées : les deux outcomes, `to_skip`, `run_stats_sink` (le hook lui-même, vu comme un
 protocole).

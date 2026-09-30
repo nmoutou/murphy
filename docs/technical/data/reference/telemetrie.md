@@ -30,7 +30,7 @@ sort en silence.
 | `relation.promoted` | Pendante d'un run passé enfin résolue | ✓ | — | ✓ |
 | `saga.compensation.triggered` / `.completed` / `.failed` | Rollback d'une saga (`.failed` = un écrit partiel subsiste ; `success` du `.completed` dit la vérité : une seule compensation ratée et le rollback n'est pas propre) | ✓ | ✓ | ✓ |
 | `audit.write.failed` | **La télémétrie qui se surveille** : une écriture d'audit perdue. Jamais vers Mongo (écrire en Mongo qu'on n'a pas su écrire en Mongo récurse) — le compteur vit dans l'agrégat mémoire. | ✓ | — | ✓ |
-| `maintenance.cleanup.executed` / `.nuke_all.executed` | Maintenance | ✓ | `nuke_all` seul | — |
+| `maintenance.nuke_all.executed` | Maintenance | ✓ | ✓ | — |
 
 **Contrat de cardinalité** : la plupart des événements pèsent 1. Trois — et eux
 exactement (`COUNT_CARRYING_EVENTS`) — portent leur poids dans `payload["count"]` :

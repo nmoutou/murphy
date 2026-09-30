@@ -45,7 +45,6 @@ SAGA_COMPENSATION_COMPLETED = "saga.compensation.completed"
 # compteur, l'état corrompu resterait invisible au bilan — une perte sans compteur.
 SAGA_COMPENSATION_FAILED = "saga.compensation.failed"
 
-MAINTENANCE_CLEANUP_EXECUTED = "maintenance.cleanup.executed"
 MAINTENANCE_NUKE_ALL_EXECUTED = "maintenance.nuke_all.executed"
 
 
@@ -241,13 +240,6 @@ EVENT_CATALOG: dict[str, EventBehavior] = {
         aggregate=True,
     ),
     # --- Maintenance ---
-    MAINTENANCE_CLEANUP_EXECUTED: EventBehavior(
-        level="info",
-        log=True,
-        track_jsonl=True,
-        track_mongo=False,
-        aggregate=False,
-    ),
     MAINTENANCE_NUKE_ALL_EXECUTED: EventBehavior(
         level="warning",
         log=True,

@@ -66,7 +66,6 @@ champ manquant, mal typé ou inconnu arrête le run au démarrage.
 
 | Clé | Valeur | Effet |
 |---|---|---|
-| `cleanup_enabled` / `cache_paths` | `true`, `data/cache` + `data/meta/events` | Nettoyage de fichiers en tête de run (node `cleanup`). |
 | `nuke_all` | `true` | Efface TOUTES les données de TOUTES les bases en tête de run (Mongo documents+manifest, graphe Neo4j, **toutes** les collections Qdrant), en **préservant `MURPHY_META`**. Le levier disque du développement. Hors `ENVIRONMENT=dev` (l'absence de la variable vaut `prod`), `true` arrête le run dans le plan du run, avant tout nœud (`NukeAllOutsideDevError`). **Obligatoire**, booléen strict, validé par le plan du run dans tous les environnements (clé absente ou `"false"` = échec avant tout nœud). |
 
 ## `.env.dev` (racine du dépôt)

@@ -18,8 +18,8 @@ Priorité : P1 à P4, puis P18 (qui règle P1, P2, P6 et P12).
 
 ## Clés lues et non lues
 
-- **Lues** : `chunking`, `embedding`, `embedding_runtime.enabled`, `exportation.unconfigured`, `exportation.neo4j.*`, `maintenance.cache_paths`, `maintenance.nuke_all`.
-- **Non lues** : `nlp`, `importation`, `formatting`, `embedding_runtime.embedding_service_timeout`, `embedding_runtime.batch_size`, `exportation.mongodb`, `exportation.qdrant`, `maintenance.cleanup_enabled`.
+- **Lues** : `chunking`, `embedding`, `embedding_runtime.enabled`, `exportation.skip_unconfigured`, `exportation.neo4j.*`, `maintenance.nuke_all`.
+- **Non lues** : `nlp`, `importation`, `formatting`, `embedding_runtime.embedding_service_timeout`, `embedding_runtime.batch_size`, `exportation.mongodb`, `exportation.qdrant`.
 
 ---
 
@@ -50,6 +50,8 @@ Priorité : P1 à P4, puis P18 (qui règle P1, P2, P6 et P12).
   - `cleanup_enabled` n'est pas lu : impossible de désactiver le nettoyage.
 - **Piste** : décider ce que « cache » désigne. Si rien : supprimer `cleanup`. Sinon : chemin absolu, et échec si le chemin est absent.
 
+> **Traité** : « cache » ne désignait rien. Le nœud `cleanup`, `cache_paths`, `cleanup_enabled`, la sortie `cleanup_results` et l'événement `maintenance.cleanup.executed` sont supprimés. Le pipeline commence par `nukeAll`.
+
 ### P4. `unconfigured` échappe à `ENVIRONMENT`
 
 - **Constat** : ADR-022 §1 prévoit ingestion en dev, exclusion en prod. Les trois autres réglages propres au dev sont arbitrés par l'environnement, pas celui-ci.
@@ -73,7 +75,7 @@ Priorité : P1 à P4, puis P18 (qui règle P1, P2, P6 et P12).
 | `exportation.mongodb.*` | La base vient de `MONGODB_DATA_DB_NAME`. La collection `chunks` n'existe pas (réelles : `documents`, `manifest`). | Non |
 | `exportation.qdrant.distance` | `Distance.COSINE` en dur (`adapters/storage/qdrant/vector_repository.py:55`). Découle du modèle. | Éventuellement dans `embedding` |
 | `exportation.qdrant.batch_size` | Non lu. | Selon le besoin réel |
-| `maintenance.cleanup_enabled` | Non lu. | Trancher avec P3 |
+| `maintenance.cleanup_enabled` | Non lu. | Supprimé (P3) |
 
 **Conclusion** : les faits propres à une source (balises, titres, liens, verbes) ont été déplacés à bon escient dans les tables par source. Le YAML ne devrait contenir que ce qu'un opérateur change d'un run à l'autre.
 
@@ -95,7 +97,7 @@ Priorité : P1 à P4, puis P18 (qui règle P1, P2, P6 et P12).
 ### P8. Des « phases » sans rapport avec le pipeline
 
 - Numérotation 1, 3, 3 bis, 4, 5 : pas de phase 2.
-- Pipeline réel : cleanup → nukeAll → connect → computeIdempotence → ingest → resolveRelations → report. La maintenance, numérotée « phase 5 », s'exécute en premier.
+- Pipeline réel : nukeAll → connect → computeIdempotence → ingest → resolveRelations → report. La maintenance, numérotée « phase 5 », s'exécute en premier.
 - Le code appelle déjà « phase 1 / phase 2 » l'ingestion et la résolution des relations : deux numérotations entrent en conflit.
 - Détails : « PARAMÈTRE GÉNÉRAUX » (faute d'accord), casse irrégulière des titres.
 
@@ -125,7 +127,7 @@ Priorité : P1 à P4, puis P18 (qui règle P1, P2, P6 et P12).
 - Les nœuds reçoivent des blocs entiers (`params:exportation`, `params:maintenance`) pour n'en lire qu'une clé.
 - `nuke_all` relit `ENVIRONMENT` lui-même au lieu de passer par le `RunPlan`.
 
-> **En partie traité** (P1, P2) : `nukeAll` et `computeIdempotence` reçoivent un booléen du `RunPlan`, et `nuke_all` ne relit plus `ENVIRONMENT`. Reste `cleanup` (`params:maintenance.cache_paths`, voir P3).
+> **En partie traité** (P1, P2) : `nukeAll` et `computeIdempotence` reçoivent un booléen du `RunPlan`, et `nuke_all` ne relit plus `ENVIRONMENT`. Depuis P3 (suppression de `cleanup`), plus aucun nœud ne reçoit de paramètre brut du YAML.
 
 ---
 

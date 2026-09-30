@@ -37,7 +37,6 @@ pipelines). L'ordre est exprimé par les **dépendances de données**, jamais pa
 
 ```mermaid
 flowchart LR
-    cleanup --> |cleanup_results| Z[ ]:::invis
     nukeAll -- nuke_done --> connect
     connect -- raw_documents --> computeIdempotence
     computeIdempotence -- to_process --> ingest
@@ -45,7 +44,6 @@ flowchart LR
     ingest -- ingestion_outcome --> resolveRelations
     ingest -- ingestion_outcome --> report
     resolveRelations -- resolution_outcome --> report
-    classDef invis fill:none,stroke:none
 ```
 
 Deux arêtes portent tout le sens :

@@ -42,11 +42,10 @@ def test_la_porte_repond_et_rend_des_pipelines() -> None:
     assert pipelines["__default__"] is pipelines["ingestion"]
 
 
-def test_les_sept_noeuds_sont_la() -> None:
+def test_les_six_noeuds_sont_la() -> None:
     names = {n.name for n in _pipeline().nodes}
 
     assert names == {
-        "cleanup",
         "nukeAll",
         "connect",
         "computeIdempotence",

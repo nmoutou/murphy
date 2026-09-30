@@ -76,10 +76,6 @@ nuke_done:
   type: MemoryDataset
   copy_mode: assign
 
-cleanup_results:
-  type: MemoryDataset
-  copy_mode: assign
-
 raw_documents:
   type: MemoryDataset
   copy_mode: assign

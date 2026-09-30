@@ -105,7 +105,7 @@ One stream, three transports — change `createChatStream` once:
 Full documentation: `docs/technical/data/`. Key facts:
 
 - The logic lives in the `ragcore` package (`data/src/ragcore/`, hexagonal); `data/src/data/` is a thin Kedro shell delegating to it.
-- One pipeline (`__default__` = `ingestion`): cleanup → nukeAll → connect → computeIdempotence → ingest (saga Mongo → Qdrant → Neo4j node) → resolveRelations → report.
+- One pipeline (`__default__` = `ingestion`): nukeAll → connect → computeIdempotence → ingest (saga Mongo → Qdrant → Neo4j node) → resolveRelations → report.
 - One Qdrant collection, named by `QDRANT_COLLECTION` and rewritten in place: re-ingest the whole corpus after changing the chunking or the embedding model. The run status (`ok`/`degraded`/`failed`) comes from telemetry counters.
 - Tuning: `data/conf/base/ingestion/parameters.yml` (`chunking`: 384 chars, overlap 25; `embedding`: `all-mpnet-base-v2`, 768). `ENVIRONMENT=dev` unlocks `nuke_all`, the embedding switch (ADR-023) and Neo4j node hydration (ADR-022); the default `prod` locks them.
 - Tooling: `kedro run` (`--params source=cass,jade` to restrict), `ruff`, `pytest` (`-m integration` uses testcontainers), `mypy` strict on `src/ragcore`.

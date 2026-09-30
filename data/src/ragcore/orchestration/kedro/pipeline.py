@@ -22,7 +22,6 @@ from __future__ import annotations
 
 from kedro.pipeline import Node, Pipeline, node, pipeline
 
-from .nodes.cleanup import cleanup_node
 from .nodes.compute_idempotence import compute_idempotence_node
 from .nodes.connect import connect_node
 from .nodes.ingest import ingest_node
@@ -34,10 +33,9 @@ __all__ = ["create_ingestion_pipeline"]
 
 
 def create_ingestion_pipeline() -> Pipeline:
-    """cleanup → nukeAll → connect → computeIdempotence → ingest → resolve → report."""
+    """nukeAll → connect → computeIdempotence → ingest → resolve → report."""
     return pipeline(
         [
-            _cleanup(),
             _nuke_all(),
             _connect(),
             _compute_idempotence(),
@@ -45,15 +43,6 @@ def create_ingestion_pipeline() -> Pipeline:
             _resolve_relations(),
             _report(),
         ]
-    )
-
-
-def _cleanup() -> Node:
-    return node(
-        func=cleanup_node,
-        inputs=["params:maintenance.cache_paths", "pipeline_context", "telemetry"],
-        outputs="cleanup_results",
-        name="cleanup",
     )
 
 
