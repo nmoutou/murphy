@@ -69,7 +69,7 @@ logger = logging.getLogger(__name__)
 # et le mur est le GPU lui-même, pas le nombre de requêtes qu'on lui envoie. Un banc
 # d'essai isolé promettait ×4 en passant à 16 workers ; le run réel n'a rien gagné
 # (751 s → 738 s). Le seul levier réel est de calculer MOINS de vecteurs, c.-à-d.
-# `chunk_size` (cf. la note de perf dans ETAT.md).
+# `chunking.max_chars` (cf. la note de perf dans ETAT.md).
 _WORKER_COUNT = 4
 
 
@@ -203,10 +203,7 @@ def _workload_steps(
     embedder: BaseEmbedder,
 ) -> WorkloadSteps:
     return WorkloadSteps(
-        chunker=StructuralChunker(
-            max_chunk_size=plan.chunking.size,
-            overlap=plan.chunking.overlap,
-        ),
+        chunker=StructuralChunker(plan.chunking),
         embedder=embedder,
         extractor=RoutingRelationExtractor(
             {

@@ -68,7 +68,7 @@ def settings(tmp_path: Path) -> InfraSettings:
 @pytest.fixture
 def plan(settings: InfraSettings) -> RunPlan:
     params = {
-        "chunking": {"size": 384, "overlap": 25},
+        "chunking": {"max_chars": 384, "overlap_chars": 25},
         "embedding": {"model_name": "un-modele", "dimension": 768},
         "node_labels": {"default": "Document", "by_prefix": {}},
         "dev": {

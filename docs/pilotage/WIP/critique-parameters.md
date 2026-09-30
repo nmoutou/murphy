@@ -166,6 +166,12 @@ Depuis P18, `embedding_runtime` ne contient plus que `enabled` : le timeout et l
 - La règle `overlap < size`, annoncée par la doc, n'est pas validée.
 - `overlap: 25` n'est pas justifié (environ 8 tokens, 6,5 %), contrairement à `size`.
 
+> **Traité** :
+>
+> - Les clés s'appellent `chunking.max_chars` et `chunking.overlap_chars`, partout : YAML, `ChunkingConfig`, `RunPlan`. `max_chunk_size` a disparu du chunker.
+> - La règle était validée, mais tard : par le constructeur de `StructuralChunker`, dans le hook, après l'appel à TEI. `ChunkingConfig` la porte désormais, et `plan_run` l'applique avant d'ouvrir quoi que ce soit, avec les autres erreurs. Le chunker reçoit un `ChunkingConfig` et perd ses défauts `1000`/`100`.
+> - `overlap_chars: 25` est documenté pour ce qu'il fait : il ne joue que dans un bloc plus long que `max_chars`, coupé en plein mot, et garde entier un mot coupé à la frontière. Il n'est pas mesuré, faute de jeu d'évaluation du retrieval : piste ouverte.
+
 ### P14. `embedding`
 
 - `model_name` fait doublon avec `EMBEDDING_MODEL` (`.env.dev`, qui sert à TEI et au backend). La docstring de `ROOT_ENV_FILE` affirme « ils ne sont plus deux variables » : c'est faux.

@@ -17,7 +17,7 @@ from ragcore.orchestration.kedro.run_parameters import SAFE_DEV_SETTINGS
 from ragcore.orchestration.kedro.run_plan import plan_run
 
 PARAMS: dict[str, Any] = {
-    "chunking": {"size": 384, "overlap": 25},
+    "chunking": {"max_chars": 384, "overlap_chars": 25},
     "embedding": {"model_name": "un-modele", "dimension": 768},
     "node_labels": {"default": "Document", "by_prefix": {"LEGIARTI": "Article"}},
     "dev": {
@@ -88,7 +88,7 @@ def test_un_run_nu_ecrit_la_collection_configuree() -> None:
 
     assert plan.context_source is None, "un run multi-source n'a pas de source"
     assert plan.collection == "chunks"
-    assert (plan.chunking.size, plan.chunking.overlap) == (384, 25)
+    assert (plan.chunking.max_chars, plan.chunking.overlap_chars) == (384, 25)
     assert plan.embedding.dimension == 768
 
 
@@ -99,9 +99,20 @@ def test_sans_reglage_de_traitement_le_run_s_arrete(block: str) -> None:
 
 
 def test_un_reglage_de_traitement_mal_forme_arrete_le_run() -> None:
-    params = _with("chunking", {"size": 0, "overlap": 25})
+    params = _with("chunking", {"max_chars": 0, "overlap_chars": 25})
 
-    with pytest.raises(ValueError, match="size"):
+    with pytest.raises(ValueError, match="max_chars"):
+        plan_run(params, _settings())
+
+
+@pytest.mark.parametrize("overlap_chars", [384, 400])
+def test_un_recouvrement_qui_n_est_pas_inferieur_a_la_taille_arrete_le_run(
+    overlap_chars: int,
+) -> None:
+    """Le curseur de la fenêtre glissante n'avancerait pas : boucle infinie."""
+    params = _with("chunking.overlap_chars", overlap_chars)
+
+    with pytest.raises(ValueError, match=_path("chunking")):
         plan_run(params, _settings())
 
 
@@ -214,7 +225,7 @@ def test_sans_table_by_prefix_le_run_s_arrete() -> None:
 
 
 @pytest.mark.parametrize(
-    "path", ["nlp", "dev.node_hydration.include_pth", "chunking.sise"]
+    "path", ["nlp", "dev.node_hydration.include_pth", "chunking.max_char"]
 )
 def test_une_cle_inconnue_arrete_le_run(path: str) -> None:
     """Une clé morte ou mal orthographiée ne passe plus en silence, à aucun niveau."""
@@ -237,8 +248,8 @@ def test_un_params_mal_orthographie_arrete_le_run() -> None:
 
 
 def test_un_entier_ecrit_en_chaine_arrete_le_run() -> None:
-    with pytest.raises(ValueError, match=_path("chunking.size")):
-        plan_run(_with("chunking.size", "384"), _settings())
+    with pytest.raises(ValueError, match=_path("chunking.max_chars")):
+        plan_run(_with("chunking.max_chars", "384"), _settings())
 
 
 def test_toutes_les_erreurs_sont_signalees_ensemble() -> None:

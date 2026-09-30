@@ -136,7 +136,7 @@ class RunSession:
 
         Le document est ingéré (donc l'équation de complétude tombe juste, à raison), mais
         la fin du chunk n'est pas indexée. Un compteur non nul veut dire une seule chose :
-        **le `chunk_size` configuré n'est pas compatible avec la fenêtre du modèle**. Le
+        **le `chunking.max_chars` configuré n'est pas compatible avec la fenêtre du modèle**. Le
         run est sauvé ; la configuration, elle, est à corriger.
         """
         if not isinstance(self.embedder, ReportsTruncations):
@@ -154,7 +154,7 @@ class RunSession:
         )
         logger.warning(
             "%d chunk(s) raccourci(s) pour tenir dans la fenêtre du modèle. Le corpus est "
-            "complet, mais la fin de ces chunks n'est pas indexée : baisser `chunk_size`.",
+            "complet, mais la fin de ces chunks n'est pas indexée : baisser `chunking.max_chars`.",
             truncations,
         )
 

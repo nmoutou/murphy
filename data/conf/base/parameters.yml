@@ -2,11 +2,14 @@
 # Découpe
 # ============================================================
 
-# Tailles en caractères. Changer une valeur invalide les vecteurs déjà écrits :
-# réingérer tout le corpus.
+# Changer une valeur invalide les vecteurs déjà écrits : réingérer tout le corpus.
 chunking:
-  size: 384
-  overlap: 25
+  # Le plus grand qui tienne dans la fenêtre du modèle (mesuré, cf. configuration.md).
+  max_chars: 384
+  # Ne joue que dans un bloc plus long que `max_chars`, coupé en plein mot : 3 ou 4
+  # mots, de quoi garder entier un mot coupé à la frontière, pas une phrase. Non mesuré.
+  # Doit rester < `max_chars`.
+  overlap_chars: 25
 
 # ============================================================
 # Embedding

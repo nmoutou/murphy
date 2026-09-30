@@ -24,7 +24,7 @@ GOLDEN: dict[str, tuple[str, bool, bool, bool, bool]] = {
     # est tracé mais pas compté, et le run se déclare « ok » en perdant des documents.
     "document.failed": ("error", True, True, True, True),
     # Pas une fuite (le document est ingéré) mais pas rien : la fin du chunk n'est pas
-    # indexée. Non nul = `chunk_size` incompatible avec la fenêtre du modèle.
+    # indexée. Non nul = `chunking.max_chars` incompatible avec la fenêtre du modèle.
     "chunk.truncated": ("warning", True, True, True, True),
     "relation.upserted": ("warning", False, True, False, True),
     "relation.pending": ("warning", False, True, True, True),

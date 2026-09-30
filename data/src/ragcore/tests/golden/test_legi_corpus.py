@@ -19,6 +19,7 @@ from pathlib import Path
 
 from ragcore.core.links import CANONICAL_VERBS, CONTAINS
 from ragcore.core.models.enums import SourceName as _SN
+from ragcore.core.models.processing import ChunkingConfig
 from ragcore.core.services.exclusion_reasons import (
     REASON_EXPORT_ARTIFACT,
     REASON_UNREADABLE,
@@ -41,7 +42,7 @@ from ragcore.sources.legi.tests.conftest import (
 # les dupliquer — deux jeux de fixtures dériveraient, et c'est le cliquet qui mentirait.
 FIXTURES = Path(__file__).parents[2] / "sources" / "legi" / "tests" / "fixtures"
 
-CHUNK_SIZE = 128  # conf/base/parameters.yml
+CHUNK_SIZE = 128
 OVERLAP = 25
 
 
@@ -52,7 +53,9 @@ def _run() -> dict:
         connector = LegiFileConnector(FIXTURES)
         parser = GenericParser(LEGI_ROLE_TABLE, _SN.LEGI)
         extractor = GenericRelationExtractor(LEGI_ROLE_TABLE, _SN.LEGI)
-        chunker = StructuralChunker(max_chunk_size=CHUNK_SIZE, overlap=OVERLAP)
+        chunker = StructuralChunker(
+            ChunkingConfig(max_chars=CHUNK_SIZE, overlap_chars=OVERLAP)
+        )
 
         documents = 0
         files = 0

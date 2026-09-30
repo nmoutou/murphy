@@ -68,7 +68,7 @@ class OpenAIEmbedder:
         self._timeout_seconds = transport.timeout_ms / _MS_PER_SECOND
         self._base_url = base_url.rstrip("/")
         # Quels CHUNKS ont dû être raccourcis pour tenir dans la fenêtre du modèle. Non
-        # vide = le `chunk_size` configuré n'est PAS compatible avec le modèle, et une part
+        # vide = le `chunking.max_chars` configuré n'est PAS compatible avec le modèle, et une part
         # du corpus n'est indexée qu'en partie. Le run reste complet (aucun document
         # perdu), mais il doit le DIRE — d'où la remontée dans le bilan.
         #
@@ -167,10 +167,10 @@ class OpenAIEmbedder:
 
         **Le mur.** Le modèle a une fenêtre finie (mpnet : 384 tokens) et le service la
         fait respecter en REJETANT (``auto_truncate: false``) — un seul chunk trop long
-        fait échouer tout le batch, donc tout le document. Mesuré : à ``chunk_size=1024``,
+        fait échouer tout le batch, donc tout le document. Mesuré : à ``chunking.max_chars=1024``,
         **98 documents perdus** ; à 512, encore 1.
 
-        **Pourquoi ça ne se règle pas en baissant ``chunk_size``.** Le chunker compte en
+        **Pourquoi ça ne se règle pas en baissant ``chunking.max_chars``.** Le chunker compte en
         CARACTÈRES, le modèle en TOKENS, et le ratio n'est pas constant : mesuré sur ce
         corpus, il va de 3,08 car/token en moyenne à **0,33 dans le pire cas** (chunks de
         sigles et de ponctuation, où chaque caractère est un token). Aucune valeur en
@@ -251,7 +251,7 @@ class OpenAIEmbedder:
         _LOGGER.warning(
             "chunk hors fenêtre du modèle — raccourci de %d à %d caractères (chunk_id=%s). "
             "Le document est sauvé, mais la fin de ce chunk n'est pas indexée : le vrai "
-            "correctif est un `chunk_size` compatible avec la fenêtre.",
+            "correctif est un `chunking.max_chars` compatible avec la fenêtre.",
             len(chunk.text),
             len(shrunk.text),
             chunk.chunk_id,

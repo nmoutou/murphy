@@ -47,7 +47,7 @@ Le hook est le **point d'assemblage** du run. Dans l'ordre :
    `data/08_reporting/events/`, audit Mongo, agrégateur `RunStats`).
 7. **Briques de traitement** (`assembly.build_processing_stack`) : `CompositeConnector`
    (un connecteur par source, routé), `RoutingParser` (un `GenericParser` par source,
-   chacun avec sa table de rôles), `StructuralChunker` (`chunking.size` / `chunking.overlap`),
+   chacun avec sa table de rôles), `StructuralChunker` (`chunking.max_chars` / `chunking.overlap_chars`),
    `RoutingRelationExtractor`, et l'embedder.
 8. **Pool phase 1** (`assembly.build_runner`) : un `IngestionRunner` à 4 workers, armé de
    *fabriques* (runtime, télémétrie, use case) — jamais d'instances partagées.

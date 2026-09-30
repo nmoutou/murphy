@@ -88,5 +88,5 @@ uniquement pour `EMBEDDING_PROVIDER=local`),
 | Avertissement « le bloc `dev` de parameters.yml est ignoré » | `ENVIRONMENT` ≠ `dev` dans le `.env.dev` racine : `nuke_all` n'efface rien, l'embedding est calculé — c'est le garde-fou voulu. |
 | Avertissement « vecteurs NULS » | `EMBEDDING_PROVIDER=noop` (le défaut). Passer à `openai` + `EMBEDDING_SERVICE_URL` pour un vrai run. |
 | Le run échoue avant d'ingérer, en nommant un modèle | La précondition TEI : le modèle servi par le conteneur (`GET /info`) diverge de `parameters.yml`. Aligner les deux. |
-| `chunk.truncated` non nul au bilan | Le `chunk_size` configuré dépasse la fenêtre du modèle d'embedding : le corpus est complet mais des fins de chunks ne sont pas indexées — baisser `chunk_size`. |
+| `chunk.truncated` non nul au bilan | Le `chunking.max_chars` configuré dépasse la fenêtre du modèle d'embedding : le corpus est complet mais des fins de chunks ne sont pas indexées — baisser `chunking.max_chars`. |
 | Le backend ne trouve rien après un run | Le run était-il `ok` ? Un run `degraded` a laissé un corpus incomplet dans la collection servie. Lire le bilan dans `meta_run_summaries`, puis relancer. |

@@ -5,7 +5,9 @@ absent, mal typé ou inconnu arrête le run : aucun défaut dans le code, et auc
 conversion (``"384"`` n'est pas un entier).
 """
 
-from pydantic import BaseModel, ConfigDict, Field
+from typing import Self
+
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 __all__ = ["ChunkingConfig", "EmbeddingConfig"]
 
@@ -17,8 +19,18 @@ class _Frozen(BaseModel):
 class ChunkingConfig(_Frozen):
     """La découpe : taille maximale d'un chunk et recouvrement, en caractères."""
 
-    size: int = Field(gt=0)
-    overlap: int = Field(ge=0)
+    max_chars: int = Field(gt=0)
+    overlap_chars: int = Field(ge=0)
+
+    @model_validator(mode="after")
+    def _overlap_inferieur_a_la_taille(self) -> Self:
+        """Sinon le curseur de la fenêtre glissante n'avance pas : boucle infinie."""
+        if self.overlap_chars >= self.max_chars:
+            raise ValueError(
+                f"overlap_chars ({self.overlap_chars}) doit être strictement inférieur "
+                f"à max_chars ({self.max_chars})"
+            )
+        return self
 
 
 class EmbeddingConfig(_Frozen):

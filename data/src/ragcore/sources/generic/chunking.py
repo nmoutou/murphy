@@ -27,6 +27,7 @@ identiques au même endroit.
 from dataclasses import dataclass
 
 from ragcore.core.models import Chunk, ParsedDocument
+from ragcore.core.models.processing import ChunkingConfig
 
 __all__ = ["StructuralChunker"]
 
@@ -44,15 +45,10 @@ class _Span:
 class StructuralChunker:
     name = "structural"
 
-    def __init__(self, max_chunk_size: int = 1000, overlap: int = 100) -> None:
-        if overlap >= max_chunk_size:
-            # Sinon le curseur du découpage à taille fixe n'avance pas : boucle infinie.
-            raise ValueError(
-                f"overlap ({overlap}) doit être strictement inférieur à "
-                f"max_chunk_size ({max_chunk_size})"
-            )
-        self._max_chunk_size = max_chunk_size
-        self._overlap = overlap
+    def __init__(self, config: ChunkingConfig) -> None:
+        """``config`` garantit ``overlap_chars < max_chars`` : le curseur avance."""
+        self._max_chars = config.max_chars
+        self._overlap_chars = config.overlap_chars
 
     def chunk(self, document: ParsedDocument) -> list[Chunk]:
         """Découpe le document : la structure dit OÙ couper, la taille dit JUSQU'OÙ aller.
@@ -60,7 +56,7 @@ class StructuralChunker:
         **Ce ne sont pas deux stratégies concurrentes.** L'ancienne version choisissait
         l'une *ou* l'autre — et donc, dès qu'un bloc structurel existait, elle le rendait
         entier. Sur le corpus, un article fait couramment 3000 caractères là où
-        ``chunk_size`` en vaut 128 : l'embedder aurait tronqué en silence (la fenêtre
+        ``chunking.max_chars`` en vaut 128 : l'embedder aurait tronqué en silence (la fenêtre
         d'``all-mpnet-base-v2`` est de 384 tokens), et les trois quarts du texte se
         seraient évaporés sans qu'aucune exception ne soit levée.
 
@@ -80,7 +76,7 @@ class StructuralChunker:
         ordinal = 0
 
         for path, text, offset in blocks:
-            for start, end in _windows(len(text), self._max_chunk_size, self._overlap):
+            for start, end in _windows(len(text), self._max_chars, self._overlap_chars):
                 span = _Span(path, text[start:end], offset + start, offset + end)
                 chunks.append(self._chunk(document, ordinal, span))
                 ordinal += 1

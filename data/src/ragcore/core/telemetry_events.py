@@ -26,7 +26,7 @@ DOCUMENT_FAILED = "document.failed"  # vu, jamais ingéré — la FUITE
 
 # Un chunk trop long pour la fenêtre du modèle, raccourci pour sauver son document. Ce
 # n'est PAS une fuite (le document est ingéré) mais ce n'est pas rien : la fin du chunk
-# n'est pas indexée. Non nul = le `chunk_size` configuré est incompatible avec le modèle.
+# n'est pas indexée. Non nul = le `chunking.max_chars` configuré est incompatible avec le modèle.
 CHUNK_TRUNCATED = "chunk.truncated"
 
 RELATION_UPSERTED = "relation.upserted"

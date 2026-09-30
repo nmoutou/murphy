@@ -32,8 +32,8 @@ champ manquant, mal typé ou inconnu arrête le run au démarrage.
 
 | Clé | Valeur | Effet |
 |---|---|---|
-| `chunking.size` | `384` | En **caractères** (la fenêtre du modèle est en tokens ; ratio mesuré : 3,08 car/token en moyenne, 0,33 au pire). 384 est le plus grand qui tienne : ≤ 300 tokens mesurés au tokenizer du modèle sur les six sources, **zéro document perdu** (512 en perdait 1, 1024 en perdait 98). C'est aussi le levier de coût : l'embedding est ~99,9 % du temps d'un run, et 128 → 384 l'a divisé par ~5 (838 s → 173 s). |
-| `chunking.overlap` | `25` | Recouvrement de la fenêtre glissante (doit rester < `size`). |
+| `chunking.max_chars` | `384` | Taille maximale d'un chunk, en **caractères** (la fenêtre du modèle est en tokens ; ratio mesuré : 3,08 car/token en moyenne, 0,33 au pire). 384 est le plus grand qui tienne : ≤ 300 tokens mesurés au tokenizer du modèle sur les six sources, **zéro document perdu** (512 en perdait 1, 1024 en perdait 98). C'est aussi le levier de coût : l'embedding est ~99,9 % du temps d'un run, et 128 → 384 l'a divisé par ~5 (838 s → 173 s). |
+| `chunking.overlap_chars` | `25` | Recouvrement de la fenêtre glissante, en caractères. Doit rester < `max_chars` : sinon le curseur n'avance pas, et le run s'arrête au démarrage. Ne joue que dans un bloc plus long que `max_chars`, que la fenêtre coupe en plein mot : 25 caractères (3 ou 4 mots) gardent entier un mot coupé à la frontière, pas une phrase. **Non mesuré** : aucun jeu d'évaluation du retrieval n'existe pour le régler. |
 | `embedding.model_name` | `sentence-transformers/all-mpnet-base-v2` | Doit être le modèle que sert le conteneur TEI — vérifié au démarrage (`GET /info`). |
 | `embedding.dimension` | `768` | Taille des vecteurs (et de la collection Qdrant). |
 

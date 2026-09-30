@@ -24,7 +24,7 @@ sort en silence.
 | `document.invalidated` | Rejet au parse (validation ou lecture) → manifest EXCLUDED | ✓ | ✓ | ✓ |
 | `document.persisted` | Saga complète + manifest écrit | ✓ | ✓ | ✓ |
 | `document.failed` | **La fuite** : vu, jamais ingéré (saga échouée/compensée). `reason` = type d'exception. | ✓ | ✓ | ✓ |
-| `chunk.truncated` | Chunks raccourcis par l'embedder pour tenir dans la fenêtre du modèle (1 événement en fin de run, `count`). Pas une fuite — mais la fin de ces chunks n'est pas indexée : `chunk_size` à corriger. | ✓ | ✓ | ✓ |
+| `chunk.truncated` | Chunks raccourcis par l'embedder pour tenir dans la fenêtre du modèle (1 événement en fin de run, `count`). Pas une fuite — mais la fin de ces chunks n'est pas indexée : `chunking.max_chars` à corriger. | ✓ | ✓ | ✓ |
 | `relation.upserted` | Arêtes **réussies** d'un batch (`count`) | ✓ | — | ✓ |
 | `relation.pending` | Cible absente → cache des pendantes | ✓ | ✓ | ✓ |
 | `relation.promoted` | Pendante d'un run passé enfin résolue | ✓ | — | ✓ |

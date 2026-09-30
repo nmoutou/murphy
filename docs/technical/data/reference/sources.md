@@ -149,7 +149,7 @@ le corpus, sinon deux jeux de vecteurs incomparables cohabitent dans la collecti
 
 **La structure dit où couper, la taille dit jusqu'où aller** — pas deux stratégies
 concurrentes : on ne coupe jamais à travers un bloc structurel, et on ne dépasse jamais
-`chunking.size` dans un bloc (fenêtre glissante avec `overlap`).
+`chunking.max_chars` dans un bloc (fenêtre glissante avec `overlap_chars`).
 
 - Sans section déclarée, le document entier est un bloc : la découpe à taille fixe est le
   cas particulier où la structure est muette.
@@ -161,7 +161,7 @@ concurrentes : on ne coupe jamais à travers un bloc structurel, et on ne dépas
   offset faux.
 - Le calibrage vit dans `conf/base/parameters.yml` — voir
   [configuration.md](configuration.md#chunking-et-embedding--ce-qui-décide-des-vecteurs)
-  pour le raisonnement mesuré derrière `chunking.size: 384`.
+  pour le raisonnement mesuré derrière `chunking.max_chars: 384`.
 
 ## Relations et citations (`core/links/`, `sources/generic/relations.py`)
 

@@ -5,11 +5,10 @@ from pathlib import Path
 from typing import Any
 from xml.etree import ElementTree as ET
 
-import pytest
-
 from ragcore.core.models.document import ParsedDocument, RawDocument
 from ragcore.core.models.enums import SourceName
 from ragcore.core.models.identifiers import Identifier
+from ragcore.core.models.processing import ChunkingConfig
 from ragcore.core.ports.chunker import BaseChunker
 from ragcore.sources.generic import GenericParser, StructuralChunker, to_tree
 from ragcore.sources.generic.chunking import _windows
@@ -24,7 +23,7 @@ from ragcore.sources.legi.tests.conftest import (
     SECTION_ARTICLES,
 )
 
-# Les vrais paramètres du pipeline (conf/base/parameters.yml).
+# Plus petits que ceux de conf/base/parameters.yml : les fixtures doivent être découpées.
 CHUNK_SIZE = 128
 OVERLAP = 25
 
@@ -48,7 +47,9 @@ def _parse_result(fixtures_dir: Path, name: str):
 
 
 def _chunker() -> StructuralChunker:
-    return StructuralChunker(max_chunk_size=CHUNK_SIZE, overlap=OVERLAP)
+    return StructuralChunker(
+        ChunkingConfig(max_chars=CHUNK_SIZE, overlap_chars=OVERLAP)
+    )
 
 
 def test_le_chunker_satisfait_son_port() -> None:
@@ -60,7 +61,7 @@ def test_aucun_chunk_ne_depasse_la_taille_maximale(fixtures_dir: Path) -> None:
 
     L'ancienne version choisissait entre découpe structurelle *ou* taille fixe. Dès
     qu'un bloc existait, elle le rendait ENTIER : un article de 2914 caractères donnait
-    un chunk de 2914 caractères, quand ``chunk_size`` en vaut 128.
+    un chunk de 2914 caractères, quand ``chunking.max_chars`` en vaut 128.
 
     L'embedder l'aurait tronqué en silence — la fenêtre d'``all-mpnet-base-v2`` est de
     384 tokens — et les trois quarts du texte se seraient évaporés sans qu'aucune
@@ -158,14 +159,6 @@ def test_sans_section_declaree_le_document_entier_est_un_bloc() -> None:
     assert len(chunks) > 1
     assert all(chunk.tag_path == [] for chunk in chunks)
     assert chunks[-1].char_end == 300
-
-
-def test_un_chevauchement_plus_grand_que_la_taille_est_refuse() -> None:
-    """Le curseur n'avancerait pas : boucle infinie. Mieux vaut le dire à la construction
-    que de faire tourner un run qui ne se termine jamais.
-    """
-    with pytest.raises(ValueError, match="strictement inférieur"):
-        StructuralChunker(max_chunk_size=100, overlap=100)
 
 
 def test_aucune_fenetre_n_est_contenue_dans_une_autre() -> None:
