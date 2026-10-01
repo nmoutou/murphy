@@ -1,6 +1,6 @@
 # INDEX — Registre des décisions (ADR)
 
-> Un fichier par ADR (format Nygard). **Prochain numéro : ADR-046.**
+> Un fichier par ADR (format Nygard). **Prochain numéro : ADR-047.**
 
 ## Registre
 
@@ -20,13 +20,14 @@
 | [ADR-023](ADR-023-interrupteur-embedding-dev.md) | Un interrupteur d'embedding, pas trois interrupteurs de store | Acté — amende ADR-022 §5, amendé par ADR-043 |
 | [ADR-024](ADR-024-retrait-echantillonnage-corpus.md) | Retrait de l'échantillonnage de corpus | Acté — amende ADR-022 §7 |
 | [ADR-026](ADR-026-restructuration-configuration.md) | Restructuration de la configuration en partition workflow / ingestion | ❌ Remplacé par ADR-042 |
-| [ADR-039](ADR-039-contrat-ingestion-serving.md) | Contrat ingestion ↔ serving : le texte d'un passage vit dans Mongo, désigné par ses offsets | ✅ Accepté (25 septembre 2026) — s'appuie sur ADR-020 et ADR-022 §4, §3 amendé par ADR-042 |
+| [ADR-039](ADR-039-contrat-ingestion-serving.md) | Contrat ingestion ↔ serving : le texte d'un passage vit dans Mongo, désigné par ses offsets | ✅ Accepté (25 septembre 2026) — s'appuie sur ADR-020 et ADR-022 §4, §3 amendé par ADR-042, §2 par ADR-046 |
 | [ADR-040](ADR-040-depot-unique.md) | Un seul dépôt : fin des sous-modules, contrat du flux dans un paquet partagé | ✅ Accepté (25 septembre 2026) |
 | [ADR-041](ADR-041-erreurs-du-chat-en-modale.md) | Erreurs du chat : une modale, l'étape en cause, un arrêt propagé au backend | ✅ Accepté (26 septembre 2026) — étend le contrat d'ADR-040 (`@murphy/contract/errors`) |
 | [ADR-042](ADR-042-collection-qdrant-nom-fixe.md) | Une collection Qdrant au nom fixe : fin de l'empreinte, du pointeur et du tracking | ✅ Accepté (30 septembre 2026) — remplace ADR-026, amende ADR-039 §3, §3 amendé par ADR-043 |
-| [ADR-043](ADR-043-configuration-ingestion-environment.md) | Configuration de l'ingestion : un fichier, un bloc `dev`, `ENVIRONMENT` seul arbitre | ✅ Accepté (30 septembre 2026) — amende ADR-022 §5-§6, ADR-023, ADR-042 §3 ; §3 et §4 amendés (labels Neo4j déclarés par les sources ; découpe dans l'environnement ; bloc `dev` aplati), §4 par ADR-044 |
+| [ADR-043](ADR-043-configuration-ingestion-environment.md) | Configuration de l'ingestion : un fichier, un bloc `dev`, `ENVIRONMENT` seul arbitre | ✅ Accepté (30 septembre 2026) — amende ADR-022 §5-§6, ADR-023, ADR-042 §3 ; §3 et §4 amendés (labels Neo4j déclarés par les sources ; découpe dans l'environnement ; bloc `dev` aplati), §4 par ADR-044, amendement du §3 par ADR-046 |
 | [ADR-044](ADR-044-suppression-du-manifest.md) | Suppression du manifest d'ingestion | ✅ Accepté (1er octobre 2026) — amende ADR-022 §4-§5 et ADR-043 §2 et §4 |
 | [ADR-045](ADR-045-relations-non-formatees.md) | Relations non formatées : une collection, plus un champ du document | ✅ Accepté (1er octobre 2026) |
+| [ADR-046](ADR-046-typage-des-documents.md) | Typage des documents : `document_type` fait foi, Neo4j le reflète | ✅ Accepté (1er octobre 2026) — amende ADR-039 §2 et l'amendement du §3 d'ADR-043 |
 
 ## Points ouverts rattachés
 

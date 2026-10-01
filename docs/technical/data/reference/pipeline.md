@@ -30,9 +30,6 @@ Le hook est le **point d'assemblage** du run. Dans l'ordre :
      tel quel en `dev`, et le remplace ailleurs par les valeurs sûres (`nuke_all` coupé,
      embedding calculé, métadonnées non configurées retirées, nœuds Neo4j maigres), avec
      un avertissement au log ;
-   - les labels des nœuds Neo4j (`NodeLabels`) : les tables des sources, fusionnées par
-     `registry.node_labels_by_prefix`. Deux labels pour un même préfixe, préfixe ou label
-     mal formé = échec au démarrage ;
 4. **L'embedder** (`assembly.prepare_embedder`) : TEI, seul embedder. Précondition
    d'abord : `served_model.inspect_served_model` interroge `GET /info` et compare le
    modèle servi à `EMBEDDING_MODEL`. TEI ignore le champ `model` des requêtes ; sans
@@ -42,7 +39,8 @@ Le hook est le **point d'assemblage** du run. Dans l'ordre :
    collection Qdrant. Échec = run arrêté avant tout nœud ;
 5. **Clients, index et dépôts du hook** (`stores.open_clients`, `ensure_indexes`,
    `open_document_stores`, `open_meta_stores`) : `ensure_data_indexes` (MURPHY_DATA :
-   documents, pendantes) et `ensure_meta_indexes` (MURPHY_META : bilans).
+   documents, pendantes), `ensure_meta_indexes` (MURPHY_META : bilans) et
+   `ensure_graph_constraints` (Neo4j : unicité de `(:Document).identifier`).
 6. **La session du run** (`run_session.RunSession`) : le `PipelineContext` (run_id
    uuid4-hex, `sources` résolues par le plan, started_at ; sa propriété `source` vaut la
    source unique, ou `None` si multi-source), la pile de

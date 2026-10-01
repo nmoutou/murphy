@@ -10,13 +10,20 @@ payload Qdrant, nœud Neo4j, événements de télémétrie. Sa forme sérialisé
 de la DILA, sans rien ajouter : `LEGIARTI000006419264`.
 
 Le format est validé à la construction (`^[A-Z]{8}[0-9]{12}$`) pour toutes les sources.
-Les 8 lettres de tête (`Identifier.prefix`) disent le fonds et la nature du document :
+Les 8 lettres de tête (`Identifier.prefix`) disent le fonds et le type du document
+(`document_type`, ADR-046), que la table de rôles de la source déclare
+(`RoleTable.document_types`) :
 
-| Préfixe | Source | Nature |
+| Préfixe | Source | `document_type` |
 |---|---|---|
-| `LEGIARTI` / `LEGITEXT` / `LEGISCTA` | LEGI | article, texte, section |
-| `JURITEXT` / `CETATEXT` / `CONSTEXT` | les 5 juri | décision judiciaire, administrative, constitutionnelle |
+| `LEGIARTI` / `LEGITEXT` / `LEGISCTA` | LEGI | `article`, `texte`, `section` |
+| `JURITEXT` / `CETATEXT` / `CONSTEXT` | les 5 juri | `decision` (judiciaire, administrative, constitutionnelle : `source` les distingue) |
 | `JORFTEXT` / `JORFARTI` | — | cible de liens LEGI uniquement (pas de connecteur JORF) |
+
+Un préfixe que la table ne déclare pas refuse le document (`ValidationError`). La nature
+juridique (`LOI`, `ARRET`, `QPC`…) est un autre champ, `nature` : la balise `NATURE` en
+majuscules, `None` si elle manque ou n'apporte rien (`Article` en LEGI, `Texte` dans
+JADE).
 
 Pas de hash de contenu nulle part : chaque run **réécrit en place** le document sous son
 identifiant (voir [idempotence.md](idempotence.md)).
@@ -30,7 +37,7 @@ RawDocument ──parse──▶ ParsedDocument ──chunk──▶ Chunk ─�
     transcrit)            source_files)             char_start/end)
 ```
 
-- `ParsedDocument` : `identifier`, `source`, `title`, `content` (texte
+- `ParsedDocument` : `identifier`, `source`, `document_type`, `nature`, `title`, `content` (texte
   intégral lisible), `structure` (sections/references/context — **jamais persisté**,
   voir plus bas), `metadata` (clés = chemin complet de balise), `source_files`
   (provenance, persistée seulement en dev avec `include_path`).
@@ -64,7 +71,8 @@ Contenu : le dump JSON du `ParsedDocument`, **sauf** :
   donnée d'arête (elles vivent dans Neo4j), et `sections` est `content` re-découpé — son
   seul apport propre (`path`) survit sur les chunks (`tag_path` + offsets).
 
-Donc : `identifier` (sérialisé), `source`, `title`, `content`, `metadata`.
+Donc : `identifier` (sérialisé), `source`, `document_type`, `nature`, `title`, `content`,
+`metadata`.
 
 ### `pending_relations`
 
@@ -122,7 +130,8 @@ données.
   | `chunk_id` | identité du passage, envoyée au client |
   | `identifier` | document parent dans `documents` (sérialisé, = clé de suppression par document) |
   | `char_start`, `char_end` | bornes du passage dans le `content` du parent, en **points de code** |
-  | `type_document` (métadonnée, facultatif) | nature du document, affichée comme type de la source |
+  | `document_type` | type du document (`article`, `section`, `texte`, `decision`), affiché comme type de la source |
+  | `nature` | nature juridique ou `null`, affichée après le type |
 
   Le texte du passage n'est **pas** dans le payload : c'est
   `documents.content[char_start:char_end]`. Les autres métadonnées sont présentes mais le
@@ -133,15 +142,13 @@ données.
 
 ## Neo4j
 
-- **Nœuds documents** : identifiés par `identifier` sérialisé. Le `MERGE`
-  porte sur le seul identifiant (jamais le label — `MERGE (d:Article {…})` créerait un
-  second nœud si le label a changé), puis le label réel est posé. Le label vient du
-  préfixe de l'identifiant, d'après la table que chaque source déclare dans le registre
-  (`SourceDefinition.node_labels`) : `LEGIARTI` → `Article`, `LEGITEXT` → `Texte`,
-  `LEGISCTA` → `Section`, et `Document` (`DEFAULT_LABEL`) pour tout autre préfixe, dont
-  les décisions. L'écriture ajoute le label sans retirer l'ancien : après un changement
-  de table, un nœud déjà écrit porte les deux, même réingéré ; repartir de zéro demande
-  `nuke_all`.
+- **Nœuds documents** (ADR-046) : identifiés par `identifier` sérialisé. Chaque nœud
+  porte deux labels : `Document`, et celui de son `document_type` (`TYPE_LABELS` :
+  `Article`, `Section`, `Texte`, `Decision`). Une contrainte d'unicité,
+  `document_identifier`, porte sur `(:Document).identifier` ; elle est posée avec les
+  index Mongo (`schema.ensure_graph_constraints`), et `nuke_all` la laisse en place. Le
+  `MERGE` et tous les `MATCH` par identifiant passent par `Document`, donc par son index.
+  Le label de type ne change jamais pour un identifiant : il vient du préfixe.
 - **Hydratation** (ADR-022 §2) : en prod, nœud **maigre** (`title`, `source`). En dev (et seulement en dev), `parameters.yml` ouvre les vannes : `metadata`
   en props (clés chemin-complet), `include_path` (les fichiers XML source, écrits aussi
   dans Mongo), `include_content_neo4j` (le texte, prop `_text_content`). Neo4j est l'outil

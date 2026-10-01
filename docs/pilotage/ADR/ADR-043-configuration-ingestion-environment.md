@@ -1,6 +1,6 @@
 # ADR-043 — Configuration de l'ingestion : un fichier, un bloc `dev`, `ENVIRONMENT` seul arbitre
 
-**Statut** : ✅ Accepté (30 septembre 2026) — amende ADR-022 §5-§6, ADR-023 et ADR-042 §3 · **§3 et §4 amendés le 30 septembre 2026** (labels Neo4j déclarés par les sources ; découpe dans l'environnement ; bloc `dev` aplati) · **§4 amendé par [ADR-044](ADR-044-suppression-du-manifest.md)** (suppression du manifest)
+**Statut** : ✅ Accepté (30 septembre 2026) — amende ADR-022 §5-§6, ADR-023 et ADR-042 §3 · **§3 et §4 amendés le 30 septembre 2026** (labels Neo4j déclarés par les sources ; découpe dans l'environnement ; bloc `dev` aplati) · **§4 amendé par [ADR-044](ADR-044-suppression-du-manifest.md)** (suppression du manifest) · **amendement du §3 remplacé par [ADR-046](ADR-046-typage-des-documents.md)** (labels Neo4j)
 
 ## Contexte
 
@@ -61,6 +61,10 @@ environnements : une coquille arrête le run même en prod.
 > ajoute un label sans retirer l'ancien. Chaque source le déclare dans le registre
 > (`SourceDefinition.node_labels`), et un préfixe qu'aucune source ne déclare reçoit
 > `Document` (critique de `parameters.yml`, P15).
+>
+> **Amendement par ADR-046 (1er octobre 2026)** : les sources ne déclarent plus de
+> labels. Un nœud porte `Document` et le label de son `document_type`, que la table de
+> rôles déduit du préfixe ; il ne change jamais pour un identifiant.
 
 > **Amendement (30 septembre 2026)** : `chunking` en est sorti aussi, et avec lui le
 > dernier réglage hors du bloc `dev`. `max_chars` est mesuré pour la fenêtre du modèle

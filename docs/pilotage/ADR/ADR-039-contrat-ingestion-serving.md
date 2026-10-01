@@ -1,6 +1,6 @@
 # ADR-039 — Contrat ingestion ↔ serving : le texte d'un passage vit dans Mongo, désigné par ses offsets
 
-**Statut** : ✅ Accepté (25 septembre 2026), amendé le 30 septembre 2026
+**Statut** : ✅ Accepté (25 septembre 2026), amendé le 30 septembre 2026 · **§2 amendé par [ADR-046](ADR-046-typage-des-documents.md)** (typage des documents)
 
 > **Amendement du 30 septembre 2026.** `owner_id` et la version du contrat sont retirés :
 > le projet est mono-utilisateur et en développement, aucun des deux n'avait d'usage. Un
@@ -10,6 +10,10 @@
 > **Amendement par ADR-042 (30 septembre 2026).** Le pointeur de collection est retiré :
 > la collection Qdrant porte un nom fixe, `QDRANT_COLLECTION`. Le contrat (§2) et le §3
 > ci-dessous sont réécrits en conséquence.
+>
+> **Amendement par ADR-046 (1er octobre 2026).** `type_document` est remplacé par
+> `document_type` (obligatoire) et `nature` (facultatif). Le §2 est réécrit en
+> conséquence ; le tableau du contexte garde l'état constaté le 25 septembre.
 
 ## Contexte
 
@@ -56,7 +60,8 @@ ou un découpage par points de code côté Node, satisfait le contrat.
 | `chunk_id` | string | Identité du passage, envoyée au client |
 | `identifier` | string | Clé du document parent dans Mongo |
 | `char_start`, `char_end` | int | Bornes du passage dans `content`, en points de code |
-| `type_document` | string, facultatif | Nature du document (LEGI et JURI), affichée comme type de la source |
+| `document_type` | string : `article`, `section`, `texte` ou `decision` | Forme du document, affichée comme type de la source |
+| `nature` | string ou `null` | Nature juridique (`LOI`, `ARRET`, `QPC`…), affichée après le type |
 
 Les autres métadonnées restent à plat dans le payload, mais le serving ne s'y appuie pas.
 
