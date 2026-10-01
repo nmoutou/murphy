@@ -55,8 +55,7 @@ Le hook est le **point d'assemblage** du run. Dans l'ordre :
 8. **Pool phase 1** (`assembly.build_runner`) : un `IngestionRunner` à 4 workers, armé de
    *fabriques* (runtime, télémétrie, use case) — jamais d'instances partagées.
 9. **Service phase 2** : `ResolveRelationsService` (dépôts du hook, non parallélisé).
-10. Tout est posé au catalogue (`catalog.save(...)`), l'événement `pipeline.run.started`
-    est émis.
+10. Tout est posé au catalogue (`catalog.save(...)`).
 
 Pourquoi des fabriques : un client Motor/Neo4j/Qdrant est lié à la boucle asyncio qui le
 touche en premier. Chaque worker construit donc **ses** clients sur **sa** boucle (le même
@@ -225,18 +224,16 @@ remontent pas — le run est `failed` (vrai), mais son bilan est pauvre.
 Les deux chemins passent par `RunSession.close(status)` (`run_session.py`). Chemin
 nominal (`after_pipeline_run`), dans l'ordre — et l'ordre est l'enjeu :
 
-1. `pipeline.run.completed` émis.
-2. **Déclaration des troncatures** : le compteur `truncations` de l'embedder (chunks
+1. **Déclaration des troncatures** : le compteur `truncations` de l'embedder (chunks
    raccourcis pour tenir dans la fenêtre du modèle) devient un événement
    `chunk.truncated`. Le corpus est complet, mais la config est à corriger.
-3. **Persistance du bilan** (statut demandé : `ok`) : le statut annoncé est
+2. **Persistance du bilan** (statut demandé : `ok`) : le statut annoncé est
    **re-dérivé des compteurs** (`RunSummary.of` → `_status_from`) — voir
    [telemetrie.md](telemetrie.md#le-statut-dun-run). Upsert Mongo
    (`meta_run_summaries`).
-4. Le hook ferme son runtime.
+3. Le hook ferme son runtime.
 
-Chemin d'erreur (`on_pipeline_error`) : `pipeline.run.failed` émis, puis la **même
-clôture** (les troncatures valent aussi sur un run cassé), bilan persisté en
+Chemin d'erreur (`on_pipeline_error`) : la **même clôture** (les troncatures valent aussi sur un run cassé), bilan persisté en
 `failed` (avec le message d'erreur), runtime fermé.
 Si l'assemblage a échoué avant que la session existe, le hook ne fait que fermer son
 runtime.

@@ -9,8 +9,8 @@ from ragcore.orchestration.kedro.hooks import TelemetryHooks
 
 
 def test_ending_a_run_on_a_hook_that_was_never_wired_does_not_explode() -> None:
-    TelemetryHooks().after_pipeline_run({})
+    TelemetryHooks().after_pipeline_run()
 
 
 def test_failing_a_run_on_a_hook_that_was_never_wired_does_not_explode() -> None:
-    TelemetryHooks().on_pipeline_error(RuntimeError("assemblage raté"), {})
+    TelemetryHooks().on_pipeline_error(RuntimeError("assemblage raté"))

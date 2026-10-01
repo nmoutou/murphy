@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Any
 
 from kedro.framework.hooks import hook_impl
 from kedro.io import DataCatalog
@@ -26,11 +25,6 @@ from ragcore.application.run_context import PipelineContext
 from ragcore.core.models.enums import SourceName
 from ragcore.core.models.run_summary import RunStatus
 from ragcore.core.ports.embedder import BaseEmbedder
-from ragcore.core.telemetry_events import (
-    PIPELINE_RUN_COMPLETED,
-    PIPELINE_RUN_FAILED,
-    PIPELINE_RUN_STARTED,
-)
 from ragcore.orchestration.kedro.assembly import (
     build_processing_stack,
     build_runner,
@@ -77,17 +71,13 @@ class TelemetryHooks:
         return self._runtime_instance
 
     @hook_impl
-    def before_pipeline_run(
-        self, run_params: dict[str, Any], catalog: DataCatalog
-    ) -> None:
+    def before_pipeline_run(self, catalog: DataCatalog) -> None:
         """Assemble le run et le POSE au catalogue : le DAG nomme, le hook fournit."""
         settings = get_infra_settings()
         plan = plan_run(load_parameters(catalog), settings, get_chunking_config())
         embedder = prepare_embedder(get_embedding_runtime_settings(), self._runtime)
         for name, value in self._assemble(settings, plan, embedder).items():
             catalog.save(name, value)
-        if self._session is not None:
-            self._session.emit_lifecycle_event(PIPELINE_RUN_STARTED, run_params)
 
     def _assemble(
         self, settings: InfraSettings, plan: RunPlan, embedder: BaseEmbedder
@@ -158,16 +148,14 @@ class TelemetryHooks:
         return self._session
 
     @hook_impl
-    def after_pipeline_run(self, run_params: dict[str, Any]) -> None:
+    def after_pipeline_run(self) -> None:
         if self._session is not None:
-            self._session.emit_lifecycle_event(PIPELINE_RUN_COMPLETED, run_params)
             self._session.close(RunStatus.OK)
         self._close_runtime()
 
     @hook_impl
-    def on_pipeline_error(self, error: Exception, run_params: dict[str, Any]) -> None:
+    def on_pipeline_error(self, error: Exception) -> None:
         if self._session is not None:
-            self._session.emit_lifecycle_event(PIPELINE_RUN_FAILED, run_params, error)
             # ⚠️ Le bilan sera PAUVRE : les stats des workers ne remontent que par le
             # node `report`, qui est terminal. Un pipeline qui casse avant lui ne
             # persiste que les compteurs du process principal. Le statut `failed` reste

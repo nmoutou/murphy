@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import Any
 
 from ragcore.adapters.telemetry import RunStatsAggregator
 from ragcore.adapters.telemetry.factory import assemble_telemetry
@@ -67,29 +66,6 @@ class RunSession:
     sauvé, le run est complet — mais le bilan doit le dire."""
     runtime: AsyncRuntime
     """Le runtime du hook : la session s'en sert, le hook le ferme."""
-
-    def emit_lifecycle_event(
-        self,
-        event_type: str,
-        run_params: dict[str, Any],
-        error: Exception | None = None,
-    ) -> None:
-        """Émet un événement de cycle de vie du run (démarré, terminé, échoué)."""
-        payload: dict[str, object] = {
-            "pipeline": run_params.get("pipeline_name", "__default__")
-        }
-        if error is not None:
-            payload["error"] = str(error)
-        self.telemetry.emit(
-            build_event(
-                event_type=event_type,
-                run_id=self.context.run_id,
-                source=self.context.source,
-                payload=payload,
-                success=error is None,
-                error_message=str(error) if error is not None else None,
-            )
-        )
 
     def close(self, status: RunStatus, error_message: str | None = None) -> RunSummary:
         """Clôt le run, qu'il ait réussi ou cassé : l'ORDRE est tout l'enjeu.

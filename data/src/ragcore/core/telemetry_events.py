@@ -12,10 +12,6 @@ from ragcore.core.services.telemetry_registry import EventBehavior
 # Constantes publiques (re-exportées depuis ici — audit.py les re-importe)
 # ---------------------------------------------------------------------------
 
-PIPELINE_RUN_STARTED = "pipeline.run.started"
-PIPELINE_RUN_COMPLETED = "pipeline.run.completed"
-PIPELINE_RUN_FAILED = "pipeline.run.failed"
-
 DOCUMENT_FETCHED = "document.fetched"
 DOCUMENT_PARSED = "document.parsed"
 # Écartés par le connecteur, un compteur par raison — HORS équation : un fichier écarté
@@ -89,11 +85,6 @@ cardinalité, c'est l'ajouter ICI — sinon son lot ne compte que pour un."""
 # ---------------------------------------------------------------------------
 
 EVENT_CATALOG: dict[str, EventBehavior] = {
-    # --- Cycle de vie du pipeline ---
-    # Hors agrégat : le bilan les porte déjà en `started_at`, `ended_at` et `status`.
-    PIPELINE_RUN_STARTED: EventBehavior(aggregate=False),
-    PIPELINE_RUN_COMPLETED: EventBehavior(aggregate=False),
-    PIPELINE_RUN_FAILED: EventBehavior(aggregate=False),
     # --- Cycle de vie d'un document ---
     DOCUMENT_FETCHED: EventBehavior(aggregate=True),
     DOCUMENT_PARSED: EventBehavior(aggregate=True),
