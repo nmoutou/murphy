@@ -11,7 +11,7 @@ fera pas échouer ce test — il ressortira à l'exécution, dans le bilan du ru
 """
 
 from ragcore.core.links import CITES
-from ragcore.sources.legi.vocabulary import TYPELIEN_TO_VERB
+from ragcore.sources.legislatif.vocabulary import TYPELIEN_TO_VERB
 
 TYPELIENS = {
     "CITATION",

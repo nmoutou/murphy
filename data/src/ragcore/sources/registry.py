@@ -30,14 +30,14 @@ from typing import Any
 
 from ragcore.core.models.enums import SourceName
 from ragcore.sources.generic import RoleTable
-from ragcore.sources.juri import (
+from ragcore.sources.jurisprudence import (
     JURI_ADMIN_ROLE_TABLE,
     JURI_CONSTIT_ROLE_TABLE,
     JURI_JUDI_ROLE_TABLE,
     JuriFileConnector,
 )
-from ragcore.sources.legi.file_connector import LegiFileConnector
-from ragcore.sources.legi.table import LEGI_NODE_LABELS, LEGI_ROLE_TABLE
+from ragcore.sources.legislatif.file_connector import LegiFileConnector
+from ragcore.sources.legislatif.table import LEGI_NODE_LABELS, LEGI_ROLE_TABLE
 
 __all__ = ["SOURCES", "SourceDefinition", "definition_for", "node_labels_by_prefix"]
 

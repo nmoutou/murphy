@@ -3,7 +3,7 @@
 **Le module hégémonique, et ce que ça veut dire.** Un seul module au cœur définit tout
 ce qui touche aux liens. Il a deux faces : *extraction* (ici — appelée par le parser) et
 *résolution* (la passe de phase 2). Elles partagent le vocabulaire de ``vocabulary.py``.
-**Personne d'autre ne fabrique de lien.** ``sources/legi/relations.py`` en fabriquait un,
+**Personne d'autre ne fabrique de lien.** ``sources/legislatif/relations.py`` en fabriquait un,
 avec sa propre notion d'orientation et sa propre table : c'est exactement ce qui a permis
 au bug des 16 227 liens perdus d'exister sans que le domaine s'en aperçoive.
 

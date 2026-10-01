@@ -29,7 +29,7 @@ from ragcore.core.services.unknown_categories import (
     CATEGORY_TYPELIEN,
 )
 from ragcore.sources.generic import GenericParser, GenericRelationExtractor, to_tree
-from ragcore.sources.legi.table import LEGI_ROLE_TABLE
+from ragcore.sources.legislatif.table import LEGI_ROLE_TABLE
 
 from .conftest import ARTICLE_RICHE, ARTICLE_SIMPLE, SECTION_ARTICLES
 

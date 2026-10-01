@@ -15,7 +15,7 @@ import pytest
 from ragcore.core.links import CITES, LinkSubject, extract_links
 from ragcore.core.models.enums import SourceName
 from ragcore.sources.generic import GenericParser
-from ragcore.sources.juri import (
+from ragcore.sources.jurisprudence import (
     JURI_LINK_TABLE,
     ROLE_TABLE_BY_ROOT,
     JuriFileConnector,

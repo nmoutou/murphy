@@ -30,9 +30,9 @@ from ragcore.sources.generic import (
     GenericRelationExtractor,
     StructuralChunker,
 )
-from ragcore.sources.legi.file_connector import LegiFileConnector
-from ragcore.sources.legi.table import LEGI_ROLE_TABLE
-from ragcore.sources.legi.tests.conftest import (
+from ragcore.sources.legislatif.file_connector import LegiFileConnector
+from ragcore.sources.legislatif.table import LEGI_ROLE_TABLE
+from ragcore.sources.legislatif.tests.conftest import (
     ARTICLE_HIERARCHISE,
     SECTION_GRAND_PARENTE,
     SECTION_PARENTE,
@@ -40,7 +40,7 @@ from ragcore.sources.legi.tests.conftest import (
 
 # Les fixtures vivent avec les tests de la source ; le cliquet les emprunte plutôt que de
 # les dupliquer — deux jeux de fixtures dériveraient, et c'est le cliquet qui mentirait.
-FIXTURES = Path(__file__).parents[2] / "sources" / "legi" / "tests" / "fixtures"
+FIXTURES = Path(__file__).parents[2] / "sources" / "legislatif" / "tests" / "fixtures"
 
 CHUNK_SIZE = 128
 OVERLAP = 25

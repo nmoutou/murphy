@@ -1,7 +1,7 @@
 """La table de rôles — **la source, réduite à une donnée**.
 
 Ceci est la pièce qui décide si §3 tient : *« une source nouvelle = une table, pas un
-second parser »*. Tout ce que ``sources/legi/parser.py`` savait de LEGI vivait dans
+second parser »*. Tout ce que ``sources/legislatif/parser.py`` savait de LEGI vivait dans
 quatre constantes de module (``_CONTENT_BLOCKS``, ``_TITLE_TAGS``, ``_META_RENAMES``,
 ``_TRANSPARENT``) et dans deux ``frozenset`` de racines. Le code qui les *lisait*
 (``_walk``, ``_find_all``, ``_text_blocks``) ne contenait, lui, pas un seul mot de LEGI.
@@ -120,7 +120,7 @@ class RoleTable:
 
     Le parser **appelle** ``core/links``, il ne réimplémente jamais la mécanique des
     arêtes. C'est la frontière que la doctrine pose nommément, et que
-    ``sources/legi/relations.py`` violait en portant sa propre notion d'orientation.
+    ``sources/legislatif/relations.py`` violait en portant sa propre notion d'orientation.
     """
 
     link_tags: Sequence[str] = ()

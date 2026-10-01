@@ -20,7 +20,10 @@ data/
     ├── core/             # domaine pur : modèles, ports, services — ne connaît AUCUNE base
     ├── application/      # cas d'usage : runner, saga, résolution de relations
     ├── adapters/         # implémentations : Mongo, Neo4j, Qdrant, embedders, télémétrie
-    ├── sources/          # connecteurs + tables de rôles par source, mécanique générique
+    ├── sources/          # un dossier par FORMAT XML, le registre qui y relie chaque base
+    │   ├── legislatif/   #   LEGI
+    │   ├── jurisprudence/#   CAPP, CASS, INCA, JADE, CONSTIT
+    │   └── generic/      #   parser, chunker et lecture XML communs
     └── orchestration/    # le pont Kedro : hooks, DAG, nœuds, workload
 ```
 

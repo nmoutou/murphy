@@ -28,6 +28,11 @@ Le corpus vit sous `XML_SOURCE_PATH` (chemin absolu, hors dépôt), un sous-rép
 base (`LEGI/`, `CASS/`, …). Le sous-répertoire est un fait sur la source
 (`sources/registry.py`), pas de la configuration.
 
+Le code, lui, est rangé par **format XML**, pas par base : `sources/legislatif/` porte le
+format de LEGI, `sources/jurisprudence/` celui des cinq bases de jurisprudence (un
+connecteur, trois tables de rôles selon la racine). Six bases, deux dossiers : c'est le
+registre qui associe chaque base à son format.
+
 ## Le registre (`sources/registry.py`)
 
 **Une source = trois données**, pas une classe :

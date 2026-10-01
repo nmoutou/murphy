@@ -40,7 +40,7 @@ from ragcore.core.ports.telemetry import TelemetryPort
         ),
         ("ragcore.adapters.telemetry.noop", "NoopTelemetry", TelemetryPort),
         # Le parser et le chunker sont GÉNÉRIQUES : un seul de chacun, pour six sources.
-        # `sources/legi/` n'apporte plus qu'une table et un extracteur-coquille.
+        # `sources/legislatif/` n'apporte plus qu'une table et un extracteur-coquille.
         ("ragcore.sources.generic.parser", "GenericParser", BaseParser),
         ("ragcore.sources.generic.chunking", "StructuralChunker", BaseChunker),
         (

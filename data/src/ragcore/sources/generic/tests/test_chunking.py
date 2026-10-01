@@ -12,12 +12,12 @@ from ragcore.core.models.processing import ChunkingConfig
 from ragcore.core.ports.chunker import BaseChunker
 from ragcore.sources.generic import GenericParser, StructuralChunker, to_tree
 from ragcore.sources.generic.chunking import _windows
-from ragcore.sources.legi.table import LEGI_ROLE_TABLE
+from ragcore.sources.legislatif.table import LEGI_ROLE_TABLE
 
 # Le chunker est GÉNÉRIQUE, mais il faut du VRAI XML pour l'éprouver — un arbre inventé ne
 # porterait ni les <p> imbriqués, ni les facettes fusionnées. `fixtures_dir` arrive par la
 # conftest locale ; ici on n'importe que les identifiants des fixtures.
-from ragcore.sources.legi.tests.conftest import (
+from ragcore.sources.legislatif.tests.conftest import (
     ARTICLE_RICHE,
     ARTICLE_SIMPLE,
     SECTION_ARTICLES,

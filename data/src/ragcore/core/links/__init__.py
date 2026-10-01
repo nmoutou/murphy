@@ -7,7 +7,7 @@ Un seul module au cœur définit tout ce qui touche aux arêtes :
 - **face résolution** (phase 2) : une cible absente devient une arête, plus tard.
 
 Elles partagent le vocabulaire de ``vocabulary.py``. **Personne d'autre ne fabrique de
-lien** — c'est cette règle qui a manqué quand ``sources/legi/relations.py`` avait sa
+lien** — c'est cette règle qui a manqué quand ``sources/legislatif/relations.py`` avait sa
 propre notion d'orientation et sa propre table, et que 16 227 liens ont disparu sans
 que le domaine s'en aperçoive.
 """

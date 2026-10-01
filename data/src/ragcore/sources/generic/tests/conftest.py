@@ -11,6 +11,6 @@ la fixture sans qu'aucun module de test n'ait à l'importer (ce que ``ruff`` pre
 titre, pour une redéfinition).
 """
 
-from ragcore.sources.legi.tests.conftest import fixtures_dir
+from ragcore.sources.legislatif.tests.conftest import fixtures_dir
 
 __all__ = ["fixtures_dir"]

@@ -163,7 +163,7 @@ strict = true
 plugins = ["pydantic.mypy"]
 # On type le DOMAINE et les adaptateurs, pas les tests : un test manipule
 # légitimement des mocks non typés et des internes, ce que `strict` rejette.
-# Les tests sont co-localisés (sources/tests/, legi/tests/, …), donc le motif
+# Les tests sont co-localisés (sources/tests/, legislatif/tests/, …), donc le motif
 # doit attraper TOUT segment `tests/`, pas un seul chemin central.
 files = ["src/ragcore"]
 exclude = ["/tests/"]

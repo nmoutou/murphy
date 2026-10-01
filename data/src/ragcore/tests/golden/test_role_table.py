@@ -35,10 +35,10 @@ import pytest
 
 from ragcore.core.models.enums import SourceName
 from ragcore.sources.generic import GenericParser, Role
-from ragcore.sources.legi.file_connector import LegiFileConnector
-from ragcore.sources.legi.table import LEGI_ROLE_TABLE
+from ragcore.sources.legislatif.file_connector import LegiFileConnector
+from ragcore.sources.legislatif.table import LEGI_ROLE_TABLE
 
-FIXTURES = Path(__file__).parents[2] / "sources" / "legi" / "tests" / "fixtures"
+FIXTURES = Path(__file__).parents[2] / "sources" / "legislatif" / "tests" / "fixtures"
 
 # La fixture `unknown_vocabulary.xml` porte DÉLIBÉRÉMENT du vocabulaire inconnu : une
 # balise <ZORG> et un typelien ZORGLUB. C'est l'instrument qu'elle teste, pas le cliquet
@@ -144,13 +144,14 @@ def test_les_quatre_roles_sont_TOUS_utilises_par_LEGI() -> None:
 def test_la_table_LEGI_ne_contient_AUCUNE_logique() -> None:
     """La mesure du succès de §3 : *une source nouvelle = une table, pas un parser*.
 
-    ``sources/legi/`` ne doit plus contenir ni parser ni chunker. S'il en réapparaît un,
+    ``sources/legislatif/`` ne doit plus contenir ni parser ni chunker. S'il en réapparaît un,
     c'est que la mécanique générique était incomplète — et c'est **elle** qu'il faut
     corriger, pas la source qu'il faut laisser diverger. C'est ainsi qu'on se retrouve
     avec six parsers.
     """
     modules = {
-        p.name for p in (Path(__file__).parents[2] / "sources" / "legi").glob("*.py")
+        p.name
+        for p in (Path(__file__).parents[2] / "sources" / "legislatif").glob("*.py")
     }
 
     assert "parser.py" not in modules, (

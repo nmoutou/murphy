@@ -1,6 +1,6 @@
 """LEGI — **une table, et rien d'autre**.
 
-Tout ce que ``sources/legi/parser.py`` savait de LEGI est ici, sous forme de données.
+Tout ce que ``sources/legislatif/parser.py`` savait de LEGI est ici, sous forme de données.
 Le parser générique lit cette table ; il ne connaît pas le mot ``BLOC_TEXTUEL``.
 
 C'est la mesure du succès de §3 : *une source nouvelle = une table, pas un second

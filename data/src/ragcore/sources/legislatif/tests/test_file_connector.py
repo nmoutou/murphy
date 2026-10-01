@@ -10,7 +10,7 @@ from ragcore.core.services.exclusion_reasons import (
     REASON_EXPORT_ARTIFACT,
     REASON_UNREADABLE,
 )
-from ragcore.sources.legi.file_connector import LegiFileConnector
+from ragcore.sources.legislatif.file_connector import LegiFileConnector
 
 from .conftest import (
     ARTICLE_RICHE,

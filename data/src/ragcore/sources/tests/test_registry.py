@@ -3,7 +3,7 @@
 import pytest
 
 from ragcore.core.models.enums import SourceName
-from ragcore.sources.legi.table import LEGI_ROLE_TABLE
+from ragcore.sources.legislatif.table import LEGI_ROLE_TABLE
 from ragcore.sources.registry import SourceDefinition, node_labels_by_prefix
 
 

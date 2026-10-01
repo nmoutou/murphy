@@ -1,6 +1,6 @@
 """Le chunker structurel — **générique**, et dont les offsets ne mentent plus.
 
-**Il vivait dans ``sources/legi/`` et n'a pas changé d'une ligne en déménageant.** Ce
+**Il vivait dans ``sources/legislatif/`` et n'a pas changé d'une ligne en déménageant.** Ce
 n'est pas une coïncidence, c'est un diagnostic : il ne connaissait déjà aucun mot de
 LEGI. Il ne lit que ``document.content`` et ``document.structure["sections"]`` — le
 contrat que *tout* parser générique honore. Six sources partageront donc un chunker,

@@ -1,7 +1,7 @@
 """La réduction transitive — et surtout : ce qu'elle NE doit PAS toucher.
 
 Ces tests reprennent la spécification que portaient les trois ``xfail`` de
-``sources/legi/tests/test_relation_reduction.py``. Ceux-là testaient une méthode
+``sources/legislatif/tests/test_relation_reduction.py``. Ceux-là testaient une méthode
 privée (``LegiRelationExtractor._reduce``) : le sujet a déménagé dans le domaine,
 les tests l'ont suivi. Leur fichier annonçait lui-même « à réécrire au lot 4 ».
 

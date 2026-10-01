@@ -1,6 +1,8 @@
-"""``sources/juri`` — cinq sources, **trois tables, un connecteur, zéro parser**.
+"""``sources/jurisprudence`` — cinq sources, **trois tables, un connecteur, zéro parser**.
 
-CAPP, CASS, INCA, JADE, CONSTIT. Ce package ne contient aucune mécanique : le parser et le
+CAPP, CASS, INCA, JADE, CONSTIT : cinq bases DILA, un seul format XML. Le code est rangé
+par format, les données par base ; ``sources/registry.py`` fait le lien. Ce package ne
+contient aucune mécanique : le parser et le
 chunker sont ceux de ``sources/generic``, la mécanique des liens est celle de
 ``core/links``. La juri n'apporte que du vocabulaire.
 

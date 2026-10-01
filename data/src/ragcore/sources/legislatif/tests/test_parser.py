@@ -13,7 +13,7 @@ from ragcore.core.models.enums import SourceName
 from ragcore.core.models.enums import SourceName as _SN
 from ragcore.core.ports.parser import BaseParser
 from ragcore.sources.generic import GenericParser, to_tree
-from ragcore.sources.legi.table import LEGI_ROLE_TABLE
+from ragcore.sources.legislatif.table import LEGI_ROLE_TABLE
 
 from .conftest import (
     ARTICLE_INCONNU,
