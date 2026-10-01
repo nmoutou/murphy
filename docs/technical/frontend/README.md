@@ -22,7 +22,7 @@ La vue système globale (serving + ingestion + bases partagées) est dans
 Depuis la **racine du dépôt** (requiert `.env.dev`) : `npm run up` / `npm run watch`
 / `npm run down`. Le frontend écoute sur le port `3000` en dev. Seuls `src/` et `public/`
 sont montés, avec hot-reload (`next dev`) : changer `package.json`, la config Next ou
-`packages/contract` demande `npm run serve:build`.
+`packages/contract` demande `npm run build` puis `npm run up`.
 
 ### Sans Docker
 

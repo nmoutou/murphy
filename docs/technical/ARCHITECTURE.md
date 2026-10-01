@@ -84,7 +84,7 @@ Ports dev : frontend `3000`, backend `5000`, Qdrant `6333`, Mongo `27017`, Neo4j
 ### Production
 
 Aucun script ne l'enveloppe : `docker compose -f docker-compose.base.yml -f
-docker-compose.prod.yml --env-file .env.dev --profile serve up -d --build` (et `down`
+docker-compose.prod.yml --env-file .env.dev up -d --build` (et `down`
 avec les mêmes options).
 
 - **URL du backend fixée au build** : Next inline `NEXT_PUBLIC_API_URL` dans le bundle

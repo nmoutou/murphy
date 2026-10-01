@@ -24,7 +24,7 @@ Docker de serving ; il ne partage avec le backend que les bases de données.
 
 - Python ≥ 3.11 (venv dans `data/.venv`), installé par `uv sync --extra dev`, comme en CI.
 - Les bases (Mongo, Qdrant, Neo4j) et le service d'embedding TEI, déclarés à la **racine du
-  dépôt** : `npm run ingest:up` depuis la racine (ou `npm run up` depuis `data/`) les démarre (TEI exige un GPU NVIDIA ; le
+  dépôt** : `npm run up`, depuis la racine ou depuis `data/`, les démarre avec le reste de la stack (TEI exige un GPU NVIDIA ; le
   premier boot télécharge le modèle — patience, ce n'est pas un blocage).
 - Le corpus XML DILA sous `XML_SOURCE_PATH` (chemin **absolu**, hors dépôt — défaut
   `/mnt/data/Murphy/src`), avec un sous-répertoire par source : `LEGI/`, `CAPP/`, `CASS/`,
@@ -46,7 +46,7 @@ Points critiques :
   le fichier est ignoré (avertissement au log) ; l'absence de la variable vaut `prod`, et
   toute valeur autre que `dev` ou `prod` arrête le run.
 - `EMBEDDING_MODEL` et `EMBEDDING_SERVICE_URL` sont obligatoires : TEI est le seul
-  embedder, et il doit être démarré (`npm run ingest:up`) avant un run.
+  embedder, et il doit être démarré (`npm run up`) avant un run.
 
 ### Lancer un run
 
@@ -84,7 +84,7 @@ Extras optionnels (`pyproject.toml`) : `notebooks`, `docs`, `dev`.
 | Run « ok » mais 0 document | `XML_SOURCE_PATH` ne pointe sur rien (un répertoire absent ne lève pas — il donne zéro document) ; vérifier le chemin et les sous-répertoires par source. |
 | Avertissement « parameters.yml est ignoré » | `ENVIRONMENT=prod`, ou absente, dans le `.env.dev` racine : `nuke_all` n'efface rien, l'embedding est calculé — c'est le garde-fou voulu. |
 | `ValidationError` sur `environment` au démarrage | `ENVIRONMENT` ne vaut ni `dev` ni `prod` (casse comprise) : corriger la valeur. |
-| Le run échoue avant d'ingérer, en nommant un modèle | La précondition TEI : le modèle servi par le conteneur (`GET /info`) n'est pas `EMBEDDING_MODEL`. Redémarrer TEI après avoir changé la variable (`npm run ingest:up`). |
-| Le run échoue avant d'ingérer sur « sonde de dimension » ou « Impossible d'interroger » | TEI n'est pas joignable à `EMBEDDING_SERVICE_URL` : le démarrer (`npm run ingest:up`, ~4 min) ou corriger l'URL. |
+| Le run échoue avant d'ingérer, en nommant un modèle | La précondition TEI : le modèle servi par le conteneur (`GET /info`) n'est pas `EMBEDDING_MODEL`. Redémarrer TEI après avoir changé la variable (`npm run up`). |
+| Le run échoue avant d'ingérer sur « sonde de dimension » ou « Impossible d'interroger » | TEI n'est pas joignable à `EMBEDDING_SERVICE_URL` : le démarrer (`npm run up`, ~4 min) ou corriger l'URL. |
 | `chunk.truncated` non nul au bilan | Le `CHUNKING_MAX_CHARS` configuré dépasse la fenêtre du modèle d'embedding : le corpus est complet mais des fins de chunks ne sont pas indexées — baisser `CHUNKING_MAX_CHARS`. |
 | Le backend ne trouve rien après un run | Le run était-il `ok` ? Un run `degraded` a laissé un corpus incomplet dans la collection servie. Lire le bilan dans `run_summaries`, puis relancer. |

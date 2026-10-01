@@ -30,7 +30,7 @@ npm run down      # tout arrêter
 
 Le backend écoute sur le port `5000` en dev. Seul `src/` est monté, avec hot-reload :
 les dépendances et le contrat compilé vivent dans l'image, donc changer
-`package.json`, `tsconfig.json` ou `packages/contract` demande `npm run serve:build`.
+`package.json`, `tsconfig.json` ou `packages/contract` demande `npm run build` puis `npm run up`.
 
 ### Sans Docker
 
