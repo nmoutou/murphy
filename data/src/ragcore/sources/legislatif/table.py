@@ -29,7 +29,9 @@ from .vocabulary import LEGI_LINK_TABLE
 __all__ = ["LEGI_ROLE_TABLE"]
 
 
-_ROOTS = frozenset({"ARTICLE", "SECTION_TA", "TEXTE_VERSION", "TEXTELR"})
+_ROOTS = ("TEXTE_VERSION", "TEXTELR", "ARTICLE", "SECTION_TA")
+"""Les racines, dans l'ordre de fusion des facettes : ``TEXTE_VERSION`` porte le texte et
+son titre, elle passe avant ``TEXTELR`` (ADR-049)."""
 
 _CONTENT_BLOCKS = ("BLOC_TEXTUEL", "VISAS", "SIGNATAIRES", "TP")
 """Les blocs qui portent le TEXTE.
@@ -151,14 +153,26 @@ _META_RENAMES = {
     "DATE_FIN": "date_fin",
     "DATE_PUBLI": "date_publication",
     "DATE_TEXTE": "date_texte",
+    "DERNIERE_MODIFICATION": "derniere_modification",
     "ETAT": "statut",
     "NOR": "nor",
     "NUM": "num",
+    "NUM_PARUTION": "num_parution",
+    "NUM_SEQUENCE": "num_sequence",
     "ORIGINE": "origine",
+    "ORIGINE_PUBLI": "origine_publication",
+    "PAGE_DEB_PUBLI": "page_debut_publication",
+    "PAGE_FIN_PUBLI": "page_fin_publication",
     "TITREFULL": "titre_full",
     "URL": "url",
     "TYPE": "type",
+    "VERSION_A_VENIR": "versions_a_venir",
 }
+
+_LIST_KEYS = frozenset({"url", "versions_a_venir"})
+"""Les clés à plusieurs valeurs (ADR-049). ``url`` : chaque facette d'un texte donne le
+chemin de son propre fichier (98/98 différentes). ``versions_a_venir`` : plusieurs dates
+dans une même facette."""
 
 
 LEGI_ROLE_TABLE = RoleTable(
@@ -177,6 +191,7 @@ LEGI_ROLE_TABLE = RoleTable(
     uninformative_natures=frozenset({"ARTICLE"}),
     meta_containers=("META",),
     meta_renames=_META_RENAMES,
+    list_keys=_LIST_KEYS,
     version_tags=frozenset({"DATE_DEBUT", "DATE_FIN", "ETAT"}),
     transparent=_TRANSPARENT,
     links=LEGI_LINK_TABLE,

@@ -271,20 +271,11 @@ def test_les_inconnus_sont_DECLARES_et_pas_jetes() -> None:
     # valeurs sont en métadonnée, et LE SIGNAL les déclare sous leurs clés. Les balises
     # connues SANS renommage sont non-configurées elles aussi (ADR-047). `sens="lateral"`
     # n'est pas un type de lien : c'est un lien perdu, compté en `relation.unknown`.
-    chronicle = "meta_meta_spec_meta_texte_chronicle"
     assert result["unknowns"] == {
         "links": ["ZORGLUB"],
         "tags": [
             "article_zorg",
             "article_zorg_attribut_inconnu",
-            f"texte_version_{chronicle}_derniere_modification",
-            f"texte_version_{chronicle}_num_parution",
-            f"texte_version_{chronicle}_num_sequence",
-            f"texte_version_{chronicle}_origine_publi",
             "texte_version_meta_meta_spec_meta_texte_version_titre",
-            f"textelr_{chronicle}_derniere_modification",
-            f"textelr_{chronicle}_num_parution",
-            f"textelr_{chronicle}_num_sequence",
-            f"textelr_{chronicle}_origine_publi",
         ],
     }

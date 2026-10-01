@@ -33,10 +33,15 @@ __all__ = ["RoleTable"]
 class RoleTable:
     """Tout ce qu'une source déclare de sa structure XML. Une donnée, pas du code."""
 
-    roots: frozenset[str]
-    """Les racines XML que la source connaît (``ARTICLE``, ``TEXTE_JURI_JUDI``…).
+    roots: tuple[str, ...]
+    """Les racines XML que la source connaît (``ARTICLE``, ``TEXTE_JURI_JUDI``…), **dans
+    l'ordre de fusion des facettes** (ADR-049).
 
-    Une racine hors de cet ensemble ressort en ``unknowns["roots"]`` : c'est une famille
+    Un document LEGI fusionne ``TEXTE_VERSION`` et ``TEXTELR`` : quand une métadonnée
+    prend plusieurs valeurs, elles suivent le rang de leur facette ici, puis l'ordre du
+    document. Sans cet ordre, il serait celui des chemins de fichiers : un accident.
+
+    Une racine hors de cette liste ressort en ``unknowns["roots"]`` : c'est une famille
     de documents que la source n'a jamais déclarée, et le run doit le dire.
     """
 
@@ -117,6 +122,15 @@ class RoleTable:
     C'est le 4ᵉ axe non-standard : la **canonicalisation par type**. Une balise absente
     de ce renommage n'est pas perdue — elle atterrit en métadonnée sous son nom brut
     aplati. Le renommage est une promotion, pas un péage.
+    """
+
+    list_keys: frozenset[str] = frozenset()
+    """Les clés renommées qui peuvent porter plusieurs valeurs (``url``…) : elles sont
+    TOUJOURS une liste, même avec une seule valeur (ADR-049).
+
+    Une clé renommée hors de cet ensemble qui reçoit deux valeurs distinctes fait refuser
+    le document : la table ne dit pas laquelle garder. Une clé non renommée devient une
+    liste sans déclaration.
     """
 
     version_tags: frozenset[str] = frozenset()

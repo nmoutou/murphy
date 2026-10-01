@@ -231,7 +231,7 @@ def test_une_balise_non_configuree_est_ROUTEE_et_SIGNALEE(fixtures_dir: Path) ->
 def test_une_balise_connue_SANS_RENOMMAGE_est_non_configuree() -> None:
     """ADR-047 : seul le renommage configure une métadonnée.
 
-    ``DERNIERE_MODIFICATION`` a un rôle (``META``) mais pas d'entrée dans
+    ``MINISTERE`` a un rôle (``META``) mais pas d'entrée dans
     ``meta_renames`` : elle entre sous sa clé chemin-complet, ET elle est signalée sous
     cette clé — la poignée du curseur ``skip``. ``ORIGINE``, renommée, ne l'est pas.
     """
@@ -240,7 +240,7 @@ def test_une_balise_connue_SANS_RENOMMAGE_est_non_configuree() -> None:
             "<ARTICLE><META>"
             f"<META_COMMUN><ID>{ARTICLE_INCONNU}</ID><ORIGINE>LEGI</ORIGINE></META_COMMUN>"
             "<META_SPEC><META_ARTICLE>"
-            "<DERNIERE_MODIFICATION>2020-01-01</DERNIERE_MODIFICATION>"
+            "<MINISTERE>Justice</MINISTERE>"
             "</META_ARTICLE></META_SPEC>"
             "</META></ARTICLE>"
         )
@@ -253,10 +253,10 @@ def test_une_balise_connue_SANS_RENOMMAGE_est_non_configuree() -> None:
             fetched_at=datetime.now(UTC),
         )
     )
-    key = "article_meta_meta_spec_meta_article_derniere_modification"
+    key = "article_meta_meta_spec_meta_article_ministere"
 
     assert result.unconfigured_tags == {key: ""}  # aucun fichier
-    assert result.document.metadata[key] == "2020-01-01"
+    assert result.document.metadata[key] == "Justice"
     assert result.document.metadata["origine"] == "LEGI"
 
 

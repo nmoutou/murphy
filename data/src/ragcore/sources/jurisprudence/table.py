@@ -108,7 +108,7 @@ def _table(
     aurait laissé les trois tables diverger au premier correctif.
     """
     return RoleTable(
-        roots=frozenset({root}),
+        roots=(root,),
         roles={root: Role.META, **_COMMON_ROLES, **roles},
         content_blocks=("BLOC_TEXTUEL",),
         text_holders=("CONTENU",),
@@ -134,45 +134,49 @@ def _table(
 
 # ── TEXTE_JURI_JUDI — CAPP, CASS, INCA ─────────────────────────────────────────
 
-JURI_JUDI_ROLE_TABLE = _table(
-    root="TEXTE_JURI_JUDI",
-    prefix="JURITEXT",
-    roles={
-        "META_JURI_JUDI": Role.META,
-        # La procédure : qui a jugé, qui plaidait, contre qui.
-        "FORMATION": Role.META,
-        "FORM_DEC_ATT": Role.META,
-        "DATE_DEC_ATT": Role.META,
-        "SIEGE_APPEL": Role.META,
-        "JURI_PREM": Role.META,
-        "LIEU_PREM": Role.META,
-        "DEMANDEUR": Role.META,
-        "DEFENDEUR": Role.META,
-        "PRESIDENT": Role.META,
-        "AVOCAT_GL": Role.META,
-        "AVOCATS": Role.META,
-        "RAPPORTEUR": Role.META,
-        "NUMEROS_AFFAIRES": Role.META,
-        "NUMERO_AFFAIRE": Role.META,
-        "PUBLI_BULL": Role.META,
-        # Le sommaire : l'analyse doctrinale de l'arrêt. C'est du TEXTE, et du bon — mais
-        # il n'est PAS dans `content_blocks` : c'est un commentaire *sur* la décision, pas
-        # la décision. Le fondre dans le corps polluerait l'embedding avec de la glose.
-        "SOMMAIRE": Role.BODY,
-        "SCT": Role.BODY,
-        "ANA": Role.BODY,
-        "CITATION_JP": Role.BODY,
-    },
-    renames={
-        "FORMATION": "formation",
-        "PRESIDENT": "president",
-        "AVOCATS": "avocats",
-        "RAPPORTEUR": "rapporteur",
-        "NUMERO_AFFAIRE": "numero_affaire",
-        "DATE_DEC_ATT": "date_decision_attaquee",
-        "FORM_DEC_ATT": "formation_decision_attaquee",
-        "SIEGE_APPEL": "siege_appel",
-    },
+JURI_JUDI_ROLE_TABLE = replace(
+    _table(
+        root="TEXTE_JURI_JUDI",
+        prefix="JURITEXT",
+        roles={
+            "META_JURI_JUDI": Role.META,
+            # La procédure : qui a jugé, qui plaidait, contre qui.
+            "FORMATION": Role.META,
+            "FORM_DEC_ATT": Role.META,
+            "DATE_DEC_ATT": Role.META,
+            "SIEGE_APPEL": Role.META,
+            "JURI_PREM": Role.META,
+            "LIEU_PREM": Role.META,
+            "DEMANDEUR": Role.META,
+            "DEFENDEUR": Role.META,
+            "PRESIDENT": Role.META,
+            "AVOCAT_GL": Role.META,
+            "AVOCATS": Role.META,
+            "RAPPORTEUR": Role.META,
+            "NUMEROS_AFFAIRES": Role.META,
+            "NUMERO_AFFAIRE": Role.META,
+            "PUBLI_BULL": Role.META,
+            # Le sommaire : l'analyse doctrinale de l'arrêt. C'est du TEXTE, et du bon — mais
+            # il n'est PAS dans `content_blocks` : c'est un commentaire *sur* la décision, pas
+            # la décision. Le fondre dans le corps polluerait l'embedding avec de la glose.
+            "SOMMAIRE": Role.BODY,
+            "SCT": Role.BODY,
+            "ANA": Role.BODY,
+            "CITATION_JP": Role.BODY,
+        },
+        renames={
+            "FORMATION": "formation",
+            "PRESIDENT": "president",
+            "AVOCATS": "avocats",
+            "RAPPORTEUR": "rapporteur",
+            "NUMERO_AFFAIRE": "numero_affaire",
+            "DATE_DEC_ATT": "date_decision_attaquee",
+            "FORM_DEC_ATT": "formation_decision_attaquee",
+            "SIEGE_APPEL": "siege_appel",
+        },
+    ),
+    # Mesuré : 4 décisions CASS portent plusieurs NUMERO_AFFAIRE distincts.
+    list_keys=frozenset({"numero_affaire"}),
 )
 """Le judiciaire : cours d'appel (CAPP), Cour de cassation (CASS), inédits (INCA).
 

@@ -27,12 +27,12 @@ from ragcore.sources.legislatif.table import LEGI_ROLE_TABLE
 from ragcore.tests.fakes.telemetry import RecordingTelemetry
 
 _SOURCE_FILE = "LEGIARTI000000000001.xml"
-_UNRENAMED_KEY = "article_meta_meta_spec_meta_article_derniere_modification"
+_UNRENAMED_KEY = "article_meta_meta_spec_meta_article_ministere"
 _ARTICLE_WITH_UNRENAMED_META = (
     "<ARTICLE><META>"
     "<META_COMMUN><ID>LEGIARTI000000000001</ID><ORIGINE>LEGI</ORIGINE></META_COMMUN>"
     "<META_SPEC><META_ARTICLE>"
-    "<DERNIERE_MODIFICATION>2020-01-01</DERNIERE_MODIFICATION>"
+    "<MINISTERE>Justice</MINISTERE>"
     "</META_ARTICLE></META_SPEC>"
     "</META></ARTICLE>"
 )
@@ -138,4 +138,4 @@ def test_skip_RETIRE_la_metadonnee_sans_renommage_et_garde_les_autres() -> None:
 def test_sans_skip_la_metadonnee_sans_renommage_est_INGEREE() -> None:
     parsed = _parse_article(skip_unconfigured=False, telemetry=RecordingTelemetry())
 
-    assert parsed.metadata[_UNRENAMED_KEY] == "2020-01-01"
+    assert parsed.metadata[_UNRENAMED_KEY] == "Justice"
