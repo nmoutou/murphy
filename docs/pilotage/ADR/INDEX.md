@@ -1,6 +1,6 @@
 # INDEX — Registre des décisions (ADR)
 
-> Un fichier par ADR (format Nygard). **Prochain numéro : ADR-049.**
+> Un fichier par ADR (format Nygard). **Prochain numéro : ADR-050.**
 
 ## Registre
 
@@ -16,7 +16,7 @@
 | [ADR-018](ADR-018-identite-ecli-primaire.md) | Identité : ECLI primaire | Rétro-documenté |
 | [ADR-019](ADR-019-rejet-akoma-ntoso.md) | Rejet d'Akoma Ntoso comme format de travail | Rétro-documenté |
 | [ADR-020](ADR-020-tri-base-stateless-failfast.md) | Architecture tri-base + serving stateless/fail-fast | Rétro-documenté |
-| [ADR-022](ADR-022-regimes-ingestion-dev-prod.md) | Régimes d'ingestion dev/prod : exhaustif vs sélectif | Acté — §5 amendé par ADR-023, ADR-043 et ADR-044, §2 et §6 par ADR-043, §4 par ADR-043 et ADR-044, §7 par ADR-024, §1 par ADR-047 |
+| [ADR-022](ADR-022-regimes-ingestion-dev-prod.md) | Régimes d'ingestion dev/prod : exhaustif vs sélectif | Acté — §5 amendé par ADR-023, ADR-043 et ADR-044, §2 et §6 par ADR-043, §4 par ADR-043 et ADR-044, §7 par ADR-024, §1 par ADR-047, §3 corrigé par ADR-049 |
 | [ADR-023](ADR-023-interrupteur-embedding-dev.md) | Un interrupteur d'embedding, pas trois interrupteurs de store | Acté — amende ADR-022 §5, amendé par ADR-043 |
 | [ADR-024](ADR-024-retrait-echantillonnage-corpus.md) | Retrait de l'échantillonnage de corpus | Acté — amende ADR-022 §7 |
 | [ADR-026](ADR-026-restructuration-configuration.md) | Restructuration de la configuration en partition workflow / ingestion | ❌ Remplacé par ADR-042 |
@@ -28,8 +28,9 @@
 | [ADR-044](ADR-044-suppression-du-manifest.md) | Suppression du manifest d'ingestion | ✅ Accepté (1er octobre 2026) — amende ADR-022 §4-§5 et ADR-043 §2 et §4 |
 | [ADR-045](ADR-045-relations-non-formatees.md) | Relations non formatées : une collection, plus un champ du document | ✅ Accepté (1er octobre 2026) |
 | [ADR-046](ADR-046-typage-des-documents.md) | Typage des documents : `document_type` fait foi, Neo4j le reflète | ✅ Accepté (1er octobre 2026) — amende ADR-039 §2 et l'amendement du §3 d'ADR-043 |
-| [ADR-047](ADR-047-balise-non-configuree.md) | Une balise sans renommage est non configurée | ✅ Accepté (1er octobre 2026) — amende ADR-022 §1, amendé par ADR-048 |
-| [ADR-048](ADR-048-inconnus-tags-roots-links.md) | Les inconnus du bilan : `tags`, `roots`, `links` | ✅ Accepté (1er octobre 2026) — amende ADR-047 |
+| [ADR-047](ADR-047-balise-non-configuree.md) | Une balise sans renommage est non configurée | ✅ Accepté (1er octobre 2026) — amende ADR-022 §1, amendé par ADR-048 et ADR-049 |
+| [ADR-048](ADR-048-inconnus-tags-roots-links.md) | Les inconnus du bilan : `tags`, `roots`, `links` | ✅ Accepté (1er octobre 2026) — amende ADR-047, amendé par ADR-049 |
+| [ADR-049](ADR-049-collisions-de-metadonnees.md) | Collisions de métadonnées : une liste, un ordre déclaré, un refus | ✅ Accepté (1er octobre 2026) — amende ADR-047 et ADR-048, corrige ADR-022 §3 |
 
 ## Points ouverts rattachés
 

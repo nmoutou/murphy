@@ -19,7 +19,7 @@ n'en sort en silence.
 | `document.fetched` | Documents vus par le connecteur (1 événement, `count` = lot). **Le dénominateur** de l'équation. |
 | `document.version_skipped` / `document.unreadable` | Écartés par le connecteur : artefacts d'export (`versions.xml`) / XML illisibles. Un compteur par raison, chacun porte son `count`. **Hors équation** : un fichier écarté n'est pas un document vu. |
 | `document.parsed` | Parse réussi |
-| `document.invalidated` | Rejet au parse (validation ou lecture) : `reason`, `uid` (chemin source), `error` |
+| `document.invalidated` | Rejet au parse (validation, lecture ou collision non configurée, ADR-049) : `reason`, `uid` (chemin source), `error` |
 | `document.persisted` | Saga complète |
 | `document.failed` | **La fuite** : vu, jamais ingéré (saga échouée/compensée). `reason` = type d'exception. |
 | `chunk.truncated` | Chunks raccourcis par l'embedder pour tenir dans la fenêtre du modèle (1 événement en fin de run, `count`). Pas une fuite — mais la fin de ces chunks n'est pas indexée : `CHUNKING_MAX_CHARS` à corriger. |
@@ -27,12 +27,13 @@ n'en sort en silence.
 | `relation.pending` | Cible absente → cache des pendantes |
 | `relation.promoted` | Pendante d'un run passé enfin résolue |
 | `relation.unknown` | Liens qu'on ne sait pas écrire (`sens` inconnu, `@id` illisible, `typelien` qui ne peut pas être un verbe) : 1 événement par document, `count` = liens perdus. L'arête n'existe pas ; un lien retiré par `skip_unconfigured` n'est pas compté. Ne change pas le statut du run (ADR-048). |
+| `collision.unrecorded` | Collisions que `parseDocuments` n'a pas pu écrire dans `MURPHY_META.collisions` (1 événement, `count`). Le bilan et la collection ne concordent plus : le run passe en `degraded` (ADR-049). |
 | `saga.compensation.triggered` / `.completed` / `.failed` | Rollback d'une saga (`.failed` = un écrit partiel subsiste ; `success` du `.completed` dit la vérité : une seule compensation ratée et le rollback n'est pas propre) |
 
-**Contrat de cardinalité** : la plupart des événements pèsent 1. Six — et eux
+**Contrat de cardinalité** : la plupart des événements pèsent 1. Sept — et eux
 exactement (`COUNT_CARRYING_EVENTS`) — portent leur poids dans `payload["count"]` :
 `document.fetched`, `document.version_skipped`, `document.unreadable`,
-`relation.upserted`, `relation.unknown`, `chunk.truncated`.
+`relation.upserted`, `relation.unknown`, `chunk.truncated`, `collision.unrecorded`.
 L'ensemble est nommé et verrouillé par golden : un émetteur qui prétend porter une cardinalité sans y figurer est
 un bug visible, pas une dérive muette.
 
@@ -71,14 +72,17 @@ commutative ferait dépendre le bilan de l'ordonnancement). Deux champs :
   des comptes, **plus petit** exemple — « le premier vu » dépendrait de l'ordre des
   workers. `source_file` est le fichier de la facette pour les inconnus de parse, le
   premier fichier du document pour ceux d'extraction.
-  Trois catégories plates (ADR-048) :
+  Quatre catégories plates (ADR-048, ADR-049) :
   - `tags` : les métadonnées non configurées (balise absente de la table ou sans
     renommage, ADR-047), sous leur **clé chemin-complet** — la clé même qu'elles ont
     dans `metadata` ;
   - `roots` : les racines XML que la source ne déclare pas ;
   - `links` : les types de lien non configurés — un `typelien` non traduit, ou la clé
     chemin-complet d'une balise absente de la table dont la valeur est un identifiant
-    DILA (lien heuristique).
+    DILA (lien heuristique) ;
+  - `collisions` : les clés de métadonnée qui ont reçu au moins deux valeurs distinctes
+    dans un document (ADR-049), configurées (`list`) ou non (document refusé). Le
+    détail est dans `MURPHY_META.collisions`, et les comptes concordent.
 
   Une balise sans valeur n'y apparaît pas : elle n'a rien à ingérer. Un lien qu'on ne
   sait pas écrire n'est pas un type de lien : il est compté par `relation.unknown`.
@@ -93,18 +97,20 @@ les pousser les compterait deux fois).
 
 `RunSummary` = l'identité du run (run_id, `sources`, dates) + les `counts` et les
 `unknowns` de l'agrégat, recopiés à plat + le `status`. Le statut annoncé « ok » par le hook est **re-dérivé des compteurs**
-(`_status_from`) — deux propriétés :
+(`_status_from`) — trois propriétés :
 
 1. **Complet ?** `fetched == persisted + invalidated + failed` — **l'équation de
    complétude**. Si elle ne tombe pas juste (dans les deux sens : un excédent est un
    double comptage), des documents ont disparu sans que rien ne les compte.
 2. **Sans perte ?** `failed == 0`. Un document échoué est déclaré et rejouable — mais pas
    ingéré.
+3. **Collisions enregistrées ?** `collision.unrecorded == 0`. Sinon, le bilan compte des
+   collisions que la collection ne montre pas (ADR-049).
 
 | Statut | Sens |
 |---|---|
 | `ok` | Tout ce qui a été vu a été ingéré ou écarté sciemment. |
-| `degraded` | Le run est allé au bout mais ne peut pas se déclarer complet (une des deux propriétés a cassé). |
+| `degraded` | Le run est allé au bout mais ne peut pas se déclarer complet (une des trois propriétés a cassé). |
 | `failed` | Le pipeline a levé ; rien ne garantit l'état des stores. Si la casse précède le node `report`, le bilan est pauvre (les stats des workers ne remontent que par lui) — le statut reste vrai. |
 
 Le référentiel est `document.fetched`, jamais `document.parsed` (un invalidé n'est pas
@@ -124,7 +130,8 @@ document est plat :
     "tags": { "textelr_meta_meta_spec_meta_texte_chronicle_num_sequence": { "count": 92,
       "example": { "identifier": "LEGITEXT…", "source_file": "/…/LEGITEXT….xml" } } },
     "roots": {},
-    "links": { "ZORGLUB": { "count": 1, "example": { … } } } } }
+    "links": { "ZORGLUB": { "count": 1, "example": { … } } },
+    "collisions": { "url": { "count": 98, "example": { … } } } } }
 ```
 
 `sources` est toujours une liste, même pour un run mono-source. `error_message` n'est

@@ -1,6 +1,6 @@
 # ADR-048 — Les inconnus du bilan : `tags`, `roots`, `links`
 
-**Statut** : ✅ Accepté (1er octobre 2026) — amende ADR-047
+**Statut** : ✅ Accepté (1er octobre 2026) — amende ADR-047 · **amendé par ADR-049** (catégorie `collisions`)
 
 ## Contexte
 

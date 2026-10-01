@@ -1,0 +1,97 @@
+# ADR-049 — Collisions de métadonnées : une liste, un ordre déclaré, un refus
+
+**Statut** : ✅ Accepté (1er octobre 2026) — amende ADR-047 et ADR-048, corrige ADR-022 §3
+
+## Contexte
+
+Une clé de métadonnée peut recevoir plusieurs valeurs dans un même document :
+
+- **entre facettes** : un texte LEGI fusionne `TEXTELR` et `TEXTE_VERSION`, qui
+  répètent `META_COMMUN` et `META_TEXTE_CHRONICLE` ;
+- **dans une facette** : des balises sœurs répétées (`NUMERO_AFFAIRE`,
+  `VERSION_A_VENIR`).
+
+`collect_metadata` et la cascade des balises non configurées gardaient la première valeur
+et jetaient les autres en silence. L'ordre des facettes venait du tri des chemins de
+fichiers (`TEXTELR` avant `TEXTE_VERSION`) : il était accidentel. La clé chemin-complet
+d'ADR-022 §3 était dite injective. Elle ne l'est pas : deux balises sœurs homonymes ont
+le même chemin.
+
+Mesuré sur le corpus de dev (1 121 documents) :
+
+- `url` diffère entre les facettes des 98 textes LEGI (chaque facette donne le chemin de
+  son propre fichier) ;
+- `VERSION_A_VENIR` porte plusieurs dates dans une même facette (14 textes) ;
+- `numero_affaire` porte plusieurs valeurs dans 4 décisions CASS ;
+- 7 balises LEGI non renommées (`NUM_SEQUENCE`, `DERNIERE_MODIFICATION`…) entraient deux
+  fois, sous la clé chemin-complet de chaque facette, avec la même valeur.
+
+## Décision
+
+**Une collision est une clé qui reçoit au moins deux valeurs distinctes.** Les valeurs
+sont comparées strictement, après `strip()`. Des valeurs identiques sont dédoublonnées et
+ne font pas de collision.
+
+**Une seule stratégie : `list`.** La table déclare ses clés `list` (`RoleTable.list_keys`).
+Une clé `list` est toujours une liste, même avec une seule valeur. Une clé non renommée
+qui entre en collision devient une liste, sans déclaration.
+
+**L'ordre des valeurs est déclaré.** `RoleTable.roots` est un tuple ordonné : c'est
+l'ordre de fusion des facettes. Les valeurs suivent le rang de leur facette, puis l'ordre
+du document. LEGI déclare `TEXTE_VERSION` avant `TEXTELR`. Un document à plusieurs
+facettes dont une racine n'est pas déclarée, ou dont deux facettes ont la même racine,
+n'a pas d'ordre : il est refusé (`validation_error`).
+
+**Une collision non configurée refuse le document.** Une clé renommée, hors `list_keys`,
+qui reçoit deux valeurs distinctes fait refuser le document avec la raison `collision`
+(`document.invalidated`). Il n'y a pas de différence entre dev et prod.
+
+**Toute collision est visible.**
+
+- Le bilan la compte dans `unknowns.collisions` : clé → `{count, example}`, en documents,
+  comme les trois catégories d'ADR-048.
+- La collection `MURPHY_META.collisions` en garde le détail, un enregistrement par
+  (document, clé) : `run_id`, `source`, `identifier`, `key`, `values[{value, tag, path,
+  source_file, root}]`, toutes les occurrences dans l'ordre déclaré. C'est un
+  échafaudage d'analyse : `parseDocuments` la vide entièrement puis la réécrit à chaque
+  run, sans lien avec `nuke_all`. Un manifest la remplacera.
+- Le bilan et la collection concordent. Si l'écriture de la collection échoue, le run
+  émet `collision.unrecorded` (porteur de `count`) et passe en `degraded`.
+
+**Une cible de renommage n'apparaît qu'une fois par table.** Le renommage reste
+injectif ; le cliquet `tests/golden/test_meta_renames.py` le vérifie, avec l'absence de
+champ réservé parmi les cibles et la non-redéfinition des renommages communs de la
+jurisprudence.
+
+LEGI renomme ses 7 balises répétées entre facettes (`derniere_modification`,
+`num_sequence`, `num_parution`, `page_debut_publication`, `page_fin_publication`,
+`origine_publication`, `versions_a_venir`) et déclare `url` et `versions_a_venir` en
+`list` ; JUDI déclare `numero_affaire`.
+
+## Alternatives rejetées
+
+- **Stratégies `first` et `last`.** L'ordre de départ était accidentel ; garder une
+  valeur, c'est choisir sans savoir. La précédence sera décidée quand la collection aura
+  montré les données.
+- **Arrêter le pipeline sur une collision non configurée.** Un document fautif ne doit
+  pas priver le run de tous les autres : il est refusé et compté.
+- **Un champ `facet_order` à côté de `roots`.** Il devrait couvrir exactement les mêmes
+  racines : le même ensemble, écrit deux fois.
+- **Plusieurs balises renommées vers une même cible.** Les cas rencontrés étaient la même
+  balise dans deux facettes, que le renommage par balise fusionne déjà.
+
+## Conséquences
+
+- `ParseResult.collisions` porte les collisions d'un document parsé ; `CollisionError`
+  (sous-classe de `ValidationError`) celles d'un document refusé.
+- Une métadonnée peut être une liste de chaînes dans Mongo, Qdrant et Neo4j. Le backend
+  ne lit aucune métadonnée.
+- `url` d'un texte LEGI vaut `[version, struct]`.
+- Les 7 clés chemin-complet LEGI quittent `unknowns.tags` et entrent en prod.
+
+## Références
+
+`data/src/ragcore/sources/generic/occurrences.py` ·
+`data/src/ragcore/sources/generic/parser.py` ·
+`data/src/ragcore/orchestration/kedro/nodes/parse_documents.py` ·
+`data/src/ragcore/adapters/storage/mongo/collision_repository.py`
