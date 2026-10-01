@@ -40,7 +40,9 @@ def _parse(name: str, source: SourceName):
     return _parse_result(name, source).document
 
 
-def test_une_citation_decrite_devient_un_CHAMP_jamais_une_arete() -> None:
+def test_une_citation_decrite_devient_une_RELATION_NON_FORMATEE_jamais_une_arete() -> (
+    None
+):
     """**LE test du lot.** Sans lui, les citations juri s'évaporeraient en silence.
 
     Les 68 ``<LIEN>`` du corpus juri ont **tous leurs attributs vides** — ni ``id``, ni
@@ -51,10 +53,10 @@ def test_une_citation_decrite_devient_un_CHAMP_jamais_une_arete() -> None:
     citations se seraient évaporées exactement comme les 16 227 liens de LEGI en leur
     temps, et rien ne l'aurait signalé.
 
-    Elles entrent désormais — mais **comme champ du document, pas comme arête**. Une
-    phrase n'est pas une entité du graphe : aucun run futur ne fera exister « Articles
-    1103 et 1229 du code civil » comme document. La matérialiser en nœud ``:Unknown``
-    peuplait le graphe d'un placeholder par formulation, jamais résolu.
+    Elles entrent désormais — mais **comme relations non formatées, pas comme arêtes**.
+    Une phrase n'est pas une entité du graphe : aucun run futur ne fera exister
+    « Articles 1103 et 1229 du code civil » comme document. La matérialiser en nœud
+    ``:Unknown`` peuplait le graphe d'un placeholder par formulation, jamais résolu.
     """
     document = _parse("cass_avec_liens.xml", SourceName.CASS)
 
@@ -68,14 +70,18 @@ def test_une_citation_decrite_devient_un_CHAMP_jamais_une_arete() -> None:
     assert not links.relations, (
         "une cible DÉCRITE ne produit aucune arête — c'est tout le changement"
     )
-    assert links.citations, "…mais elle n'est pas perdue pour autant"
+    assert links.unformatted_relations, "…mais elle n'est pas perdue pour autant"
 
-    citation = links.citations[0]
-    assert citation.verb == CITES, "le verbe traduit survit"
-    assert citation.sens == "source", (
+    unformatted = links.unformatted_relations[0]
+    assert unformatted.source_identifier == document.identifier, (
+        "elle sait quel document l'énonce : elle ne vit plus sur lui"
+    )
+    assert unformatted.source == SourceName.CASS
+    assert unformatted.relation_type == CITES, "le verbe traduit survit"
+    assert unformatted.sens == "source", (
         "le sens aussi : c'est lui qui orientera l'arête le jour de la résolution"
     )
-    assert "loi n° 75-1334" in citation.text, (
+    assert "loi n° 75-1334" in unformatted.target_text, (
         "et la PHRASE est intacte : c'est elle que la passe de résolution lira pour "
         "retrouver le vrai article"
     )

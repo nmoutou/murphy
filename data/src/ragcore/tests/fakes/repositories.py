@@ -1,10 +1,14 @@
 """Dépôts en mémoire — la sémantique des vraies bases, sans les bases."""
 
+from collections.abc import Sequence
+from dataclasses import dataclass
+
 from ragcore.core.models.chunk import EmbeddedChunk
 from ragcore.core.models.document import ParsedDocument
 from ragcore.core.models.identifiers import Identifier, RunId
 from ragcore.core.models.pending import PendingKey, PendingRelation
 from ragcore.core.models.relation import Relation
+from ragcore.core.models.unformatted_relation import UnformattedRelation
 from ragcore.core.ports.graph_repository import RelationWriteResult
 
 
@@ -50,8 +54,8 @@ class InMemoryGraphRepository:
     def __init__(self) -> None:
         # `nodes` rejoue le `MATCH` de Cypher ; `edges` porte (arête, run_id) pour que la
         # compensation par run (§8) ait de quoi filtrer. Les cibles DÉCRITES n'y figurent
-        # plus : elles ne sont plus des nœuds mais un champ du document (cf.
-        # `core.models.citation`), et n'atteignent donc jamais ce dépôt.
+        # plus : elles ne sont plus des nœuds mais des relations non formatées (cf.
+        # `core.models.unformatted_relation`), et n'atteignent donc jamais ce dépôt.
         self.nodes: set[str] = set()
         self.edges: list[tuple[Relation, RunId]] = []
 
@@ -131,3 +135,50 @@ class InMemoryPendingRepository:
 
     async def count(self) -> int:
         return len(self.pendings)
+
+
+@dataclass(frozen=True)
+class StoredUnformatted:
+    """Une ligne d'``unformatted_relations`` : la relation et ses deux estampilles."""
+
+    relation: UnformattedRelation
+    first_seen_run: RunId
+    last_seen_run: RunId
+
+
+UnformattedKey = tuple[str, str, str, str]
+
+
+class InMemoryUnformattedRepository:
+    """Relations non formatées — union idempotente sur la clé à quatre champs."""
+
+    def __init__(self) -> None:
+        self.rows: dict[UnformattedKey, StoredUnformatted] = {}
+
+    async def upsert_many(
+        self, relations: Sequence[UnformattedRelation], run_id: RunId
+    ) -> None:
+        for relation in relations:
+            key = (
+                relation.source_identifier.serialize(),
+                relation.target_text,
+                relation.relation_type,
+                relation.sens,
+            )
+            existing = self.rows.get(key)
+            # first_seen_run ne bouge jamais : seul last_seen_run avance.
+            first_seen_run = existing.first_seen_run if existing else run_id
+            self.rows[key] = StoredUnformatted(relation, first_seen_run, run_id)
+
+    async def delete_first_seen(
+        self, source_identifier: Identifier, run_id: RunId
+    ) -> None:
+        source_id = source_identifier.serialize()
+        self.rows = {
+            key: row
+            for key, row in self.rows.items()
+            if not (key[0] == source_id and row.first_seen_run == run_id)
+        }
+
+    async def count(self) -> int:
+        return len(self.rows)

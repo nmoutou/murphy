@@ -9,7 +9,6 @@ from ragcore.core.models.document import ParsedDocument
 from ragcore.core.models.identifiers import IDENTIFIER_PREFIX_LENGTH, Identifier
 
 __all__ = [
-    "CITATIONS_PROP",
     "DEFAULT_LABEL",
     "PENDING_LABEL",
     "NodeHydration",
@@ -22,7 +21,7 @@ PENDING_LABEL = "Pending"
 
 Ne pas confondre avec l'ancien ``:Unknown``, qui confondait deux choses très
 différentes : (a) une cible *décrite en français*, qui n'arrivera jamais et n'est pas un
-document — elle est désormais une ``Citation`` sur le document qui l'énonce ; (b) une
+document — elle est désormais une ``UnformattedRelation``, hors du graphe ; (b) une
 cible *identifiée* dont le document manque à l'appel, et qui peut parfaitement arriver
 au prochain run. Seul (b) mérite un nœud, et c'est celui-ci.
 
@@ -101,32 +100,8 @@ class NodeHydration:
     include_content: bool = False
 
 
-CITATIONS_PROP = "citations"
-"""La prop qui porte les cibles décrites, en **JSON sérialisé**.
-
-Neo4j ne stocke pas d'objet imbriqué : une propriété est un scalaire ou un tableau de
-scalaires. Trois listes parallèles (``citation_texts``, ``citation_verbs``,
-``citation_sens``) exprimeraient la même chose sans garantir qu'elles restent alignées —
-une désynchronisation y serait invisible et silencieuse. Un JSON par citation garde
-chaque triplet solidaire.
-"""
-
-
-def _citation_props(document: ParsedDocument) -> dict[str, Any]:
-    """Les citations du document, prêtes pour ``SET d += $props``.
-
-    Rend un dict VIDE quand il n'y en a pas, plutôt qu'une liste vide : ``SET d +=``
-    écrirait sinon une prop vide sur les ~99 % de documents qui ne citent rien de décrit.
-    """
-    if not document.citations:
-        return {}
-    return {
-        CITATIONS_PROP: [c.model_dump_json() for c in document.citations],
-    }
-
-
 def node_props(document: ParsedDocument, hydration: NodeHydration) -> dict[str, Any]:
-    """Les propriétés du nœud : les deux de base, les citations, puis l'hydratation.
+    """Les propriétés du nœud : les deux de base, puis l'hydratation.
 
     L'hydratation de dev (ADR-022 §2). Les clés chemin-complet des métadonnées ne
     peuvent pas percuter les props de base — elles joignent ≥ 2 segments par `_`.
@@ -136,7 +111,6 @@ def node_props(document: ParsedDocument, hydration: NodeHydration) -> dict[str, 
     props: dict[str, Any] = {
         "title": document.title,
         "source": document.source.value,
-        **_citation_props(document),
     }
     if hydration.metadata:
         props.update(document.metadata)

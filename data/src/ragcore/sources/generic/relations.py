@@ -58,5 +58,5 @@ class GenericRelationExtractor:
         return ExtractionResult(
             relations=extracted.relations,
             unknowns=extracted.unknowns,
-            citations=extracted.citations,
+            unformatted_relations=extracted.unformatted_relations,
         )

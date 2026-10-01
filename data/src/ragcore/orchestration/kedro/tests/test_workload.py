@@ -12,7 +12,8 @@ Deux propriétés se prouvent ici, et aucune autre ne comptait autant dans les l
 2. **La phase 1 n'écrit AUCUNE arête.** Le workload extrait les relations et les
    remonte dans ``WorkloadResult`` ; il ne les passe pas au graphe. On le prouve
    contre un vrai ``IngestDocumentUseCase`` posé sur un vrai graphe en mémoire : le
-   nœud est mergé, mais ``graph.edges`` reste vide.
+   nœud est mergé, mais ``graph.edges`` reste vide. Les relations non formatées, elles,
+   sont écrites dès la phase 1 (ADR-045).
 """
 
 from __future__ import annotations
@@ -28,6 +29,7 @@ from ragcore.core.models.document import ParsedDocument
 from ragcore.core.models.enums import SourceName
 from ragcore.core.models.identifiers import Identifier
 from ragcore.core.models.relation import Relation
+from ragcore.core.models.unformatted_relation import UnformattedRelation
 from ragcore.core.ports.relation_extractor import ExtractionResult
 from ragcore.orchestration.kedro.workload import WorkloadSteps, build_document_workload
 from ragcore.tests.fakes import (
@@ -35,12 +37,20 @@ from ragcore.tests.fakes import (
     InMemoryDocumentRepository,
     InMemoryGraphRepository,
     InMemoryPendingRepository,
+    InMemoryUnformattedRepository,
     InMemoryVectorRepository,
     RecordingTelemetry,
 )
 
 SELF = Identifier(raw="LEGIARTI000000000001")
 OTHER = Identifier(raw="LEGIARTI000000000002")
+DESCRIBED = UnformattedRelation(
+    source_identifier=SELF,
+    target_text="code de l'environnement",
+    relation_type=CITES,
+    sens="source",
+    source=SourceName.LEGI,
+)
 
 
 def _doc() -> ParsedDocument:
@@ -88,8 +98,9 @@ class _StubEmbedder:
 class _StubExtractor:
     """Rend un résultat FIXE — le workload n'invente rien, il transmet.
 
-    Une relation (pour prouver qu'elle sort sans être écrite) et un inconnu (pour
-    prouver qu'il est déclaré).
+    Une relation (pour prouver qu'elle sort sans être écrite), une relation non formatée
+    (pour prouver qu'elle est écrite dès la phase 1) et un inconnu (pour prouver qu'il
+    est déclaré).
     """
 
     def __init__(self) -> None:
@@ -106,12 +117,15 @@ class _StubExtractor:
                     source=SourceName.LEGI,
                 )
             ],
+            unformatted_relations=[DESCRIBED],
             unknowns={"typelien": ["ZORGLUB"]},
         )
 
 
 def _use_case_factory(
-    graph: InMemoryGraphRepository, vectors: InMemoryVectorRepository
+    graph: InMemoryGraphRepository,
+    vectors: InMemoryVectorRepository,
+    unformatted: InMemoryUnformattedRepository,
 ):
     """Fabrique un use case sur le graphe et le dépôt de vecteurs donnés — la télémétrie
     du worker est celle que le workload passe. On construit les dépôts en mémoire une
@@ -126,6 +140,7 @@ def _use_case_factory(
                 graph=graph,
                 vectors=vectors,
                 pending=InMemoryPendingRepository(),
+                unformatted=unformatted,
             ),
             telemetry,
         )
@@ -137,6 +152,7 @@ def _run(
     document: ParsedDocument,
     extractor: _StubExtractor | None = None,
     embedding_enabled: bool = True,
+    unformatted: InMemoryUnformattedRepository | None = None,
 ):
     graph = InMemoryGraphRepository()
     vectors = InMemoryVectorRepository()
@@ -147,7 +163,9 @@ def _run(
             embedder=_StubEmbedder(),
             extractor=extractor or _StubExtractor(),
         ),
-        use_case_factory=_use_case_factory(graph, vectors),
+        use_case_factory=_use_case_factory(
+            graph, vectors, unformatted or InMemoryUnformattedRepository()
+        ),
         context=context,
         embedding_enabled=embedding_enabled,
     )
@@ -189,6 +207,17 @@ def test_la_phase_1_NECRIT_AUCUNE_arete() -> None:
     # La relation ressort pour la phase 2, intacte.
     assert len(result.relations) == 1
     assert result.relations[0].relation_type == CITES
+
+
+def test_les_relations_non_formatees_sont_ECRITES_des_la_phase_1() -> None:
+    """ADR-045 : une cible décrite ne remonte pas vers la phase 2 — elle n'attend aucun
+    nœud. La saga du document l'écrit dans sa collection.
+    """
+    unformatted = InMemoryUnformattedRepository()
+
+    _run(_doc(), unformatted=unformatted)
+
+    assert [row.relation for row in unformatted.rows.values()] == [DESCRIBED]
 
 
 def test_extract_est_appele_une_seule_fois_par_document() -> None:

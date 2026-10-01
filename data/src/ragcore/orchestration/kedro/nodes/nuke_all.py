@@ -25,9 +25,11 @@ def nuke_all_node(
     récupérer la place que prenaient les collections Qdrant d'anciennes stratégies.
 
     Ce que le nuke efface — et ce qu'il PRÉSERVE :
-    - Mongo *données* : les collections `documents` et `pending_relations` (base
-      `MURPHY_DATA`). Une pendante pointe vers des nœuds que le nuke efface : la
-      garder ferait rejouer un backlog sans sources ; le run suivant la retrouve.
+    - Mongo *données* : les collections `documents`, `pending_relations` et
+      `unformatted_relations` (base `MURPHY_DATA`). Une pendante pointe vers des nœuds
+      que le nuke efface : la garder ferait rejouer un backlog sans sources ; le run
+      suivant la retrouve. Une relation non formatée part avec le document qui
+      l'énonce, pour la même raison.
     - Neo4j : le graphe entier.
     - Qdrant : **toutes** les collections du store, pas seulement celle du run —
       c'est là que se cache la place perdue.
@@ -70,6 +72,7 @@ def _drop_mongo(
     doc_repo: MongoDocumentRepository, pipeline_runtime: AsyncRuntime
 ) -> None:
     logger.warning(
-        "nuke_all Mongo : suppression des collections documents et pending_relations"
+        "nuke_all Mongo : suppression des collections documents, pending_relations"
+        " et unformatted_relations"
     )
     pipeline_runtime.run(reset_data_collections(doc_repo.database))

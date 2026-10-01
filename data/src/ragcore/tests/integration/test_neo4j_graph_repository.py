@@ -24,7 +24,6 @@ from ragcore.adapters.storage.neo4j.graph_repository import (
     NodeLabels,
 )
 from ragcore.core.links import CITES
-from ragcore.core.models.citation import Citation
 from ragcore.core.models.document import ParsedDocument
 from ragcore.core.models.enums import SourceName
 from ragcore.core.models.identifiers import Identifier, RunId
@@ -95,60 +94,6 @@ async def _edge_types(repo) -> list[str]:
     async with repo._driver.session() as session:  # noqa: SLF001 — on inspecte le graphe, pas le repo
         result = await session.run("MATCH ()-[r]->() RETURN type(r) AS t")
         return sorted([record["t"] async for record in result])
-
-
-async def test_a_described_target_is_a_property_never_a_node(repo) -> None:
-    """LE test du lot juri, contre une vraie base : la citation est un CHAMP.
-
-    **La mesure qui a imposé ce chemin.** Les ``<LIEN>`` à ``@id`` vide portent du texte —
-    « Articles 1103 et 1229 du code civil » (juri), « code de l'environnement » (LEGI).
-    La source *décrit* sa cible ; elle ne la référence pas. Mesuré le 18 juil. 2026 :
-    68/68 côté CASS, 89/16 227 côté LEGI, tous avec du texte et un ``typelien``.
-
-    **Pourquoi ni une pendante, ni un nœud.** Une pendante (§13) attend une cible qui
-    n'arrivera *jamais* : « Articles 1103 du code civil » n'est pas un document du corpus,
-    c'est une phrase. Mais en faire un nœud ``:Unknown`` — la version précédente — n'était
-    pas mieux : le graphe gagnait un placeholder par formulation, jamais résolu, et deux
-    façons d'écrire le même article donnaient deux nœuds distincts.
-
-    Une citation est une propriété de **celui qui l'énonce**. Elle vit donc sur lui.
-    """
-    document = _doc(1).model_copy(
-        update={
-            "citations": (
-                Citation(
-                    text="Articles 1103 et 1229 du code civil.",
-                    verb="cites",
-                    sens="source",
-                ),
-            )
-        }
-    )
-    await repo.merge_document_node(document)
-
-    async with repo._driver.session() as session:  # noqa: SLF001
-        record = await (
-            await session.run(
-                "MATCH (d {identifier: $id}) RETURN d.citations AS citations",
-                id=document.identifier.serialize(),
-            )
-        ).single()
-
-        orphans = await (
-            await session.run("MATCH (n) RETURN count(n) AS total")
-        ).single()
-
-    assert orphans["total"] == 1, (
-        "AUCUN nœud de cible décrite : le graphe ne contient que l'arrêt lui-même"
-    )
-
-    assert record["citations"], "la citation est portée par le nœud du citant"
-    stored = Citation.model_validate_json(record["citations"][0])
-    assert stored.text == "Articles 1103 et 1229 du code civil.", (
-        "et la PHRASE est intacte — c'est elle que la passe de résolution lira"
-    )
-    assert stored.verb == "cites"
-    assert stored.sens == "source", "le sens survit : il orientera l'arête, plus tard"
 
 
 async def test_the_verb_IS_the_edge_type(repo) -> None:
@@ -381,7 +326,7 @@ async def test_compensating_a_cited_node_dehydrates_it(repo) -> None:
 
     ``:Pending`` et non ``:Unknown`` : le second confondait ce cas-ci, qu'un run futur
     peut résoudre, avec une cible décrite en français, qui n'arrivera jamais et n'est plus
-    un nœud du tout (elle est un champ ``citations`` du document citant).
+    un nœud du tout (elle est une ligne d'``unformatted_relations``, ADR-045).
     """
     await repo.merge_document_node(_doc(1))  # le citant
     await repo.merge_document_node(_doc(2))  # le cité, qu'on va compenser

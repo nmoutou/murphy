@@ -23,11 +23,11 @@ complet : les 89 ``<LIEN>`` LEGI à ``@id`` vide portent **eux aussi** un texte 
 désignation (« code de l'environnement ») et un ``typelien``. Les qualifier de « scories »
 était faux, et les jetait. Les deux sources décrivent leurs cibles de la même façon ; la
 règle est donc unique et vaut partout : ``@id`` renseigné → arête, ``@id`` vide →
-citation portée par le document.
+relation non formatée.
 
 **Ce que la table livre aujourd'hui, et ce qu'elle ne livre pas.** La citation devient une
-entrée du champ ``citations`` du document, qui conserve la phrase. Elle est lisible et
-requêtable — mais elle n'est pas une arête, et n'en produit aucune. Ce qui manque est son
+ligne de la collection ``unformatted_relations``, qui conserve la phrase. Elle est lisible
+et requêtable — mais elle n'est pas une arête, et n'en produit aucune. Ce qui manque est son
 *identité* : « Articles 1103 du code civil » n'est pas encore relié à ``LEGIARTI…``.
 
 Cette résolution est un lot à part, et il faut être clair sur sa difficulté : elle demande
@@ -38,8 +38,8 @@ de… »), des renumérotations (« devenu L. 821-31 »), des cibles hors-LEGI (
 collectives) et des troncatures de la source (« Sur le numéro 1 : té du 10 janvier 1989 »).
 
 **La bonne nouvelle : ce lot-là ne demandera aucune ré-ingestion.** La phrase est déjà dans
-le graphe. Résoudre, ce sera transformer la citation en arête vers le vrai article — pas
-relire 352 fichiers.
+``unformatted_relations``. Résoudre, ce sera transformer la ligne en arête vers le vrai
+article — pas relire 352 fichiers.
 """
 
 from ragcore.core.links import CITES, LinkTable, RelationVerb
@@ -72,6 +72,6 @@ JURI_LINK_TABLE = LinkTable(
 """Tout ce que la jurisprudence déclare de ses liens — **et c'est peu**.
 
 Un verbe, un sens, aucune structure, aucune cible identifiée. La richesse est ailleurs :
-dans la phrase, que le champ ``citations`` du document conserve intacte en attendant sa
-résolution.
+dans la phrase, que la collection ``unformatted_relations`` conserve intacte en attendant
+sa résolution.
 """

@@ -4,6 +4,9 @@ from ragcore.adapters.storage.mongo.client import MongoDatabase
 from ragcore.adapters.storage.mongo.pending_repository import (
     PENDING_RELATIONS_COLLECTION,
 )
+from ragcore.adapters.storage.mongo.unformatted_repository import (
+    UNFORMATTED_RELATIONS_COLLECTION,
+)
 
 _DATA_INDEXES: dict[str, list[IndexModel]] = {
     "documents": [
@@ -34,6 +37,21 @@ _DATA_INDEXES: dict[str, list[IndexModel]] = {
         # Le rejeu ciblé interroge `target_id` : sans cet index, il ferait un
         # COLLSCAN du backlog — exactement le coût que §13 refuse.
         IndexModel([("target_id", ASCENDING)], name="idx_pending_target"),
+    ],
+    # Pas de TTL non plus : une relation non formatée attend sa résolution.
+    UNFORMATTED_RELATIONS_COLLECTION: [
+        # L'union de `upsert_many`, comme pour les pendantes. Son préfixe `source_id`
+        # sert aussi la compensation (`delete_first_seen`) : pas d'autre index.
+        IndexModel(
+            [
+                ("source_id", ASCENDING),
+                ("target_text", ASCENDING),
+                ("relation_type", ASCENDING),
+                ("sens", ASCENDING),
+            ],
+            unique=True,
+            name="uq_unformatted_source_text_type_sens",
+        ),
     ],
 }
 """Les index de la base de données (défaut : MURPHY_DATA), par collection."""

@@ -19,7 +19,8 @@ qu'en creux avant ce module, et il les rend concrètes toutes les trois :
    ÉCRIT PAS : il les remonte dans ``WorkloadResult.relations``. Les arêtes sont
    écrites en phase 2 (``ResolveRelationsService``), après que tous les nœuds du run
    existent — sans quoi un ``MATCH`` sur une cible pas encore écrite ferait tomber
-   l'arête dans le vide. La saga du ``use_case`` n'écrit donc qu'un NŒUD.
+   l'arête dans le vide. La saga du ``use_case`` n'écrit donc qu'un NŒUD, plus les
+   relations non formatées du document (leur cible n'est pas un nœud : rien à attendre).
 """
 
 from __future__ import annotations
@@ -97,7 +98,7 @@ def build_document_workload(
         # cascade du parser (metadata ou lien) et SIGNALÉES au site de parse
         # (parseDocuments, `tag.unconfigured`). Ne restent que les
         # inconnus d'EXTRACTION (typelien/sens/identifiant), déclarés par `_extract`.
-        parsed, extraction = _extract(steps.extractor, parsed, telemetry)
+        extraction = _extract(steps.extractor, parsed, telemetry)
 
         chunks = steps.chunker.chunk(parsed)
         # ``embed`` est le seul port de traitement asynchrone : le pont sync→async est
@@ -112,10 +113,14 @@ def build_document_workload(
         )
 
         # Le use case du worker — construit UNE fois, réutilisé sur tous ses documents.
-        # La saga n'écrit qu'un NŒUD (mongo → qdrant → neo4j:node) : les relations ne
-        # passent pas par le use case.
+        # La saga n'écrit qu'un NŒUD (mongo → qdrant → neo4j:node) et les relations non
+        # formatées du document : les relations, elles, ne passent pas par le use case.
         use_case = use_cases.for_worker(telemetry)
-        runtime.run(use_case.execute(parsed, embedded, context))
+        runtime.run(
+            use_case.execute(
+                parsed, embedded, context, extraction.unformatted_relations
+            )
+        )
 
         # Les relations ne sont PAS écrites ici : elles remontent vers la phase 2.
         return WorkloadResult(relations=extraction.relations)
@@ -149,27 +154,19 @@ def _extract(
     extractor: BaseRelationExtractor,
     parsed: ParsedDocument,
     telemetry: WorkerTelemetry,
-) -> tuple[ParsedDocument, ExtractionResult]:
-    """Extrait les liens du document, déclare ses inconnus, et lui pose ses citations.
+) -> ExtractionResult:
+    """Extrait les liens du document et déclare ses inconnus.
 
-    L'extraction passe AVANT le chunking, et ce n'est pas un détail d'ordre : c'est elle
-    qui sépare les cibles identifiées (des arêtes) des cibles décrites (des citations).
-    Le document doit porter ses citations AVANT d'être écrit, sinon Mongo et Neo4j
-    reçoivent un document amputé du champ.
+    L'extraction sépare les cibles identifiées (des arêtes, pour la phase 2) des cibles
+    décrites (des relations non formatées, que la saga du document écrit). Ni les unes
+    ni les autres ne touchent le document : il est écrit tel que le parser l'a produit.
 
     Le SEUL appelant de extract() hors tests. Ses inconnus voyagent, eux aussi, dans la
     donnée — et sont déclarés ici.
     """
     extraction = extractor.extract(parsed)
     _declare_unknowns(telemetry, extraction.unknowns)
-    if not extraction.citations:
-        # Sans citation, on garde l'instance d'origine — inutile de recopier 1 121
-        # documents pour un tuple vide.
-        return parsed, extraction
-    # `ParsedDocument` est gelé : on en dérive une copie.
-    return parsed.model_copy(
-        update={"citations": tuple(extraction.citations)}
-    ), extraction
+    return extraction
 
 
 def _declare_unknowns(

@@ -1,6 +1,5 @@
 from .audit import AuditEvent
 from .chunk import Chunk, EmbeddedChunk
-from .citation import Citation
 from .document import ParsedDocument, RawDocument
 from .enums import SourceName, TargetStore
 from .identifiers import (
@@ -12,12 +11,12 @@ from .pending import PendingKey, PendingRelation
 from .relation import Relation
 from .run_stats import RunStats
 from .run_summary import RunStatus, RunSummary
+from .unformatted_relation import UnformattedRelation
 from .verbs import ValidatedVerb
 
 __all__ = [
     "AuditEvent",
     "Chunk",
-    "Citation",
     "DocumentId",
     "Identifier",
     "EmbeddedChunk",
@@ -32,5 +31,6 @@ __all__ = [
     "RunSummary",
     "SourceName",
     "TargetStore",
+    "UnformattedRelation",
     "ValidatedVerb",
 ]

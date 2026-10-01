@@ -29,18 +29,18 @@ from typing import Any
 
 from pydantic import ValidationError as PydanticValidationError
 
-from ..models.citation import Citation
 from ..models.identifiers import Identifier
 from ..models.relation import Relation
+from ..models.unformatted_relation import UnformattedRelation
 from ..services.unknown_categories import (
     CATEGORY_IDENTIFIER,
     CATEGORY_SENS,
     CATEGORY_TYPELIEN,
     declare_unknown,
 )
-from .citations import citation_from
 from .subject import LinkSubject
 from .table import LinkTable
+from .unformatted import unformatted_relation_from
 from .versions import STILLBORN_SUFFIX, VERSION_KIND, VersionEntry, version_chain
 from .vocabulary import CONTAINS, REFERENCES, translate
 
@@ -48,10 +48,10 @@ __all__ = [
     "HEURISTIC_KIND",
     "STILLBORN_SUFFIX",
     "VERSION_KIND",
-    "Citation",
     "ExtractedLinks",
     "LinkSubject",
     "LinkTable",
+    "UnformattedRelation",
     "extract_links",
 ]
 
@@ -93,11 +93,11 @@ class ExtractedLinks:
     relations: list[Relation] = field(default_factory=list)
     unknowns: dict[str, list[str]] = field(default_factory=dict)
 
-    citations: list[Citation] = field(default_factory=list)
+    unformatted_relations: list[UnformattedRelation] = field(default_factory=list)
     """Les cibles DÉCRITES — celles dont l'``@id`` était vide.
 
-    Elles ne sont pas des arêtes et n'en produiront aucune : elles remontent vers le
-    document, qui les porte en propre. Voir ``core.models.citation``.
+    Elles ne sont pas des arêtes et n'en produiront aucune : elles rejoignent la
+    collection ``unformatted_relations``. Voir ``core.models.unformatted_relation``.
     """
 
 
@@ -117,7 +117,7 @@ def extract_links(
     et le déclare. Il ne le jette pas.
     """
     extraction = _Extraction(table=table, subject=subject, unknowns={})
-    citations: list[Citation] = []
+    unformatted_relations: list[UnformattedRelation] = []
 
     # Les liens de VERSION se traitent EN GROUPE (cf. `versions.py`) : la chaîne est une
     # propriété de la liste, pas de chaque lien pris isolément.
@@ -129,12 +129,13 @@ def extract_links(
             continue
         extracted = extraction.from_reference(reference)
         # Deux natures, un seul aiguillage — l'identification de la cible. Le `match`
-        # dit lequel des deux plans reçoit la balise : le graphe, ou le document.
+        # dit lequel des deux plans reçoit la balise : le graphe, ou les relations non
+        # formatées.
         match extracted:
             case Relation():
                 relations.append(extracted)
-            case Citation():
-                citations.append(extracted)
+            case UnformattedRelation():
+                unformatted_relations.append(extracted)
             case None:
                 pass
 
@@ -144,7 +145,9 @@ def extract_links(
         if (relation := extraction.from_ancestor(ancestor)) is not None
     )
     return ExtractedLinks(
-        relations=relations, unknowns=extraction.unknowns, citations=citations
+        relations=relations,
+        unknowns=extraction.unknowns,
+        unformatted_relations=unformatted_relations,
     )
 
 
@@ -170,12 +173,12 @@ class _Extraction:
 
     def from_reference(
         self, reference: Mapping[str, Any]
-    ) -> Relation | Citation | None:
-        """Une balise brute devient une ARÊTE si sa cible est identifiée, une CITATION
-        sinon.
+    ) -> Relation | UnformattedRelation | None:
+        """Une balise brute devient une ARÊTE si sa cible est identifiée, une RELATION
+        NON FORMATÉE sinon.
 
         L'``@id`` est le seul aiguillage. Ce qui est identifié rejoint le graphe ; ce qui
-        est seulement décrit rejoint le document. Rien n'est jeté au passage — c'était le
+        est seulement décrit rejoint les relations non formatées. Rien n'est jeté au passage — c'était le
         défaut de la version précédente, qui perdait 89 liens LEGI sans le dire.
         """
         kind = reference.get("kind", "")
@@ -184,10 +187,10 @@ class _Extraction:
 
         linked = self.identifier(reference.get("id", ""))
         if linked is None:
-            # Pas d'identifiant : la cible est DÉCRITE (`citation_from`), ou elle n'est
-            # rien — ni identifiant, ni texte. La déclarer en `unknowns` polluerait alors
-            # le bilan avec un mot qui n'existe pas.
-            return citation_from(reference, self.table)
+            # Pas d'identifiant : la cible est DÉCRITE (`unformatted_relation_from`), ou
+            # elle n'est rien — ni identifiant, ni texte. La déclarer en `unknowns`
+            # polluerait alors le bilan avec un mot qui n'existe pas.
+            return unformatted_relation_from(reference, self.table, self.subject)
 
         if kind in self.table.structural_kinds:
             # Orientation par construction : le document courant CONTIENT le lié.

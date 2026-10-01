@@ -1,9 +1,9 @@
 from dataclasses import dataclass, field
 from typing import Protocol, runtime_checkable
 
-from ..models.citation import Citation
 from ..models.document import ParsedDocument
 from ..models.relation import Relation
+from ..models.unformatted_relation import UnformattedRelation
 
 
 @dataclass(frozen=True)
@@ -29,11 +29,12 @@ class ExtractionResult:
 
     relations: list[Relation] = field(default_factory=list)
 
-    citations: list[Citation] = field(default_factory=list)
-    """Les cibles DÉCRITES (``@id`` vide) — un champ du document, jamais une arête.
+    unformatted_relations: list[UnformattedRelation] = field(default_factory=list)
+    """Les cibles DÉCRITES (``@id`` vide) — des relations non formatées, jamais une arête.
 
-    Elles ne remontent pas vers la phase 2 comme les relations : elles redescendent sur
-    le ``ParsedDocument`` avant son écriture. Voir ``core.models.citation``.
+    Elles ne remontent pas vers la phase 2 comme les relations : elles rejoignent la
+    saga du document, qui les écrit dans ``unformatted_relations``. Voir
+    ``core.models.unformatted_relation``.
     """
 
     unknowns: dict[str, list[str]] = field(default_factory=dict)

@@ -27,6 +27,9 @@ from ragcore.adapters.storage.mongo.pending_repository import (
 from ragcore.adapters.storage.mongo.run_summary_repository import (
     MongoRunSummaryRepository,
 )
+from ragcore.adapters.storage.mongo.unformatted_repository import (
+    MongoUnformattedRelationRepository,
+)
 from ragcore.adapters.storage.neo4j.graph_repository import (
     Neo4jGraphRepository,
     NodeLabels,
@@ -51,6 +54,7 @@ from ragcore.core.ports.telemetry import (
     TelemetryPort,
     WorkerTelemetry,
 )
+from ragcore.core.ports.unformatted_repository import UnformattedRelationRepository
 from ragcore.core.ports.vector_repository import VectorRepository
 
 RUN_ID = "abc123"
@@ -81,6 +85,13 @@ class TestStorageAdapters:
         """Le dépôt du §13 : sans lui, une arête différée redevient un silence."""
         repo = MongoPendingRelationRepository.__new__(MongoPendingRelationRepository)
         assert isinstance(repo, PendingRelationRepository)
+
+    def test_mongo_unformatted_repository(self) -> None:
+        """Le dépôt d'ADR-045 : sans lui, une cible décrite redevient un silence."""
+        repo = MongoUnformattedRelationRepository.__new__(
+            MongoUnformattedRelationRepository
+        )
+        assert isinstance(repo, UnformattedRelationRepository)
 
     def test_neo4j_graph_repository(self) -> None:
         """Le test qui a attrapé le ``NameError`` : le module ne s'importait pas,

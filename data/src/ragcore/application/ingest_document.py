@@ -10,14 +10,22 @@ après que tous les nœuds du run existent (ResolveRelationsService). Cette atte
 n'est pas un ``join()`` caché dans du code applicatif : c'est une arête du DAG.
 """
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 
-from ragcore.core.models import EmbeddedChunk, Identifier, ParsedDocument
+from ragcore.core.models import (
+    EmbeddedChunk,
+    Identifier,
+    ParsedDocument,
+    RunId,
+    UnformattedRelation,
+)
 from ragcore.core.models.audit import build_event
 from ragcore.core.ports.document_repository import DocumentRepository
 from ragcore.core.ports.graph_repository import GraphRepository
 from ragcore.core.ports.pending_repository import PendingRelationRepository
 from ragcore.core.ports.telemetry import TelemetryPort
+from ragcore.core.ports.unformatted_repository import UnformattedRelationRepository
 from ragcore.core.ports.vector_repository import VectorRepository
 from ragcore.core.telemetry_events import DOCUMENT_PERSISTED
 
@@ -29,8 +37,9 @@ from .saga import SagaExecutor, SagaStep
 class IngestionStores:
     """Les dépôts du corpus — typés par leurs ports.
 
-    L'ingestion d'un document écrit les trois premiers ; ``pending`` (les arêtes qui
-    attendent leur cible) n'est écrit qu'en phase 2, par ``ResolveRelationsService``.
+    L'ingestion d'un document écrit les trois premiers et ``unformatted`` (ses relations
+    à cible décrite, ADR-045) ; ``pending`` (les arêtes qui attendent leur cible) n'est
+    écrit qu'en phase 2, par ``ResolveRelationsService``.
 
     Le hook en ouvre un jeu (maintenance, phase 2) et chaque worker de la phase 1 le sien
     (§11) : ``orchestration/kedro/stores.open_document_stores`` les fabrique.
@@ -40,6 +49,7 @@ class IngestionStores:
     graph: GraphRepository
     vectors: VectorRepository
     pending: PendingRelationRepository
+    unformatted: UnformattedRelationRepository
 
 
 class IngestDocumentUseCase:
@@ -47,6 +57,7 @@ class IngestDocumentUseCase:
         self._document_repo = stores.documents
         self._graph_repo = stores.graph
         self._vector_repo = stores.vectors
+        self._unformatted_repo = stores.unformatted
         self._telemetry = telemetry
 
     async def execute(
@@ -54,17 +65,24 @@ class IngestDocumentUseCase:
         parsed: ParsedDocument,
         embedded_chunks: list[EmbeddedChunk],
         context: PipelineContext,
+        unformatted_relations: Sequence[UnformattedRelation] = (),
     ) -> None:
         # La saga peut lever — le document n'est alors PAS déclaré persisté.
-        await SagaExecutor(self._telemetry).execute(
-            self._saga_steps(parsed, embedded_chunks), context
+        unformatted_step = self._unformatted_step(
+            parsed.identifier, unformatted_relations, context.run_id
         )
+        steps = self._saga_steps(parsed, embedded_chunks, unformatted_step)
+        await SagaExecutor(self._telemetry).execute(steps, context)
         self._emit_persisted(parsed, context)
 
     def _saga_steps(
-        self, parsed: ParsedDocument, embedded_chunks: list[EmbeddedChunk]
+        self,
+        parsed: ParsedDocument,
+        embedded_chunks: list[EmbeddedChunk],
+        unformatted_step: SagaStep,
     ) -> list[SagaStep]:
-        """Mongo → Qdrant → nœud Neo4j, chacun avec sa compensation.
+        """Mongo → relations non formatées → Qdrant → nœud Neo4j, chacun avec sa
+        compensation.
 
         Compensation Mongo et le « trou » de la réécriture — la vérité, écrite ici.
         Le forward Mongo (`document_repo.upsert`) remplace en place ATOMIQUEMENT
@@ -91,6 +109,7 @@ class IngestDocumentUseCase:
                 forward=lambda: self._document_repo.upsert(parsed),
                 compensate=lambda: self._document_repo.delete(parsed.identifier),
             ),
+            unformatted_step,
             SagaStep(
                 name="qdrant_upsert",
                 forward=lambda: self._qdrant_delete_then_insert(
@@ -111,6 +130,29 @@ class IngestDocumentUseCase:
                 ),
             ),
         ]
+
+    def _unformatted_step(
+        self,
+        identifier: Identifier,
+        unformatted_relations: Sequence[UnformattedRelation],
+        run_id: RunId,
+    ) -> SagaStep:
+        """Les relations non formatées du document (ADR-045), juste après lui.
+
+        Elles s'ACCUMULENT de run en run : la compensation ne retire que celles NÉES
+        dans ce run. Une relation déjà connue garde son ``last_seen_run`` avancé — le
+        même résiduel que celui du document (cf. ``_saga_steps``), rattrapé par le run
+        suivant qui la revoit.
+        """
+        return SagaStep(
+            name="mongo_unformatted_upsert",
+            forward=lambda: self._unformatted_repo.upsert_many(
+                unformatted_relations, run_id
+            ),
+            compensate=lambda: self._unformatted_repo.delete_first_seen(
+                identifier, run_id
+            ),
+        )
 
     def _emit_persisted(self, parsed: ParsedDocument, context: PipelineContext) -> None:
         """Uniquement après succès total : un document à moitié écrit n'est pas compté

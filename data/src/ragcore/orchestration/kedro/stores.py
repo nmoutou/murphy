@@ -26,6 +26,9 @@ from ragcore.adapters.storage.mongo.schemas import (
     ensure_data_indexes,
     ensure_meta_indexes,
 )
+from ragcore.adapters.storage.mongo.unformatted_repository import (
+    MongoUnformattedRelationRepository,
+)
 from ragcore.adapters.storage.neo4j.client import create_neo4j_driver
 from ragcore.adapters.storage.neo4j.graph_repository import Neo4jGraphRepository
 from ragcore.adapters.storage.qdrant.client import create_qdrant_client
@@ -100,6 +103,7 @@ def open_document_stores(
         ),
         vectors=QdrantVectorRepository(clients.qdrant, plan.collection, vector_size),
         pending=MongoPendingRelationRepository(clients.mongo, data_db),
+        unformatted=MongoUnformattedRelationRepository(clients.mongo, data_db),
     )
 
 

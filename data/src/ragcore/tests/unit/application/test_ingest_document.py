@@ -16,6 +16,7 @@ from ragcore.application.run_context import PipelineContext
 from ragcore.core.models.document import ParsedDocument
 from ragcore.core.models.enums import SourceName
 from ragcore.core.models.identifiers import Identifier
+from ragcore.core.models.unformatted_relation import UnformattedRelation
 from ragcore.core.telemetry_events import (
     DOCUMENT_PERSISTED,
     RELATION_UPSERTED,
@@ -26,6 +27,7 @@ from ragcore.tests.fakes import (
     InMemoryDocumentRepository,
     InMemoryGraphRepository,
     InMemoryPendingRepository,
+    InMemoryUnformattedRepository,
     InMemoryVectorRepository,
     RecordingTelemetry,
 )
@@ -49,6 +51,7 @@ def stores() -> dict:
         "document_repo": InMemoryDocumentRepository(),
         "graph_repo": InMemoryGraphRepository(),
         "vector_repo": InMemoryVectorRepository(),
+        "unformatted_repo": InMemoryUnformattedRepository(),
         "telemetry": RecordingTelemetry(),
     }
 
@@ -60,9 +63,24 @@ def _use_case(stores: dict) -> IngestDocumentUseCase:
             graph=stores["graph_repo"],
             vectors=stores["vector_repo"],
             pending=InMemoryPendingRepository(),
+            unformatted=stores["unformatted_repo"],
         ),
         stores["telemetry"],
     )
+
+
+def _unformatted(target_text: str) -> UnformattedRelation:
+    return UnformattedRelation(
+        source_identifier=Identifier(raw="LEGIARTI000000000001"),
+        target_text=target_text,
+        relation_type="cites",
+        sens="source",
+        source=SourceName.LEGI,
+    )
+
+
+async def _fail_qdrant(*args, **kwargs):  # noqa: ANN002, ANN003, ANN202
+    raise RuntimeError("qdrant est tombé")
 
 
 @pytest.fixture
@@ -169,3 +187,56 @@ async def test_a_rewrite_replaces_in_place_without_a_preceding_delete(
     assert stores["document_repo"].deleted == []
     assert list(stores["document_repo"].documents) == ["LEGIARTI000000000001"]
     assert len(stores["telemetry"].events_of(DOCUMENT_PERSISTED)) == 2
+
+
+async def test_the_unformatted_relations_are_written_with_the_run_stamps(
+    stores, context
+) -> None:  # noqa: ANN001
+    """ADR-045 : les cibles décrites ne vivent plus sur le document, mais dans leur
+    collection, estampillées du run qui les a vues.
+    """
+    use_case = _use_case(stores)
+    relation = _unformatted("Articles 1103 et 1229 du code civil.")
+
+    await use_case.execute(_doc(), [], context, [relation])
+
+    [row] = stores["unformatted_repo"].rows.values()
+    assert row.relation == relation
+    assert row.first_seen_run == context.run_id
+    assert row.last_seen_run == context.run_id
+
+
+async def test_a_failed_saga_removes_the_unformatted_relations_born_in_its_run(
+    stores, context
+) -> None:  # noqa: ANN001
+    """Qdrant casse après l'écriture des relations non formatées : celles que ce run
+    a créées sont défaites avec le document.
+    """
+    stores["vector_repo"].upsert = _fail_qdrant
+    use_case = _use_case(stores)
+
+    with pytest.raises(RuntimeError, match="qdrant est tombé"):
+        await use_case.execute(_doc(), [], context, [_unformatted("code civil")])
+
+    assert stores["unformatted_repo"].rows == {}
+
+
+async def test_a_failed_saga_keeps_the_unformatted_relations_of_earlier_runs(
+    stores, context
+) -> None:  # noqa: ANN001
+    """L'accumulation survit à la compensation : une relation vue par un run
+    précédent n'appartient pas à la saga qui échoue.
+    """
+    known = _unformatted("code civil")
+    await _use_case(stores).execute(_doc(), [], context, [known])
+
+    stores["vector_repo"].upsert = _fail_qdrant
+    next_run = PipelineContext.create(sources=(SourceName.LEGI,))
+    with pytest.raises(RuntimeError, match="qdrant est tombé"):
+        await _use_case(stores).execute(
+            _doc(), [], next_run, [known, _unformatted("code pénal")]
+        )
+
+    [row] = stores["unformatted_repo"].rows.values()
+    assert row.relation == known, "seule la relation née dans ce run est défaite"
+    assert row.first_seen_run == context.run_id
