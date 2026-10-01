@@ -18,7 +18,7 @@ GOLDEN: dict[str, tuple[str, bool, bool, bool, bool]] = {
     "document.fetched": ("info", False, True, False, True),
     "document.parsed": ("info", False, True, False, True),
     "document.invalidated": ("warning", True, True, True, True),
-    "document.skipped": ("warning", False, True, False, False),
+    "document.skipped": ("warning", False, True, True, True),
     "document.persisted": ("info", True, True, True, True),
     # La FUITE : vu, jamais ingéré. `aggregate=True` (5e) est l'enjeu — sans lui l'échec
     # est tracé mais pas compté, et le run se déclare « ok » en perdant des documents.
@@ -72,6 +72,7 @@ GOLDEN_COUNT_CARRYING = {
     "document.fetched",  # nombre de documents vus
     "relation.upserted",  # nombre d'arêtes écrites
     "chunk.truncated",  # nombre de chunks raccourcis
+    "document.skipped",  # nombre de fichiers écartés, par raison
 }
 
 

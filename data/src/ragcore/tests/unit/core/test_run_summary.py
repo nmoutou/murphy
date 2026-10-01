@@ -16,7 +16,12 @@ from ragcore.core.models.enums import SourceName
 from ragcore.core.models.identifiers import RunId
 from ragcore.core.models.run_stats import RunStats
 from ragcore.core.models.run_summary import RunStatus, RunSummary
-from ragcore.core.telemetry_events import DOCUMENT_INVALIDATED, DOCUMENT_PERSISTED
+from ragcore.core.telemetry_events import (
+    DOCUMENT_FETCHED,
+    DOCUMENT_INVALIDATED,
+    DOCUMENT_PERSISTED,
+    DOCUMENT_SKIPPED,
+)
 
 RUN = RunId("run-1")
 
@@ -50,6 +55,30 @@ def test_counts_and_breakdown_reach_the_stats(aggregator: RunStatsAggregator) ->
 
     assert summary.stats.counts[DOCUMENT_PERSISTED] == 1
     assert summary.stats.breakdowns[DOCUMENT_INVALIDATED]["validation_error"] == 1
+
+
+def test_skipped_files_are_counted_by_reason_outside_the_equation(
+    aggregator: RunStatsAggregator,
+) -> None:
+    """Un `document.skipped` par raison, porteur de son `count` : le bilan compte les
+    fichiers écartés, ventilés par raison, sans toucher l'équation de complétude."""
+    aggregator.emit(build_event(DOCUMENT_FETCHED, RUN, payload={"count": 1}))
+    aggregator.emit(build_event(DOCUMENT_PERSISTED, RUN))
+    for reason, count in (("export_artifact", 3), ("unreadable", 1)):
+        aggregator.emit(
+            build_event(
+                DOCUMENT_SKIPPED, RUN, payload={"reason": reason, "count": count}
+            )
+        )
+
+    summary = aggregator.finalize(RunStatus.OK)
+
+    assert summary.stats.counts[DOCUMENT_SKIPPED] == 4
+    assert summary.stats.breakdowns[DOCUMENT_SKIPPED] == {
+        "export_artifact": 3,
+        "unreadable": 1,
+    }
+    assert summary.status is RunStatus.OK
 
 
 def test_status_accepts_the_literals_the_hooks_pass(

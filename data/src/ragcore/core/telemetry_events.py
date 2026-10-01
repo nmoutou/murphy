@@ -75,6 +75,7 @@ COUNT_CARRYING_EVENTS: frozenset[str] = frozenset(
         DOCUMENT_FETCHED,  # émis une fois par lot fetché → nombre de documents vus
         RELATION_UPSERTED,  # émis une fois par batch → nombre d'arêtes écrites
         CHUNK_TRUNCATED,  # émis une fois en fin de run → nombre de chunks raccourcis
+        DOCUMENT_SKIPPED,  # émis une fois par raison → nombre de fichiers écartés
     }
 )
 """Les événements dont ``payload[PAYLOAD_COUNT_KEY]`` EST leur poids d'agrégat. Tout autre
@@ -139,15 +140,15 @@ EVENT_CATALOG: dict[str, EventBehavior] = {
         aggregate=True,
     ),
     DOCUMENT_SKIPPED: EventBehavior(
-        # Ce que le connecteur ÉCARTE (artefact d'export, fichier illisible), une ligne
-        # par raison. `aggregate=False` est le point clé : un fichier écarté n'est PAS un
-        # document vu — l'entrer dans les compteurs fausserait le dénominateur de
-        # l'équation de complétude. Il va au JSONL (trace par raison), pas au bilan.
+        # Ce que le connecteur ÉCARTE (artefact d'export, fichier illisible), un événement
+        # par raison, porteur de son `count`. Compté au bilan, mais HORS équation : un
+        # fichier écarté n'est PAS un document vu, et `_status_from` ne lit que
+        # `document.fetched` pour dénominateur — jamais ce compteur.
         level="warning",
         log=False,
         track_jsonl=True,
-        track_mongo=False,
-        aggregate=False,
+        track_mongo=True,
+        aggregate=True,
     ),
     # --- Traitement ---
     DOCUMENT_PERSISTED: EventBehavior(

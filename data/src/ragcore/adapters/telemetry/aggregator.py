@@ -93,7 +93,7 @@ class RunStatsAggregator:
         payload_key = _BREAKDOWN_KEY.get(event.event_type)
         if payload_key is not None:
             value = payload.get(payload_key, "unknown")
-            stats = stats.with_breakdown(event.event_type, value)
+            stats = stats.with_breakdown(event.event_type, value, weight)
 
         # ⚠️ DETTE : PAS de ventilation par source. Sur un run multi-source, le bilan dit
         # « 3 compensations » sans dire *chez qui* — donc il faut tout rejouer, faute de
