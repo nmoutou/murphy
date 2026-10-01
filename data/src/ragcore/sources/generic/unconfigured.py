@@ -81,12 +81,10 @@ class UnconfiguredRouting:
 
 @dataclass(frozen=True)
 class _Origin:
-    """D'où vient une valeur : sa clé chemin-complet, sa balise, son chemin, son
-    fichier."""
+    """D'où vient une valeur : sa clé chemin-complet, sa balise, son fichier."""
 
     key: str
     tag: str
-    path: tuple[str, ...]
     source_file: str
 
 
@@ -99,7 +97,7 @@ def route_unconfigured(
             routing.roots.setdefault(facet["tag"], source_file)
         for node, path in walk_with_path(facet):
             if not table.knows(node["tag"]):
-                origin = _Origin(path_key(path), node["tag"], path, source_file)
+                origin = _Origin(path_key(path), node["tag"], source_file)
                 _route_values(node, origin, routing)
 
 
@@ -109,11 +107,7 @@ def _route_values(node: Node, origin: _Origin, routing: UnconfiguredRouting) -> 
     for name, value in node["attrib"].items():
         text = str(value).strip()
         if text:
-            attribute = replace(
-                origin,
-                key=f"{origin.key}_{name.lower()}",
-                path=(*origin.path, f"@{name}"),
-            )
+            attribute = replace(origin, key=f"{origin.key}_{name.lower()}")
             _route_value(routing, text, attribute)
 
     text = node["text"].strip()
@@ -129,9 +123,7 @@ def _route_value(routing: UnconfiguredRouting, value: str, origin: _Origin) -> N
         )
         routing.links.setdefault(origin.key, origin.source_file)
         return
-    routing.occurrences[origin.key].append(
-        Occurrence(value, origin.tag, origin.path, origin.source_file)
-    )
+    routing.occurrences[origin.key].append(Occurrence(value, origin.source_file))
     routing.tags.setdefault(origin.key, origin.source_file)
 
 

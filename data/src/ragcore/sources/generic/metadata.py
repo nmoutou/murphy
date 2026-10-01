@@ -52,7 +52,7 @@ def collect_metadata(
             rename = table.meta_renames.get(node["tag"])
             key = rename if rename is not None else path_key(path)
             routing.occurrences[key].append(
-                Occurrence(node["text"].strip(), node["tag"], path, source_file)
+                Occurrence(node["text"].strip(), source_file)
             )
             if rename is None:
                 routing.tags.setdefault(key, source_file)

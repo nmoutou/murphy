@@ -24,17 +24,12 @@ from .role_table import RoleTable
 
 __all__ = ["Occurrence", "Resolution", "resolve"]
 
-_PATH_SEPARATOR = "/"
-
 
 @dataclass(frozen=True)
 class Occurrence:
     """Une valeur lue, et d'où elle vient."""
 
     value: str
-    tag: str
-    path: tuple[str, ...]
-    """Depuis la racine de la facette : ``path[0]`` EST la racine."""
     source_file: str
 
 
@@ -78,13 +73,7 @@ def _collision(
         identifier=identifier,
         key=key,
         values=tuple(
-            CollisionValue(
-                value=occurrence.value,
-                tag=occurrence.tag,
-                path=_PATH_SEPARATOR.join(occurrence.path),
-                source_file=occurrence.source_file,
-                root=occurrence.path[0],
-            )
+            CollisionValue(value=occurrence.value, source_file=occurrence.source_file)
             for occurrence in found
         ),
     )

@@ -18,14 +18,8 @@ class CollisionValue(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     value: str
-    tag: str
-    """La balise qui la porte (``URL``)."""
-    path: str
-    """Son chemin depuis la racine de la facette (``TEXTELR/META/META_COMMUN/URL``)."""
     source_file: str
     """Le fichier de la facette, vide s'il est inconnu."""
-    root: str
-    """La racine de la facette (``TEXTELR``)."""
 
 
 class Collision(BaseModel):

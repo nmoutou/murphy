@@ -73,10 +73,8 @@ def test_les_valeurs_suivent_l_ordre_DECLARE_des_facettes() -> None:
     assert result.document.metadata["url"] == ["v.xml", "s.xml"]
     (collision,) = result.collisions
     assert collision.key == "url"
-    assert [value.root for value in collision.values] == ["VERSION", "STRUCT"]
     assert [value.source_file for value in collision.values] == ["1.xml", "0.xml"]
     assert collision.source_files() == ("1.xml", "0.xml")
-    assert collision.values[0].path == "VERSION/META/URL"
 
 
 def test_une_collision_garde_toutes_les_occurrences_doublons_compris() -> None:
