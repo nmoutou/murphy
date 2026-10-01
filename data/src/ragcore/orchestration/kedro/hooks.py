@@ -18,6 +18,7 @@ from ragcore.adapters.config.settings import (
     get_chunking_config,
     get_embedding_runtime_settings,
     get_infra_settings,
+    get_log_level,
 )
 from ragcore.adapters.runtime import AsyncioRuntime, AsyncioRuntimeFactory
 from ragcore.application.resolve_relations import ResolveRelationsService
@@ -30,6 +31,7 @@ from ragcore.orchestration.kedro.assembly import (
     build_runner,
     prepare_embedder,
 )
+from ragcore.orchestration.kedro.logging_levels import apply_log_level
 from ragcore.orchestration.kedro.run_parameters import load_parameters
 from ragcore.orchestration.kedro.run_plan import RunPlan, plan_run
 from ragcore.orchestration.kedro.run_session import RunSession, start_telemetry
@@ -73,6 +75,7 @@ class TelemetryHooks:
     @hook_impl
     def before_pipeline_run(self, catalog: DataCatalog) -> None:
         """Assemble le run et le POSE au catalogue : le DAG nomme, le hook fournit."""
+        apply_log_level(get_log_level())
         settings = get_infra_settings()
         plan = plan_run(load_parameters(catalog), settings, get_chunking_config())
         embedder = prepare_embedder(get_embedding_runtime_settings(), self._runtime)

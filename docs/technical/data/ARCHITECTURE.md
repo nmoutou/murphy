@@ -15,7 +15,7 @@ data/
 ├── conf/base/            # parameters.yml, catalog.yml (objets runtime)
 ├── src/data/             # le SHELL Kedro : délègue tout à ragcore
 │   ├── pipeline_registry.py   →  ragcore.orchestration.kedro.pipeline_registry
-│   └── settings.py            →  enregistre ragcore…hooks.TelemetryHooks + structlog
+│   └── settings.py            →  enregistre ragcore…hooks.TelemetryHooks
 └── src/ragcore/          # le CŒUR : toute la logique vit ici
     ├── core/             # domaine pur : modèles, ports, services — ne connaît AUCUNE base
     ├── application/      # cas d'usage : runner, saga, résolution de relations

@@ -104,3 +104,13 @@ fichier : `CHUNKING_MAX_CHARS=512 kedro run` (l'environnement du shell prime sur
 |---|---|---|
 | `CHUNKING_MAX_CHARS` | `384` | Taille maximale d'un chunk, en **caractères** (la fenêtre du modèle est en tokens ; ratio mesuré : 3,08 car/token en moyenne, 0,33 au pire). 384 est le plus grand qui tienne pour `all-mpnet-base-v2` : ≤ 300 tokens mesurés au tokenizer du modèle sur les six sources, **zéro document perdu** (512 en perdait 1, 1024 en perdait 98). C'est aussi le levier de coût : l'embedding est ~99,9 % du temps d'un run, et 128 → 384 l'a divisé par ~5 (838 s → 173 s). |
 | `CHUNKING_OVERLAP_CHARS` | `25` | Recouvrement de la fenêtre glissante, en caractères. Doit rester < `CHUNKING_MAX_CHARS` : sinon le curseur n'avance pas, et le run s'arrête au démarrage. Ne joue que dans un bloc plus long que `CHUNKING_MAX_CHARS`, que la fenêtre coupe en plein mot : 25 caractères (3 ou 4 mots) gardent entier un mot coupé à la frontière, pas une phrase. **Non mesuré** : aucun jeu d'évaluation du retrieval n'existe pour le régler. |
+
+### `LoggingSettings` (préfixe `KEDRO_`)
+
+Le projet n'a pas de `conf/logging.yml` : Kedro garde son défaut (handler `rich`), et le
+hook `before_pipeline_run` règle les niveaux (`orchestration/kedro/logging_levels.py`).
+Distinct de `NODE_LOG_LEVEL`, celui du backend.
+
+| Variable | Défaut | Rôle |
+|---|---|---|
+| `KEDRO_LOG_LEVEL` | `info` | Niveau des loggers `kedro`, `data` et `ragcore` : `debug`, `info`, `warning`, `error` ou `critical`. Absente ou vide, la variable vaut `info` ; toute autre valeur (`INFO`, `warn`…) arrête le run au chargement de la configuration. Les bibliothèques tierces (pymongo, httpx, neo4j) restent en `WARNING`, et les lignes de démarrage de Kedro, émises avant le hook, restent en `INFO`. |

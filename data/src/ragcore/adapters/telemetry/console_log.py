@@ -1,6 +1,6 @@
 """Adaptateur de télémétrie qui implémente enfin .log().
 
-Envoie les logs textuels vers le logger Python standard (configurable via logging.yml).
+Envoie les logs textuels vers le logger Python standard (niveau réglé par `KEDRO_LOG_LEVEL`).
 """
 
 import logging

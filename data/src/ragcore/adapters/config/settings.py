@@ -36,9 +36,12 @@ __all__ = [
     "EmbeddingRuntimeSettings",
     "Environment",
     "InfraSettings",
+    "LogLevel",
+    "LoggingSettings",
     "get_chunking_config",
     "get_embedding_runtime_settings",
     "get_infra_settings",
+    "get_log_level",
 ]
 
 
@@ -60,6 +63,11 @@ Environment = Literal["dev", "prod"]
 """Les deux valeurs d'``ENVIRONMENT``. Tout ce qui n'est pas un poste de dev est ``prod``."""
 
 DEFAULT_ENVIRONMENT: Environment = "prod"
+
+LogLevel = Literal["debug", "info", "warning", "error", "critical"]
+"""Les valeurs de ``KEDRO_LOG_LEVEL``, les niveaux de ``logging`` en minuscules."""
+
+DEFAULT_LOG_LEVEL: LogLevel = "info"
 
 DEFAULT_EMBEDDING_INGESTION_TIMEOUT_MS = 120_000
 """Deux minutes : les lots d'un document partent ensemble et font la queue côté GPU."""
@@ -221,6 +229,28 @@ class ChunkingSettings(BaseSettings):
         )
 
 
+class LoggingSettings(BaseSettings):
+    """Le niveau des logs de l'ingestion (``KEDRO_LOG_LEVEL``).
+
+    Distinct de ``NODE_LOG_LEVEL``, celui du backend : régler l'un ne touche pas l'autre.
+    Il vaut pour les loggers ``kedro``, ``data`` et ``ragcore`` ; les bibliothèques
+    tierces restent en ``WARNING``. Toute autre valeur (``INFO``, ``warn``…) arrête le
+    run au chargement de la configuration. Vide, la variable vaut absente.
+    """
+
+    model_config = SettingsConfigDict(
+        env_file=ROOT_ENV_FILE, env_prefix="kedro_", extra="ignore"
+    )
+
+    log_level: LogLevel = DEFAULT_LOG_LEVEL
+
+    @field_validator("log_level", mode="before")
+    @classmethod
+    def _niveau_vide_vaut_absent(cls, value: object) -> object:
+        """``KEDRO_LOG_LEVEL=`` produit ``''`` : l'absence, donc le défaut."""
+        return DEFAULT_LOG_LEVEL if value == "" else value
+
+
 @lru_cache
 def get_infra_settings() -> InfraSettings:
     _require_env_file()
@@ -237,3 +267,9 @@ def get_embedding_runtime_settings() -> EmbeddingRuntimeSettings:
 def get_chunking_config() -> ChunkingConfig:
     _require_env_file()
     return ChunkingSettings().to_config()
+
+
+@lru_cache
+def get_log_level() -> LogLevel:
+    _require_env_file()
+    return LoggingSettings().log_level
