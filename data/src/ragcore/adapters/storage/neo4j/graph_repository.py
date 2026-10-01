@@ -2,8 +2,9 @@
 
 Un nœud est identifié par son seul ``identifier`` sérialisé (p. ex.
 ``LEGIARTI000006419264``) — jamais par un champ deviné parmi plusieurs candidats : un
-identifiant unique et explicite est ce qui rend le ``MERGE`` déterministe. Le label du
-nœud vient de la table ``NodeLabels``, d'après les 8 lettres de l'identifiant.
+identifiant unique et explicite est ce qui rend le ``MERGE`` déterministe. Un nœud porte
+deux labels : ``Document``, qui porte la contrainte d'unicité, et celui de son
+``document_type`` (``Article``, ``Decision``…).
 """
 
 import neo4j
@@ -14,13 +15,14 @@ from ragcore.core.models.identifiers import Identifier, RunId
 from ragcore.core.models.relation import Relation
 from ragcore.core.ports.graph_repository import RelationWriteResult
 
-from .node_properties import NodeHydration, NodeLabels, node_props
+from .node_properties import DOCUMENT_LABEL, TYPE_LABELS, NodeHydration, node_props
 
-__all__ = ["Neo4jGraphRepository", "NodeHydration", "NodeLabels"]
+__all__ = ["Neo4jGraphRepository", "NodeHydration"]
 
 
 _MERGE_NODE = (
-    "MERGE (d {identifier: $identifier}) SET d:$($label) SET d += $props RETURN d"
+    f"MERGE (d:{DOCUMENT_LABEL} {{identifier: $identifier}})"
+    " SET d:$($label) SET d += $props RETURN d"
 )
 
 
@@ -33,28 +35,24 @@ class Neo4jGraphRepository:
     def __init__(
         self,
         driver: neo4j.AsyncDriver,
-        labels: NodeLabels,
         hydration: NodeHydration | None = None,
     ) -> None:
         self._driver = driver
-        self._labels = labels
         # Défaut = régime prod (nœud maigre). Le hook passe l'hydratation de dev.
         self._hydration = hydration or NodeHydration()
 
     async def merge_document_node(self, document: ParsedDocument) -> None:
-        """Merge un nœud document. Le label vient de ``NodeLabels``, d'après l'identifiant.
+        """Merge un nœud document : ``Document``, plus le label de son type.
 
-        **Le ``MERGE`` ne porte PAS le label — et c'est le point.** ``MERGE`` matche le
-        motif ENTIER, label compris : ``MERGE (d:Article {identifier: X})`` ne retrouve
-        pas un nœud du même identifiant portant un autre label, et en crée un SECOND. On
-        ``MERGE`` donc sur le seul ``identifier``, ce qui retombe sur le nœud existant
-        quel que soit son label, PUIS on pose le label réel.
+        Le ``MERGE`` porte sur ``Document`` et ``identifier`` : il passe par la contrainte
+        d'unicité. Le label de type s'ajoute ensuite. Il ne change jamais pour un
+        identifiant, puisque le type se déduit de son préfixe.
         """
         async with self._driver.session() as session:
             await session.run(
                 _MERGE_NODE,
                 identifier=document.identifier.serialize(),
-                label=self._labels.label_for(document.identifier),
+                label=TYPE_LABELS[document.document_type],
                 props=node_props(document, self._hydration),
             )
 
@@ -89,8 +87,8 @@ class Neo4jGraphRepository:
         # (encore) dans le corpus, la requête ne rend rien et l'arête part au cache des
         # pendantes (§13) — elle sera rejouée quand la cible arrivera.
         matched = (
-            "MATCH (a {identifier: $source_identifier})"
-            " MATCH (b {identifier: $target_identifier})"
+            f"MATCH (a:{DOCUMENT_LABEL} {{identifier: $source_identifier}})"
+            f" MATCH (b:{DOCUMENT_LABEL} {{identifier: $target_identifier}})"
             " MERGE (a)-[r:$($relation_type)]->(b)"
             " SET r += $props SET r.run_id = $run_id RETURN r"
         )
@@ -123,7 +121,7 @@ class Neo4jGraphRepository:
             return set()
 
         query = (
-            "MATCH (n) WHERE n.identifier IN $identifiers"
+            f"MATCH (n:{DOCUMENT_LABEL}) WHERE n.identifier IN $identifiers"
             " RETURN n.identifier AS identifier"
         )
         async with self._driver.session() as session:
@@ -144,7 +142,9 @@ class Neo4jGraphRepository:
         """
         identifier_value = identifier.serialize()
 
-        query = "MATCH (d {identifier: $identifier})-[r]->() DELETE r"
+        query = (
+            f"MATCH (d:{DOCUMENT_LABEL} {{identifier: $identifier}})-[r]->() DELETE r"
+        )
         async with self._driver.session() as session:
             await session.run(
                 query,

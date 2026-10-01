@@ -21,14 +21,12 @@ deux facettes du même document, et le connecteur les livre ensemble. Le parser 
 donc comme un tout — c'est ce qui empêche les 98 textes du corpus de finir sans titre.
 """
 
-from collections.abc import Mapping
-
 from ragcore.core.models.enums import DocumentType
 from ragcore.sources.generic import Role, RoleTable
 
 from .vocabulary import LEGI_LINK_TABLE
 
-__all__ = ["LEGI_NODE_LABELS", "LEGI_ROLE_TABLE"]
+__all__ = ["LEGI_ROLE_TABLE"]
 
 
 _ROOTS = frozenset({"ARTICLE", "SECTION_TA", "TEXTE_VERSION", "TEXTELR"})
@@ -197,15 +195,3 @@ LEGI_ROLE_TABLE = RoleTable(
     ancestor_id_attrs=("id_txt", "id"),
 )
 """LEGI, en une donnée. Le parser générique fait le reste."""
-
-
-LEGI_NODE_LABELS: Mapping[str, str] = {
-    "LEGIARTI": "Article",
-    "LEGITEXT": "Texte",
-    "LEGISCTA": "Section",
-}
-"""Le label Neo4j d'un document LEGI, d'après le préfixe de son identifiant.
-
-Un fait de schéma, pas un réglage : un nœud déjà écrit garde son ancien label, même
-réingéré (l'écriture ajoute sans retirer). Changer cette table demande ``nuke_all``.
-"""

@@ -24,7 +24,7 @@ l'exécution. La table de rôles, elle, est une constante : elle ne dépend de r
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -37,14 +37,14 @@ from ragcore.sources.jurisprudence import (
     JuriFileConnector,
 )
 from ragcore.sources.legislatif.file_connector import LegiFileConnector
-from ragcore.sources.legislatif.table import LEGI_NODE_LABELS, LEGI_ROLE_TABLE
+from ragcore.sources.legislatif.table import LEGI_ROLE_TABLE
 
-__all__ = ["SOURCES", "SourceDefinition", "definition_for", "node_labels_by_prefix"]
+__all__ = ["SOURCES", "SourceDefinition", "definition_for"]
 
 
 @dataclass(frozen=True)
 class SourceDefinition:
-    """Tout ce que ragcore doit savoir d'une source. **Quatre choses.**"""
+    """Tout ce que ragcore doit savoir d'une source. **Trois choses.**"""
 
     connector: Callable[[Path], Any]
     """Comment localiser et transcrire ses fichiers. Une fabrique : le chemin vient de
@@ -61,17 +61,12 @@ class SourceDefinition:
     pour ingérer une autre base.
     """
 
-    node_labels: Mapping[str, str] = field(default_factory=dict)
-    """Le label Neo4j de ses documents, d'après le préfixe de l'identifiant. Un préfixe
-    absent reçoit le repli ``Document`` (``node_properties.DEFAULT_LABEL``)."""
-
 
 SOURCES: Mapping[SourceName, SourceDefinition] = {
     SourceName.LEGI: SourceDefinition(
         connector=lambda root: LegiFileConnector(root),
         table=LEGI_ROLE_TABLE,
         subdirectory="LEGI",
-        node_labels=LEGI_NODE_LABELS,
     ),
     # ── Les cinq sources de jurisprudence ──────────────────────────────────────
     #
@@ -143,24 +138,3 @@ def all_sources() -> tuple[SourceName, ...]:
     être reproductible jusque dans l'ordre où il lit.
     """
     return tuple(SOURCES)
-
-
-def node_labels_by_prefix(
-    sources: Mapping[SourceName, SourceDefinition] = SOURCES,
-) -> dict[str, str]:
-    """Les labels Neo4j de TOUTES les sources, pas seulement celles du run.
-
-    Deux sources qui donnent deux labels au même préfixe sont une erreur de
-    déclaration : elle lève, quel que soit le périmètre du run.
-    """
-    merged: dict[str, str] = {}
-    for source, definition in sources.items():
-        for prefix, label in definition.node_labels.items():
-            if merged.get(prefix, label) != label:
-                msg = (
-                    f"Labels Neo4j en conflit pour le préfixe {prefix!r} : "
-                    f"{merged[prefix]!r}, puis {label!r} (source {source.value!r})."
-                )
-                raise ValueError(msg)
-            merged[prefix] = label
-    return merged

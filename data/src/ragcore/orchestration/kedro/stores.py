@@ -31,6 +31,7 @@ from ragcore.adapters.storage.mongo.unformatted_repository import (
 )
 from ragcore.adapters.storage.neo4j.client import create_neo4j_driver
 from ragcore.adapters.storage.neo4j.graph_repository import Neo4jGraphRepository
+from ragcore.adapters.storage.neo4j.schema import ensure_graph_constraints
 from ragcore.adapters.storage.qdrant.client import create_qdrant_client
 from ragcore.adapters.storage.qdrant.vector_repository import QdrantVectorRepository
 from ragcore.application.ingest_document import IngestionStores
@@ -80,9 +81,10 @@ def open_clients(settings: InfraSettings) -> InfraClients:
 def ensure_indexes(
     clients: InfraClients, settings: InfraSettings, runtime: AsyncRuntime
 ) -> None:
-    """Pose les index Mongo des bases de données et méta."""
+    """Pose les index Mongo des bases de données et méta, et la contrainte Neo4j."""
     runtime.run(ensure_data_indexes(clients.mongo[settings.mongodb_data_db_name]))
     runtime.run(ensure_meta_indexes(clients.mongo[settings.mongodb_meta_db_name]))
+    runtime.run(ensure_graph_constraints(clients.neo4j))
 
 
 def open_document_stores(
@@ -98,9 +100,7 @@ def open_document_stores(
         documents=MongoDocumentRepository(
             clients.mongo, data_db, include_path=plan.include_path
         ),
-        graph=Neo4jGraphRepository(
-            clients.neo4j, plan.node_labels, plan.node_hydration
-        ),
+        graph=Neo4jGraphRepository(clients.neo4j, plan.node_hydration),
         vectors=QdrantVectorRepository(clients.qdrant, plan.collection, vector_size),
         pending=MongoPendingRelationRepository(clients.mongo, data_db),
         unformatted=MongoUnformattedRelationRepository(clients.mongo, data_db),

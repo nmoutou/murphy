@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from ragcore.adapters.config.settings import Environment, InfraSettings
-from ragcore.adapters.storage.neo4j.node_properties import NodeHydration, NodeLabels
+from ragcore.adapters.storage.neo4j.node_properties import NodeHydration
 from ragcore.core.models.enums import SourceName
 from ragcore.core.models.processing import ChunkingConfig
 from ragcore.orchestration.kedro.parameters_model import (
@@ -25,7 +25,6 @@ from ragcore.orchestration.kedro.run_parameters import (
     resolve_dev_settings,
     resolve_sources,
 )
-from ragcore.sources.registry import node_labels_by_prefix
 
 __all__ = ["RunPlan", "plan_run"]
 
@@ -49,9 +48,6 @@ class RunPlan:
     """L'hydratation des nœuds Neo4j (ADR-022 §2) : résolue UNE fois, partagée entre le
     dépôt du hook et ceux des workers — deux résolutions seraient deux occasions de
     diverger."""
-    node_labels: NodeLabels
-    """Le label des nœuds Neo4j d'après le préfixe de l'identifiant, déclaré par les
-    sources."""
     embedding_enabled: bool
     """L'interrupteur d'embedding (ADR-023) : toujours ``True`` hors ``dev``."""
     skip_unconfigured: bool
@@ -91,7 +87,6 @@ def plan_run(
         sources=resolve_sources(requested_source),
         include_path=dev.include_path,
         node_hydration=_node_hydration(dev, is_dev),
-        node_labels=NodeLabels(by_prefix=node_labels_by_prefix()),
         embedding_enabled=dev.embedding_enabled,
         skip_unconfigured=dev.skip_unconfigured,
         nuke_all=dev.nuke_all,

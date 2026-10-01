@@ -30,10 +30,7 @@ from ragcore.adapters.storage.mongo.run_summary_repository import (
 from ragcore.adapters.storage.mongo.unformatted_repository import (
     MongoUnformattedRelationRepository,
 )
-from ragcore.adapters.storage.neo4j.graph_repository import (
-    Neo4jGraphRepository,
-    NodeLabels,
-)
+from ragcore.adapters.storage.neo4j.graph_repository import Neo4jGraphRepository
 from ragcore.adapters.storage.qdrant.vector_repository import QdrantVectorRepository
 from ragcore.adapters.telemetry import (
     ConsoleLogTelemetry,
@@ -97,7 +94,7 @@ class TestStorageAdapters:
         """Le test qui a attrapé le ``NameError`` : le module ne s'importait pas,
         et son ``upsert_relations`` annonçait un ``RelationWriteResult`` inconnu.
         """
-        repo = Neo4jGraphRepository(driver=None, labels=NodeLabels(by_prefix={}))
+        repo = Neo4jGraphRepository(driver=None)
         assert isinstance(repo, GraphRepository)
 
     def test_qdrant_vector_repository(self) -> None:

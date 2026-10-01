@@ -12,7 +12,6 @@ import yaml
 from ragcore.adapters.config.settings import Environment, InfraSettings
 from ragcore.adapters.storage.neo4j.node_properties import NodeHydration
 from ragcore.core.models.enums import SourceName
-from ragcore.core.models.identifiers import Identifier
 from ragcore.core.models.processing import ChunkingConfig
 from ragcore.orchestration.kedro.run_parameters import SAFE_DEV_SETTINGS
 from ragcore.orchestration.kedro.run_plan import plan_run
@@ -168,13 +167,6 @@ def test_en_dev_aucun_avertissement_de_fichier_ignore(
         plan_run(PARAMS, _settings("dev"), CHUNKING)
 
     assert "est ignoré" not in caplog.text
-
-
-def test_les_labels_neo4j_viennent_des_sources() -> None:
-    labels = plan_run(PARAMS, _settings(), CHUNKING).node_labels
-
-    assert labels.label_for(Identifier(raw="LEGIARTI000006419264")) == "Article"
-    assert labels.label_for(Identifier(raw="JURITEXT000019333891")) == "Document"
 
 
 @pytest.mark.parametrize("path", ["nlp", "include_pth", "nuke_al"])

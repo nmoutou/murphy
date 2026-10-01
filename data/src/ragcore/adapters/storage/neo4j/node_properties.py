@@ -1,57 +1,31 @@
 """Ce que porte un nœud document dans Neo4j : son label et ses propriétés."""
 
-import re
 from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
 
 from ragcore.core.models.document import ParsedDocument
-from ragcore.core.models.identifiers import IDENTIFIER_PREFIX_LENGTH, Identifier
+from ragcore.core.models.enums import DocumentType
 
 __all__ = [
-    "DEFAULT_LABEL",
+    "DOCUMENT_LABEL",
+    "TYPE_LABELS",
     "NodeHydration",
-    "NodeLabels",
     "node_props",
 ]
 
-DEFAULT_LABEL = "Document"
-"""Le label d'un document dont aucune source ne déclare le préfixe (les décisions)."""
+DOCUMENT_LABEL = "Document"
+"""Le label de TOUT nœud document. Il ne change jamais : la contrainte d'unicité sur
+``identifier`` (``schema.py``) s'y rattache, et toute recherche par identifiant passe
+par lui."""
 
-_LABEL_PATTERN = re.compile(r"[A-Z][A-Za-z0-9]*")
-_PREFIX_PATTERN = re.compile(rf"[A-Z]{{{IDENTIFIER_PREFIX_LENGTH}}}")
-
-
-@dataclass(frozen=True)
-class NodeLabels:
-    """Le label d'un nœud document, décidé par le préfixe de son identifiant.
-
-    Une DONNÉE, déclarée par chaque source (``sources/registry.py``) : le préfixe
-    ``LEGIARTI`` donne ``Article``, et un préfixe que la table ne connaît pas reçoit
-    ``DEFAULT_LABEL``.
-
-    Les labels sont validés à la construction : un label mal formé arrête le run ici,
-    avec un message, plutôt qu'à la première écriture d'un nœud dans Neo4j.
-    """
-
-    by_prefix: Mapping[str, str]
-
-    def __post_init__(self) -> None:
-        for prefix in self.by_prefix:
-            if not _PREFIX_PATTERN.fullmatch(prefix):
-                raise ValueError(
-                    f"Préfixe d'identifiant invalide dans les labels Neo4j : {prefix!r} "
-                    f"(attendu : {IDENTIFIER_PREFIX_LENGTH} majuscules, p. ex. LEGIARTI)."
-                )
-        for label in self.by_prefix.values():
-            if not _LABEL_PATTERN.fullmatch(label):
-                raise ValueError(
-                    f"Label Neo4j invalide : {label!r} (attendu : une majuscule puis "
-                    "des lettres ou chiffres)."
-                )
-
-    def label_for(self, identifier: Identifier) -> str:
-        return self.by_prefix.get(identifier.prefix, DEFAULT_LABEL)
+TYPE_LABELS: Mapping[DocumentType, str] = {
+    DocumentType.ARTICLE: "Article",
+    DocumentType.SECTION: "Section",
+    DocumentType.TEXTE: "Texte",
+    DocumentType.DECISION: "Decision",
+}
+"""Le second label d'un nœud : son ``document_type``, le même que dans Mongo et Qdrant."""
 
 
 @dataclass(frozen=True)

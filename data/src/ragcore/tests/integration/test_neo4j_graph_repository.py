@@ -16,13 +16,12 @@ cas, donc que l'arête ressort en ``pending`` au lieu de s'évaporer.
 from datetime import UTC, datetime
 
 import pytest
+from neo4j.exceptions import ConstraintError
 from testcontainers.neo4j import Neo4jContainer
 
 from ragcore.adapters.storage.neo4j.client import create_neo4j_driver
-from ragcore.adapters.storage.neo4j.graph_repository import (
-    Neo4jGraphRepository,
-    NodeLabels,
-)
+from ragcore.adapters.storage.neo4j.graph_repository import Neo4jGraphRepository
+from ragcore.adapters.storage.neo4j.schema import ensure_graph_constraints
 from ragcore.core.links import CITES
 from ragcore.core.models.document import ParsedDocument
 from ragcore.core.models.enums import DocumentType, SourceName
@@ -80,8 +79,8 @@ async def repo(neo4j_url):
     driver = create_neo4j_driver(url, "neo4j", password)
     async with driver.session() as session:
         await session.run("MATCH (n) DETACH DELETE n")
-    labels = NodeLabels(by_prefix={"LEGIARTI": "Article"})
-    repository = Neo4jGraphRepository(driver, labels)
+    await ensure_graph_constraints(driver)
+    repository = Neo4jGraphRepository(driver)
     yield repository
     await driver.close()
 
@@ -293,3 +292,37 @@ async def test_delete_by_run_removes_only_this_runs_edges(repo) -> None:
         ).single()
     assert record["cible"] == "LEGIARTI000000000003"
     assert record["run"] == run_b, "l'arête survivante est bien celle du run B"
+
+
+async def test_a_node_carries_Document_and_its_type(repo) -> None:
+    await repo.merge_document_node(_doc(1))
+
+    async with repo._driver.session() as session:  # noqa: SLF001
+        record = await (
+            await session.run(
+                "MATCH (n {identifier: 'LEGIARTI000000000001'}) RETURN labels(n) AS l"
+            )
+        ).single()
+    assert set(record["l"]) == {"Document", "Article"}
+
+
+async def test_the_constraint_refuses_a_second_node_with_the_same_identifier(
+    repo,
+) -> None:
+    """L'unicité est garantie par la base, pas seulement par le ``MERGE``."""
+    await repo.merge_document_node(_doc(1))
+
+    async with repo._driver.session() as session:  # noqa: SLF001
+        with pytest.raises(ConstraintError):
+            await session.run("CREATE (:Document {identifier: 'LEGIARTI000000000001'})")
+
+
+async def test_a_lookup_by_identifier_uses_the_index(repo) -> None:
+    """Sans le label ``Document``, la recherche parcourrait tous les nœuds."""
+    async with repo._driver.session() as session:  # noqa: SLF001
+        result = await session.run(
+            "EXPLAIN MATCH (n:Document {identifier: $id}) RETURN n", id="x"
+        )
+        summary = await result.consume()
+
+    assert "NodeUniqueIndexSeek" in str(summary.plan)
