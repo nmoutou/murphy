@@ -50,7 +50,7 @@ def _dehydrate_node_query(labels: NodeLabels) -> str:
         "MATCH (n {identifier: $identifier})"
         f" REMOVE n:{':'.join(labels.known)}"
         f" SET n:{PENDING_LABEL}"
-        " REMOVE n.title, n.source, n.citations"
+        " REMOVE n.title, n.source"
     )
 
 
@@ -80,9 +80,6 @@ class Neo4jGraphRepository:
         pas un nœud du même identifiant portant un autre label, et en crée un SECOND. On
         ``MERGE`` donc sur le seul ``identifier``, ce qui retombe sur le nœud existant
         quel que soit son label, PUIS on pose le label réel.
-
-        Les **citations** (cibles décrites) sont posées ici, en propriété du nœud, et non
-        en arêtes vers des placeholders : voir ``node_properties.CITATIONS_PROP``.
         """
         async with self._driver.session() as session:
             await session.run(
@@ -130,8 +127,8 @@ class Neo4jGraphRepository:
         )
 
         # Il n'y a plus qu'un cas. Une cible DÉCRITE ne devient plus une arête vers un
-        # placeholder : elle est un champ du document qui l'énonce (`citations`), posé au
-        # `merge_document_node`. Toute relation qui arrive ici a donc une cible
+        # placeholder : elle est une relation non formatée (ADR-045), écrite dans Mongo
+        # et jamais dans le graphe. Toute relation qui arrive ici a donc une cible
         # identifiée, et le seul motif légitime est le `MATCH`.
         async with self._driver.session() as session:
             for relation in relations:
