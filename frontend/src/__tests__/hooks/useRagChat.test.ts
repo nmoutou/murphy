@@ -18,6 +18,7 @@ const ANSWER_ID = 'answer-1';
 const PARENT = {
   identifier: 'LEGIARTI000006419280',
   title: 'Article 2224',
+  documentType: 'article' as const,
   content: 'Les actions…',
 };
 const PASSAGE = {
@@ -26,6 +27,7 @@ const PASSAGE = {
   highlightStart: 0,
   highlightEnd: 12,
   score: 0.8,
+  documentType: 'article' as const,
 };
 const RAG_TIMING = { embeddingMs: 4, retrievalMs: 6, totalMs: 900 };
 

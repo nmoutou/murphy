@@ -4,6 +4,7 @@
  */
 
 import type { ChatError, ChatErrorStage } from '@murphy/contract/errors';
+import type { DocumentType } from '@murphy/contract/messages';
 
 /** `request` = extracting the question, the first step of the pipeline */
 export type RagStage = Exclude<ChatErrorStage, 'internal'>;
@@ -88,8 +89,9 @@ export interface RetrievedChunk {
   readonly charStart: number;
   readonly charEnd: number;
   readonly score: number;
-  /** `type_document`, when the source sets it */
-  readonly type?: string;
+  readonly documentType: DocumentType;
+  /** The legal nature (`LOI`, `ARRET`…), when the source gives a meaningful one */
+  readonly nature?: string;
 }
 
 /** A parent document as the ingestion stored it in MongoDB `documents` */

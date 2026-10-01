@@ -44,7 +44,7 @@ const chunkOf = (chunkId: string, charStart: number, text: string, score: number
   charStart,
   charEnd: charStart + text.length,
   score,
-  type: 'article',
+  documentType: 'article',
 });
 const SECOND_START = FIRST_SENTENCE.length + 1;
 /** Two passages of the same article, the second ranked first */
@@ -128,7 +128,7 @@ describe('createChatStream', () => {
     ]);
     expect(parts[2]).toEqual({
       type: 'data-parentDocument',
-      data: { identifier: DOCUMENT.identifier, title: DOCUMENT.title, type: 'article', content: DOCUMENT.content },
+      data: { identifier: DOCUMENT.identifier, title: DOCUMENT.title, documentType: 'article', content: DOCUMENT.content },
     });
     expect(parts[3]).toEqual({
       type: 'data-document',
@@ -139,7 +139,7 @@ describe('createChatStream', () => {
         highlightEnd: DOCUMENT.content.length,
         score: 0.91,
         title: DOCUMENT.title,
-        type: 'article',
+        documentType: 'article',
       },
     });
     expect(parts[4]).toMatchObject({ type: 'data-document', data: { chunkId: 'chunk-1', highlightStart: 0 } });

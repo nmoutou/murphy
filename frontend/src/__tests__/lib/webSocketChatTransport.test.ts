@@ -24,6 +24,7 @@ const PASSAGE = {
   highlightStart: 0,
   highlightEnd: 12,
   score: 0.8,
+  documentType: 'article' as const,
 };
 const ANSWER_PARTS: UIMessageChunk[] = [
   { type: 'start', messageId: ANSWER_ID },
@@ -42,7 +43,12 @@ const PREVIOUS_TURN: AppUIMessage[] = [
     parts: [
       {
         type: 'data-parentDocument',
-        data: { identifier: PASSAGE.identifier, title: 'Article 2224', content: 'Les actions…' },
+        data: {
+          identifier: PASSAGE.identifier,
+          title: 'Article 2224',
+          documentType: 'article',
+          content: 'Les actions…',
+        },
       },
       { type: 'text', text: 'Le tribunal.' },
     ],

@@ -36,7 +36,7 @@ const ANSWER_PARTS: AppChunk[] = [
   { type: 'text-start', id: MESSAGE_ID },
   {
     type: 'data-document',
-    data: { chunkId: 'chunk-1', identifier: 'LEGIARTI1', highlightStart: 0, highlightEnd: 4, score: 0.9 },
+    data: { chunkId: 'chunk-1', identifier: 'LEGIARTI1', highlightStart: 0, highlightEnd: 4, score: 0.9, documentType: 'article' },
   },
   { type: 'text-delta', id: MESSAGE_ID, delta: 'Cinq ' },
   { type: 'text-delta', id: MESSAGE_ID, delta: 'ans.' },
@@ -112,7 +112,7 @@ describe('POST /api/v1/chat/streams', () => {
     expect(response.headers['content-type']).toContain('text/event-stream');
     expect(response.text).toContain(
       'data: {"type":"data-document","data":{"chunkId":"chunk-1","identifier":"LEGIARTI1",' +
-        '"highlightStart":0,"highlightEnd":4,"score":0.9}}',
+        '"highlightStart":0,"highlightEnd":4,"score":0.9,"documentType":"article"}}',
     );
     expect(response.text).toContain('data: {"type":"text-delta","id":"message-1","delta":"ans."}');
     expect(createChatStream).toHaveBeenCalledWith(VALID_BODY.messages, expect.any(AbortSignal));

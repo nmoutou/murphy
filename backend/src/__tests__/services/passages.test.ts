@@ -26,6 +26,7 @@ const chunk = (overrides: Partial<RetrievedChunk> = {}): RetrievedChunk => ({
   charStart: PASSAGE_CODE_POINT_START,
   charEnd: PASSAGE_CODE_POINT_START + PASSAGE.length,
   score: 0.9,
+  documentType: 'article',
   ...overrides,
 });
 

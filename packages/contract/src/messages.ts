@@ -8,10 +8,14 @@
 import type { UIMessage } from 'ai';
 import { z } from 'zod';
 
+/** The form of a document, the same in every store of the ingestion (ADR-046) */
+export const documentTypeSchema = z.enum(['article', 'section', 'texte', 'decision']);
+
 /**
  * One retrieved passage (ADR-039 §5). `content.slice(highlightStart, highlightEnd)`
  * of its `ParentDocument`, found by `identifier`, gives the passage text.
- * `title` and `type` repeat the parent's until the frontend reads `ParentDocument`.
+ * `title`, `documentType` and `nature` repeat the parent's until the frontend reads
+ * `ParentDocument`.
  */
 export const documentChunkSchema = z.object({
   chunkId: z.string(),
@@ -21,14 +25,17 @@ export const documentChunkSchema = z.object({
   highlightEnd: z.number().int().nonnegative(),
   score: z.number(),
   title: z.string().optional(),
-  type: z.string().optional(),
+  documentType: documentTypeSchema,
+  /** The legal nature (`LOI`, `ARRET`, `QPC`…), when the source gives a meaningful one */
+  nature: z.string().optional(),
 });
 
 /** The whole document a passage comes from, sent once per response, before its passages */
 export const parentDocumentSchema = z.object({
   identifier: z.string(),
   title: z.string(),
-  type: z.string().optional(),
+  documentType: documentTypeSchema,
+  nature: z.string().optional(),
   content: z.string(),
 });
 
@@ -51,6 +58,7 @@ export const appDataPartSchemas = {
   parentDocument: parentDocumentSchema,
 };
 
+export type DocumentType = z.infer<typeof documentTypeSchema>;
 export type DocumentChunk = z.infer<typeof documentChunkSchema>;
 export type ParentDocument = z.infer<typeof parentDocumentSchema>;
 export type RagTiming = z.infer<typeof ragTimingSchema>;

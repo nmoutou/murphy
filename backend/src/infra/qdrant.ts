@@ -4,6 +4,7 @@
  */
 
 import { QdrantClient } from '@qdrant/qdrant-js';
+import { documentTypeSchema, type DocumentType } from '@murphy/contract/messages';
 import type { QdrantConfig } from '../config';
 import type { EmbeddingVector, RagFailure, RetrievedChunk } from '../types/rag';
 import { logger as rootLogger } from '../utils/logger';
@@ -37,6 +38,11 @@ const readInteger = (payload: Payload, field: string): number | undefined => {
   return typeof value === 'number' && Number.isInteger(value) ? value : undefined;
 };
 
+const readDocumentType = (payload: Payload): DocumentType | undefined => {
+  const parsed = documentTypeSchema.safeParse(payload?.document_type);
+  return parsed.success ? parsed.data : undefined;
+};
+
 /**
  * Checks a point's payload against the serving contract (ADR-039 §2)
  * @throws RagError `CONTRACT_VIOLATION` naming the point when a field is missing
@@ -46,10 +52,13 @@ export const toRetrievedChunk = ({ id, score, payload }: ScoredPoint): Retrieved
   const identifier = readString(payload, 'identifier');
   const charStart = readInteger(payload, 'char_start');
   const charEnd = readInteger(payload, 'char_end');
-  if (!chunkId || !identifier || charStart === undefined || charEnd === undefined) {
-    throw contractViolation(`Qdrant point ${chunkId ?? String(id)} lacks chunk_id, identifier, char_start or char_end`);
+  const documentType = readDocumentType(payload);
+  if (!chunkId || !identifier || charStart === undefined || charEnd === undefined || !documentType) {
+    throw contractViolation(
+      `Qdrant point ${chunkId ?? String(id)} lacks chunk_id, identifier, char_start, char_end or a known document_type`
+    );
   }
-  return { chunkId, identifier, charStart, charEnd, score, type: readString(payload, 'type_document') };
+  return { chunkId, identifier, charStart, charEnd, score, documentType, nature: readString(payload, 'nature') };
 };
 
 /**

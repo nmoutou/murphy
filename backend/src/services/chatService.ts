@@ -27,7 +27,13 @@ export const extractQuestionFromMessages = (messages: AppUIMessage[]): string =>
 const writeParentDocument = (writer: AppWriter, { document, chunk }: Passage): void => {
   writer.write({
     type: 'data-parentDocument',
-    data: { identifier: document.identifier, title: document.title, type: chunk.type, content: document.content },
+    data: {
+      identifier: document.identifier,
+      title: document.title,
+      documentType: chunk.documentType,
+      nature: chunk.nature,
+      content: document.content,
+    },
   });
 };
 
@@ -53,7 +59,8 @@ const writeSources = (writer: AppWriter, passages: readonly Passage[]): void => 
         highlightEnd,
         score: chunk.score,
         title: document.title,
-        type: chunk.type,
+        documentType: chunk.documentType,
+        nature: chunk.nature,
       },
     });
   }

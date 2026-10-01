@@ -7,8 +7,8 @@ import { parseChatRequest } from '../../validation/chatRequest';
 
 const QUESTION = 'Quel délai de prescription ?';
 const USER_MESSAGE = { id: 'user-1', role: 'user', parts: [{ type: 'text', text: QUESTION }] };
-const PASSAGE = { chunkId: 'c-1', identifier: 'LEGIARTI000006419280', highlightStart: 0, highlightEnd: 12, score: 0.8 };
-const PARENT = { identifier: 'LEGIARTI000006419280', title: 'Article 2224', content: 'Les actions…' };
+const PASSAGE = { chunkId: 'c-1', identifier: 'LEGIARTI000006419280', highlightStart: 0, highlightEnd: 12, score: 0.8, documentType: 'article' };
+const PARENT = { identifier: 'LEGIARTI000006419280', title: 'Article 2224', documentType: 'article', content: 'Les actions…' };
 
 const ASSISTANT_MESSAGE = {
   id: 'assistant-1',

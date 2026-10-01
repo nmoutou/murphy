@@ -1,6 +1,7 @@
 'use client';
 
 import type { DocumentChunk } from '@murphy/contract/messages';
+import { describeDocumentType } from '@/lib/documentTypeLabels';
 
 const PERCENT = 100;
 
@@ -17,7 +18,9 @@ export default function SourceItem({ chunk }: SourceItemProps) {
         <div className="flex-1">
           <div className="font-semibold">{chunk.title ?? chunk.chunkId}</div>
           <div className="text-xs opacity-70">{chunk.chunkId}</div>
-          {chunk.type && <div className="text-xs opacity-60">{chunk.type}</div>}
+          <div className="text-xs opacity-60">
+            {describeDocumentType(chunk.documentType, chunk.nature)}
+          </div>
         </div>
         <div className="font-semibold whitespace-nowrap">{scorePercent}</div>
       </div>

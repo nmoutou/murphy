@@ -38,6 +38,7 @@ const CHUNK: RetrievedChunk = {
   charStart: 14,
   charEnd: 23,
   score: 0.9,
+  documentType: 'article',
 };
 const PASSAGE: Passage = { chunk: CHUNK, document: DOCUMENT, text: 'Cinq ans.', highlightStart: 14, highlightEnd: 23 };
 
