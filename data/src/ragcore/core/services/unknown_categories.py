@@ -34,12 +34,7 @@ ne PEUT PAS être écrit (``sens`` inconnu, ``@id`` illisible) n'est pas un type
 il est compté par ``relation.unknown``, pas ici.
 """
 
-CATEGORY_COLLISION = "collisions"
-"""Une clé de métadonnée qui a reçu plusieurs valeurs distinctes dans un document
-(ADR-049) : résolue en liste, ou document refusé. Ce n'est pas un mot inconnu, c'est un
-choix que la table ne sait pas encore faire."""
-
-UNKNOWN_CATEGORIES = (CATEGORY_TAG, CATEGORY_ROOT, CATEGORY_LINK, CATEGORY_COLLISION)
+UNKNOWN_CATEGORIES = (CATEGORY_TAG, CATEGORY_ROOT, CATEGORY_LINK)
 """Les catégories du bilan, dans l'ordre où il les présente. Toutes y figurent, même
 vides : le schéma de ``run_summaries.unknowns`` ne varie pas d'un run à l'autre."""
 
@@ -59,7 +54,6 @@ def declare_unknown(unknowns: dict[str, list[str]], category: str, value: str) -
 
 
 __all__ = [
-    "CATEGORY_COLLISION",
     "CATEGORY_LINK",
     "CATEGORY_ROOT",
     "CATEGORY_TAG",

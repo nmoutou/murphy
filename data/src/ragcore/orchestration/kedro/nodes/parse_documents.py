@@ -6,7 +6,7 @@ document qui NE parse pas est rejeté (``document.invalidated``, dans l'audit) :
 compté, pas silencieusement ignoré. Il n'y a pas de troisième voie « SKIP ».
 
 Les collisions de métadonnées (ADR-049), celles d'un document parsé comme d'un document
-refusé, sont comptées au bilan (``unknowns.collisions``) : un compte par (document, clé).
+refusé, sont comptées au bilan (``collisions``) : un compte par (document, clé).
 """
 
 from __future__ import annotations
@@ -19,6 +19,7 @@ from ragcore.application.run_context import PipelineContext
 from ragcore.core.exceptions import CollisionError, ParseError, ValidationError
 from ragcore.core.models.audit import build_event
 from ragcore.core.models.collision import Collision
+from ragcore.core.models.collision_tally import CollisionExample
 from ragcore.core.models.document import ParsedDocument, RawDocument
 from ragcore.core.models.unknown_tally import UnknownExample
 from ragcore.core.ports.parser import BaseParser, ParseResult
@@ -29,7 +30,6 @@ from ragcore.core.services.exclusion_reasons import (
     REASON_VALIDATION_ERROR,
 )
 from ragcore.core.services.unknown_categories import (
-    CATEGORY_COLLISION,
     CATEGORY_LINK,
     CATEGORY_ROOT,
     CATEGORY_TAG,
@@ -192,10 +192,7 @@ class _ParseSite:
         )
 
     def declare_collisions(self, collisions: Sequence[Collision]) -> None:
-        """Une collision par (document, clé) : un compte au bilan."""
+        """Une collision par (document, clé) : un compte au bilan, et ses fichiers."""
         for collision in collisions:
-            example = UnknownExample(
-                identifier=collision.identifier,
-                source_file=collision.values[0].source_file,
-            )
-            self.telemetry.record_unknown(CATEGORY_COLLISION, collision.key, example)
+            example = CollisionExample(source_files=collision.source_files())
+            self.telemetry.record_collision(collision.key, example)

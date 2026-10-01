@@ -10,9 +10,9 @@ l'agrégat doit être re-prouvé à chaque usage.
 Ici, les rôles sont des CHAMPS. ``log`` sert les logs textuels (``log()``) ;
 ``aggregate`` reçoit les événements. Et ``aggregate`` est typé
 ``RunStatsAggregator``, pas ``TelemetryPort`` : c'est LUI qui porte le ``RunStats`` du
-run, le seul à savoir ``snapshot`` et ``record_unknown``. Le typer fort supprime tout
-garde ``isinstance`` en aval — le compilateur garantit ce que le code vérifiait à la
-main.
+run, le seul à savoir ``snapshot``, ``record_unknown`` et ``record_collision``. Le typer
+fort supprime tout garde ``isinstance`` en aval — le compilateur garantit ce que le code
+vérifiait à la main.
 
 Brancher un nouvel outil, c'est ajouter un champ ici et le livrer dans
 ``WorkerTelemetryStack.emit``.

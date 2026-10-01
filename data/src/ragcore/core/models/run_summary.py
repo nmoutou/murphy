@@ -6,7 +6,7 @@ Deux modèles, deux natures, et la frontière n'est pas cosmétique :
   en existe N par run — un par worker.
 - ``RunSummary`` est *déclaré*. Il porte l'identité du run (run_id, sources, dates,
   statut) et il en existe exactement UN. Il ne fusionne pas. Il recopie à plat les
-  compteurs et les inconnus de l'agrégat : c'est le document de ``run_summaries``.
+  compteurs, les inconnus et les collisions de l'agrégat : c'est le document de ``run_summaries``.
 
 Confondre les deux obligerait à répondre à « quel ``run_id`` gagne quand on fusionne
 deux sommaires ? » — question sans réponse commutative, donc source de
@@ -26,6 +26,7 @@ from ragcore.core.telemetry_events import (
     DOCUMENT_PERSISTED,
 )
 
+from .collision_tally import CollisionTally
 from .enums import SourceName
 from .identifiers import RunId
 from .run_stats import RunStats
@@ -73,6 +74,11 @@ class RunSummary(BaseModel):
     rien n'est jeté en silence. Vide = le vocabulaire a tout couvert.
     """
 
+    collisions: dict[str, CollisionTally]
+    """Les clés de métadonnée qui ont reçu plusieurs valeurs distinctes (ADR-049) : pour
+    chacune, le nombre de documents et les fichiers de l'un d'eux. Rangées en liste ou
+    refusées, elles ne sont pas des inconnus."""
+
     error_message: str | None = None
     """Seulement sur un run ``failed`` : un ``degraded`` n'a pas d'exception, il se lit
     dans les compteurs."""
@@ -105,6 +111,7 @@ class RunSummary(BaseModel):
             ended_at=ended_at or datetime.now(UTC),
             counts=stats.counts,
             unknowns=stats.unknowns,
+            collisions=stats.collisions,
             error_message=error_message,
         )
 

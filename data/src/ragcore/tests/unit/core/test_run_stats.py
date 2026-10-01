@@ -6,11 +6,14 @@ l'ordonnancement du pool — un non-déterminisme qu'aucun test ne rattraperait,
 qu'il ne se manifeste qu'en production, sous charge, une fois sur dix.
 """
 
+from ragcore.core.models.collision_tally import CollisionExample, CollisionTally
 from ragcore.core.models.run_stats import RunStats
 from ragcore.core.models.unknown_tally import UnknownExample, UnknownTally
 
 DOC_1 = UnknownExample(identifier="LEGIARTI000000000001", source_file="a.xml")
 DOC_2 = UnknownExample(identifier="LEGIARTI000000000002", source_file="b.xml")
+TWO_FILES = CollisionExample(source_files=("a.xml", "b.xml"))
+ONE_FILE = CollisionExample(source_files=("b.xml",))
 
 
 def _tally(count: int, example: UnknownExample) -> UnknownTally:
@@ -20,12 +23,17 @@ def _tally(count: int, example: UnknownExample) -> UnknownTally:
 A = RunStats(
     counts={"persisted": 2, "invalidated": 1},
     unknowns={"field": {"NOTA": _tally(1, DOC_2)}},
+    collisions={"url": CollisionTally(count=1, example=ONE_FILE)},
 )
 B = RunStats(
     counts={"persisted": 3},
     unknowns={
         "field": {"NOTA": _tally(2, DOC_1), "CONTENU": _tally(1, DOC_2)},
         "relation_type": {"titre_tm": _tally(1, DOC_1)},
+    },
+    collisions={
+        "url": CollisionTally(count=2, example=TWO_FILES),
+        "num": CollisionTally(count=1, example=ONE_FILE),
     },
 )
 C = RunStats(counts={"promoted": 1}, unknowns={"field": {"LIENS": _tally(1, DOC_1)}})
@@ -86,3 +94,22 @@ def test_reduce_of_nothing_is_empty() -> None:
 
 def test_reduce_folds_every_shard() -> None:
     assert RunStats.reduce([A, B, C]) == A.merge(B).merge(C)
+
+
+def test_collisions_count_the_documents_of_every_worker() -> None:
+    merged = A.merge(B)
+    assert merged.collisions["url"].count == 3
+    assert merged.collisions["num"].count == 1
+
+
+def test_the_collision_example_kept_is_the_smallest_whatever_the_order() -> None:
+    assert A.merge(B).collisions["url"].example == TWO_FILES
+    assert B.merge(A).collisions["url"].example == TWO_FILES
+
+
+def test_with_collision_counts_one_document() -> None:
+    stats = RunStats.empty().with_collision("url", ONE_FILE)
+    stats = stats.with_collision("url", TWO_FILES)
+
+    assert stats.collisions == {"url": CollisionTally(count=2, example=TWO_FILES)}
+    assert stats.unknowns == {}

@@ -60,7 +60,7 @@ et le livrer dans `WorkerTelemetryStack.emit`.
 
 Un **monoïde de fusion** : élément neutre `empty()`, opérateur `merge` associatif **et
 commutatif** (les workers finissent dans un ordre non déterministe — une fusion non
-commutative ferait dépendre le bilan de l'ordonnancement). Deux champs :
+commutative ferait dépendre le bilan de l'ordonnancement). Trois champs :
 
 - `counts` : event_type → occurrences (fusion : somme). ⚠️ Dette ouverte : pas de
   compteurs par **source**, un run multi-sources rend un bilan où l'échec est anonyme
@@ -71,19 +71,23 @@ commutative ferait dépendre le bilan de l'ordonnancement). Deux champs :
   des comptes, **plus petit** exemple — « le premier vu » dépendrait de l'ordre des
   workers. `source_file` est le fichier de la facette pour les inconnus de parse, le
   premier fichier du document pour ceux d'extraction.
-  Quatre catégories plates (ADR-048, ADR-049) :
+  Trois catégories plates (ADR-048) :
   - `tags` : les métadonnées non configurées (balise absente de la table ou sans
     renommage, ADR-047), sous leur **clé chemin-complet** — la clé même qu'elles ont
     dans `metadata` ;
   - `roots` : les racines XML que la source ne déclare pas ;
   - `links` : les types de lien non configurés — un `typelien` non traduit, ou la clé
     chemin-complet d'une balise absente de la table dont la valeur est un identifiant
-    DILA (lien heuristique) ;
-  - `collisions` : les clés de métadonnée qui ont reçu au moins deux valeurs distinctes
-    dans un document (ADR-049), configurées (`list`) ou non (document refusé).
+    DILA (lien heuristique).
 
   Une balise sans valeur n'y apparaît pas : elle n'a rien à ingérer. Un lien qu'on ne
   sait pas écrire n'est pas un type de lien : il est compté par `relation.unknown`.
+- `collisions` : clé de métadonnée qui a reçu au moins deux valeurs distinctes dans un
+  document (ADR-049), rangée en liste (`list`) ou refusée → `{count, example}`. Ce n'est
+  pas un inconnu : la table sait la nommer. `count` est un nombre de documents ;
+  `example.source_files` donne les fichiers d'où viennent les valeurs d'un de ces
+  documents, distincts, dans l'ordre déclaré des facettes : deux pour une collision entre
+  facettes, un pour une balise répétée dans une facette. Fusion : comme `unknowns`.
 
 **La remontée passe par le DAG, pas par le hook** : le node terminal `report` pousse
 `ingestion_outcome.stats` dans l'agrégat du run (`run_stats_sink`, que le hook finalise) — Kedro libère un `MemoryDataset` dès
@@ -93,8 +97,8 @@ les pousser les compterait deux fois).
 
 ## Le statut d'un run
 
-`RunSummary` = l'identité du run (run_id, `sources`, dates) + les `counts` et les
-`unknowns` de l'agrégat, recopiés à plat + le `status`. Le statut annoncé « ok » par le hook est **re-dérivé des compteurs**
+`RunSummary` = l'identité du run (run_id, `sources`, dates) + les `counts`, les
+`unknowns` et les `collisions` de l'agrégat, recopiés à plat + le `status`. Le statut annoncé « ok » par le hook est **re-dérivé des compteurs**
 (`_status_from`) — deux propriétés :
 
 1. **Complet ?** `fetched == persisted + invalidated + failed` — **l'équation de
@@ -126,8 +130,10 @@ document est plat :
     "tags": { "textelr_meta_meta_spec_meta_texte_chronicle_num_sequence": { "count": 92,
       "example": { "identifier": "LEGITEXT…", "source_file": "/…/LEGITEXT….xml" } } },
     "roots": {},
-    "links": { "ZORGLUB": { "count": 1, "example": { … } } },
-    "collisions": { "url": { "count": 98, "example": { … } } } } }
+    "links": { "ZORGLUB": { "count": 1, "example": { … } } } },
+  "collisions": {
+    "url": { "count": 98, "example": { "source_files": [
+      "/…/texte/version/LEGITEXT….xml", "/…/texte/struct/LEGITEXT….xml" ] } } } }
 ```
 
 `sources` est toujours une liste, même pour un run mono-source. `error_message` n'est

@@ -1,7 +1,8 @@
 # ADR-049 — Collisions de métadonnées : une liste, un ordre déclaré, un refus
 
 **Statut** : ✅ Accepté (1er octobre 2026) — amende ADR-047 et ADR-048, corrige ADR-022 §3 ·
-**amendé le 1er octobre 2026** : la collection `MURPHY_META.collisions` est retirée
+**amendé le 1er octobre 2026** : la collection `MURPHY_META.collisions` est retirée ; les
+collisions sortent des inconnus du bilan
 
 ## Contexte
 
@@ -47,8 +48,10 @@ n'a pas d'ordre : il est refusé (`validation_error`).
 qui reçoit deux valeurs distinctes fait refuser le document avec la raison `collision`
 (`document.invalidated`). Il n'y a pas de différence entre dev et prod.
 
-**Toute collision est visible.** Le bilan la compte dans `unknowns.collisions` : clé →
-`{count, example}`, en documents, comme les trois catégories d'ADR-048.
+**Toute collision est visible.** Le bilan la compte dans son champ de premier niveau
+`collisions` : clé → `{count, example: {source_files}}`. `count` est un nombre de
+documents ; `source_files` donne les fichiers distincts d'où viennent les valeurs d'un de
+ces documents, dans l'ordre déclaré des facettes.
 
 **Amendement — la collection est retirée.** Une collection `MURPHY_META.collisions`
 gardait le détail de chaque collision (un enregistrement par document et clé, toutes les
@@ -57,6 +60,13 @@ d'analyse, vidé et réécrit à chaque run ; un échec d'écriture émettait
 `collision.unrecorded` et passait le run en `degraded`. L'analyse est faite : toutes les
 collisions du corpus sont rangées par la table. La collection, son dépôt et l'événement
 `collision.unrecorded` sont supprimés ; le bilan reste.
+
+**Amendement — les collisions sortent des inconnus.** Le bilan les comptait d'abord dans
+`unknowns.collisions`, avec l'exemple des inconnus (`identifier`, `source_file`). Une
+collision n'est pas un mot inconnu : la table la nomme, la range ou refuse le document.
+Et un seul fichier ne montrait pas une collision entre deux facettes. Elle a donc son
+champ, au premier niveau, et son exemple donne tous les fichiers en jeu ; l'identifiant
+se lit dans leur nom.
 
 **Une cible de renommage n'apparaît qu'une fois par table.** Le renommage reste
 injectif ; le cliquet `tests/golden/test_meta_renames.py` le vérifie, avec l'absence de
@@ -87,6 +97,8 @@ LEGI renomme ses 7 balises répétées entre facettes (`derniere_modification`,
   ne lit aucune métadonnée.
 - `url` d'un texte LEGI vaut `[version, struct]`.
 - Les 7 clés chemin-complet LEGI quittent `unknowns.tags` et entrent en prod.
+- `RunStats` et `RunSummary` portent `collisions` à côté de `unknowns` ; la télémétrie
+  les reçoit par `record_collision`.
 
 ## Références
 

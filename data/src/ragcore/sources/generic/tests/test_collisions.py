@@ -75,6 +75,7 @@ def test_les_valeurs_suivent_l_ordre_DECLARE_des_facettes() -> None:
     assert collision.key == "url"
     assert [value.root for value in collision.values] == ["VERSION", "STRUCT"]
     assert [value.source_file for value in collision.values] == ["1.xml", "0.xml"]
+    assert collision.source_files() == ("1.xml", "0.xml")
     assert collision.values[0].path == "VERSION/META/URL"
 
 
@@ -87,6 +88,7 @@ def test_une_collision_garde_toutes_les_occurrences_doublons_compris() -> None:
     assert result.document.metadata["date"] == ["2020", "2021"]
     (collision,) = result.collisions
     assert [value.value for value in collision.values] == ["2020", "2021", "2020"]
+    assert collision.source_files() == ("0.xml", "1.xml")
 
 
 def test_une_cle_renommee_hors_list_en_collision_REFUSE_le_document() -> None:
@@ -97,6 +99,7 @@ def test_une_cle_renommee_hors_list_en_collision_REFUSE_le_document() -> None:
     assert collision.key == "num"
     assert collision.identifier == _ID
     assert collision.source is SourceName.LEGI
+    assert collision.source_files() == ("0.xml",)
 
 
 def test_une_cle_NON_renommee_en_collision_devient_une_liste() -> None:

@@ -14,12 +14,13 @@ import pytest
 
 from ragcore.application.run_context import PipelineContext
 from ragcore.core.exceptions import ParseError
+from ragcore.core.models.collision_tally import CollisionExample, CollisionTally
 from ragcore.core.models.document import RawDocument
 from ragcore.core.models.enums import SourceName
 from ragcore.core.models.unknown_tally import UnknownExample, UnknownTally
 from ragcore.core.ports.parser import ParseResult
 from ragcore.core.services.exclusion_reasons import REASON_COLLISION, REASON_PARSE_ERROR
-from ragcore.core.services.unknown_categories import CATEGORY_COLLISION, CATEGORY_TAG
+from ragcore.core.services.unknown_categories import CATEGORY_TAG
 from ragcore.core.telemetry_events import DOCUMENT_INVALIDATED
 from ragcore.orchestration.kedro.nodes.parse_documents import parse_documents_node
 from ragcore.sources.generic import GenericParser, to_tree
@@ -184,10 +185,14 @@ def test_une_collision_non_configuree_est_rejetee_sous_sa_raison() -> None:
 
 
 def test_parse_ou_refuse_chaque_collision_est_comptee_au_bilan() -> None:
-    """Parsé ou refusé, chaque (document, clé) en collision est compté une fois."""
+    """Parsé ou refusé, chaque (document, clé) en collision est compté une fois, hors
+    des inconnus, avec les fichiers d'où viennent ses valeurs."""
     telemetry = RecordingTelemetry()
 
     _parse_collisions(telemetry)
 
-    tallies = telemetry.snapshot().unknowns[CATEGORY_COLLISION]
-    assert {key: tally.count for key, tally in tallies.items()} == {"url": 1, "num": 1}
+    stats = telemetry.snapshot()
+    example = CollisionExample(source_files=(_SOURCE_FILE,))
+    tally = CollisionTally(count=1, example=example)
+    assert stats.collisions == {"url": tally, "num": tally}
+    assert stats.unknowns.keys() <= {CATEGORY_TAG}

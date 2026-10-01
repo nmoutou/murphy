@@ -82,4 +82,7 @@ def report_node(
             category: {value: tally.model_dump() for value, tally in tallies.items()}
             for category, tallies in stats.unknowns.items()
         },
+        "collisions": {
+            key: tally.model_dump() for key, tally in stats.collisions.items()
+        },
     }

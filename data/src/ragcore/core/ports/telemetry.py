@@ -1,6 +1,7 @@
 from typing import Any, Protocol, runtime_checkable
 
 from ..models.audit import AuditEvent
+from ..models.collision_tally import CollisionExample
 from ..models.run_stats import RunStats
 from ..models.unknown_tally import UnknownExample
 from .runtime import AsyncRuntime
@@ -51,6 +52,15 @@ class WorkerTelemetry(TelemetryPort, Protocol):
         (``ParseResult``, ``ExtractionResult.unknowns``) ; c'est le worker,
         qui tient cette pile, qui les déclare ici. Sans quoi ``RunStats.unknowns``
         resterait le tuyau vide qu'il est : plombé de bout en bout, et sans producteur.
+        """
+        ...
+
+    def record_collision(self, key: str, example: CollisionExample) -> None:
+        """Déclare une clé de métadonnée qui a reçu plusieurs valeurs dans le document
+        dont ``example`` donne les fichiers (ADR-049). Un appel par document et clé.
+
+        Comme pour un inconnu, le parser la remonte (``ParseResult.collisions``,
+        ``CollisionError``) et le site de parse la déclare ici.
         """
         ...
 

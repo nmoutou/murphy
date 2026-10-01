@@ -38,6 +38,7 @@ from ragcore.adapters.telemetry import (
     RunStatsAggregator,
     WorkerTelemetryFactory,
 )
+from ragcore.core.models.collision_tally import CollisionExample, CollisionTally
 from ragcore.core.models.enums import SourceName
 from ragcore.core.models.processing import EmbeddingModel
 from ragcore.core.models.unknown_tally import UnknownExample, UnknownTally
@@ -227,6 +228,20 @@ class TestTelemetry:
 
             assert stack.snapshot().unknowns == {
                 "balise": {"TRUC_INCONNU": UnknownTally(count=1, example=example)}
+            }
+        finally:
+            runtime.close()
+
+    def test_a_collision_reaches_the_aggregate(self) -> None:
+        """Une collision déclarée suit le même chemin, vers son propre champ."""
+        runtime = AsyncioRuntimeFactory().build(0)
+        try:
+            stack = _telemetry_factory().build(0, runtime)
+            example = CollisionExample(source_files=("version.xml", "struct.xml"))
+            stack.record_collision("url", example)
+
+            assert stack.snapshot().collisions == {
+                "url": CollisionTally(count=1, example=example)
             }
         finally:
             runtime.close()

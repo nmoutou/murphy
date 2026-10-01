@@ -12,6 +12,7 @@ import pytest
 
 from ragcore.adapters.telemetry.aggregator import RunStatsAggregator
 from ragcore.core.models.audit import build_event
+from ragcore.core.models.collision_tally import CollisionExample, CollisionTally
 from ragcore.core.models.enums import SourceName
 from ragcore.core.models.identifiers import RunId
 from ragcore.core.models.run_stats import RunStats
@@ -28,6 +29,7 @@ from ragcore.core.telemetry_events import (
 RUN = RunId("run-1")
 DOC_1 = UnknownExample(identifier="LEGIARTI000000000001", source_file="a.xml")
 DOC_2 = UnknownExample(identifier="LEGIARTI000000000002", source_file="b.xml")
+FACETS = CollisionExample(source_files=("version.xml", "struct.xml"))
 
 
 @pytest.fixture
@@ -95,13 +97,15 @@ def _stored(summary: RunSummary) -> dict[str, object]:
 
 
 def test_the_stored_summary_is_flat() -> None:
-    """Compteurs et inconnus au premier niveau, sans enveloppe ni ventilation."""
+    """Compteurs, inconnus et collisions au premier niveau, sans enveloppe ni
+    ventilation."""
     summary = RunSummary.of(
         RunStats(
             counts={DOCUMENT_PERSISTED: 2},
             unknowns={
                 "relation_type": {"titre_tm": UnknownTally(count=2, example=DOC_1)}
             },
+            collisions={"url": CollisionTally(count=3, example=FACETS)},
         ),
         context_run_id=RUN,
         sources=(SourceName.CASS, SourceName.JADE),
@@ -120,6 +124,9 @@ def test_the_stored_summary_is_flat() -> None:
                 "example": {"identifier": DOC_1.identifier, "source_file": "a.xml"},
             }
         }
+    }
+    assert stored["collisions"] == {
+        "url": {"count": 3, "example": {"source_files": ["version.xml", "struct.xml"]}}
     }
     assert "stats" not in stored
     assert "breakdowns" not in stored
@@ -146,7 +153,8 @@ def test_unknowns_defaults_to_empty_not_none() -> None:
     """Un run qui a tout compris déclare un vide, pas une absence — catégorie par
     catégorie : le schéma du bilan ne varie pas d'un run à l'autre (ADR-048)."""
     summary = RunStatsAggregator(RUN, (), datetime.now(UTC)).finalize(RunStatus.OK)
-    assert summary.unknowns == {"tags": {}, "roots": {}, "links": {}, "collisions": {}}
+    assert summary.unknowns == {"tags": {}, "roots": {}, "links": {}}
+    assert summary.collisions == {}
 
 
 def test_aggregator_declares_what_it_could_not_name(
@@ -161,6 +169,19 @@ def test_aggregator_declares_what_it_could_not_name(
     assert summary.unknowns["relation_type"] == {
         "titre_tm": UnknownTally(count=2, example=DOC_1)
     }
+
+
+def test_aggregator_counts_collisions_apart_from_unknowns(
+    aggregator: RunStatsAggregator,
+) -> None:
+    """Une collision n'est pas un inconnu : elle a son champ, au premier niveau."""
+    aggregator.record_collision("url", FACETS)
+    aggregator.record_collision("url", FACETS)
+
+    summary = aggregator.finalize(RunStatus.OK)
+
+    assert summary.collisions == {"url": CollisionTally(count=2, example=FACETS)}
+    assert "collisions" not in summary.unknowns
 
 
 def test_the_summary_projects_the_reduction_of_n_workers() -> None:
