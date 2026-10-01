@@ -13,10 +13,15 @@ S'il ne s'importe pas, rien ne tourne.
 
 from __future__ import annotations
 
+from pathlib import Path
+
+import yaml
 from kedro.pipeline import Pipeline
 
 from ragcore.orchestration.kedro.pipeline import create_ingestion_pipeline
 from ragcore.orchestration.kedro.pipeline_registry import register_pipelines
+
+_CATALOG = Path(__file__).parents[5] / "conf" / "base" / "catalog.yml"
 
 
 def _pipeline() -> Pipeline:
@@ -104,3 +109,15 @@ def test_le_pipeline_est_un_DAG_coherent() -> None:
     assert ordered.index("ingest") < ordered.index("resolveRelations")
     assert ordered.index("resolveRelations") < ordered.index("report")
     assert ordered.index("nukeAll") < ordered.index("connect")
+
+
+def test_chaque_input_venu_du_hook_est_declare_au_catalogue() -> None:
+    """Un input qu'aucun nœud ne produit vient du hook (``catalog.save``). Sans entrée
+    ``MemoryDataset`` dans ``catalog.yml``, Kedro refuse le run au démarrage
+    (``DatasetNotFoundError``) — aucun test unitaire du nœud ne le voit."""
+    pipeline = _pipeline()
+    produced = {output for node in pipeline.nodes for output in node.outputs}
+    external = {i for n in pipeline.nodes for i in n.inputs} - produced
+    declared = set(yaml.safe_load(_CATALOG.read_text(encoding="utf-8")))
+
+    assert external <= declared, f"Absents du catalogue : {external - declared}"
