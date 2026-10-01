@@ -10,7 +10,7 @@ from typing import Protocol, Self, TypeVar
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from .collision_tally import CollisionExample, CollisionTally
+from .collision_tally import CollisionTally
 from .unknown_tally import UnknownExample, UnknownTally
 
 __all__ = ["RunStats"]
@@ -107,7 +107,7 @@ class RunStats(BaseModel):
         tally = UnknownTally.seen_in(example)
         return self.merge(RunStats(unknowns={category: {value: tally}}))
 
-    def with_collision(self, key: str, example: CollisionExample) -> "RunStats":
+    def with_collision(self, key: str, source_files: tuple[str, ...]) -> "RunStats":
         """Une clé en collision, vue dans un document de plus."""
-        tally = CollisionTally.seen_in(example)
+        tally = CollisionTally.seen_in(source_files)
         return self.merge(RunStats(collisions={key: tally}))

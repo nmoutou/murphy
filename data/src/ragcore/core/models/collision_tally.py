@@ -11,38 +11,27 @@ des deux, jamais « le premier vu », qui dépendrait de l'ordre de fin des work
 
 from pydantic import BaseModel, ConfigDict
 
-__all__ = ["CollisionExample", "CollisionTally"]
-
-
-class CollisionExample(BaseModel):
-    """Les fichiers d'un document dont la clé a reçu plusieurs valeurs."""
-
-    model_config = ConfigDict(frozen=True)
-
-    source_files: tuple[str, ...]
-    """Distincts, dans l'ordre des valeurs : celui des facettes déclaré par la table."""
+__all__ = ["CollisionTally"]
 
 
 class CollisionTally(BaseModel):
-    """Le nombre de documents où une clé entre en collision, et l'un d'eux."""
+    """Le nombre de documents où une clé entre en collision, et les fichiers de l'un
+    d'eux."""
 
     model_config = ConfigDict(frozen=True)
 
     count: int
-    example: CollisionExample
+    example: tuple[str, ...]
+    """Les fichiers du document, distincts, dans l'ordre des valeurs : celui des facettes
+    déclaré par la table."""
 
     @classmethod
-    def seen_in(cls, example: CollisionExample) -> "CollisionTally":
+    def seen_in(cls, source_files: tuple[str, ...]) -> "CollisionTally":
         """Une collision vue dans un document."""
-        return cls(count=1, example=example)
+        return cls(count=1, example=source_files)
 
     def merge(self, other: "CollisionTally") -> "CollisionTally":
         """Somme des comptes, plus petit exemple : associatif et commutatif."""
         return CollisionTally(
-            count=self.count + other.count,
-            example=min(self.example, other.example, key=_sort_key),
+            count=self.count + other.count, example=min(self.example, other.example)
         )
-
-
-def _sort_key(example: CollisionExample) -> tuple[str, ...]:
-    return example.source_files

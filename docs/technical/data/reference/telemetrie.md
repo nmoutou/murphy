@@ -85,7 +85,7 @@ commutative ferait dépendre le bilan de l'ordonnancement). Trois champs :
 - `collisions` : clé de métadonnée qui a reçu au moins deux valeurs distinctes dans un
   document (ADR-049), rangée en liste (`list`) ou refusée → `{count, example}`. Ce n'est
   pas un inconnu : la table sait la nommer. `count` est un nombre de documents ;
-  `example.source_files` donne les fichiers d'où viennent les valeurs d'un de ces
+  `example` est la liste des fichiers d'où viennent les valeurs d'un de ces
   documents, distincts, dans l'ordre déclaré des facettes : deux pour une collision entre
   facettes, un pour une balise répétée dans une facette. Fusion : comme `unknowns`.
 
@@ -132,8 +132,8 @@ document est plat :
     "roots": {},
     "links": { "ZORGLUB": { "count": 1, "example": { … } } } },
   "collisions": {
-    "url": { "count": 98, "example": { "source_files": [
-      "/…/texte/version/LEGITEXT….xml", "/…/texte/struct/LEGITEXT….xml" ] } } } }
+    "url": { "count": 98, "example": [
+      "/…/texte/version/LEGITEXT….xml", "/…/texte/struct/LEGITEXT….xml" ] } } }
 ```
 
 `sources` est toujours une liste, même pour un run mono-source. `error_message` n'est

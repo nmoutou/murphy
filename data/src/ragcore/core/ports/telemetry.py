@@ -1,7 +1,6 @@
 from typing import Any, Protocol, runtime_checkable
 
 from ..models.audit import AuditEvent
-from ..models.collision_tally import CollisionExample
 from ..models.run_stats import RunStats
 from ..models.unknown_tally import UnknownExample
 from .runtime import AsyncRuntime
@@ -55,9 +54,9 @@ class WorkerTelemetry(TelemetryPort, Protocol):
         """
         ...
 
-    def record_collision(self, key: str, example: CollisionExample) -> None:
+    def record_collision(self, key: str, source_files: tuple[str, ...]) -> None:
         """Déclare une clé de métadonnée qui a reçu plusieurs valeurs dans le document
-        dont ``example`` donne les fichiers (ADR-049). Un appel par document et clé.
+        dont ``source_files`` sont les fichiers (ADR-049). Un appel par document et clé.
 
         Comme pour un inconnu, le parser la remonte (``ParseResult.collisions``,
         ``CollisionError``) et le site de parse la déclare ici.

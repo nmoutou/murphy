@@ -38,7 +38,7 @@ from ragcore.adapters.telemetry import (
     RunStatsAggregator,
     WorkerTelemetryFactory,
 )
-from ragcore.core.models.collision_tally import CollisionExample, CollisionTally
+from ragcore.core.models.collision_tally import CollisionTally
 from ragcore.core.models.enums import SourceName
 from ragcore.core.models.processing import EmbeddingModel
 from ragcore.core.models.unknown_tally import UnknownExample, UnknownTally
@@ -237,11 +237,11 @@ class TestTelemetry:
         runtime = AsyncioRuntimeFactory().build(0)
         try:
             stack = _telemetry_factory().build(0, runtime)
-            example = CollisionExample(source_files=("version.xml", "struct.xml"))
-            stack.record_collision("url", example)
+            source_files = ("version.xml", "struct.xml")
+            stack.record_collision("url", source_files)
 
             assert stack.snapshot().collisions == {
-                "url": CollisionTally(count=1, example=example)
+                "url": CollisionTally(count=1, example=source_files)
             }
         finally:
             runtime.close()

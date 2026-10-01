@@ -14,7 +14,7 @@ import pytest
 
 from ragcore.application.run_context import PipelineContext
 from ragcore.core.exceptions import ParseError
-from ragcore.core.models.collision_tally import CollisionExample, CollisionTally
+from ragcore.core.models.collision_tally import CollisionTally
 from ragcore.core.models.document import RawDocument
 from ragcore.core.models.enums import SourceName
 from ragcore.core.models.unknown_tally import UnknownExample, UnknownTally
@@ -192,7 +192,6 @@ def test_parse_ou_refuse_chaque_collision_est_comptee_au_bilan() -> None:
     _parse_collisions(telemetry)
 
     stats = telemetry.snapshot()
-    example = CollisionExample(source_files=(_SOURCE_FILE,))
-    tally = CollisionTally(count=1, example=example)
+    tally = CollisionTally(count=1, example=(_SOURCE_FILE,))
     assert stats.collisions == {"url": tally, "num": tally}
     assert stats.unknowns.keys() <= {CATEGORY_TAG}

@@ -5,7 +5,6 @@ import logging
 from typing import Any
 
 from ragcore.core.models.audit import AuditEvent
-from ragcore.core.models.collision_tally import CollisionExample
 from ragcore.core.models.run_stats import RunStats
 from ragcore.core.models.unknown_tally import UnknownExample
 
@@ -58,9 +57,9 @@ class WorkerTelemetryStack:
         """
         self._backends.aggregate.record_unknown(category, value, example)
 
-    def record_collision(self, key: str, example: CollisionExample) -> None:
+    def record_collision(self, key: str, source_files: tuple[str, ...]) -> None:
         """Une clé en collision va droit à l'agrégat (``RunStats.collisions``)."""
-        self._backends.aggregate.record_collision(key, example)
+        self._backends.aggregate.record_collision(key, source_files)
 
     def snapshot(self) -> RunStats:
         """L'agrégat local de ce worker, à fusionner avec celui des autres."""

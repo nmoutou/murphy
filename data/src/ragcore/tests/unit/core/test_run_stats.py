@@ -6,14 +6,14 @@ l'ordonnancement du pool — un non-déterminisme qu'aucun test ne rattraperait,
 qu'il ne se manifeste qu'en production, sous charge, une fois sur dix.
 """
 
-from ragcore.core.models.collision_tally import CollisionExample, CollisionTally
+from ragcore.core.models.collision_tally import CollisionTally
 from ragcore.core.models.run_stats import RunStats
 from ragcore.core.models.unknown_tally import UnknownExample, UnknownTally
 
 DOC_1 = UnknownExample(identifier="LEGIARTI000000000001", source_file="a.xml")
 DOC_2 = UnknownExample(identifier="LEGIARTI000000000002", source_file="b.xml")
-TWO_FILES = CollisionExample(source_files=("a.xml", "b.xml"))
-ONE_FILE = CollisionExample(source_files=("b.xml",))
+TWO_FILES = ("a.xml", "b.xml")
+ONE_FILE = ("b.xml",)
 
 
 def _tally(count: int, example: UnknownExample) -> UnknownTally:

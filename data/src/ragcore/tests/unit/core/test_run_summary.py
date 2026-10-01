@@ -12,7 +12,7 @@ import pytest
 
 from ragcore.adapters.telemetry.aggregator import RunStatsAggregator
 from ragcore.core.models.audit import build_event
-from ragcore.core.models.collision_tally import CollisionExample, CollisionTally
+from ragcore.core.models.collision_tally import CollisionTally
 from ragcore.core.models.enums import SourceName
 from ragcore.core.models.identifiers import RunId
 from ragcore.core.models.run_stats import RunStats
@@ -29,7 +29,7 @@ from ragcore.core.telemetry_events import (
 RUN = RunId("run-1")
 DOC_1 = UnknownExample(identifier="LEGIARTI000000000001", source_file="a.xml")
 DOC_2 = UnknownExample(identifier="LEGIARTI000000000002", source_file="b.xml")
-FACETS = CollisionExample(source_files=("version.xml", "struct.xml"))
+FACETS = ("version.xml", "struct.xml")
 
 
 @pytest.fixture
@@ -126,7 +126,7 @@ def test_the_stored_summary_is_flat() -> None:
         }
     }
     assert stored["collisions"] == {
-        "url": {"count": 3, "example": {"source_files": ["version.xml", "struct.xml"]}}
+        "url": {"count": 3, "example": ["version.xml", "struct.xml"]}
     }
     assert "stats" not in stored
     assert "breakdowns" not in stored

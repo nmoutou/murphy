@@ -7,7 +7,6 @@ Chaque worker a SA pile ; rien n'est partagé, donc rien n'est à protéger.
 from typing import Any
 
 from ragcore.core.models.audit import AuditEvent
-from ragcore.core.models.collision_tally import CollisionExample
 from ragcore.core.models.run_stats import RunStats
 from ragcore.core.models.unknown_tally import UnknownExample
 from ragcore.core.ports.runtime import AsyncRuntime
@@ -33,8 +32,8 @@ class RecordingTelemetry:
     ) -> None:
         self._declared = self._declared.with_unknown(category, value, example)
 
-    def record_collision(self, key: str, example: CollisionExample) -> None:
-        self._declared = self._declared.with_collision(key, example)
+    def record_collision(self, key: str, source_files: tuple[str, ...]) -> None:
+        self._declared = self._declared.with_collision(key, source_files)
 
     def snapshot(self) -> RunStats:
         stats = self._declared

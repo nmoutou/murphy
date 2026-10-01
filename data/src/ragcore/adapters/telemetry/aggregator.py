@@ -13,7 +13,6 @@ from datetime import UTC, datetime
 from typing import Any
 
 from ragcore.core.models.audit import AuditEvent
-from ragcore.core.models.collision_tally import CollisionExample
 from ragcore.core.models.enums import SourceName
 from ragcore.core.models.identifiers import RunId
 from ragcore.core.models.run_stats import RunStats
@@ -93,9 +92,9 @@ class RunStatsAggregator:
         """Un vocabulaire non reconnu se DÉCLARE — il ne se jette pas en silence."""
         self._stats = self._stats.with_unknown(category, value, example)
 
-    def record_collision(self, key: str, example: CollisionExample) -> None:
+    def record_collision(self, key: str, source_files: tuple[str, ...]) -> None:
         """Une clé en collision se compte, qu'elle soit rangée en liste ou refusée."""
-        self._stats = self._stats.with_collision(key, example)
+        self._stats = self._stats.with_collision(key, source_files)
 
     def snapshot(self) -> RunStats:
         """L'agrégat local, à fusionner avec celui des autres workers."""

@@ -1,6 +1,6 @@
 from .audit import AuditEvent
 from .chunk import Chunk, EmbeddedChunk
-from .collision_tally import CollisionExample, CollisionTally
+from .collision_tally import CollisionTally
 from .document import ParsedDocument, RawDocument
 from .enums import DocumentType, SourceName, TargetStore
 from .identifiers import (
@@ -19,7 +19,6 @@ from .verbs import ValidatedVerb
 __all__ = [
     "AuditEvent",
     "Chunk",
-    "CollisionExample",
     "CollisionTally",
     "DocumentId",
     "DocumentType",

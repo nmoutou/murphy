@@ -49,9 +49,9 @@ qui reçoit deux valeurs distinctes fait refuser le document avec la raison `col
 (`document.invalidated`). Il n'y a pas de différence entre dev et prod.
 
 **Toute collision est visible.** Le bilan la compte dans son champ de premier niveau
-`collisions` : clé → `{count, example: {source_files}}`. `count` est un nombre de
-documents ; `source_files` donne les fichiers distincts d'où viennent les valeurs d'un de
-ces documents, dans l'ordre déclaré des facettes.
+`collisions` : clé → `{count, example}`. `count` est un nombre de documents ; `example`
+est la liste des fichiers distincts d'où viennent les valeurs d'un de ces documents, dans
+l'ordre déclaré des facettes.
 
 **Amendement — la collection est retirée.** Une collection `MURPHY_META.collisions`
 gardait le détail de chaque collision (un enregistrement par document et clé, toutes les

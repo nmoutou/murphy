@@ -19,7 +19,6 @@ from ragcore.application.run_context import PipelineContext
 from ragcore.core.exceptions import CollisionError, ParseError, ValidationError
 from ragcore.core.models.audit import build_event
 from ragcore.core.models.collision import Collision
-from ragcore.core.models.collision_tally import CollisionExample
 from ragcore.core.models.document import ParsedDocument, RawDocument
 from ragcore.core.models.unknown_tally import UnknownExample
 from ragcore.core.ports.parser import BaseParser, ParseResult
@@ -194,5 +193,4 @@ class _ParseSite:
     def declare_collisions(self, collisions: Sequence[Collision]) -> None:
         """Une collision par (document, clé) : un compte au bilan, et ses fichiers."""
         for collision in collisions:
-            example = CollisionExample(source_files=collision.source_files())
-            self.telemetry.record_collision(collision.key, example)
+            self.telemetry.record_collision(collision.key, collision.source_files())
