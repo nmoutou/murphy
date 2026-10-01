@@ -18,8 +18,9 @@ ignoré.
 Le modèle de rejeu est **at-least-once** : la source XML reste la vérité d'autorité, et
 un document dont l'ingestion a échoué est réécrit au run suivant.
 
-Le manifest (`LEGIFRANCE.manifest`) qui classait les documents en INSERT/UPDATE a été
-retiré : le classement ne changeait aucune écriture (ADR-044).
+Le manifest (`manifest`, dans la base de données alors nommée `LEGIFRANCE`) qui classait
+les documents en INSERT/UPDATE a été retiré : le classement ne changeait aucune écriture
+(ADR-044).
 
 ## La saga (`application/saga.py`, `application/ingest_document.py`)
 

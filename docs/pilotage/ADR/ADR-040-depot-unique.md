@@ -81,8 +81,9 @@ des deux images).
   S'il grossit, la piste est de l'écrire sous forme de schéma (un JSON Schema tiré des
   modèles pydantic, dont les types TypeScript sont générés).
 - **Changer le contrat, une dépendance ou une config d'app demande de reconstruire les
-  images de dev** (`npm run serve:build`), puisque seules les sources sont montées. En
-  contrepartie, plus aucun `node_modules` appartenant à root n'apparaît sur l'hôte.
+  images de dev** (`npm run build` puis `npm run up`), puisque seules les sources sont
+  montées. En contrepartie, plus aucun `node_modules` appartenant à root n'apparaît sur
+  l'hôte.
 - Le lockfile unique a été reconstruit en gardant, pour chaque dépendance directe, la
   version exacte que verrouillaient les anciens lockfiles.
 

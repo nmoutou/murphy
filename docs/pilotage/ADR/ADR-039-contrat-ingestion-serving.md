@@ -20,7 +20,7 @@ septembre 2026 sur la collection publiée `9424808d…` (3 303 points, 769 docum
 | | L'ingestion écrit | Le backend lit |
 |---|---|---|
 | Payload Qdrant | `chunk_id`, `identifier` + métadonnées à plat (`type_document`, `num`…) | `chunkId`, `title`, `type` |
-| Mongo `LEGIFRANCE` | `documents` : un document **entier** par `identifier` | `chunks`, par `chunkId` — la collection n'existe pas |
+| Mongo `MURPHY_DATA` | `documents` : un document **entier** par `identifier` | `chunks`, par `chunkId` — la collection n'existe pas |
 | Texte d'un passage | jamais persisté : `text`, `char_start`, `char_end` ne vivent qu'en mémoire | attendu dans `content` |
 
 Conséquence : le backend écarte tous les résultats Qdrant. Aucune source n'atteint le

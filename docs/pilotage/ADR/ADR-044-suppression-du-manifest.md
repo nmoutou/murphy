@@ -4,7 +4,8 @@
 
 ## Contexte
 
-L'ingestion tenait un registre append-only, la collection Mongo `LEGIFRANCE.manifest`.
+L'ingestion tenait un registre append-only, la collection Mongo `manifest` de la base
+de données (alors `LEGIFRANCE`, aujourd'hui `MURPHY_DATA`).
 Chaque document y recevait une entrée par run : `insert` s'il était inconnu, `update`
 s'il était connu, ou `excluded` s'il était rejeté au parse.
 
@@ -45,7 +46,7 @@ d'idempotence : il parse, déclare les signaux et rejette.
 - L'idempotence repose sur les écritures elles-mêmes : rejouer un run réécrit chaque
   document en place.
 - Le compteur `document.persisted` et l'équation de complétude du bilan ne changent pas.
-- La collection `LEGIFRANCE.manifest` des runs précédents n'est plus lue ni écrite. Un
+- La collection `manifest` des runs précédents n'est plus lue ni écrite. Un
   run `nuke_all` ne la supprime pas, puisqu'il ne connaît plus que `documents` : il faut
   la supprimer à la main (`db.manifest.drop()`).
 

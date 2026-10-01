@@ -73,8 +73,8 @@ d'arrêt du `ChatBox` en bénéficie aussi.
 ## Conséquences
 
 - **Contrat** : un deuxième sous-chemin, `@murphy/contract/errors` (`exports` et
-  `typesVersions`). Les images de dev sont à reconstruire (`npm run serve:build`).
-  `RagStage` du backend en dérive.
+  `typesVersions`). Les images de dev sont à reconstruire (`npm run build` puis
+  `npm run up`). `RagStage` du backend en dérive.
 - **Backend** : `chatService` (signal, sérialisation de l'erreur), `chatWebSocket` et
   `routes/chat.ts` (erreurs de requête et de quota avec l'étape `request`, fermeture
   reliée au signal), `infra/llm.ts` (signal transmis au `fetch`). La route

@@ -53,7 +53,7 @@ supprimés.
 - **Une constante dans le code.** Deux littéraux, en Python et en TypeScript, à garder
   synchrones à la main. Le fichier `.env.dev` est déjà la source commune des deux côtés.
 - **Garder le tracking, identifié par le `run_id`.** Sans collections à comparer, il
-  répète le bilan de run déjà persisté (`meta_run_summaries`).
+  répète le bilan de run déjà persisté (`MURPHY_META.run_summaries`).
 
 ## Conséquences
 
