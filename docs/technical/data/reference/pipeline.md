@@ -44,7 +44,8 @@ Le hook est le **point d'assemblage** du run. Dans l'ordre :
    `open_document_stores`, `open_meta_stores`) : `ensure_data_indexes` (LEGIFRANCE) et
    `ensure_meta_indexes` (MURPHY_META).
 6. **La session du run** (`run_session.RunSession`) : le `PipelineContext` (run_id
-   uuid4-hex, source — `None` si multi-source, started_at), la pile de
+   uuid4-hex, `sources` résolues par le plan, started_at ; sa propriété `source` vaut la
+   source unique, ou `None` si multi-source), la pile de
    télémétrie (registre construit depuis `EVENT_CATALOG`, backends console,
    audit Mongo, agrégateur `RunStats`).
 7. **Briques de traitement** (`assembly.build_processing_stack`) : `CompositeConnector`

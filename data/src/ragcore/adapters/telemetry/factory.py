@@ -65,12 +65,12 @@ class WorkerTelemetryFactory:
     def __init__(
         self,
         run_id: RunId,
-        source: SourceName | None,
+        sources: tuple[SourceName, ...],
         started_at: datetime,
         audit_repo_factory: object | None = None,
     ) -> None:
         self._run_id = run_id
-        self._source = source
+        self._sources = sources
         self._started_at = started_at
         self._audit_repo_factory = audit_repo_factory
         self._registry = TelemetryRegistry.from_catalog(EVENT_CATALOG)
@@ -78,7 +78,7 @@ class WorkerTelemetryFactory:
     def build(self, worker_id: int, runtime: AsyncRuntime) -> RegistryAwareTelemetry:
         aggregator = RunStatsAggregator(
             run_id=self._run_id,
-            source=self._source,
+            sources=self._sources,
             started_at=self._started_at,
         )
 

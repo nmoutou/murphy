@@ -114,7 +114,7 @@ def _telemetry(
             aggregate=aggregator
             or RunStatsAggregator(
                 run_id=RunId("r-1"),
-                source=SourceName.LEGI,
+                sources=(SourceName.LEGI,),
                 started_at=datetime.now(UTC),
             ),
         ),
@@ -295,7 +295,7 @@ class TestTheStatusRefusesToTrustAPatchyAudit:
         return RunSummary.of(
             stats,
             context_run_id=RunId("r-1"),
-            source=SourceName.LEGI,
+            sources=(SourceName.LEGI,),
             started_at=datetime.now(UTC),
             status=RunStatus.OK,  # l'appelant CROIT que tout va bien
         )

@@ -61,17 +61,6 @@ class RunPlan:
     """L'effacement de toutes les bases en tête de run : toujours ``False`` hors
     ``dev``."""
 
-    @property
-    def context_source(self) -> SourceName | None:
-        """La source du contexte de run : la sienne si le run est mono-source.
-
-        ``None`` signifie « ce run n'est pas mono-source ». Le modèle le prévoyait déjà
-        (``SourceName | None``) : la porte était ouverte, on ne force rien. Un run
-        mono-source garde SA source dans le contexte — les événements qu'il émet restent
-        donc attribuables exactement comme avant.
-        """
-        return self.sources[0] if len(self.sources) == 1 else None
-
 
 def plan_run(
     params: dict[str, Any], settings: InfraSettings, chunking: ChunkingConfig

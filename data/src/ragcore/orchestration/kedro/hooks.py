@@ -105,7 +105,7 @@ class TelemetryHooks:
         ensure_indexes(clients, settings, self._runtime)
         stores = open_document_stores(clients, settings, plan, embedder.dimension)
         meta = open_meta_stores(clients, settings)
-        session = self._open_session(plan.context_source, meta, embedder)
+        session = self._open_session(plan.sources, meta, embedder)
         stack = build_processing_stack(plan, Path(settings.xml_source_path), embedder)
         return {
             "connector": stack.connector,
@@ -140,12 +140,12 @@ class TelemetryHooks:
 
     def _open_session(
         self,
-        source: SourceName | None,
+        sources: tuple[SourceName, ...],
         meta: MetaStores,
         embedder: BaseEmbedder,
     ) -> RunSession:
         """Ouvre le contexte du run et sa télémétrie."""
-        context = PipelineContext.create(source=source)
+        context = PipelineContext.create(sources=sources)
         telemetry, aggregator = start_telemetry(context, meta.audit, self._runtime)
         self._session = RunSession(
             context=context,

@@ -4,8 +4,9 @@ Deux modèles, deux natures, et la frontière n'est pas cosmétique :
 
 - ``RunStats`` est *calculé*. Il n'a pas d'identité, il fusionne (monoïde), et il
   en existe N par run — un par worker.
-- ``RunSummary`` est *déclaré*. Il porte l'identité du run (run_id, dates,
-  statut) et il en existe exactement UN. Il ne fusionne pas.
+- ``RunSummary`` est *déclaré*. Il porte l'identité du run (run_id, sources, dates,
+  statut) et il en existe exactement UN. Il ne fusionne pas. Il recopie à plat les
+  compteurs et les inconnus de l'agrégat : c'est le document de ``meta_run_summaries``.
 
 Confondre les deux obligerait à répondre à « quel ``run_id`` gagne quand on fusionne
 deux sommaires ? » — question sans réponse commutative, donc source de
@@ -16,7 +17,7 @@ réduction, une seule fois, par ``RunSummary.of()``.
 from datetime import UTC, datetime
 from enum import StrEnum
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict
 
 from ragcore.core.telemetry_events import (
     AUDIT_WRITE_FAILED,
@@ -54,20 +55,26 @@ class RunSummary(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     run_id: RunId
-    source: SourceName | None
+    sources: tuple[SourceName, ...]
+    """Les sources ingérées : toujours une liste, même pour une seule."""
 
     status: RunStatus
     started_at: datetime
     ended_at: datetime
 
-    stats: RunStats = Field(default_factory=RunStats.empty)
-    """Ce que le run a compté, et ce qu'il n'a pas su nommer (``stats.unknowns``).
+    counts: dict[str, int]
+    """event_type -> nombre de choses comptées. C'est d'eux que le statut se dérive."""
+
+    unknowns: dict[str, list[str]]
+    """Ce que le run n'a pas su nommer, par catégorie.
 
     Un run qui ne comprend pas tout reste un run valide, mais il doit le dire :
-    rien n'est jeté en silence. ``unknowns`` vide = le vocabulaire a tout couvert.
+    rien n'est jeté en silence. Vide = le vocabulaire a tout couvert.
     """
 
     error_message: str | None = None
+    """Seulement sur un run ``failed`` : un ``degraded`` n'a pas d'exception, il se lit
+    dans les compteurs."""
 
     @classmethod
     def of(  # noqa: PLR0913 — ce SONT les champs d'identité ; les grouper les cacherait
@@ -75,7 +82,7 @@ class RunSummary(BaseModel):
         stats: RunStats,
         *,
         context_run_id: RunId,
-        source: SourceName | None,
+        sources: tuple[SourceName, ...],
         started_at: datetime,
         status: RunStatus,
         error_message: str | None = None,
@@ -91,11 +98,12 @@ class RunSummary(BaseModel):
             status = _status_from(stats)
         return cls(
             run_id=context_run_id,
-            source=source,
+            sources=sources,
             status=status,
             started_at=started_at,
             ended_at=ended_at or datetime.now(UTC),
-            stats=stats,
+            counts=stats.counts,
+            unknowns=stats.unknowns,
             error_message=error_message,
         )
 

@@ -79,8 +79,8 @@ les pousser les compterait deux fois).
 
 ## Le statut d'un run
 
-`RunSummary` = l'identité du run (run_id, source, dates) + l'agrégat + le
-`status`. Le statut annoncé « ok » par le hook est **re-dérivé des compteurs**
+`RunSummary` = l'identité du run (run_id, `sources`, dates) + les `counts` et les
+`unknowns` de l'agrégat, recopiés à plat + le `status`. Le statut annoncé « ok » par le hook est **re-dérivé des compteurs**
 (`_status_from`) — trois propriétés, vérifiées dans cet ordre :
 
 1. **Croyable ?** `audit.write.failed == 0`. Vérifiée en premier : si l'audit a perdu des
@@ -105,4 +105,15 @@ saga et a laissé passer « ok » un run qui avait perdu 98 documents à l'embed
 toute saga. L'équation attrape toutes les causes, y compris celles qu'on n'a pas encore
 rencontrées.
 
-Persistance du bilan : upsert Mongo (`meta_run_summaries`, unique par run_id).
+Persistance du bilan : upsert Mongo (`meta_run_summaries`, unique par run_id). Le
+document est plat :
+
+```json
+{ "run_id": "…", "sources": ["cass", "jade", "legi"], "status": "ok",
+  "started_at": "…", "ended_at": "…", "counts": { "document.fetched": 1121, … },
+  "unknowns": {} }
+```
+
+`sources` est toujours une liste, même pour un run mono-source. `error_message` n'est
+écrit que sur un run `failed` : un `degraded` n'a pas d'exception, il se lit dans les
+compteurs.

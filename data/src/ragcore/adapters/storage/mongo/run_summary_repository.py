@@ -3,6 +3,8 @@
 ``upsert`` sur ``run_id`` : un run n'a qu'un bilan. Rejouer un run doit remplacer
 son bilan, pas en empiler un second — sinon « combien de runs ont tourné ? »
 n'a plus de réponse.
+
+Un champ vide (``error_message`` d'un run qui n'a pas levé) n'est pas écrit.
 """
 
 from ragcore.adapters.storage.mongo.client import MongoClient
@@ -26,7 +28,7 @@ class MongoRunSummaryRepository:
     async def upsert(self, summary: RunSummary) -> None:
         await self._collection.replace_one(
             {"run_id": summary.run_id},
-            summary.model_dump(mode="json"),
+            summary.model_dump(mode="json", exclude_none=True),
             upsert=True,
         )
 

@@ -71,7 +71,7 @@ données.
 | Collection | Contenu | Index |
 |---|---|---|
 | `meta_audit_events` | Les événements d'audit (`AuditEvent` : event_type, run_id, source, document_id, payload, success, error_message, occurred_at). Rétention infinie. | (occurred_at), (document_id, occurred_at), (run_id), (event_type) |
-| `meta_run_summaries` | Un `RunSummary` par run : identité (run_id, source, dates), `status` (`ok`/`degraded`/`failed`), `stats` (counts, unknowns), `error_message`. | unique (run_id), (started_at) |
+| `meta_run_summaries` | Un `RunSummary` par run, à plat : run_id, `sources` (liste), dates, `status` (`ok`/`degraded`/`failed`), `counts`, `unknowns`, et `error_message` sur un run `failed` seulement. | unique (run_id), (started_at) |
 | `meta_pending_relations` | Les `PendingRelation` : arêtes différées (source_id, target_id, relation_type, metadata, first_seen_run, last_seen_run). Ni TTL ni retry_count : écrite une fois, promue une fois — ou jamais. | **unique** (source_id, target_id, relation_type) — c'est lui qui fait de l'upsert une union ; (target_id) pour le rejeu ciblé |
 
 ## Qdrant

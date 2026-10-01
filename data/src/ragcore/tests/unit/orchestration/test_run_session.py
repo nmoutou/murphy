@@ -67,7 +67,7 @@ def _session(
     context = PipelineContext.create()
     aggregator = RunStatsAggregator(
         run_id=context.run_id,
-        source=None,
+        sources=context.sources,
         started_at=datetime.now(UTC),
     )
     for event_type in (DOCUMENT_FETCHED, DOCUMENT_PERSISTED):
@@ -111,7 +111,7 @@ def test_une_ecriture_d_audit_perdue_au_drain_degrade_le_bilan(
     finally:
         runtime.close()
 
-    assert summary.stats.counts[AUDIT_WRITE_FAILED] == 2
+    assert summary.counts[AUDIT_WRITE_FAILED] == 2
     assert summary.status is RunStatus.DEGRADED
 
 

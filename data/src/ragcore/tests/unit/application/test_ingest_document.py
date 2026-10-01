@@ -65,7 +65,7 @@ def _use_case(stores: dict) -> IngestDocumentUseCase:
 
 @pytest.fixture
 def context() -> PipelineContext:
-    return PipelineContext.create(source=SourceName.LEGI)
+    return PipelineContext.create(sources=(SourceName.LEGI,))
 
 
 async def test_phase_one_writes_the_node_and_never_an_edge(stores, context) -> None:  # noqa: ANN001

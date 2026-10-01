@@ -61,7 +61,7 @@ RUN_ID = "abc123"
 def _telemetry_factory() -> WorkerTelemetryFactory:
     return WorkerTelemetryFactory(
         run_id=RUN_ID,
-        source=SourceName.LEGI,
+        sources=(SourceName.LEGI,),
         started_at=datetime.now(UTC),
     )
 
@@ -170,7 +170,7 @@ class TestTelemetry:
     def test_the_aggregator_is_a_worker_telemetry(self) -> None:
         aggregator = RunStatsAggregator(
             run_id=RUN_ID,
-            source=SourceName.LEGI,
+            sources=(SourceName.LEGI,),
             started_at=datetime.now(UTC),
         )
         assert isinstance(aggregator, WorkerTelemetry)

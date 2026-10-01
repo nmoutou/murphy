@@ -76,7 +76,7 @@ def telemetry() -> RecordingTelemetry:
 
 @pytest.fixture
 def context() -> PipelineContext:
-    return PipelineContext.create(source=SourceName.LEGI)
+    return PipelineContext.create(sources=(SourceName.LEGI,))
 
 
 @pytest.fixture
@@ -178,8 +178,8 @@ async def test_a_pending_seen_again_keeps_its_birth_date(
     et « depuis quand ce lien manque-t-il ? » n'aurait pas de réponse.
     """
     await graph.merge_document_node(_doc(A))
-    first = PipelineContext.create(source=SourceName.LEGI)
-    second = PipelineContext.create(source=SourceName.LEGI)
+    first = PipelineContext.create(sources=(SourceName.LEGI,))
+    second = PipelineContext.create(sources=(SourceName.LEGI,))
 
     await service.execute([_rel(A, MISSING)], set(), first)
     await service.execute([_rel(A, MISSING)], set(), second)

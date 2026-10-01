@@ -44,7 +44,7 @@ def start_telemetry(
     """
     aggregator = RunStatsAggregator(
         run_id=context.run_id,
-        source=context.source,
+        sources=context.sources,
         started_at=context.started_at,
     )
     telemetry = assemble_telemetry(

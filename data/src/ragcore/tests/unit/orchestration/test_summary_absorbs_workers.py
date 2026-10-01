@@ -40,7 +40,7 @@ from ragcore.orchestration.kedro.nodes.report import report_node
 def _aggregator() -> RunStatsAggregator:
     return RunStatsAggregator(
         run_id=RunId("r1"),
-        source=None,
+        sources=(),
         started_at=datetime.now(UTC),
     )
 
@@ -128,7 +128,7 @@ def test_absorb_accumulates_the_workers_counters() -> None:
     aggregator.absorb(RunStats(counts={DOCUMENT_PERSISTED: 521}))
     summary = aggregator.finalize(status=RunStatus.OK)
 
-    assert summary.stats.counts[DOCUMENT_PERSISTED] == 1121
+    assert summary.counts[DOCUMENT_PERSISTED] == 1121
 
 
 def test_absorb_merges_with_what_the_hook_already_saw() -> None:
@@ -146,8 +146,8 @@ def test_absorb_merges_with_what_the_hook_already_saw() -> None:
     aggregator.absorb(RunStats(counts={DOCUMENT_PERSISTED: 1121}))
     summary = aggregator.finalize(status=RunStatus.OK)
 
-    assert summary.stats.counts[DOCUMENT_FETCHED] == 1121
-    assert summary.stats.counts[DOCUMENT_PERSISTED] == 1121
+    assert summary.counts[DOCUMENT_FETCHED] == 1121
+    assert summary.counts[DOCUMENT_PERSISTED] == 1121
 
 
 def test_failed_is_never_requalified_by_absorption() -> None:
@@ -172,7 +172,7 @@ def test_absorbing_empty_stats_changes_nothing() -> None:
     aggregator.absorb(RunStats.empty())
     summary = aggregator.finalize(status=RunStatus.OK)
 
-    assert summary.stats.counts[DOCUMENT_PERSISTED] == 5
+    assert summary.counts[DOCUMENT_PERSISTED] == 5
     assert summary.status is RunStatus.OK
 
 
@@ -316,7 +316,7 @@ def test_report_node_pushes_the_worker_stats_into_the_run_aggregator() -> None:
     )
     summary = aggregator.finalize(status=RunStatus.OK)
 
-    assert summary.stats.counts[DOCUMENT_PERSISTED] == 1121
+    assert summary.counts[DOCUMENT_PERSISTED] == 1121
     # 3 documents perdus, remontés par les workers ⇒ le run n'a pas le droit de dire `ok`.
     assert summary.status is RunStatus.DEGRADED
 

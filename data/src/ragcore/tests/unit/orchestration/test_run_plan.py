@@ -87,7 +87,7 @@ def _without(path: str) -> dict[str, Any]:
 def test_un_run_nu_ecrit_la_collection_configuree() -> None:
     plan = plan_run(PARAMS, _settings(), CHUNKING)
 
-    assert plan.context_source is None, "un run multi-source n'a pas de source"
+    assert len(plan.sources) > 1, "un run nu ingère toutes les sources"
     assert plan.collection == "chunks"
     assert plan.chunking == CHUNKING
 
@@ -96,7 +96,6 @@ def test_un_run_restreint_garde_sa_source() -> None:
     plan = plan_run(_with("source", "cass"), _settings(), CHUNKING)
 
     assert plan.sources == (SourceName.CASS,)
-    assert plan.context_source is SourceName.CASS
 
 
 def test_une_source_inconnue_echoue_avant_d_ouvrir_quoi_que_ce_soit() -> None:

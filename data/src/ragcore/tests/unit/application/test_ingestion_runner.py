@@ -55,7 +55,7 @@ def _workload(parsed, runtime, telemetry) -> WorkloadResult:  # noqa: ANN001
 
 @pytest.fixture
 def context() -> PipelineContext:
-    return PipelineContext.create(source=SourceName.LEGI)
+    return PipelineContext.create(sources=(SourceName.LEGI,))
 
 
 def _runner(workload=_workload, worker_count: int = 4) -> IngestionRunner:  # noqa: ANN001

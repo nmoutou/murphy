@@ -28,7 +28,7 @@ RUN = RunId("run-1")
 
 @pytest.fixture
 def aggregator() -> RunStatsAggregator:
-    return RunStatsAggregator(RUN, SourceName.LEGI, datetime.now(UTC))
+    return RunStatsAggregator(RUN, (SourceName.LEGI,), datetime.now(UTC))
 
 
 def test_aggregator_produces_a_valid_summary(aggregator: RunStatsAggregator) -> None:
@@ -53,8 +53,8 @@ def test_counts_reach_the_stats(aggregator: RunStatsAggregator) -> None:
 
     summary = aggregator.finalize(RunStatus.OK)
 
-    assert summary.stats.counts[DOCUMENT_PERSISTED] == 1
-    assert summary.stats.counts[DOCUMENT_INVALIDATED] == 1
+    assert summary.counts[DOCUMENT_PERSISTED] == 1
+    assert summary.counts[DOCUMENT_INVALIDATED] == 1
 
 
 def test_skipped_files_are_counted_outside_the_equation(
@@ -73,7 +73,7 @@ def test_skipped_files_are_counted_outside_the_equation(
 
     summary = aggregator.finalize(RunStatus.OK)
 
-    assert summary.stats.counts[DOCUMENT_SKIPPED] == 4
+    assert summary.counts[DOCUMENT_SKIPPED] == 4
     assert summary.status is RunStatus.OK
 
 
@@ -85,32 +85,57 @@ def test_status_accepts_the_literals_the_hooks_pass(
     assert aggregator.finalize("failed", "boom").status is RunStatus.FAILED
 
 
-def test_summary_is_json_serializable() -> None:
-    """RunSession écrit summary.model_dump(mode="json") dans un fichier."""
+def _stored(summary: RunSummary) -> dict[str, object]:
+    """Le document tel que ``MongoRunSummaryRepository.upsert`` l'écrit."""
+    dumped: dict[str, object] = json.loads(
+        json.dumps(summary.model_dump(mode="json", exclude_none=True))
+    )
+    return dumped
+
+
+def test_the_stored_summary_is_flat() -> None:
+    """Compteurs et inconnus au premier niveau, sans enveloppe ni ventilation."""
     summary = RunSummary.of(
-        RunStats(unknowns={"relation_type": ["titre_tm", "lien_art"]}),
+        RunStats(
+            counts={DOCUMENT_PERSISTED: 2},
+            unknowns={"relation_type": ["titre_tm", "lien_art"]},
+        ),
         context_run_id=RUN,
-        source=SourceName.CASS,
+        sources=(SourceName.CASS, SourceName.JADE),
         started_at=datetime.now(UTC),
         status=RunStatus.OK,
     )
 
-    dumped = json.loads(json.dumps(summary.model_dump(mode="json")))
+    stored = _stored(summary)
 
-    assert dumped["source"] == "cass"
-    assert dumped["stats"]["unknowns"]["relation_type"] == ["titre_tm", "lien_art"]
+    assert stored["sources"] == ["cass", "jade"]
+    assert stored["counts"] == {DOCUMENT_PERSISTED: 2}
+    assert stored["unknowns"] == {"relation_type": ["titre_tm", "lien_art"]}
+    assert "stats" not in stored
+    assert "breakdowns" not in stored
 
 
-def test_source_is_nullable() -> None:
-    """L'agrégateur est typé SourceName | None : un run sans source reste légal."""
-    summary = RunStatsAggregator(RUN, None, datetime.now(UTC)).finalize(RunStatus.OK)
-    assert summary.source is None
+def test_an_empty_error_is_not_stored(aggregator: RunStatsAggregator) -> None:
+    """``status`` dit déjà que le run n'a pas levé : un ``error_message: null`` ne dirait
+    rien de plus."""
+    assert "error_message" not in _stored(aggregator.finalize(RunStatus.OK))
+    assert _stored(aggregator.finalize(RunStatus.FAILED, "boom"))["error_message"] == (
+        "boom"
+    )
+
+
+def test_sources_list_every_ingested_source() -> None:
+    sources = (SourceName.CASS, SourceName.JADE, SourceName.LEGI)
+
+    summary = RunStatsAggregator(RUN, sources, datetime.now(UTC)).finalize(RunStatus.OK)
+
+    assert summary.sources == sources
 
 
 def test_unknowns_defaults_to_empty_not_none() -> None:
     """Un run qui a tout compris déclare un vide, pas une absence."""
-    summary = RunStatsAggregator(RUN, None, datetime.now(UTC)).finalize(RunStatus.OK)
-    assert summary.stats.unknowns == {}
+    summary = RunStatsAggregator(RUN, (), datetime.now(UTC)).finalize(RunStatus.OK)
+    assert summary.unknowns == {}
 
 
 def test_aggregator_declares_what_it_could_not_name(
@@ -122,7 +147,7 @@ def test_aggregator_declares_what_it_could_not_name(
 
     summary = aggregator.finalize(RunStatus.OK)
 
-    assert summary.stats.unknowns["relation_type"] == ["titre_tm"]
+    assert summary.unknowns["relation_type"] == ["titre_tm"]
 
 
 def test_the_summary_projects_the_reduction_of_n_workers() -> None:
@@ -141,11 +166,11 @@ def test_the_summary_projects_the_reduction_of_n_workers() -> None:
     summary = RunSummary.of(
         RunStats.reduce(workers),
         context_run_id=RUN,
-        source=SourceName.LEGI,
+        sources=(SourceName.LEGI,),
         started_at=datetime.now(UTC),
         status=RunStatus.OK,
     )
 
-    assert summary.stats.counts[DOCUMENT_PERSISTED] == 5
-    assert summary.stats.unknowns["field"] == ["NOTA", "CONTENU"]  # union, pas doublon
+    assert summary.counts[DOCUMENT_PERSISTED] == 5
+    assert summary.unknowns["field"] == ["NOTA", "CONTENU"]  # union, pas doublon
     assert summary.run_id == RUN  # l'identité vient du contexte, pas des workers

@@ -138,7 +138,7 @@ def _run(
 ):
     graph = InMemoryGraphRepository()
     vectors = InMemoryVectorRepository()
-    context = PipelineContext.create(source=SourceName.LEGI)
+    context = PipelineContext.create(sources=(SourceName.LEGI,))
     workload = build_document_workload(
         steps=WorkloadSteps(
             chunker=_StubChunker(),

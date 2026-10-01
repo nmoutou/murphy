@@ -217,7 +217,7 @@ def _telemetry_factory(
     meta_db = settings.mongodb_meta_db_name
     return WorkerTelemetryFactory(
         run_id=context.run_id,
-        source=context.source,
+        sources=context.sources,
         started_at=context.started_at,
         audit_repo_factory=lambda runtime: MongoAuditRepository(
             create_mongo_client(settings.mongodb_uri), meta_db

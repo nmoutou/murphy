@@ -60,11 +60,11 @@ class RunStatsAggregator:
     def __init__(
         self,
         run_id: RunId,
-        source: SourceName | None,
+        sources: tuple[SourceName, ...],
         started_at: datetime,
     ) -> None:
         self._run_id = run_id
-        self._source = source
+        self._sources = sources
         self._started_at = started_at
         self._stats = RunStats.empty()
 
@@ -129,7 +129,7 @@ class RunStatsAggregator:
         return RunSummary.of(
             self._stats,
             context_run_id=self._run_id,
-            source=self._source,
+            sources=self._sources,
             started_at=self._started_at,
             status=RunStatus(status),
             error_message=error_message,

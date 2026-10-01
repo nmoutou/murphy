@@ -17,16 +17,24 @@ __all__ = ["PipelineContext"]
 
 
 class PipelineContext(BaseModel):
-    """run_id, source, started_at — ce qui identifie un run."""
+    """run_id, sources, started_at — ce qui identifie un run."""
 
     model_config = ConfigDict(frozen=True)
 
     run_id: RunId
-    source: SourceName | None = None
+    sources: tuple[SourceName, ...] = ()
+    """Les sources que le run ingère, telles que le plan les a résolues."""
     started_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
+    @property
+    def source(self) -> SourceName | None:
+        """La source qu'estampillent les événements du run : la sienne s'il est
+        mono-source, ``None`` sinon. Un événement de document porte, lui, la source de
+        son document."""
+        return self.sources[0] if len(self.sources) == 1 else None
+
     @classmethod
-    def create(cls, source: SourceName | None = None) -> "PipelineContext":
+    def create(cls, sources: tuple[SourceName, ...] = ()) -> "PipelineContext":
         """Ouvre un run neuf : identifiant tiré, horloge démarrée.
 
         Le ``run_id`` est un hex nu, sans tiret : la clé du run dans l'audit et le
@@ -34,6 +42,6 @@ class PipelineContext(BaseModel):
         """
         return cls(
             run_id=RunId(uuid4().hex),
-            source=source,
+            sources=sources,
             started_at=datetime.now(UTC),
         )

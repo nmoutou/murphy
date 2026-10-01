@@ -34,7 +34,7 @@ class _ConnectorWithSkips:
 
 def _run(connector: _ConnectorWithSkips) -> RecordingTelemetry:
     telemetry = RecordingTelemetry()
-    context = PipelineContext.create(source=SourceName.LEGI)
+    context = PipelineContext.create(sources=(SourceName.LEGI,))
     connect_node(
         connector=connector,  # type: ignore[arg-type]
         pipeline_context=context,
