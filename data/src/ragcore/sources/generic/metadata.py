@@ -31,7 +31,7 @@ from collections.abc import Iterator
 from .role_table import RoleTable
 from .roles import Role
 from .tree import Node, find_all_with_path, path_key, walk_with_path
-from .unconfigured import UnconfiguredRouting
+from .unconfigured import SourcedFacet, UnconfiguredRouting
 
 __all__ = ["collect_metadata"]
 
@@ -41,11 +41,11 @@ métadonnée, sur l'axe temporel."""
 
 
 def collect_metadata(
-    facets: list[Node], table: RoleTable, routing: UnconfiguredRouting
+    facets: list[SourcedFacet], table: RoleTable, routing: UnconfiguredRouting
 ) -> None:
     """Range les feuilles collectables dans ``routing.metadata``, et signale celles que
     la table ne renomme pas."""
-    for facet in facets:
+    for facet, source_file in facets:
         for node, path in _meta_leaves(facet, table):
             rename = table.meta_renames.get(node["tag"])
             key = rename if rename is not None else path_key(path)
@@ -53,13 +53,8 @@ def collect_metadata(
                 continue
             routing.metadata[key] = node["text"].strip()
             if rename is None:
-                _declare_unconfigured(routing, node["tag"], key)
-
-
-def _declare_unconfigured(routing: UnconfiguredRouting, tag: str, key: str) -> None:
-    if tag not in routing.tags:
-        routing.tags.append(tag)
-    routing.keys.append(key)
+                routing.tags.setdefault(node["tag"], source_file)
+                routing.keys.append(key)
 
 
 def _meta_leaves(

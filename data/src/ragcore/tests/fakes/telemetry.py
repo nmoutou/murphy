@@ -8,6 +8,7 @@ from typing import Any
 
 from ragcore.core.models.audit import AuditEvent
 from ragcore.core.models.run_stats import RunStats
+from ragcore.core.models.unknown_tally import UnknownExample
 from ragcore.core.ports.runtime import AsyncRuntime
 
 
@@ -17,7 +18,7 @@ class RecordingTelemetry:
         self.events: list[AuditEvent] = []
         self.logs: list[tuple[str, str]] = []
         self.closed = False
-        self._unknowns: dict[str, list[str]] = {}
+        self._unknowns = RunStats.empty()
 
     def emit(self, event: AuditEvent) -> None:
         self.events.append(event)
@@ -26,18 +27,15 @@ class RecordingTelemetry:
         del context
         self.logs.append((level, message))
 
-    def record_unknown(self, category: str, value: str) -> None:
-        known = self._unknowns.setdefault(category, [])
-        if value not in known:
-            known.append(value)
+    def record_unknown(
+        self, category: str, value: str, example: UnknownExample
+    ) -> None:
+        self._unknowns = self._unknowns.with_unknown(category, value, example)
 
     def snapshot(self) -> RunStats:
-        stats = RunStats.empty()
+        stats = self._unknowns
         for event in self.events:
             stats = stats.with_count(event.event_type)
-        for category, values in self._unknowns.items():
-            for value in values:
-                stats = stats.with_unknown(category, value)
         return stats
 
     def events_of(self, event_type: str) -> list[AuditEvent]:

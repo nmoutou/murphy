@@ -7,16 +7,28 @@ qu'il ne se manifeste qu'en production, sous charge, une fois sur dix.
 """
 
 from ragcore.core.models.run_stats import RunStats
+from ragcore.core.models.unknown_tally import UnknownExample, UnknownTally
+
+DOC_1 = UnknownExample(identifier="LEGIARTI000000000001", source_file="a.xml")
+DOC_2 = UnknownExample(identifier="LEGIARTI000000000002", source_file="b.xml")
+
+
+def _tally(count: int, example: UnknownExample) -> UnknownTally:
+    return UnknownTally(count=count, example=example)
+
 
 A = RunStats(
     counts={"persisted": 2, "invalidated": 1},
-    unknowns={"field": ["NOTA"]},
+    unknowns={"field": {"NOTA": _tally(1, DOC_2)}},
 )
 B = RunStats(
     counts={"persisted": 3},
-    unknowns={"field": ["NOTA", "CONTENU"], "relation_type": ["titre_tm"]},
+    unknowns={
+        "field": {"NOTA": _tally(2, DOC_1), "CONTENU": _tally(1, DOC_2)},
+        "relation_type": {"titre_tm": _tally(1, DOC_1)},
+    },
 )
-C = RunStats(counts={"promoted": 1}, unknowns={"field": ["LIENS"]})
+C = RunStats(counts={"promoted": 1}, unknowns={"field": {"LIENS": _tally(1, DOC_1)}})
 
 
 def test_empty_is_the_neutral_element() -> None:
@@ -39,13 +51,26 @@ def test_counts_are_summed() -> None:
     assert merged.counts["invalidated"] == 1
 
 
-def test_unknowns_are_a_deduplicated_union() -> None:
-    """Un vocabulaire inconnu est un ENSEMBLE : deux workers qui voient la même
-    balise ne la déclarent pas deux fois. Un compteur ici serait un contresens.
-    """
+def test_unknowns_count_the_documents_of_every_worker() -> None:
+    """Un inconnu se compte en documents : deux workers qui le voient additionnent."""
     merged = A.merge(B)
-    assert merged.unknowns["field"] == ["NOTA", "CONTENU"]
-    assert merged.unknowns["relation_type"] == ["titre_tm"]
+    assert merged.unknowns["field"]["NOTA"].count == 3
+    assert merged.unknowns["field"]["CONTENU"].count == 1
+    assert merged.unknowns["relation_type"]["titre_tm"].count == 1
+
+
+def test_the_example_kept_is_the_smallest_whatever_the_order() -> None:
+    """« Le premier vu » dépendrait de l'ordre de fin des workers : on garde le plus
+    petit exemple, et la fusion reste commutative."""
+    assert A.merge(B).unknowns["field"]["NOTA"].example == DOC_1
+    assert B.merge(A).unknowns["field"]["NOTA"].example == DOC_1
+
+
+def test_with_unknown_counts_one_document() -> None:
+    stats = RunStats.empty().with_unknown("field", "NOTA", DOC_2)
+    stats = stats.with_unknown("field", "NOTA", DOC_1)
+
+    assert stats.unknowns == {"field": {"NOTA": _tally(2, DOC_1)}}
 
 
 def test_merge_mutates_nothing() -> None:

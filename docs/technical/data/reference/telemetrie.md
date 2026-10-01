@@ -64,11 +64,15 @@ commutative ferait dépendre le bilan de l'ordonnancement). Deux champs :
 - `counts` : event_type → occurrences (fusion : somme). ⚠️ Dette ouverte : pas de
   compteurs par **source**, un run multi-sources rend un bilan où l'échec est anonyme
   quant à sa provenance ;
-- `unknowns` : catégorie → vocabulaire que le run n'a pas su nommer (ensemble dédupliqué,
-  pas un compteur : « la balise foo est inconnue » est vraie une fois pour toutes).
+- `unknowns` : catégorie → mot que le run n'a pas su nommer → `{count, example}`.
+  `count` est un nombre de **documents** (un document déclare un mot une fois) ;
+  `example` (`identifier`, `source_file`) est un document qui le porte. Fusion : somme
+  des comptes, **plus petit** exemple — « le premier vu » dépendrait de l'ordre des
+  workers. `source_file` est le fichier de la facette pour les inconnus de parse, le
+  premier fichier du document pour ceux d'extraction.
   Catégories : `tag.unconfigured` (balise absente de la table ou sans renommage,
   ADR-047) / `racine` (parse), `typelien` / `sens` /
-  `identifiant` (extraction). Vide = la table de rôles a tout couvert.
+  `identifiant` (extraction). Vide = toutes les balises sont renommées.
 
 **La remontée passe par le DAG, pas par le hook** : le node terminal `report` pousse
 `ingestion_outcome.stats` dans l'agrégat du run (`run_stats_sink`, que le hook finalise) — Kedro libère un `MemoryDataset` dès
@@ -107,7 +111,8 @@ document est plat :
 ```json
 { "run_id": "…", "sources": ["cass", "jade", "legi"], "status": "ok",
   "started_at": "…", "ended_at": "…", "counts": { "document.fetched": 1121, … },
-  "unknowns": {} }
+  "unknowns": { "tag.unconfigured": { "NUM_SEQUENCE": { "count": 98,
+    "example": { "identifier": "LEGITEXT…", "source_file": "/…/LEGITEXT….xml" } } } } }
 ```
 
 `sources` est toujours une liste, même pour un run mono-source. `error_message` n'est

@@ -29,6 +29,7 @@ from ragcore.core.telemetry_events import (
 from .enums import SourceName
 from .identifiers import RunId
 from .run_stats import RunStats
+from .unknown_tally import UnknownTally
 
 __all__ = ["RunStatus", "RunSummary"]
 
@@ -64,8 +65,9 @@ class RunSummary(BaseModel):
     counts: dict[str, int]
     """event_type -> nombre de choses comptées. C'est d'eux que le statut se dérive."""
 
-    unknowns: dict[str, list[str]]
-    """Ce que le run n'a pas su nommer, par catégorie.
+    unknowns: dict[str, dict[str, UnknownTally]]
+    """Ce que le run n'a pas su nommer, par catégorie : pour chaque mot, le nombre de
+    documents qui le portent et l'un d'eux.
 
     Un run qui ne comprend pas tout reste un run valide, mais il doit le dire :
     rien n'est jeté en silence. Vide = le vocabulaire a tout couvert.

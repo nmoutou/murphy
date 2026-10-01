@@ -16,6 +16,7 @@ from ragcore.application.run_context import PipelineContext
 from ragcore.core.exceptions import ParseError
 from ragcore.core.models.document import RawDocument
 from ragcore.core.models.enums import SourceName
+from ragcore.core.models.unknown_tally import UnknownExample, UnknownTally
 from ragcore.core.ports.parser import ParseResult
 from ragcore.core.services.exclusion_reasons import REASON_PARSE_ERROR
 from ragcore.core.services.unknown_categories import CATEGORY_UNCONFIGURED_TAG
@@ -25,6 +26,7 @@ from ragcore.sources.generic import GenericParser, to_tree
 from ragcore.sources.legislatif.table import LEGI_ROLE_TABLE
 from ragcore.tests.fakes.telemetry import RecordingTelemetry
 
+_SOURCE_FILE = "LEGIARTI000000000001.xml"
 _UNRENAMED_KEY = "article_meta_meta_spec_meta_article_derniere_modification"
 _ARTICLE_WITH_UNRENAMED_META = (
     "<ARTICLE><META>"
@@ -94,7 +96,10 @@ def _parse_article(skip_unconfigured: bool, telemetry: RecordingTelemetry):
     raw = RawDocument(
         source=SourceName.LEGI,
         source_document_id="doc-1",
-        payload={"content": [to_tree(ET.fromstring(_ARTICLE_WITH_UNRENAMED_META))]},
+        payload={
+            "content": [to_tree(ET.fromstring(_ARTICLE_WITH_UNRENAMED_META))],
+            "files": [_SOURCE_FILE],
+        },
         fetched_at=datetime.now(UTC),
     )
     to_process, _ = parse_documents_node(
@@ -115,8 +120,13 @@ def test_une_balise_sans_renommage_est_SIGNALEE_dans_les_deux_cas(
 
     _parse_article(skip_unconfigured, telemetry)
 
+    example = UnknownExample(
+        identifier="LEGIARTI000000000001", source_file=_SOURCE_FILE
+    )
     assert telemetry.snapshot().unknowns == {
-        CATEGORY_UNCONFIGURED_TAG: ["DERNIERE_MODIFICATION"]
+        CATEGORY_UNCONFIGURED_TAG: {
+            "DERNIERE_MODIFICATION": UnknownTally(count=1, example=example)
+        }
     }
 
 

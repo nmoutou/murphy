@@ -17,6 +17,7 @@ from ragcore.core.models.enums import SourceName
 from ragcore.core.models.identifiers import RunId
 from ragcore.core.models.run_stats import RunStats
 from ragcore.core.models.run_summary import RunStatus, RunSummary
+from ragcore.core.models.unknown_tally import UnknownExample
 from ragcore.core.telemetry_events import COUNT_CARRYING_EVENTS, PAYLOAD_COUNT_KEY
 
 
@@ -78,9 +79,11 @@ class RunStatsAggregator:
     def log(self, level: str, message: str, **context: Any) -> None:  # noqa: ARG002
         return
 
-    def record_unknown(self, category: str, value: str) -> None:
+    def record_unknown(
+        self, category: str, value: str, example: UnknownExample
+    ) -> None:
         """Un vocabulaire non reconnu se DÉCLARE — il ne se jette pas en silence."""
-        self._stats = self._stats.with_unknown(category, value)
+        self._stats = self._stats.with_unknown(category, value, example)
 
     def snapshot(self) -> RunStats:
         """L'agrégat local, à fusionner avec celui des autres workers."""

@@ -12,6 +12,7 @@ from .relation import Relation
 from .run_stats import RunStats
 from .run_summary import RunStatus, RunSummary
 from .unformatted_relation import UnformattedRelation
+from .unknown_tally import UnknownExample, UnknownTally
 from .verbs import ValidatedVerb
 
 __all__ = [
@@ -33,5 +34,7 @@ __all__ = [
     "SourceName",
     "TargetStore",
     "UnformattedRelation",
+    "UnknownExample",
+    "UnknownTally",
     "ValidatedVerb",
 ]

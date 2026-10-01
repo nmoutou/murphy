@@ -104,7 +104,8 @@ texte, **dans l'ordre** — LEGI range le texte d'un article sous `BLOC_TEXTUEL`
 `LinkTable` de traduction des liens.
 
 **Le cliquet** : une balise sans rôle ne disparaît pas — elle ressort dans
-`unknowns["balise"]` et les golden tests la font échouer. Sur un corpus saturé la table ne
+`unknowns["tag.unconfigured"]` et les golden tests la font échouer. Une balise qui a un
+rôle mais pas de renommage y ressort aussi (ADR-047), sans faire échouer le cliquet. Sur un corpus saturé la table ne
 déclare rien ; sur le prochain export DILA, une balise neuve sort dans le bilan du run au
 lieu de s'évaporer.
 

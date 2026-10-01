@@ -32,6 +32,7 @@ from ragcore.application.ingest_document import IngestDocumentUseCase
 from ragcore.application.ingestion_runner import DocumentWorkload, WorkloadResult
 from ragcore.application.run_context import PipelineContext
 from ragcore.core.models.document import ParsedDocument
+from ragcore.core.models.unknown_tally import UnknownExample
 from ragcore.core.ports.chunker import BaseChunker
 from ragcore.core.ports.embedder import BaseEmbedder
 from ragcore.core.ports.relation_extractor import (
@@ -165,13 +166,21 @@ def _extract(
     donnée — et sont déclarés ici.
     """
     extraction = extractor.extract(parsed)
-    _declare_unknowns(telemetry, extraction.unknowns)
+    _declare_unknowns(telemetry, extraction.unknowns, parsed)
     return extraction
 
 
 def _declare_unknowns(
-    telemetry: WorkerTelemetry, unknowns: dict[str, list[str]]
+    telemetry: WorkerTelemetry,
+    unknowns: dict[str, list[str]],
+    parsed: ParsedDocument,
 ) -> None:
+    """L'exemple est le document : l'extracteur ne dit pas de quelle facette vient le
+    lien, on donne donc son premier fichier."""
+    example = UnknownExample(
+        identifier=parsed.identifier.serialize(),
+        source_file=parsed.source_files[0] if parsed.source_files else "",
+    )
     for category, values in unknowns.items():
         for value in values:
-            telemetry.record_unknown(category, value)
+            telemetry.record_unknown(category, value, example)

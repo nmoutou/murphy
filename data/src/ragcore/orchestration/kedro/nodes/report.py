@@ -78,5 +78,8 @@ def report_node(
         "relations_promoted": resolution_outcome.promoted_count,
         # Vide = le vocabulaire de la source a tout couvert. Non vide = ce que le run
         # a vu sans savoir le nommer, prêt à enseigner la prochaine table.
-        "unknowns": dict(stats.unknowns),
+        "unknowns": {
+            category: {value: tally.model_dump() for value, tally in tallies.items()}
+            for category, tallies in stats.unknowns.items()
+        },
     }

@@ -2,6 +2,7 @@ from typing import Any, Protocol, runtime_checkable
 
 from ..models.audit import AuditEvent
 from ..models.run_stats import RunStats
+from ..models.unknown_tally import UnknownExample
 from .runtime import AsyncRuntime
 
 
@@ -34,8 +35,12 @@ class WorkerTelemetry(TelemetryPort, Protocol):
         """Ferme les backends du worker."""
         ...
 
-    def record_unknown(self, category: str, value: str) -> None:
-        """Déclare un mot que le run a vu sans savoir le nommer.
+    def record_unknown(
+        self, category: str, value: str, example: UnknownExample
+    ) -> None:
+        """Déclare un mot que le run a vu sans savoir le nommer, dans le document
+        ``example``. Un appel par document : c'est ce qui en fait un compte de
+        documents.
 
         Le port RATTRAPE ici ses implémentations : les trois l'exposaient déjà, seul
         le contrat l'ignorait. Ce n'est donc pas un élargissement, c'est un aveu de

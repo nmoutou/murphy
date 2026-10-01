@@ -9,6 +9,8 @@ from collections.abc import Iterable
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from .unknown_tally import UnknownExample, UnknownTally
+
 __all__ = ["RunStats"]
 
 
@@ -33,12 +35,11 @@ class RunStats(BaseModel):
     counts: dict[str, int] = Field(default_factory=dict)
     """event_type -> nombre d'occurrences. Fusion : somme."""
 
-    unknowns: dict[str, list[str]] = Field(default_factory=dict)
-    """Catégorie -> vocabulaire que le run n'a pas su nommer.
+    unknowns: dict[str, dict[str, UnknownTally]] = Field(default_factory=dict)
+    """Catégorie -> mot que le run n'a pas su nommer -> combien de documents, et un exemple.
 
-    C'est un ENSEMBLE, pas un compteur : « la balise ``foo`` est inconnue » est
-    vraie une fois pour toutes. Deux workers qui rencontrent la même balise ne
-    doivent pas la lister deux fois. Fusion : union dédupliquée, ordre stable.
+    Un COMPTEUR par mot, en documents : chaque document ne déclare un mot qu'une fois.
+    Fusion : somme des comptes, plus petit exemple (``UnknownTally.merge``).
     """
 
     @classmethod
@@ -52,14 +53,14 @@ class RunStats(BaseModel):
         for event_type, n in other.counts.items():
             counts[event_type] = counts.get(event_type, 0) + n
 
-        unknowns: dict[str, list[str]] = {
-            category: list(values) for category, values in self.unknowns.items()
+        unknowns = {
+            category: dict(tallies) for category, tallies in self.unknowns.items()
         }
-        for category, values in other.unknowns.items():
-            known = unknowns.setdefault(category, [])
-            for value in values:
-                if value not in known:
-                    known.append(value)
+        for category, tallies in other.unknowns.items():
+            merged = unknowns.setdefault(category, {})
+            for value, tally in tallies.items():
+                known = merged.get(value)
+                merged[value] = tally if known is None else known.merge(tally)
 
         return RunStats(counts=counts, unknowns=unknowns)
 
@@ -74,5 +75,9 @@ class RunStats(BaseModel):
     def with_count(self, event_type: str, n: int = 1) -> "RunStats":
         return self.merge(RunStats(counts={event_type: n}))
 
-    def with_unknown(self, category: str, value: str) -> "RunStats":
-        return self.merge(RunStats(unknowns={category: [value]}))
+    def with_unknown(
+        self, category: str, value: str, example: UnknownExample
+    ) -> "RunStats":
+        """Un mot inconnu, vu dans un document de plus."""
+        tally = UnknownTally.seen_in(example)
+        return self.merge(RunStats(unknowns={category: {value: tally}}))

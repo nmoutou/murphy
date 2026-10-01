@@ -110,7 +110,7 @@ données.
 
 | Collection | Contenu | Index |
 |---|---|---|
-| `run_summaries` | Un `RunSummary` par run, à plat : run_id, `sources` (liste), dates, `status` (`ok`/`degraded`/`failed`), `counts`, `unknowns`, et `error_message` sur un run `failed` seulement. | unique (run_id), (started_at) |
+| `run_summaries` | Un `RunSummary` par run, à plat : run_id, `sources` (liste), dates, `status` (`ok`/`degraded`/`failed`), `counts`, `unknowns` (catégorie → mot → `{count, example: {identifier, source_file}}`), et `error_message` sur un run `failed` seulement. | unique (run_id), (started_at) |
 
 ## Qdrant
 

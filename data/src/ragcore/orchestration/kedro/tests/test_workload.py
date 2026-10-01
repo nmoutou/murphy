@@ -30,6 +30,7 @@ from ragcore.core.models.enums import DocumentType, SourceName
 from ragcore.core.models.identifiers import Identifier
 from ragcore.core.models.relation import Relation
 from ragcore.core.models.unformatted_relation import UnformattedRelation
+from ragcore.core.models.unknown_tally import UnknownExample, UnknownTally
 from ragcore.core.ports.relation_extractor import ExtractionResult
 from ragcore.orchestration.kedro.workload import WorkloadSteps, build_document_workload
 from ragcore.tests.fakes import (
@@ -44,6 +45,7 @@ from ragcore.tests.fakes import (
 
 SELF = Identifier(raw="LEGIARTI000000000001")
 OTHER = Identifier(raw="LEGIARTI000000000002")
+SOURCE_FILE = "LEGIARTI000000000001.xml"
 DESCRIBED = UnformattedRelation(
     source_identifier=SELF,
     target_text="code de l'environnement",
@@ -62,7 +64,13 @@ def _doc() -> ParsedDocument:
         content="Le contenu réel de l'article, en français.",
         structure={},
         metadata={},
+        source_files=(SOURCE_FILE,),
     )
+
+
+def _zorglub_seen_once() -> dict[str, dict[str, UnknownTally]]:
+    example = UnknownExample(identifier=SELF.serialize(), source_file=SOURCE_FILE)
+    return {"typelien": {"ZORGLUB": UnknownTally(count=1, example=example)}}
 
 
 class _StubChunker:
@@ -192,7 +200,7 @@ def test_les_inconnus_de_lextraction_sont_DECLARES() -> None:
     _result, _graph, _vectors, telemetry = _run(_doc())
 
     unknowns = telemetry.snapshot().unknowns
-    assert unknowns == {"typelien": ["ZORGLUB"]}
+    assert unknowns == _zorglub_seen_once()
 
 
 def test_la_phase_1_NECRIT_AUCUNE_arete() -> None:
@@ -238,7 +246,7 @@ def test_aucun_inconnu_fantome_cote_parse() -> None:
     """
     _result, _graph, _vectors, telemetry = _run(_doc())
 
-    assert telemetry.snapshot().unknowns == {"typelien": ["ZORGLUB"]}
+    assert telemetry.snapshot().unknowns == _zorglub_seen_once()
 
 
 def test_embedding_actif_ecrit_les_vecteurs() -> None:

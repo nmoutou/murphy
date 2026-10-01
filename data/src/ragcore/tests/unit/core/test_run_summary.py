@@ -16,6 +16,7 @@ from ragcore.core.models.enums import SourceName
 from ragcore.core.models.identifiers import RunId
 from ragcore.core.models.run_stats import RunStats
 from ragcore.core.models.run_summary import RunStatus, RunSummary
+from ragcore.core.models.unknown_tally import UnknownExample, UnknownTally
 from ragcore.core.telemetry_events import (
     DOCUMENT_FETCHED,
     DOCUMENT_INVALIDATED,
@@ -25,6 +26,8 @@ from ragcore.core.telemetry_events import (
 )
 
 RUN = RunId("run-1")
+DOC_1 = UnknownExample(identifier="LEGIARTI000000000001", source_file="a.xml")
+DOC_2 = UnknownExample(identifier="LEGIARTI000000000002", source_file="b.xml")
 
 
 @pytest.fixture
@@ -96,7 +99,9 @@ def test_the_stored_summary_is_flat() -> None:
     summary = RunSummary.of(
         RunStats(
             counts={DOCUMENT_PERSISTED: 2},
-            unknowns={"relation_type": ["titre_tm", "lien_art"]},
+            unknowns={
+                "relation_type": {"titre_tm": UnknownTally(count=2, example=DOC_1)}
+            },
         ),
         context_run_id=RUN,
         sources=(SourceName.CASS, SourceName.JADE),
@@ -108,7 +113,14 @@ def test_the_stored_summary_is_flat() -> None:
 
     assert stored["sources"] == ["cass", "jade"]
     assert stored["counts"] == {DOCUMENT_PERSISTED: 2}
-    assert stored["unknowns"] == {"relation_type": ["titre_tm", "lien_art"]}
+    assert stored["unknowns"] == {
+        "relation_type": {
+            "titre_tm": {
+                "count": 2,
+                "example": {"identifier": DOC_1.identifier, "source_file": "a.xml"},
+            }
+        }
+    }
     assert "stats" not in stored
     assert "breakdowns" not in stored
 
@@ -140,12 +152,14 @@ def test_aggregator_declares_what_it_could_not_name(
     aggregator: RunStatsAggregator,
 ) -> None:
     """Le vocabulaire inconnu remonte jusqu'au sommaire : rien n'est jeté en silence."""
-    aggregator.record_unknown("relation_type", "titre_tm")
-    aggregator.record_unknown("relation_type", "titre_tm")  # vu deux fois, listé une
+    aggregator.record_unknown("relation_type", "titre_tm", DOC_2)
+    aggregator.record_unknown("relation_type", "titre_tm", DOC_1)  # deux documents
 
     summary = aggregator.finalize(RunStatus.OK)
 
-    assert summary.unknowns["relation_type"] == ["titre_tm"]
+    assert summary.unknowns["relation_type"] == {
+        "titre_tm": UnknownTally(count=2, example=DOC_1)
+    }
 
 
 def test_the_summary_projects_the_reduction_of_n_workers() -> None:
@@ -155,9 +169,13 @@ def test_the_summary_projects_the_reduction_of_n_workers() -> None:
     pas d'identité ; ``RunSummary`` en a une, donc il ne fusionne pas.
     """
     workers = [
-        RunStats(counts={DOCUMENT_PERSISTED: 3}, unknowns={"field": ["NOTA"]}),
         RunStats(
-            counts={DOCUMENT_PERSISTED: 2}, unknowns={"field": ["NOTA", "CONTENU"]}
+            counts={DOCUMENT_PERSISTED: 3},
+            unknowns={"field": {"NOTA": UnknownTally(count=1, example=DOC_2)}},
+        ),
+        RunStats(
+            counts={DOCUMENT_PERSISTED: 2},
+            unknowns={"field": {"NOTA": UnknownTally(count=4, example=DOC_1)}},
         ),
     ]
 
@@ -170,5 +188,5 @@ def test_the_summary_projects_the_reduction_of_n_workers() -> None:
     )
 
     assert summary.counts[DOCUMENT_PERSISTED] == 5
-    assert summary.unknowns["field"] == ["NOTA", "CONTENU"]  # union, pas doublon
+    assert summary.unknowns["field"] == {"NOTA": UnknownTally(count=5, example=DOC_1)}
     assert summary.run_id == RUN  # l'identité vient du contexte, pas des workers

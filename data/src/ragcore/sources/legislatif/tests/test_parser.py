@@ -216,7 +216,8 @@ def test_une_balise_non_configuree_est_ROUTEE_et_SIGNALEE(fixtures_dir: Path) ->
     )
     parsed = result.document
 
-    assert result.unconfigured_tags == ("ZORG",)  # le signal
+    # le signal, avec le fichier où le lire
+    assert result.unconfigured_tags == {"ZORG": "unknown_vocabulary.xml"}
     # La porte metadata : le texte ET l'attribut, sous des clés chemin-complet.
     assert parsed.metadata["article_zorg"] == "Une balise que le parser ne connaît pas."
     assert parsed.metadata["article_zorg_attribut_inconnu"] == "peu importe"
@@ -255,7 +256,7 @@ def test_une_balise_connue_SANS_RENOMMAGE_est_non_configuree() -> None:
     )
     key = "article_meta_meta_spec_meta_article_derniere_modification"
 
-    assert result.unconfigured_tags == ("DERNIERE_MODIFICATION",)
+    assert result.unconfigured_tags == {"DERNIERE_MODIFICATION": ""}  # aucun fichier
     assert result.unconfigured_keys == (key,)
     assert result.document.metadata[key] == "2020-01-01"
     assert result.document.metadata["origine"] == "LEGI"

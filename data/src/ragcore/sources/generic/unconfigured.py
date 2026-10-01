@@ -33,7 +33,10 @@ from ragcore.core.models.identifiers import Identifier
 from .role_table import RoleTable
 from .tree import Node, path_key, walk_with_path
 
-__all__ = ["UnconfiguredRouting", "route_unconfigured"]
+__all__ = ["SourcedFacet", "UnconfiguredRouting", "route_unconfigured"]
+
+SourcedFacet = tuple[Node, str]
+"""Une facette du document et le fichier d'où elle vient (vide s'il est inconnu)."""
 
 _DILA_ID = re.compile(r"[A-Z]{8}[0-9]{12}\Z")
 """La forme d'un identifiant DILA (``LEGIARTI000006219120``) — le même motif que
@@ -58,27 +61,26 @@ class UnconfiguredRouting:
     identifier: Identifier
     metadata: dict[str, Any]
     references: list[dict[str, Any]]
-    tags: list[str] = field(default_factory=list)
-    """Les balises non-configurées rencontrées : absentes de la table, ou sans
-    renommage."""
+    tags: dict[str, str] = field(default_factory=dict)
+    """Les balises non-configurées rencontrées (absentes de la table, ou sans
+    renommage) → le fichier de la première facette qui les porte."""
     keys: list[str] = field(default_factory=list)
     """Les clés de métadonnées que la cascade a ajoutées."""
-    roots: list[str] = field(default_factory=list)
-    """Les racines XML que la source ne déclare pas."""
+    roots: dict[str, str] = field(default_factory=dict)
+    """Les racines XML que la source ne déclare pas → le fichier qui les porte."""
 
 
 def route_unconfigured(
-    facets: list[Node], table: RoleTable, routing: UnconfiguredRouting
+    facets: list[SourcedFacet], table: RoleTable, routing: UnconfiguredRouting
 ) -> None:
     """Route chaque balise NON-CONFIGURÉE vers sa porte."""
-    for facet in facets:
-        if facet["tag"] not in table.roots and facet["tag"] not in routing.roots:
-            routing.roots.append(facet["tag"])
+    for facet, source_file in facets:
+        if facet["tag"] not in table.roots:
+            routing.roots.setdefault(facet["tag"], source_file)
         for node, path in walk_with_path(facet):
             if table.knows(node["tag"]):
                 continue
-            if node["tag"] not in routing.tags:
-                routing.tags.append(node["tag"])
+            routing.tags.setdefault(node["tag"], source_file)
             _route_values(node, path_key(path), routing)
 
 

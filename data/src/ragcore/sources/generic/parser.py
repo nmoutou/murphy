@@ -28,6 +28,7 @@ naturel. Le texte original n'était stocké nulle part : la destruction était i
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import Any
 
 from pydantic import ValidationError as PydanticValidationError
@@ -49,7 +50,7 @@ from .tree import (
     holders,
     text_of,
 )
-from .unconfigured import UnconfiguredRouting, route_unconfigured
+from .unconfigured import SourcedFacet, UnconfiguredRouting, route_unconfigured
 
 __all__ = ["GenericParser"]
 
@@ -97,13 +98,14 @@ class GenericParser:
             metadata={},
             references=read_references(facets, self._table),
         )
-        collect_metadata(facets, self._table, routing)
-        route_unconfigured(facets, self._table, routing)
+        sourced = _sourced(facets, raw.payload.get("files", ()))
+        collect_metadata(sourced, self._table, routing)
+        route_unconfigured(sourced, self._table, routing)
         return ParseResult(
             document=self._document(raw, facets, routing),
-            unconfigured_tags=tuple(routing.tags),
+            unconfigured_tags=routing.tags,
             unconfigured_keys=tuple(routing.keys),
-            unknown_roots=tuple(routing.roots),
+            unknown_roots=routing.roots,
         )
 
     def _document(
@@ -205,3 +207,12 @@ class GenericParser:
             for holder in holders(block, self._table)
             if (text := text_of(holder, self._table)).strip()
         ]
+
+
+def _sourced(facets: list[Node], files: Sequence[str]) -> list[SourcedFacet]:
+    """Chaque facette avec son fichier : les connecteurs les livrent en listes
+    parallèles. Un payload sans fichiers (tests) donne un fichier vide."""
+    return [
+        (facet, files[index] if index < len(files) else "")
+        for index, facet in enumerate(facets)
+    ]

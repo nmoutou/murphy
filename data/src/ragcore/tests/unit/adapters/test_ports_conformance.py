@@ -40,6 +40,7 @@ from ragcore.adapters.telemetry import (
 )
 from ragcore.core.models.enums import SourceName
 from ragcore.core.models.processing import EmbeddingModel
+from ragcore.core.models.unknown_tally import UnknownExample, UnknownTally
 from ragcore.core.ports.document_repository import DocumentRepository
 from ragcore.core.ports.embedder import BaseEmbedder
 from ragcore.core.ports.graph_repository import GraphRepository
@@ -221,8 +222,11 @@ class TestTelemetry:
         runtime = AsyncioRuntimeFactory().build(0)
         try:
             stack = _telemetry_factory().build(0, runtime)
-            stack.record_unknown("balise", "TRUC_INCONNU")
+            example = UnknownExample(identifier="LEGIARTI000000000001", source_file="")
+            stack.record_unknown("balise", "TRUC_INCONNU", example)
 
-            assert stack.snapshot().unknowns == {"balise": ["TRUC_INCONNU"]}
+            assert stack.snapshot().unknowns == {
+                "balise": {"TRUC_INCONNU": UnknownTally(count=1, example=example)}
+            }
         finally:
             runtime.close()

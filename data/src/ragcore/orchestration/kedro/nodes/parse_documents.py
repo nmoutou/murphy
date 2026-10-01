@@ -15,6 +15,7 @@ from ragcore.application.run_context import PipelineContext
 from ragcore.core.exceptions import ParseError, ValidationError
 from ragcore.core.models.audit import build_event
 from ragcore.core.models.document import ParsedDocument, RawDocument
+from ragcore.core.models.unknown_tally import UnknownExample
 from ragcore.core.ports.parser import BaseParser, ParseResult
 from ragcore.core.ports.telemetry import WorkerTelemetry
 from ragcore.core.services.exclusion_reasons import (
@@ -146,10 +147,13 @@ class _ParseSite:
         """Le SIGNAL — toujours, et AVANT le curseur : la vigie de dérive DILA compte
         chaque balise/racine non-configurée au bilan de run, que la donnée soit ensuite
         ingérée ou retirée. `skip` n'efface jamais le signal."""
-        for tag in result.unconfigured_tags:
-            self.telemetry.record_unknown(CATEGORY_UNCONFIGURED_TAG, tag)
-        for root in result.unknown_roots:
-            self.telemetry.record_unknown(CATEGORY_ROOT, root)
+        identifier = result.document.identifier.serialize()
+        for tag, source_file in result.unconfigured_tags.items():
+            example = UnknownExample(identifier=identifier, source_file=source_file)
+            self.telemetry.record_unknown(CATEGORY_UNCONFIGURED_TAG, tag, example)
+        for root, source_file in result.unknown_roots.items():
+            example = UnknownExample(identifier=identifier, source_file=source_file)
+            self.telemetry.record_unknown(CATEGORY_ROOT, root, example)
 
     def declare_parsed(self, raw: RawDocument, parsed: ParsedDocument) -> None:
         """Document valide — compté parsé, en route vers l'ingestion."""

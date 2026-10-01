@@ -6,6 +6,7 @@ from typing import Any
 
 from ragcore.core.models.audit import AuditEvent
 from ragcore.core.models.run_stats import RunStats
+from ragcore.core.models.unknown_tally import UnknownExample
 
 from .worker_backends import WorkerBackends
 
@@ -46,13 +47,15 @@ class WorkerTelemetryStack:
         except Exception as exc:  # noqa: BLE001 — frontière de télémétrie : un log textuel perdu ne fausse aucun compteur, il ne casse pas le run
             _LOGGER.warning("telemetry backend 'log' error on log(): %s", exc)
 
-    def record_unknown(self, category: str, value: str) -> None:
+    def record_unknown(
+        self, category: str, value: str, example: UnknownExample
+    ) -> None:
         """Un vocabulaire non reconnu se déclare — il ne se jette pas en silence.
 
         Va droit à l'agrégat : un inconnu n'est pas un événement d'audit, c'est un
         aveu d'ignorance que le bilan du run doit porter (``RunStats.unknowns``).
         """
-        self._backends.aggregate.record_unknown(category, value)
+        self._backends.aggregate.record_unknown(category, value, example)
 
     def snapshot(self) -> RunStats:
         """L'agrégat local de ce worker, à fusionner avec celui des autres."""
