@@ -33,9 +33,7 @@ construit pour ne pas contenir. Le texte brut est conservé tel quel ; le décou
 appartient à la passe de résolution.
 """
 
-from typing import Any
-
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict
 
 from .enums import SourceName
 from .identifiers import Identifier
@@ -76,5 +74,3 @@ class UnformattedRelation(BaseModel):
 
     source: SourceName
     """La source du document qui a déclaré cette relation."""
-
-    metadata: dict[str, Any] = Field(default_factory=dict)

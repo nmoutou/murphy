@@ -47,7 +47,6 @@ def _upsert(relation: UnformattedRelation, run_id: RunId) -> UpdateOne:
             "$set": {
                 **key,
                 "source": relation.source.value,
-                "metadata": dict(relation.metadata),
                 "last_seen_run": run_id,
             },
             # first_seen_run est posé À LA CRÉATION uniquement : c'est ce qui

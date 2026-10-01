@@ -34,7 +34,6 @@ Ce rangement posait deux problèmes :
 | `relation_type` | le verbe, traduit par la table de la source, brut sinon |
 | `sens` | le rôle du document dans la relation (`source` / `cible`) |
 | `source` | la source du document (`legi`, `cass`…) |
-| `metadata` | vide aujourd'hui, comme pour les pendantes |
 | `first_seen_run`, `last_seen_run` | le premier et le dernier run qui l'ont vue |
 
 Index unique `uq_unformatted_source_text_type_sens` sur (`source_id`, `target_text`,
@@ -56,7 +55,8 @@ connue garde son `last_seen_run` avancé, le même résiduel que la compensation
 **4. Plus rien dans Neo4j.** Le nœud ne porte plus de prop `citations`.
 
 **5. `Citation` devient `UnformattedRelation`**, calquée sur `Relation` :
-`source_identifier`, `target_text`, `relation_type`, `sens`, `source`, `metadata`.
+`source_identifier`, `target_text`, `relation_type`, `sens`, `source`. Sans
+`metadata`, contrairement à `Relation` : aucune donnée de la source ne le remplirait.
 `ParsedDocument` perd son champ `citations` ; l'extraction rend ces relations dans
 `ExtractionResult.unformatted_relations`, que le workload passe à la saga.
 

@@ -42,7 +42,7 @@ RawDocument ──parse──▶ ParsedDocument ──chunk──▶ Chunk ─�
   `source_identifier`, `target_text` (brut, intégral — la seule donnée non
   reconstructible), `relation_type` (traduit, brut sinon ; pas un verbe validé, il ne
   devient pas un type d'arête), `sens` (conservé pour orienter l'arête d'une future
-  résolution), `source`, `metadata`. Extraite avec les relations, elle n'est pas portée
+  résolution), `source`. Extraite avec les relations, elle n'est pas portée
   par le document.
 
 ## MongoDB — base de données `MURPHY_DATA`
@@ -83,9 +83,9 @@ eux.
 
 Les `UnformattedRelation` (ADR-045) : les relations d'un lien à `@id` vide, dont la cible
 est décrite en toutes lettres (« code de l'environnement ») au lieu d'être identifiée —
-source_id, target_text, relation_type, sens, source, metadata, first_seen_run,
-last_seen_run. Écrites par la saga du document (étape `mongo_unformatted_upsert`, juste
-après `mongo_upsert`), elles **s'accumulent** comme les pendantes : rien n'est supprimé
+source_id, target_text, relation_type, sens, source, first_seen_run, last_seen_run.
+Écrites par la saga du document (étape `mongo_unformatted_upsert`, juste après
+`mongo_upsert`), elles **s'accumulent** comme les pendantes : rien n'est supprimé
 d'un run à l'autre, seul `last_seen_run` avance. La compensation de la saga ne retire que
 les lignes du document nées dans le run qui échoue.
 

@@ -94,7 +94,6 @@ async def test_the_written_row_has_the_agreed_schema(repo) -> None:
             "relation_type": "cites",
             "sens": "source",
             "source": "cass",
-            "metadata": {},
             "last_seen_run": "run-1",
             "first_seen_run": "run-1",
         }
