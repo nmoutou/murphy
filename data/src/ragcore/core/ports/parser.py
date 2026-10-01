@@ -2,6 +2,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import Protocol, runtime_checkable
 
+from ..models.collision import Collision
 from ..models.document import ParsedDocument, RawDocument
 
 
@@ -27,12 +28,16 @@ class ParseResult:
     - ``unknown_roots`` : les racines de facette hors table — une famille de documents
       jamais déclarée — avec leur fichier. Signal seul : une racine inconnue n'a pas de
       valeur à ingérer.
+    - ``collisions`` : les clés qui ont reçu plusieurs valeurs distinctes (ADR-049),
+      résolues en liste. Une collision NON configurée ne revient pas ici : elle refuse
+      le document (``CollisionError``).
     """
 
     document: ParsedDocument
     unconfigured_tags: Mapping[str, str] = field(default_factory=dict)
     unconfigured_links: Mapping[str, str] = field(default_factory=dict)
     unknown_roots: Mapping[str, str] = field(default_factory=dict)
+    collisions: tuple[Collision, ...] = ()
 
 
 @runtime_checkable

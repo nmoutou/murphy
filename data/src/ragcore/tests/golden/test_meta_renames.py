@@ -8,11 +8,22 @@ cible qui écrase un champ du contrat. Ce cliquet les interdit.
 
 from __future__ import annotations
 
+import asyncio
+from pathlib import Path
+
 import pytest
 
-from ragcore.sources.generic import RoleTable
+from ragcore.core.exceptions import CollisionError
+from ragcore.core.models.document import RawDocument
+from ragcore.core.models.enums import SourceName
+from ragcore.core.ports.connector import BaseConnector
+from ragcore.sources.generic import GenericParser, RoleTable
+from ragcore.sources.jurisprudence import JuriFileConnector
 from ragcore.sources.jurisprudence.table import _COMMON_RENAMES, ROLE_TABLE_BY_ROOT
+from ragcore.sources.legislatif.file_connector import LegiFileConnector
 from ragcore.sources.legislatif.table import LEGI_ROLE_TABLE
+
+_SOURCES = Path(__file__).parents[2] / "sources"
 
 TABLES: dict[str, RoleTable] = {"LEGI": LEGI_ROLE_TABLE, **ROLE_TABLE_BY_ROOT}
 
@@ -64,3 +75,37 @@ def test_aucune_table_juri_ne_redefinit_un_renommage_commun(root: str) -> None:
         tag for tag, target in _COMMON_RENAMES.items() if renames[tag] != target
     }
     assert not redefined, f"{root} : renommages communs redéfinis {redefined}"
+
+
+def _fixtures(connector: BaseConnector) -> list[RawDocument]:
+    async def run() -> list[RawDocument]:
+        return [raw async for raw in connector.fetch_all()]
+
+    return asyncio.run(run())
+
+
+def _table_of(raw: RawDocument) -> RoleTable:
+    root = raw.payload["content"][0]["tag"]
+    return ROLE_TABLE_BY_ROOT.get(root, LEGI_ROLE_TABLE)
+
+
+@pytest.mark.parametrize(
+    "connector",
+    [
+        LegiFileConnector(_SOURCES / "legislatif" / "tests" / "fixtures"),
+        JuriFileConnector(
+            _SOURCES / "jurisprudence" / "tests" / "fixtures", SourceName.CASS
+        ),
+    ],
+    ids=["legi", "juri"],
+)
+def test_aucune_fixture_n_est_refusee_pour_collision(connector: BaseConnector) -> None:
+    """Une clé renommée qui reçoit plusieurs valeurs sur un document connu doit être
+    déclarée ``list`` : sinon le document serait refusé au premier run."""
+    refused = {}
+    for raw in _fixtures(connector):
+        try:
+            GenericParser(_table_of(raw), raw.source).parse(raw)
+        except CollisionError as exc:
+            refused[raw.source_document_id] = [c.key for c in exc.collisions]
+    assert not refused, f"Collisions non configurées : {refused}"

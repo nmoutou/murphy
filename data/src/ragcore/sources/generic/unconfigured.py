@@ -24,12 +24,14 @@ la télémétrie — qui le déclare. Pureté du parser préservée.
 from __future__ import annotations
 
 import re
+from collections import defaultdict
 from dataclasses import dataclass, field, replace
 from typing import Any
 
 from ragcore.core.links import HEURISTIC_KIND
 from ragcore.core.models.identifiers import Identifier
 
+from .occurrences import Occurrence
 from .role_table import RoleTable
 from .tree import Node, path_key, walk_with_path
 
@@ -54,14 +56,19 @@ jamais jusqu'à l'heuristique, qui ne voit que le vocabulaire non-configuré.
 class UnconfiguredRouting:
     """Ce que la cascade range, et ce qu'elle signale.
 
-    ``metadata`` et ``references`` sont ceux du document : la cascade les COMPLÈTE, elle
-    n'en fabrique pas d'autres. Les signaux sont tenus par CLÉ CHEMIN-COMPLET (ADR-048),
-    jamais par nom de balise : c'est la clé qui dit où est la donnée.
+    ``occurrences`` et ``references`` sont ceux du document : la cascade les COMPLÈTE,
+    elle n'en fabrique pas d'autres. Une métadonnée n'est pas tranchée ici : chaque
+    valeur s'ajoute à sa clé, et ``occurrences.resolve`` décide une fois (ADR-049). Les
+    signaux sont tenus par CLÉ CHEMIN-COMPLET (ADR-048), jamais par nom de balise : c'est
+    la clé qui dit où est la donnée.
     """
 
     identifier: Identifier
-    metadata: dict[str, Any]
     references: list[dict[str, Any]]
+    occurrences: defaultdict[str, list[Occurrence]] = field(
+        default_factory=lambda: defaultdict(list)
+    )
+    """Clé → ses valeurs, dans l'ordre de lecture (facettes ordonnées, puis document)."""
     tags: dict[str, str] = field(default_factory=dict)
     """Les métadonnées non-configurées ajoutées (absentes de la table, ou sans
     renommage) : leur clé → le fichier de la première facette qui les porte. Ce sont
@@ -74,10 +81,12 @@ class UnconfiguredRouting:
 
 @dataclass(frozen=True)
 class _Origin:
-    """D'où vient une valeur : sa clé chemin-complet, sa balise, son fichier."""
+    """D'où vient une valeur : sa clé chemin-complet, sa balise, son chemin, son
+    fichier."""
 
     key: str
     tag: str
+    path: tuple[str, ...]
     source_file: str
 
 
@@ -90,9 +99,8 @@ def route_unconfigured(
             routing.roots.setdefault(facet["tag"], source_file)
         for node, path in walk_with_path(facet):
             if not table.knows(node["tag"]):
-                _route_values(
-                    node, _Origin(path_key(path), node["tag"], source_file), routing
-                )
+                origin = _Origin(path_key(path), node["tag"], path, source_file)
+                _route_values(node, origin, routing)
 
 
 def _route_values(node: Node, origin: _Origin, routing: UnconfiguredRouting) -> None:
@@ -101,7 +109,11 @@ def _route_values(node: Node, origin: _Origin, routing: UnconfiguredRouting) -> 
     for name, value in node["attrib"].items():
         text = str(value).strip()
         if text:
-            attribute = replace(origin, key=f"{origin.key}_{name.lower()}")
+            attribute = replace(
+                origin,
+                key=f"{origin.key}_{name.lower()}",
+                path=(*origin.path, f"@{name}"),
+            )
             _route_value(routing, text, attribute)
 
     text = node["text"].strip()
@@ -117,9 +129,10 @@ def _route_value(routing: UnconfiguredRouting, value: str, origin: _Origin) -> N
         )
         routing.links.setdefault(origin.key, origin.source_file)
         return
-    if origin.key not in routing.metadata:
-        routing.metadata[origin.key] = value
-        routing.tags.setdefault(origin.key, origin.source_file)
+    routing.occurrences[origin.key].append(
+        Occurrence(value, origin.tag, origin.path, origin.source_file)
+    )
+    routing.tags.setdefault(origin.key, origin.source_file)
 
 
 def _is_reference_value(value: str, identifier: Identifier) -> bool:

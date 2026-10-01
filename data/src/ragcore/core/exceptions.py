@@ -1,6 +1,9 @@
 """Exceptions du domaine."""
 
+from .models.collision import Collision
+
 __all__ = [
+    "CollisionError",
     "EmbeddingModelMismatchError",
     "ParseError",
     "RagCoreError",
@@ -33,6 +36,19 @@ class EmbeddingModelMismatchError(RagCoreError):
 class ValidationError(RagCoreError):
     """Le document est lisible, mais il ne satisfait pas une règle métier
     (identifiant absent, identifiant mal formé, contenu manquant)."""
+
+
+class CollisionError(ValidationError):
+    """Une clé renommée, non déclarée ``list``, a reçu plusieurs valeurs distinctes : la
+    table ne dit pas laquelle garder, le document est refusé (ADR-049).
+
+    Elle PORTE toutes les collisions du document : refusé ou non, il doit les montrer au
+    bilan et dans ``MURPHY_META.collisions``.
+    """
+
+    def __init__(self, message: str, collisions: tuple[Collision, ...]) -> None:
+        super().__init__(message)
+        self.collisions = collisions
 
 
 class ParseError(RagCoreError):

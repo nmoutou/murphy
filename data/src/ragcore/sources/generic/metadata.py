@@ -18,16 +18,18 @@ temporel) entrent ici.
 (``ParsedDocument.identifier``, ``ParsedDocument.nature``) : les recopier ici en ferait,
 là encore, une seconde vérité.
 
-**La clé par défaut est le CHEMIN COMPLET** (ADR-022 §3) : injective par construction,
-deux balises homonymes à deux endroits de l'arbre ne s'écrasent plus. Le renommage garde
-un nom court : c'est une décision de la table, premier-arrivé-gagne assumé (l'ordre de
-préférence des facettes).
+**La clé par défaut est le CHEMIN COMPLET** (ADR-022 §3), le renommage donne un nom court.
+Aucune des deux n'est injective : deux balises sœurs homonymes ont le même chemin, et une
+même balise renommée revient dans chaque facette. Rien n'est donc tranché ici : chaque
+valeur s'AJOUTE à sa clé, dans l'ordre de lecture, et ``occurrences.resolve`` décide une
+fois — dédoublonner, lister, ou refuser le document (ADR-049).
 """
 
 from __future__ import annotations
 
 from collections.abc import Iterator
 
+from .occurrences import Occurrence
 from .role_table import RoleTable
 from .roles import Role
 from .tree import Node, find_all_with_path, path_key, walk_with_path
@@ -43,15 +45,15 @@ métadonnée, sur l'axe temporel."""
 def collect_metadata(
     facets: list[SourcedFacet], table: RoleTable, routing: UnconfiguredRouting
 ) -> None:
-    """Range les feuilles collectables dans ``routing.metadata``, et signale celles que
+    """Ajoute les feuilles collectables à ``routing.occurrences``, et signale celles que
     la table ne renomme pas."""
     for facet, source_file in facets:
         for node, path in _meta_leaves(facet, table):
             rename = table.meta_renames.get(node["tag"])
             key = rename if rename is not None else path_key(path)
-            if key in routing.metadata:
-                continue
-            routing.metadata[key] = node["text"].strip()
+            routing.occurrences[key].append(
+                Occurrence(node["text"].strip(), node["tag"], path, source_file)
+            )
             if rename is None:
                 routing.tags.setdefault(key, source_file)
 

@@ -33,7 +33,7 @@ from typing import Any
 
 from pydantic import ValidationError as PydanticValidationError
 
-from ragcore.core.exceptions import ParseError, ValidationError
+from ragcore.core.exceptions import CollisionError, ParseError, ValidationError
 from ragcore.core.models import ParsedDocument, RawDocument, SourceName
 from ragcore.core.models.identifiers import Identifier
 from ragcore.core.ports.parser import ParseResult
@@ -41,6 +41,7 @@ from ragcore.core.ports.parser import ParseResult
 from .classification import document_type_of, nature_of
 from .metadata import collect_metadata
 from .normalize import normalize_text
+from .occurrences import resolve
 from .role_table import RoleTable
 from .structure import read_context, read_references
 from .tree import (
@@ -75,14 +76,17 @@ class GenericParser:
         """Interprète les facettes d'un document.
 
         Lève ``ValidationError`` si le document est lisible mais irrecevable (pas
-        d'identifiant, identifiant mal formé), ``ParseError`` s'il est illisible. Les
+        d'identifiant, identifiant mal formé, facettes sans ordre déclaré) — dont
+        ``CollisionError`` pour une collision non configurée (ADR-049) —, ``ParseError``
+        s'il est illisible. Les
         appelants comptent sur cette distinction : l'une est un refus métier, l'autre une
         panne de lecture, et ``document.invalidated`` ne les compte pas sous la même
         raison.
 
         Rend un ``ParseResult`` : le document, plus les signaux des balises
         non-configurées — absentes de la table (cascade → metadata ou lien) ou sans
-        renommage (→ metadata sous leur clé chemin-complet). Le parser reste PUR : il constate et rend, il ne compte rien.
+        renommage (→ metadata sous leur clé chemin-complet) —, et les collisions de
+        valeurs. Le parser reste PUR : il constate et rend, il ne compte rien.
         """
         try:
             return self._interpret(raw)
@@ -92,24 +96,41 @@ class GenericParser:
             raise ParseError(f"Erreur lors du parsing : {exc}") from exc
 
     def _interpret(self, raw: RawDocument) -> ParseResult:
-        facets = self._facets(raw)
+        sourced = _ordered(
+            _sourced(self._facets(raw), raw.payload.get("files", ())), self._table
+        )
+        facets = [facet for facet, _ in sourced]
         routing = UnconfiguredRouting(
             identifier=self._identifier(facets),
-            metadata={},
             references=read_references(facets, self._table),
         )
-        sourced = _sourced(facets, raw.payload.get("files", ()))
         collect_metadata(sourced, self._table, routing)
         route_unconfigured(sourced, self._table, routing)
+        resolution = resolve(
+            routing.occurrences,
+            self._table,
+            self._source,
+            routing.identifier.serialize(),
+        )
+        if resolution.blocking:
+            raise CollisionError(
+                f"Collision non configurée sur {list(resolution.blocking)}",
+                resolution.collisions,
+            )
         return ParseResult(
-            document=self._document(raw, facets, routing),
+            document=self._document(raw, facets, routing, resolution.metadata),
             unconfigured_tags=routing.tags,
             unconfigured_links=routing.links,
             unknown_roots=routing.roots,
+            collisions=resolution.collisions,
         )
 
     def _document(
-        self, raw: RawDocument, facets: list[Node], routing: UnconfiguredRouting
+        self,
+        raw: RawDocument,
+        facets: list[Node],
+        routing: UnconfiguredRouting,
+        metadata: dict[str, Any],
     ) -> ParsedDocument:
         return ParsedDocument(
             identifier=routing.identifier,
@@ -123,7 +144,7 @@ class GenericParser:
                 "sections": self._sections(facets),
                 "context": read_context(facets, self._table),
             },
-            metadata=routing.metadata,
+            metadata=metadata,
             source_files=tuple(raw.payload.get("files", ())),
         )
 
@@ -207,6 +228,24 @@ class GenericParser:
             for holder in holders(block, self._table)
             if (text := text_of(holder, self._table)).strip()
         ]
+
+
+def _ordered(sourced: list[SourcedFacet], table: RoleTable) -> list[SourcedFacet]:
+    """Les facettes dans l'ordre de ``table.roots`` : celui des valeurs d'une même clé
+    (ADR-049). Les livrer dans l'ordre des chemins de fichiers en ferait un accident.
+
+    Un document à plusieurs facettes n'a pas d'ordre si l'une a une racine non déclarée,
+    ou si deux partagent leur racine : il est refusé plutôt que trié au hasard.
+    """
+    if len(sourced) <= 1:
+        return sourced
+    roots = [facet["tag"] for facet, _ in sourced]
+    if len(set(roots)) < len(roots) or not set(roots) <= set(table.roots):
+        raise ValidationError(
+            f"Ordre des facettes indéterminé : racines {roots}, "
+            f"ordre déclaré {list(table.roots)}"
+        )
+    return sorted(sourced, key=lambda pair: table.roots.index(pair[0]["tag"]))
 
 
 def _sourced(facets: list[Node], files: Sequence[str]) -> list[SourcedFacet]:
