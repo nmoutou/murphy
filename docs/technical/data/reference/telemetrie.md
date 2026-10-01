@@ -27,7 +27,6 @@ n'en sort en silence.
 | `relation.pending` | Cible absente → cache des pendantes |
 | `relation.promoted` | Pendante d'un run passé enfin résolue |
 | `relation.unknown` | Liens qu'on ne sait pas écrire (`sens` inconnu, `@id` illisible, `typelien` qui ne peut pas être un verbe) : 1 événement par document, `count` = liens perdus. L'arête n'existe pas ; un lien retiré par `skip_unconfigured` n'est pas compté. Ne change pas le statut du run (ADR-048). |
-| `collision.unrecorded` | Collisions que `parseDocuments` n'a pas pu écrire dans `MURPHY_META.collisions` (1 événement par écriture ratée, `payload.collisions` = leur nombre). Le bilan et la collection ne concordent plus : le run passe en `degraded` (ADR-049). |
 | `saga.compensation.triggered` / `.completed` / `.failed` | Rollback d'une saga (`.failed` = un écrit partiel subsiste ; `success` du `.completed` dit la vérité : une seule compensation ratée et le rollback n'est pas propre) |
 
 **Contrat de cardinalité** : la plupart des événements pèsent 1. Six — et eux
@@ -81,8 +80,7 @@ commutative ferait dépendre le bilan de l'ordonnancement). Deux champs :
     chemin-complet d'une balise absente de la table dont la valeur est un identifiant
     DILA (lien heuristique) ;
   - `collisions` : les clés de métadonnée qui ont reçu au moins deux valeurs distinctes
-    dans un document (ADR-049), configurées (`list`) ou non (document refusé). Le
-    détail est dans `MURPHY_META.collisions`, et les comptes concordent.
+    dans un document (ADR-049), configurées (`list`) ou non (document refusé).
 
   Une balise sans valeur n'y apparaît pas : elle n'a rien à ingérer. Un lien qu'on ne
   sait pas écrire n'est pas un type de lien : il est compté par `relation.unknown`.
@@ -97,15 +95,13 @@ les pousser les compterait deux fois).
 
 `RunSummary` = l'identité du run (run_id, `sources`, dates) + les `counts` et les
 `unknowns` de l'agrégat, recopiés à plat + le `status`. Le statut annoncé « ok » par le hook est **re-dérivé des compteurs**
-(`_status_from`) — trois propriétés :
+(`_status_from`) — deux propriétés :
 
 1. **Complet ?** `fetched == persisted + invalidated + failed` — **l'équation de
    complétude**. Si elle ne tombe pas juste (dans les deux sens : un excédent est un
    double comptage), des documents ont disparu sans que rien ne les compte.
 2. **Sans perte ?** `failed == 0`. Un document échoué est déclaré et rejouable — mais pas
    ingéré.
-3. **Collisions enregistrées ?** `collision.unrecorded == 0`. Sinon, le bilan compte des
-   collisions que la collection ne montre pas (ADR-049).
 
 | Statut | Sens |
 |---|---|

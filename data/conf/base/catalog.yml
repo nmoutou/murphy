@@ -28,11 +28,6 @@ vector_repo:
   type: MemoryDataset
   copy_mode: assign
 
-# Les collisions du run (MURPHY_META.collisions), réécrites par `parseDocuments` (ADR-049).
-collision_repo:
-  type: MemoryDataset
-  copy_mode: assign
-
 # --- Le pool phase 1 et le service phase 2 ---
 runner:
   type: MemoryDataset

@@ -1,7 +1,7 @@
 """CLIQUET — les renommages de métadonnées (ADR-049).
 
-Une collision de valeurs se voit au run : la collection ``MURPHY_META.collisions`` la
-montre. Une collision de NOMS, elle, est une décision de la table, et rien ne la verrait
+Une collision de valeurs se voit au run : le bilan la compte (``unknowns.collisions``).
+Une collision de NOMS, elle, est une décision de la table, et rien ne la verrait
 au run : deux balises renommées pareil, un renommage commun redéfini en silence, une
 cible qui écrase un champ du contrat. Ce cliquet les interdit.
 """

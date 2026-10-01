@@ -20,9 +20,6 @@ from datetime import UTC, datetime
 
 from ragcore.adapters.embedding import EmbeddingTransport, TeiEmbedder
 from ragcore.adapters.runtime import AsyncioRuntime, AsyncioRuntimeFactory
-from ragcore.adapters.storage.mongo.collision_repository import (
-    MongoCollisionRepository,
-)
 from ragcore.adapters.storage.mongo.document_repository import MongoDocumentRepository
 from ragcore.adapters.storage.mongo.pending_repository import (
     MongoPendingRelationRepository,
@@ -44,7 +41,6 @@ from ragcore.adapters.telemetry import (
 from ragcore.core.models.enums import SourceName
 from ragcore.core.models.processing import EmbeddingModel
 from ragcore.core.models.unknown_tally import UnknownExample, UnknownTally
-from ragcore.core.ports.collision_repository import CollisionRepository
 from ragcore.core.ports.document_repository import DocumentRepository
 from ragcore.core.ports.embedder import BaseEmbedder
 from ragcore.core.ports.graph_repository import GraphRepository
@@ -82,10 +78,6 @@ class TestStorageAdapters:
     def test_mongo_run_summary_repository(self) -> None:
         repo = MongoRunSummaryRepository.__new__(MongoRunSummaryRepository)
         assert isinstance(repo, RunSummaryRepository)
-
-    def test_mongo_collision_repository(self) -> None:
-        repo = MongoCollisionRepository.__new__(MongoCollisionRepository)
-        assert isinstance(repo, CollisionRepository)
 
     def test_mongo_pending_repository(self) -> None:
         """Le dépôt du §13 : sans lui, une arête différée redevient un silence."""

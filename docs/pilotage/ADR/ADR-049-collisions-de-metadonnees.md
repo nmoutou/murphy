@@ -1,6 +1,7 @@
 # ADR-049 — Collisions de métadonnées : une liste, un ordre déclaré, un refus
 
-**Statut** : ✅ Accepté (1er octobre 2026) — amende ADR-047 et ADR-048, corrige ADR-022 §3
+**Statut** : ✅ Accepté (1er octobre 2026) — amende ADR-047 et ADR-048, corrige ADR-022 §3 ·
+**amendé le 1er octobre 2026** : la collection `MURPHY_META.collisions` est retirée
 
 ## Contexte
 
@@ -46,17 +47,16 @@ n'a pas d'ordre : il est refusé (`validation_error`).
 qui reçoit deux valeurs distinctes fait refuser le document avec la raison `collision`
 (`document.invalidated`). Il n'y a pas de différence entre dev et prod.
 
-**Toute collision est visible.**
+**Toute collision est visible.** Le bilan la compte dans `unknowns.collisions` : clé →
+`{count, example}`, en documents, comme les trois catégories d'ADR-048.
 
-- Le bilan la compte dans `unknowns.collisions` : clé → `{count, example}`, en documents,
-  comme les trois catégories d'ADR-048.
-- La collection `MURPHY_META.collisions` en garde le détail, un enregistrement par
-  (document, clé) : `run_id`, `source`, `identifier`, `key`, `values[{value, tag, path,
-  source_file, root}]`, toutes les occurrences dans l'ordre déclaré. C'est un
-  échafaudage d'analyse : `parseDocuments` la vide entièrement puis la réécrit à chaque
-  run, sans lien avec `nuke_all`. Un manifest la remplacera.
-- Le bilan et la collection concordent. Si l'écriture de la collection échoue, le run
-  émet `collision.unrecorded` (un événement par écriture ratée) et passe en `degraded`.
+**Amendement — la collection est retirée.** Une collection `MURPHY_META.collisions`
+gardait le détail de chaque collision (un enregistrement par document et clé, toutes les
+occurrences avec leur balise, leur chemin et leur facette). C'était un échafaudage
+d'analyse, vidé et réécrit à chaque run ; un échec d'écriture émettait
+`collision.unrecorded` et passait le run en `degraded`. L'analyse est faite : toutes les
+collisions du corpus sont rangées par la table. La collection, son dépôt et l'événement
+`collision.unrecorded` sont supprimés ; le bilan reste.
 
 **Une cible de renommage n'apparaît qu'une fois par table.** Le renommage reste
 injectif ; le cliquet `tests/golden/test_meta_renames.py` le vérifie, avec l'absence de
@@ -71,8 +71,7 @@ LEGI renomme ses 7 balises répétées entre facettes (`derniere_modification`,
 ## Alternatives rejetées
 
 - **Stratégies `first` et `last`.** L'ordre de départ était accidentel ; garder une
-  valeur, c'est choisir sans savoir. La précédence sera décidée quand la collection aura
-  montré les données.
+  valeur, c'est choisir sans savoir.
 - **Arrêter le pipeline sur une collision non configurée.** Un document fautif ne doit
   pas priver le run de tous les autres : il est refusé et compté.
 - **Un champ `facet_order` à côté de `roots`.** Il devrait couvrir exactement les mêmes
@@ -93,5 +92,4 @@ LEGI renomme ses 7 balises répétées entre facettes (`derniere_modification`,
 
 `data/src/ragcore/sources/generic/occurrences.py` ·
 `data/src/ragcore/sources/generic/parser.py` ·
-`data/src/ragcore/orchestration/kedro/nodes/parse_documents.py` ·
-`data/src/ragcore/adapters/storage/mongo/collision_repository.py`
+`data/src/ragcore/orchestration/kedro/nodes/parse_documents.py`

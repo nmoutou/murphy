@@ -37,8 +37,7 @@ il est compté par ``relation.unknown``, pas ici.
 CATEGORY_COLLISION = "collisions"
 """Une clé de métadonnée qui a reçu plusieurs valeurs distinctes dans un document
 (ADR-049) : résolue en liste, ou document refusé. Ce n'est pas un mot inconnu, c'est un
-choix que la table ne sait pas encore faire. Le détail est dans
-``MURPHY_META.collisions``, et ses comptes concordent avec ceux-ci."""
+choix que la table ne sait pas encore faire."""
 
 UNKNOWN_CATEGORIES = (CATEGORY_TAG, CATEGORY_ROOT, CATEGORY_LINK, CATEGORY_COLLISION)
 """Les catégories du bilan, dans l'ordre où il les présente. Toutes y figurent, même

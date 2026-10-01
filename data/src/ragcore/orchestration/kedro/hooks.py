@@ -106,9 +106,6 @@ class TelemetryHooks:
             "doc_repo": stores.documents,
             "graph_repo": stores.graph,
             "vector_repo": stores.vectors,
-            # Le détail des collisions du run (MURPHY_META.collisions), que
-            # `parseDocuments` remplace : un échafaudage d'analyse (ADR-049).
-            "collision_repo": meta.collisions,
             # Le pool de la phase 1 : des FABRIQUES, pas des instances (§11).
             "runner": build_runner(settings, plan, session.context, stack),
             # La phase 2 : un service unique, sur la boucle DU HOOK (pas parallélisé).

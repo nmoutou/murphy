@@ -3,9 +3,7 @@
 from collections.abc import Sequence
 from dataclasses import dataclass
 
-from ragcore.core.exceptions import CollisionRecordingError
 from ragcore.core.models.chunk import EmbeddedChunk
-from ragcore.core.models.collision import Collision
 from ragcore.core.models.document import ParsedDocument
 from ragcore.core.models.identifiers import Identifier, RunId
 from ragcore.core.models.pending import PendingKey, PendingRelation
@@ -171,16 +169,3 @@ class InMemoryUnformattedRepository:
 
     async def count(self) -> int:
         return len(self.rows)
-
-
-class InMemoryCollisionRepository:
-    """``MURPHY_META.collisions`` en mémoire : ``replace`` vide, puis réécrit."""
-
-    def __init__(self, *, is_failing: bool = False) -> None:
-        self.records: list[tuple[RunId, Collision]] = []
-        self._is_failing = is_failing
-
-    async def replace(self, run_id: RunId, collisions: Sequence[Collision]) -> None:
-        if self._is_failing:
-            raise CollisionRecordingError("Mongo indisponible")
-        self.records = [(run_id, collision) for collision in collisions]

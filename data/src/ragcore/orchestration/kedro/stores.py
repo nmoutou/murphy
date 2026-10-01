@@ -15,9 +15,6 @@ from qdrant_client import AsyncQdrantClient
 
 from ragcore.adapters.config.settings import InfraSettings
 from ragcore.adapters.storage.mongo.client import MongoClient, create_mongo_client
-from ragcore.adapters.storage.mongo.collision_repository import (
-    MongoCollisionRepository,
-)
 from ragcore.adapters.storage.mongo.document_repository import MongoDocumentRepository
 from ragcore.adapters.storage.mongo.pending_repository import (
     MongoPendingRelationRepository,
@@ -60,10 +57,9 @@ class InfraClients:
 
 @dataclass(frozen=True)
 class MetaStores:
-    """La base méta : les bilans de run, et les collisions du dernier run."""
+    """La base méta : les bilans de run."""
 
     summaries: MongoRunSummaryRepository
-    collisions: MongoCollisionRepository
 
 
 def open_clients(settings: InfraSettings) -> InfraClients:
@@ -112,8 +108,8 @@ def open_document_stores(
 
 
 def open_meta_stores(clients: InfraClients, settings: InfraSettings) -> MetaStores:
-    meta_db = settings.mongodb_meta_db_name
     return MetaStores(
-        summaries=MongoRunSummaryRepository(clients.mongo, meta_db),
-        collisions=MongoCollisionRepository(clients.mongo, meta_db),
+        summaries=MongoRunSummaryRepository(
+            clients.mongo, settings.mongodb_meta_db_name
+        ),
     )

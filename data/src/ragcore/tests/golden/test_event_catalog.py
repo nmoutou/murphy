@@ -27,8 +27,6 @@ GOLDEN = {
     "relation.promoted",
     # Un lien que la source a écrit et qu'on ne sait pas écrire (ADR-048).
     "relation.unknown",
-    # Les collisions du run que `MURPHY_META.collisions` ne montre pas (ADR-049).
-    "collision.unrecorded",
     "saga.compensation.triggered",
     "saga.compensation.completed",
     "saga.compensation.failed",

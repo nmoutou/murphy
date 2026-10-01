@@ -31,11 +31,6 @@ RELATION_PROMOTED = "relation.promoted"  # pendante enfin résolue
 # COMPTER est ce qui l'empêche de disparaître en silence (ADR-048).
 RELATION_UNKNOWN = "relation.unknown"
 
-# Les collisions du run n'ont pas pu être écrites dans `MURPHY_META.collisions` : le
-# bilan en compte que la collection ne montre pas. Un événement par écriture ratée ; il
-# passe le run en `degraded` (ADR-049).
-COLLISION_UNRECORDED = "collision.unrecorded"
-
 SAGA_COMPENSATION_STARTED = "saga.compensation.triggered"
 SAGA_COMPENSATION_COMPLETED = "saga.compensation.completed"
 # Une compensation qui échoue laisse un écrit partiel (ex. Mongo inséré, son rollback
@@ -109,8 +104,6 @@ EVENT_TYPES: frozenset[str] = frozenset(
         RELATION_PENDING,
         RELATION_PROMOTED,
         RELATION_UNKNOWN,
-        # --- Collisions de métadonnées ---
-        COLLISION_UNRECORDED,
         # --- Saga (erreurs de transaction) ---
         SAGA_COMPENSATION_STARTED,
         SAGA_COMPENSATION_COMPLETED,

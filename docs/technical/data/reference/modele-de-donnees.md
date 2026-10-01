@@ -106,12 +106,11 @@ Comme les pendantes, elles dérivent des documents et `nuke_all` les efface avec
 ## MongoDB — base méta `MURPHY_META`
 
 Préservée par `nuke_all` : la mémoire de ce qu'on a fait ne doit jamais partir avec les
-données. Seule `collisions` est remplacée à chaque run : elle décrit le dernier run.
+données.
 
 | Collection | Contenu | Index |
 |---|---|---|
 | `run_summaries` | Un `RunSummary` par run, à plat : run_id, `sources` (liste), dates, `status` (`ok`/`degraded`/`failed`), `counts`, `unknowns` (`tags` / `roots` / `links` / `collisions` → clé → `{count, example: {identifier, source_file}}`, ADR-048, ADR-049), et `error_message` sur un run `failed` seulement. | unique (run_id), (started_at) |
-| `collisions` | Échafaudage d'analyse (ADR-049) : une clé de métadonnée qui a reçu au moins deux valeurs distinctes dans un document. Un enregistrement par (document, clé) : `run_id`, `source`, `identifier`, `key`, `values[{value, tag, path, source_file, root}]` (toutes les occurrences, rang de facette puis ordre du document). Vidée puis réécrite par `parseDocuments` à chaque run, sans lien avec `nuke_all`. | aucun |
 
 ## Qdrant
 

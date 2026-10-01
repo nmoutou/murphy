@@ -4,7 +4,6 @@ from .models.collision import Collision
 
 __all__ = [
     "CollisionError",
-    "CollisionRecordingError",
     "EmbeddingModelMismatchError",
     "ParseError",
     "RagCoreError",
@@ -43,19 +42,13 @@ class CollisionError(ValidationError):
     """Une clé renommée, non déclarée ``list``, a reçu plusieurs valeurs distinctes : la
     table ne dit pas laquelle garder, le document est refusé (ADR-049).
 
-    Elle PORTE toutes les collisions du document : refusé ou non, il doit les montrer au
-    bilan et dans ``MURPHY_META.collisions``.
+    Elle PORTE toutes les collisions du document : refusé ou non, il les montre au
+    bilan.
     """
 
     def __init__(self, message: str, collisions: tuple[Collision, ...]) -> None:
         super().__init__(message)
         self.collisions = collisions
-
-
-class CollisionRecordingError(RagCoreError):
-    """Les collisions du run n'ont pas pu être écrites dans ``MURPHY_META.collisions`` :
-    le bilan en compte que la collection ne montre pas. Le run passe en ``degraded``,
-    il ne s'arrête pas (ADR-049)."""
 
 
 class ParseError(RagCoreError):
