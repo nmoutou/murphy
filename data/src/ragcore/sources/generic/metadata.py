@@ -14,9 +14,11 @@ niché dedans reste un lien, et l'aspirer en métadonnée en ferait une seconde 
 Seules les balises de rôle ``META`` (et ``VERSION``, qui *est* une métadonnée, sur l'axe
 temporel) entrent ici.
 
-**Sauf l'identifiant et la nature.** Ils ont leur champ dédié
-(``ParsedDocument.identifier``, ``ParsedDocument.nature``) : les recopier ici en ferait,
-là encore, une seconde vérité.
+**Sauf l'identifiant, la nature et le titre.** Ils ont leur champ dédié
+(``ParsedDocument.identifier``, ``ParsedDocument.nature``, ``ParsedDocument.title``) :
+les recopier ici en ferait, là encore, une seconde vérité (ADR-050). Une balise de titre
+que la table renomme reste une métadonnée : ``NUM`` → ``num`` est le titre d'un article,
+mais le numéro d'un texte, et le renommage est une promotion explicite.
 
 **La clé par défaut est le CHEMIN COMPLET** (ADR-022 §3), le renommage donne un nom court.
 Aucune des deux n'est injective : deux balises sœurs homonymes ont le même chemin, et une
@@ -72,11 +74,17 @@ def _meta_leaves(
 
 
 def _is_collectable(node: Node, table: RoleTable) -> bool:
-    """Une feuille non vide, de rôle collectable, qui n'a pas son champ dédié
-    (l'identifiant, la nature)."""
+    """Une feuille non vide, de rôle collectable, qui n'a pas son champ dédié."""
     return (
         not node["children"]
         and bool(node["text"].strip())
-        and node["tag"] not in (table.identifier_tag, table.nature_tag)
+        and not _has_dedicated_field(node["tag"], table)
         and table.role_of(node["tag"]) in _COLLECTABLE_ROLES
     )
+
+
+def _has_dedicated_field(tag: str, table: RoleTable) -> bool:
+    """L'identifiant, la nature, et les balises de titre que la table ne renomme pas."""
+    if tag in (table.identifier_tag, table.nature_tag):
+        return True
+    return tag in table.title_tags and tag not in table.meta_renames

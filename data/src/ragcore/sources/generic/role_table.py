@@ -80,6 +80,9 @@ class RoleTable:
     ``TEXTE_VERSION`` apporte ``<TITRE>``, ``TEXTELR`` n'apporte rien (0/98) — c'est
     exactement pourquoi les deux doivent être lues ensemble, et pourquoi ``TITRE``
     l'emporte.
+
+    Une balise de titre sans renommage n'entre pas en métadonnée : elle a son champ
+    dédié, ``title`` (ADR-050).
     """
 
     identifier_tag: str = "ID"

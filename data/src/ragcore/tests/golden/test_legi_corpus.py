@@ -276,6 +276,5 @@ def test_les_inconnus_sont_DECLARES_et_pas_jetes() -> None:
         "tags": [
             "article_zorg",
             "article_zorg_attribut_inconnu",
-            "texte_version_meta_meta_spec_meta_texte_version_titre",
         ],
     }

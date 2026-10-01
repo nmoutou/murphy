@@ -104,6 +104,10 @@ def test_les_deux_facettes_du_texte_donnent_UN_document_avec_son_titre(
 
     assert parsed.identifier.raw == TEXTE_DEUX_FACETTES
     assert parsed.title.startswith("Décret n°2016-1967")  # vient de TEXTE_VERSION
+    assert not any(key.endswith("_titre") for key in parsed.metadata), (
+        "le titre a son champ dédié : le recopier en métadonnée ferait deux vérités"
+    )
+    assert parsed.metadata["num"] == "2016-1967"  # renommé : reste une métadonnée
     assert _kinds(parsed.structure["references"]) & {
         "LIEN_SECTION_TA"
     }  # vient de TEXTELR
