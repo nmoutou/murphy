@@ -64,8 +64,8 @@ qu'un aplatissement écraserait mutuellement).
 - **il écarte les artefacts d'export** : les `versions.xml` (racine `<VERSIONS>`) et les
   fichiers `<ID>` d'une ligne — mesuré, 1 637 + 60 des 2 564 fichiers du corpus. Ce ne
   sont pas des documents pauvres, ce ne sont pas des documents. L'écart est **compté**
-  (`connector.skipped`, par raison) et émis en `document.skipped`, hors équation de
-  complétude ;
+  (`connector.skipped`, par raison) et émis en `document.version_skipped`, hors équation
+  de complétude ;
 - **il fusionne les deux facettes d'un même texte** : `TEXTE_VERSION` (titre +
   métadonnées) et `TEXTELR` (structure, aucun titre) sont le même document dans deux
   fichiers (98 IDs, intersection 98/98). Les émettre séparément produirait 98 collisions

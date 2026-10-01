@@ -92,9 +92,9 @@ Entrées : `connector`, le contexte, la télémétrie, le runtime du hook, `nuke
 
 - Émet `document.fetched` **une fois**, avec `count` = le nombre de documents vus. Ce
   compte est le **dénominateur** de l'équation de complétude.
-- Ce que le connecteur a écarté en amont (artefacts d'export, fichiers illisibles) est
-  émis en `document.skipped`, une ligne par raison, **hors équation** : un fichier écarté
-  n'est pas un document vu.
+- Ce que le connecteur a écarté en amont est émis en un compteur par raison,
+  `document.version_skipped` (artefacts d'export) et `document.unreadable` (fichiers
+  illisibles), **hors équation** : un fichier écarté n'est pas un document vu.
 
 Sortie : `raw_documents`.
 

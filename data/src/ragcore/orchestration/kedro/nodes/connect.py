@@ -6,7 +6,23 @@ from ragcore.core.models.document import RawDocument
 from ragcore.core.ports.connector import BaseConnector
 from ragcore.core.ports.runtime import AsyncRuntime
 from ragcore.core.ports.telemetry import TelemetryPort
-from ragcore.core.telemetry_events import DOCUMENT_FETCHED, DOCUMENT_SKIPPED
+from ragcore.core.services.exclusion_reasons import (
+    REASON_EXPORT_ARTIFACT,
+    REASON_UNREADABLE,
+)
+from ragcore.core.telemetry_events import (
+    DOCUMENT_FETCHED,
+    DOCUMENT_UNREADABLE,
+    DOCUMENT_VERSION_SKIPPED,
+)
+
+# La raison d'un écart, telle que le connecteur la nomme → le compteur qui la porte au
+# bilan. Une raison absente d'ici lève (`KeyError`) : un écart qu'on ne sait pas nommer
+# ne doit pas disparaître dans un compteur fourre-tout.
+_SKIP_EVENT_BY_REASON = {
+    REASON_EXPORT_ARTIFACT: DOCUMENT_VERSION_SKIPPED,
+    REASON_UNREADABLE: DOCUMENT_UNREADABLE,
+}
 
 
 def connect_node(
@@ -32,14 +48,14 @@ def connect_node(
     # Ce que le connecteur a écarté (artefacts d'export, fichiers illisibles) n'entre
     # PAS dans `document.fetched` — donc pas dans `seen`, donc invisible à l'équation
     # de complétude. Sans cette boucle, le compte que le connecteur tient si
-    # soigneusement s'évaporait ici. Un `document.skipped` par raison, HORS équation :
-    # le bilan dit « N écartés, dont X illisibles » sans fausser le dénominateur.
+    # soigneusement s'évaporait ici. Un compteur par raison, HORS équation : le bilan
+    # dit « X versions.xml, Y illisibles » sans fausser le dénominateur.
     for reason, count in connector.skipped.items():
         _emit(
             telemetry,
             pipeline_context,
-            DOCUMENT_SKIPPED,
-            {"reason": reason, "count": count},
+            _SKIP_EVENT_BY_REASON[reason],
+            {"count": count},
         )
     return documents
 

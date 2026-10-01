@@ -20,7 +20,8 @@ from ragcore.core.telemetry_events import (
     DOCUMENT_FETCHED,
     DOCUMENT_INVALIDATED,
     DOCUMENT_PERSISTED,
-    DOCUMENT_SKIPPED,
+    DOCUMENT_UNREADABLE,
+    DOCUMENT_VERSION_SKIPPED,
 )
 
 RUN = RunId("run-1")
@@ -60,20 +61,17 @@ def test_counts_reach_the_stats(aggregator: RunStatsAggregator) -> None:
 def test_skipped_files_are_counted_outside_the_equation(
     aggregator: RunStatsAggregator,
 ) -> None:
-    """Un `document.skipped` par raison, porteur de son `count` : le bilan compte les
-    fichiers écartés, sans toucher l'équation de complétude."""
+    """Un compteur par raison, porteur de son `count` : le bilan compte les fichiers
+    écartés, sans toucher l'équation de complétude."""
     aggregator.emit(build_event(DOCUMENT_FETCHED, RUN, payload={"count": 1}))
     aggregator.emit(build_event(DOCUMENT_PERSISTED, RUN))
-    for reason, count in (("export_artifact", 3), ("unreadable", 1)):
-        aggregator.emit(
-            build_event(
-                DOCUMENT_SKIPPED, RUN, payload={"reason": reason, "count": count}
-            )
-        )
+    for event_type, count in ((DOCUMENT_VERSION_SKIPPED, 3), (DOCUMENT_UNREADABLE, 1)):
+        aggregator.emit(build_event(event_type, RUN, payload={"count": count}))
 
     summary = aggregator.finalize(RunStatus.OK)
 
-    assert summary.counts[DOCUMENT_SKIPPED] == 4
+    assert summary.counts[DOCUMENT_VERSION_SKIPPED] == 3
+    assert summary.counts[DOCUMENT_UNREADABLE] == 1
     assert summary.status is RunStatus.OK
 
 

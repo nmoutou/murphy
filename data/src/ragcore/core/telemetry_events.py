@@ -19,7 +19,12 @@ PIPELINE_RUN_FAILED = "pipeline.run.failed"
 
 DOCUMENT_FETCHED = "document.fetched"
 DOCUMENT_PARSED = "document.parsed"
-DOCUMENT_SKIPPED = "document.skipped"  # écarté par le connecteur — HORS équation
+# Écartés par le connecteur, un compteur par raison — HORS équation : un fichier écarté
+# n'est pas un document vu. La raison est dans le NOM, le bilan la lit sans ventilation.
+DOCUMENT_VERSION_SKIPPED = (
+    "document.version_skipped"  # artefact d'export (versions.xml)
+)
+DOCUMENT_UNREADABLE = "document.unreadable"  # XML illisible (tronqué, encodage cassé)
 DOCUMENT_INVALIDATED = "document.invalidated"
 DOCUMENT_PERSISTED = "document.persisted"
 DOCUMENT_FAILED = "document.failed"  # vu, jamais ingéré — la FUITE
@@ -75,7 +80,8 @@ COUNT_CARRYING_EVENTS: frozenset[str] = frozenset(
         DOCUMENT_FETCHED,  # émis une fois par lot fetché → nombre de documents vus
         RELATION_UPSERTED,  # émis une fois par batch → nombre d'arêtes écrites
         CHUNK_TRUNCATED,  # émis une fois en fin de run → nombre de chunks raccourcis
-        DOCUMENT_SKIPPED,  # émis une fois par raison → nombre de fichiers écartés
+        DOCUMENT_VERSION_SKIPPED,  # émis une fois en fin de fetch → nombre d'artefacts
+        DOCUMENT_UNREADABLE,  # émis une fois en fin de fetch → nombre d'illisibles
     }
 )
 """Les événements dont ``payload[PAYLOAD_COUNT_KEY]`` EST leur poids d'agrégat. Tout autre
@@ -133,11 +139,16 @@ EVENT_CATALOG: dict[str, EventBehavior] = {
         track_mongo=True,
         aggregate=True,
     ),
-    DOCUMENT_SKIPPED: EventBehavior(
-        # Ce que le connecteur ÉCARTE (artefact d'export, fichier illisible), un événement
-        # par raison, porteur de son `count`. Compté au bilan, mais HORS équation : un
-        # fichier écarté n'est PAS un document vu, et `_status_from` ne lit que
-        # `document.fetched` pour dénominateur — jamais ce compteur.
+    # Ce que le connecteur ÉCARTE, porteur de son `count`. Compté au bilan, mais HORS
+    # équation : un fichier écarté n'est PAS un document vu, et `_status_from` ne lit que
+    # `document.fetched` pour dénominateur — jamais ces compteurs.
+    DOCUMENT_VERSION_SKIPPED: EventBehavior(
+        level="warning",
+        log=False,
+        track_mongo=True,
+        aggregate=True,
+    ),
+    DOCUMENT_UNREADABLE: EventBehavior(
         level="warning",
         log=False,
         track_mongo=True,

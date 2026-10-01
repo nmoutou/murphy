@@ -17,8 +17,9 @@ class BaseConnector(Protocol):
 
     Fait partie du contrat, pas un détail d'implémentation : écarter un fichier sans
     l'émettre le ferait disparaître AVANT `document.fetched`, donc hors de l'équation
-    de complétude. Le node `connect` lit cette table et émet un `document.skipped` par
-    écart — c'est la seule façon dont un fichier non-document apparaît au bilan.
+    de complétude. Le node `connect` lit cette table et émet un compteur par raison
+    (`document.version_skipped`, `document.unreadable`) — c'est la seule façon dont un
+    fichier non-document apparaît au bilan.
     Rempli au fil de `fetch_all`, lisible une fois le générateur épuisé."""
 
     def fetch_all(self) -> AsyncIterator[RawDocument]:

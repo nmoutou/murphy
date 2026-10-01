@@ -19,7 +19,7 @@ sort en silence.
 |---|---|---|---|
 | `pipeline.run.started` / `.completed` / `.failed` | Cycle de vie du run. Hors agrégat : le bilan le dit déjà par `started_at`, `ended_at` et `status`. | ✓ | — |
 | `document.fetched` | Documents vus par le connecteur (1 événement, `count` = lot). **Le dénominateur** de l'équation. | — | ✓ |
-| `document.skipped` | Écartés par le connecteur (artefacts d'export, illisibles), par raison. Porte son `count`. **Hors équation** : un fichier écarté n'est pas un document vu. | ✓ | ✓ |
+| `document.version_skipped` / `document.unreadable` | Écartés par le connecteur : artefacts d'export (`versions.xml`) / XML illisibles. Un compteur par raison, chacun porte son `count`. **Hors équation** : un fichier écarté n'est pas un document vu. | ✓ | ✓ |
 | `document.parsed` | Parse réussi | — | ✓ |
 | `document.invalidated` | Rejet au parse (validation ou lecture) : `reason`, `uid` (chemin source), `error` | ✓ | ✓ |
 | `document.persisted` | Saga complète | ✓ | ✓ |
@@ -32,9 +32,10 @@ sort en silence.
 | `audit.write.failed` | **La télémétrie qui se surveille** : une écriture d'audit perdue. Jamais vers Mongo (écrire en Mongo qu'on n'a pas su écrire en Mongo récurse) — le compteur vit dans l'agrégat mémoire. | — | ✓ |
 | `maintenance.nuke_all.executed` | Maintenance | ✓ | — |
 
-**Contrat de cardinalité** : la plupart des événements pèsent 1. Quatre — et eux
+**Contrat de cardinalité** : la plupart des événements pèsent 1. Cinq — et eux
 exactement (`COUNT_CARRYING_EVENTS`) — portent leur poids dans `payload["count"]` :
-`document.fetched`, `document.skipped`, `relation.upserted`, `chunk.truncated`.
+`document.fetched`, `document.version_skipped`, `document.unreadable`,
+`relation.upserted`, `chunk.truncated`.
 L'ensemble est nommé et verrouillé par golden : un émetteur qui prétend porter une cardinalité sans y figurer est
 un bug visible, pas une dérive muette.
 

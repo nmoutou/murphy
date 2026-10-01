@@ -1,12 +1,14 @@
 """Le node `connect` remonte au bilan ce que le connecteur a ÉCARTÉ.
 
 Le connecteur COMPTE ses écarts (`connector.skipped`), mais ce compte s'évaporait :
-aucun code ne le lisait. Le node l'émet désormais en `document.skipped` (un par
-raison, HORS `document.fetched` donc hors équation de complétude) — la seule façon
-dont un fichier non-document apparaît au bilan.
+aucun code ne le lisait. Le node l'émet désormais en un compteur par raison
+(`document.version_skipped`, `document.unreadable`), HORS `document.fetched` donc hors
+équation de complétude — la seule façon dont un fichier non-document apparaît au bilan.
 """
 
 from collections.abc import AsyncIterator
+
+import pytest
 
 from ragcore.application.run_context import PipelineContext
 from ragcore.core.models.document import RawDocument
@@ -15,7 +17,11 @@ from ragcore.core.services.exclusion_reasons import (
     REASON_EXPORT_ARTIFACT,
     REASON_UNREADABLE,
 )
-from ragcore.core.telemetry_events import DOCUMENT_FETCHED, DOCUMENT_SKIPPED
+from ragcore.core.telemetry_events import (
+    DOCUMENT_FETCHED,
+    DOCUMENT_UNREADABLE,
+    DOCUMENT_VERSION_SKIPPED,
+)
 from ragcore.orchestration.kedro.nodes.connect import connect_node
 from ragcore.tests.fakes.runtime import FakeRuntime
 from ragcore.tests.fakes.telemetry import RecordingTelemetry
@@ -45,14 +51,21 @@ def _run(connector: _ConnectorWithSkips) -> RecordingTelemetry:
     return telemetry
 
 
-def test_chaque_ecart_du_connecteur_emet_un_document_skipped() -> None:
+def test_chaque_raison_d_ecart_emet_son_propre_compteur() -> None:
     telemetry = _run(
         _ConnectorWithSkips({REASON_EXPORT_ARTIFACT: 3, REASON_UNREADABLE: 1})
     )
 
-    skips = telemetry.events_of(DOCUMENT_SKIPPED)
-    by_reason = {e.payload["reason"]: e.payload["count"] for e in skips}
-    assert by_reason == {REASON_EXPORT_ARTIFACT: 3, REASON_UNREADABLE: 1}
+    versions = telemetry.events_of(DOCUMENT_VERSION_SKIPPED)
+    unreadable = telemetry.events_of(DOCUMENT_UNREADABLE)
+    assert [e.payload["count"] for e in versions] == [3]
+    assert [e.payload["count"] for e in unreadable] == [1]
+
+
+def test_une_raison_inconnue_leve() -> None:
+    """Un écart qu'on ne sait pas nommer ne se range pas dans un fourre-tout."""
+    with pytest.raises(KeyError):
+        _run(_ConnectorWithSkips({"raison_inventee": 2}))
 
 
 def test_les_ecarts_ne_gonflent_pas_le_denominateur() -> None:
@@ -68,4 +81,5 @@ def test_les_ecarts_ne_gonflent_pas_le_denominateur() -> None:
 def test_un_connecteur_sans_ecart_nemet_aucun_skip() -> None:
     telemetry = _run(_ConnectorWithSkips({}))
 
-    assert telemetry.events_of(DOCUMENT_SKIPPED) == []
+    assert telemetry.events_of(DOCUMENT_VERSION_SKIPPED) == []
+    assert telemetry.events_of(DOCUMENT_UNREADABLE) == []
