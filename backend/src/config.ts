@@ -161,7 +161,7 @@ const readServerConfig = (reader: EnvReader): ServerConfig => {
     port: reader.integer('PORT', DEFAULT_PORT),
     nodeEnv,
     isProduction,
-    logLevel: reader.optional('LOG_LEVEL') ?? defaultLogLevel,
+    logLevel: reader.optional('NODE_LOG_LEVEL') ?? defaultLogLevel,
   };
 };
 

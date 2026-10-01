@@ -44,6 +44,12 @@ describe('loadConfig', () => {
     expect(config.llm).toMatchObject({ apiKey: 'test-key', temperature: 0.2, systemPrompt: 'Consigne de test' });
   });
 
+  it('reads the log level from NODE_LOG_LEVEL', () => {
+    const { config } = loadConfig({ NODE_LOG_LEVEL: 'warn' });
+
+    expect(config.server.logLevel).toBe('warn');
+  });
+
   it('treats an empty value as unset, as Compose passes one for a missing variable', () => {
     const { config, report } = loadConfig({ RETRIEVAL_TOP_K: '', LLM_API_KEY: '' });
 

@@ -42,7 +42,7 @@ services:
     # NODE_ENV comes from the build target (development / production), not from .env.dev
     environment:
       - PORT=${PORT}
-      - LOG_LEVEL=${LOG_LEVEL}
+      - NODE_LOG_LEVEL=${NODE_LOG_LEVEL}
       - CORS_ORIGIN=${CORS_ORIGIN}
       - RATE_LIMIT_WINDOW_MS=${RATE_LIMIT_WINDOW_MS}
       - RATE_LIMIT_MAX=${RATE_LIMIT_MAX}
