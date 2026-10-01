@@ -49,7 +49,7 @@ def parse_documents_node(
     parser: BaseParser,
     pipeline_context: PipelineContext,
     # WorkerTelemetry, pas TelemetryPort : ce nœud DÉCLARE (`record_unknown`), il
-    # n'émet pas seulement. Le stack du hook (RegistryAwareTelemetry) le fournit.
+    # n'émet pas seulement. Le stack du hook (WorkerTelemetryStack) le fournit.
     telemetry: WorkerTelemetry,
     skip_unconfigured: bool,
 ) -> tuple[list[ParsedDocument], list[str]]:

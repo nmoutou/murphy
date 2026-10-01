@@ -14,32 +14,25 @@ from datetime import datetime
 from ragcore.core.models.enums import SourceName
 from ragcore.core.models.identifiers import RunId
 from ragcore.core.ports.runtime import AsyncRuntime
-from ragcore.core.services.telemetry_registry import TelemetryRegistry
-from ragcore.core.telemetry_events import EVENT_CATALOG
 
 from .aggregator import RunStatsAggregator
 from .console_log import ConsoleLogTelemetry
-from .registry_aware import RegistryAwareTelemetry
 from .worker_backends import WorkerBackends
+from .worker_stack import WorkerTelemetryStack
 
 __all__ = ["WorkerTelemetryFactory", "assemble_telemetry"]
 
 
-def assemble_telemetry(
-    registry: TelemetryRegistry,
-    *,
-    aggregate: RunStatsAggregator,
-) -> RegistryAwareTelemetry:
-    """Le CÂBLAGE d'une pile de télémétrie : registry + ses backends.
+def assemble_telemetry(aggregate: RunStatsAggregator) -> WorkerTelemetryStack:
+    """Le CÂBLAGE d'une pile de télémétrie : ses backends.
 
     La console est toujours la même ; l'agrégat est propre à chaque pile. Ce montage
     sert deux endroits — la fabrique par worker ci-dessous ET le hook, pour sa pile de
     run-lifecycle. Le grouper ici fait qu'un backend ajouté ou réordonné se voit en UN
     point, pas deux.
     """
-    return RegistryAwareTelemetry(
-        registry=registry,
-        backends=WorkerBackends(log=ConsoleLogTelemetry(), aggregate=aggregate),
+    return WorkerTelemetryStack(
+        WorkerBackends(log=ConsoleLogTelemetry(), aggregate=aggregate)
     )
 
 
@@ -55,9 +48,8 @@ class WorkerTelemetryFactory:
         self._run_id = run_id
         self._sources = sources
         self._started_at = started_at
-        self._registry = TelemetryRegistry.from_catalog(EVENT_CATALOG)
 
-    def build(self, worker_id: int, runtime: AsyncRuntime) -> RegistryAwareTelemetry:
+    def build(self, worker_id: int, runtime: AsyncRuntime) -> WorkerTelemetryStack:
         del (
             worker_id,
             runtime,
@@ -67,4 +59,4 @@ class WorkerTelemetryFactory:
             sources=self._sources,
             started_at=self._started_at,
         )
-        return assemble_telemetry(self._registry, aggregate=aggregator)
+        return assemble_telemetry(aggregator)

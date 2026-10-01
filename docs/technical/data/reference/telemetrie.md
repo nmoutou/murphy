@@ -4,30 +4,29 @@ La doctrine tient en une phrase : **rien en silence**. Tout ce qui est vu est co
 ce qui échoue est compté, et le compteur qui compte est lui-même surveillé. Le statut d'un
 run se dérive des compteurs — jamais de l'absence d'exception.
 
-Code : `src/ragcore/core/telemetry_events.py` (le catalogue),
+Code : `src/ragcore/core/telemetry_events.py` (le vocabulaire),
 `src/ragcore/adapters/telemetry/` (les backends), `src/ragcore/core/models/run_stats.py`
 et `run_summary.py` (l'agrégat et le bilan).
 
-## Le catalogue d'événements — source de vérité unique
+## Le vocabulaire des événements
 
-Chaque `event_type` déclare son comportement dans `EVENT_CATALOG` (`EventBehavior`) :
-un seul champ, `aggregate`, qui dit s'il est compté au bilan. Le golden test
-`tests/golden/test_event_catalog.py` verrouille le catalogue : rien n'y entre ni n'en
-sort en silence.
+Tout événement émis est compté au bilan. `EVENT_TYPES` en donne la liste complète, et
+le golden test `tests/golden/test_event_catalog.py` la verrouille : rien n'y entre ni
+n'en sort en silence.
 
-| Événement | Sens | Agrégat |
-|---|---|---|
-| `document.fetched` | Documents vus par le connecteur (1 événement, `count` = lot). **Le dénominateur** de l'équation. | ✓ |
-| `document.version_skipped` / `document.unreadable` | Écartés par le connecteur : artefacts d'export (`versions.xml`) / XML illisibles. Un compteur par raison, chacun porte son `count`. **Hors équation** : un fichier écarté n'est pas un document vu. | ✓ |
-| `document.parsed` | Parse réussi | ✓ |
-| `document.invalidated` | Rejet au parse (validation ou lecture) : `reason`, `uid` (chemin source), `error` | ✓ |
-| `document.persisted` | Saga complète | ✓ |
-| `document.failed` | **La fuite** : vu, jamais ingéré (saga échouée/compensée). `reason` = type d'exception. | ✓ |
-| `chunk.truncated` | Chunks raccourcis par l'embedder pour tenir dans la fenêtre du modèle (1 événement en fin de run, `count`). Pas une fuite — mais la fin de ces chunks n'est pas indexée : `CHUNKING_MAX_CHARS` à corriger. | ✓ |
-| `relation.upserted` | Arêtes **réussies** d'un batch (`count`) | ✓ |
-| `relation.pending` | Cible absente → cache des pendantes | ✓ |
-| `relation.promoted` | Pendante d'un run passé enfin résolue | ✓ |
-| `saga.compensation.triggered` / `.completed` / `.failed` | Rollback d'une saga (`.failed` = un écrit partiel subsiste ; `success` du `.completed` dit la vérité : une seule compensation ratée et le rollback n'est pas propre) | ✓ |
+| Événement | Sens |
+|---|---|
+| `document.fetched` | Documents vus par le connecteur (1 événement, `count` = lot). **Le dénominateur** de l'équation. |
+| `document.version_skipped` / `document.unreadable` | Écartés par le connecteur : artefacts d'export (`versions.xml`) / XML illisibles. Un compteur par raison, chacun porte son `count`. **Hors équation** : un fichier écarté n'est pas un document vu. |
+| `document.parsed` | Parse réussi |
+| `document.invalidated` | Rejet au parse (validation ou lecture) : `reason`, `uid` (chemin source), `error` |
+| `document.persisted` | Saga complète |
+| `document.failed` | **La fuite** : vu, jamais ingéré (saga échouée/compensée). `reason` = type d'exception. |
+| `chunk.truncated` | Chunks raccourcis par l'embedder pour tenir dans la fenêtre du modèle (1 événement en fin de run, `count`). Pas une fuite — mais la fin de ces chunks n'est pas indexée : `CHUNKING_MAX_CHARS` à corriger. |
+| `relation.upserted` | Arêtes **réussies** d'un batch (`count`) |
+| `relation.pending` | Cible absente → cache des pendantes |
+| `relation.promoted` | Pendante d'un run passé enfin résolue |
+| `saga.compensation.triggered` / `.completed` / `.failed` | Rollback d'une saga (`.failed` = un écrit partiel subsiste ; `success` du `.completed` dit la vérité : une seule compensation ratée et le rollback n'est pas propre) |
 
 **Contrat de cardinalité** : la plupart des événements pèsent 1. Cinq — et eux
 exactement (`COUNT_CARRYING_EVENTS`) — portent leur poids dans `payload["count"]` :
@@ -38,19 +37,19 @@ un bug visible, pas une dérive muette.
 
 ## Les backends
 
-Assemblés par le hook (`adapters/telemetry/factory.py:assemble_telemetry`), routés par le
-registre :
+Assemblés par `adapters/telemetry/factory.py:assemble_telemetry` dans une
+`WorkerTelemetryStack` (`worker_stack.py`) :
 
 1. **Console** (`console_log.py`) — les logs textuels (`telemetry.log`) ; elle ne reçoit
    aucun événement.
-2. **Agrégateur** (`aggregator.py:RunStatsAggregator`) — les compteurs dont le bilan
-   sortira.
+2. **Agrégateur** (`aggregator.py:RunStatsAggregator`) — reçoit chaque événement ; les
+   compteurs dont le bilan sortira.
 
 Il n'y a pas de trace événement par événement : le bilan ne garde que des compteurs.
 Le détail d'un échec (quel document, quelle erreur) est dans les logs console — un
 `logger` dédié pour `document.failed`, `document.invalidated` et les compensations
 ratées. Brancher un outil d'observabilité, c'est ajouter un backend à `WorkerBackends`
-et un champ de routage à `EventBehavior`.
+et le livrer dans `WorkerTelemetryStack.emit`.
 
 **Un stack par worker.** Les workers de la phase 1 ne partagent pas la pile du hook :
 `WorkerTelemetryFactory` construit la sienne pour chacun. Chaque worker tient son

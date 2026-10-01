@@ -28,8 +28,8 @@ from ragcore.core.ports.telemetry import TelemetryPort
         ),
         ("ragcore.adapters.telemetry.aggregator", "RunStatsAggregator", TelemetryPort),
         (
-            "ragcore.adapters.telemetry.registry_aware",
-            "RegistryAwareTelemetry",
+            "ragcore.adapters.telemetry.worker_stack",
+            "WorkerTelemetryStack",
             TelemetryPort,
         ),
         ("ragcore.adapters.telemetry.noop", "NoopTelemetry", TelemetryPort),

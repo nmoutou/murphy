@@ -1,12 +1,6 @@
-"""Catalogue complet des event types et de leurs comportements de télémétrie.
-
-Source de vérité unique : les constantes et leur routage vers les backends
-sont déclarés au même endroit.
-
-Comportement par défaut pour tout event_type non listé : aggregate=True
+"""Le vocabulaire des événements de télémétrie : leurs noms, et ceux qui portent un
+compte. Tout événement émis est compté au bilan du run (``RunStatsAggregator``).
 """
-
-from ragcore.core.services.telemetry_registry import EventBehavior
 
 # ---------------------------------------------------------------------------
 # Constantes publiques (re-exportées depuis ici — audit.py les re-importe)
@@ -78,36 +72,37 @@ cardinalité, c'est l'ajouter ICI — sinon son lot ne compte que pour un."""
 
 
 # ---------------------------------------------------------------------------
-# Catalogue : event_type → EventBehavior
-# ---------------------------------------------------------------------------
-# Champ :
-#   aggregate   : RunStatsAggregator (RunSummary)
+# Le vocabulaire complet — verrouillé par ``tests/golden/test_event_catalog.py``
 # ---------------------------------------------------------------------------
 
-EVENT_CATALOG: dict[str, EventBehavior] = {
-    # --- Cycle de vie d'un document ---
-    DOCUMENT_FETCHED: EventBehavior(aggregate=True),
-    DOCUMENT_PARSED: EventBehavior(aggregate=True),
-    DOCUMENT_INVALIDATED: EventBehavior(aggregate=True),
-    # Ce que le connecteur ÉCARTE, porteur de son `count`. Compté au bilan, mais HORS
-    # équation : un fichier écarté n'est PAS un document vu, et `_status_from` ne lit que
-    # `document.fetched` pour dénominateur — jamais ces compteurs.
-    DOCUMENT_VERSION_SKIPPED: EventBehavior(aggregate=True),
-    DOCUMENT_UNREADABLE: EventBehavior(aggregate=True),
-    # --- Traitement ---
-    DOCUMENT_PERSISTED: EventBehavior(aggregate=True),
-    # La FUITE : un document vu, parsé, jamais ingéré. `aggregate=True` est tout l'enjeu —
-    # l'échec partait auparavant en `telemetry.log()`, donc en console SEULEMENT : il était
-    # tracé sans être compté, et le run se déclarait « ok » en ayant perdu 98 documents.
-    # Un échec qui ne compte pas est un échec qui n'existe pas pour le bilan.
-    DOCUMENT_FAILED: EventBehavior(aggregate=True),
-    CHUNK_TRUNCATED: EventBehavior(aggregate=True),
-    # --- Relations ---
-    RELATION_UPSERTED: EventBehavior(aggregate=True),
-    RELATION_PENDING: EventBehavior(aggregate=True),
-    RELATION_PROMOTED: EventBehavior(aggregate=True),
-    # --- Saga (erreurs de transaction) ---
-    SAGA_COMPENSATION_STARTED: EventBehavior(aggregate=True),
-    SAGA_COMPENSATION_COMPLETED: EventBehavior(aggregate=True),
-    SAGA_COMPENSATION_FAILED: EventBehavior(aggregate=True),
-}
+EVENT_TYPES: frozenset[str] = frozenset(
+    {
+        # --- Cycle de vie d'un document ---
+        DOCUMENT_FETCHED,
+        DOCUMENT_PARSED,
+        DOCUMENT_INVALIDATED,
+        # Ce que le connecteur ÉCARTE, porteur de son `count`. Compté au bilan, mais
+        # HORS équation : un fichier écarté n'est PAS un document vu, et `_status_from`
+        # ne lit que `document.fetched` pour dénominateur — jamais ces compteurs.
+        DOCUMENT_VERSION_SKIPPED,
+        DOCUMENT_UNREADABLE,
+        # --- Traitement ---
+        DOCUMENT_PERSISTED,
+        # La FUITE : un document vu, parsé, jamais ingéré. Le COMPTER est tout l'enjeu :
+        # l'échec partait auparavant en `telemetry.log()`, donc en console SEULEMENT ;
+        # tracé sans être compté, le run se déclarait « ok » en ayant perdu 98
+        # documents. Un échec qui ne compte pas n'existe pas pour le bilan.
+        DOCUMENT_FAILED,
+        CHUNK_TRUNCATED,
+        # --- Relations ---
+        RELATION_UPSERTED,
+        RELATION_PENDING,
+        RELATION_PROMOTED,
+        # --- Saga (erreurs de transaction) ---
+        SAGA_COMPENSATION_STARTED,
+        SAGA_COMPENSATION_COMPLETED,
+        SAGA_COMPENSATION_FAILED,
+    }
+)
+"""Les types d'événements que le pipeline émet. Un ensemble nommé et figé par golden :
+un événement ajouté ou perdu se voit en revue, pas dans un bilan qui dérive."""

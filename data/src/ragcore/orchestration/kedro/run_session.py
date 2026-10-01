@@ -14,7 +14,7 @@ from dataclasses import dataclass
 
 from ragcore.adapters.telemetry import RunStatsAggregator
 from ragcore.adapters.telemetry.factory import assemble_telemetry
-from ragcore.adapters.telemetry.registry_aware import RegistryAwareTelemetry
+from ragcore.adapters.telemetry.worker_stack import WorkerTelemetryStack
 from ragcore.application.run_context import PipelineContext
 from ragcore.core.models.audit import build_event
 from ragcore.core.models.run_summary import RunStatus, RunSummary
@@ -22,8 +22,7 @@ from ragcore.core.ports.embedder import BaseEmbedder
 from ragcore.core.ports.run_summary_repository import RunSummaryRepository
 from ragcore.core.ports.runtime import AsyncRuntime
 from ragcore.core.ports.telemetry import TelemetryPort
-from ragcore.core.services.telemetry_registry import TelemetryRegistry
-from ragcore.core.telemetry_events import CHUNK_TRUNCATED, EVENT_CATALOG
+from ragcore.core.telemetry_events import CHUNK_TRUNCATED
 from ragcore.orchestration.kedro.assembly import ReportsTruncations
 
 __all__ = ["RunSession", "start_telemetry"]
@@ -33,20 +32,14 @@ logger = logging.getLogger(__name__)
 
 def start_telemetry(
     context: PipelineContext,
-) -> tuple[RegistryAwareTelemetry, RunStatsAggregator]:
-    """Monte la pile de télémétrie du run et l'agrégat qui fera son bilan.
-
-    Le registre est construit depuis le catalogue Python — source de vérité unique.
-    """
+) -> tuple[WorkerTelemetryStack, RunStatsAggregator]:
+    """Monte la pile de télémétrie du run et l'agrégat qui fera son bilan."""
     aggregator = RunStatsAggregator(
         run_id=context.run_id,
         sources=context.sources,
         started_at=context.started_at,
     )
-    telemetry = assemble_telemetry(
-        TelemetryRegistry.from_catalog(EVENT_CATALOG),
-        aggregate=aggregator,
-    )
+    telemetry = assemble_telemetry(aggregator)
     return telemetry, aggregator
 
 

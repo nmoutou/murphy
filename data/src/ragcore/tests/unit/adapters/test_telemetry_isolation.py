@@ -9,12 +9,11 @@ from datetime import UTC, datetime
 from typing import Any
 
 from ragcore.adapters.telemetry.aggregator import RunStatsAggregator
-from ragcore.adapters.telemetry.registry_aware import RegistryAwareTelemetry
 from ragcore.adapters.telemetry.worker_backends import WorkerBackends
+from ragcore.adapters.telemetry.worker_stack import WorkerTelemetryStack
 from ragcore.core.models.audit import AuditEvent, build_event
 from ragcore.core.models.enums import SourceName
 from ragcore.core.models.identifiers import RunId
-from ragcore.core.services.telemetry_registry import EventBehavior, TelemetryRegistry
 from ragcore.core.telemetry_events import DOCUMENT_PERSISTED
 
 RUN = RunId("r-1")
@@ -40,14 +39,8 @@ class ExplodingLog:
         raise RuntimeError("le backend refuse de se fermer")
 
 
-def _telemetry(aggregate: RunStatsAggregator) -> RegistryAwareTelemetry:
-    registry = TelemetryRegistry.from_catalog(
-        {DOCUMENT_PERSISTED: EventBehavior(aggregate=True)}
-    )
-    return RegistryAwareTelemetry(
-        registry=registry,
-        backends=WorkerBackends(log=ExplodingLog(), aggregate=aggregate),
-    )
+def _telemetry(aggregate: RunStatsAggregator) -> WorkerTelemetryStack:
+    return WorkerTelemetryStack(WorkerBackends(log=ExplodingLog(), aggregate=aggregate))
 
 
 def _aggregator(cls: type[RunStatsAggregator] = RunStatsAggregator) -> Any:

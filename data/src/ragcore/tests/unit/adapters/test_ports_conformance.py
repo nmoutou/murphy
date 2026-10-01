@@ -8,7 +8,7 @@ est la seule façon d'EXÉCUTER cette promesse.
 Ce fichier n'est pas une formalité. C'est lui qui attrape :
 
 - ``Neo4jGraphRepository`` qui ne s'importait pas (``RelationWriteResult`` manquant) ;
-- ``RegistryAwareTelemetry`` qui n'exposait ni ``snapshot`` ni ``close``, et n'était
+- la pile de télémétrie (``WorkerTelemetryStack``) qui n'exposait ni ``snapshot`` ni ``close``, et n'était
   donc PAS consommable par le pool — alors qu'elle est la pile que le pool consomme.
 
 Ce qu'il ne prouve pas, et qu'il ne peut pas prouver : que le Cypher, le filtre
@@ -172,7 +172,7 @@ class TestTelemetry:
     def test_the_factory_and_the_stack_it_builds(self) -> None:
         """Le test qui a attrapé la pile incomplète.
 
-        ``RegistryAwareTelemetry`` n'exposait que ``emit`` et ``log`` : elle n'était
+        ``WorkerTelemetryStack`` n'exposait que ``emit`` et ``log`` : elle n'était
         donc PAS un ``WorkerTelemetry``, et le pool n'aurait pas pu la consommer —
         alors que c'est précisément la pile qu'il consomme.
         """

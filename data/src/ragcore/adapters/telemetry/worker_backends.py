@@ -1,6 +1,6 @@
 """``WorkerBackends`` — les backends d'un worker, chacun à sa place NOMMÉE.
 
-Avant, ``RegistryAwareTelemetry`` recevait un ``dict[str, TelemetryPort]`` et
+Avant, la pile de télémétrie recevait un ``dict[str, TelemetryPort]`` et
 retrouvait ses backends par des clés-chaînes : ``self._backends["log"]``,
 ``self._backends.get("aggregate")`` suivi d'un ``isinstance``. §12 condamne cela
 nommément : une clé-chaîne est un contrat que rien ne vérifie — une faute de frappe
@@ -8,14 +8,14 @@ nommément : une clé-chaîne est un contrat que rien ne vérifie — une faute 
 l'agrégat doit être re-prouvé à chaque usage.
 
 Ici, les rôles sont des CHAMPS. ``log`` sert les logs textuels (``log()``) ;
-``aggregate`` reçoit les événements que le ``behavior`` (``EventBehavior``) lui route.
-Et ``aggregate`` est typé
+``aggregate`` reçoit les événements. Et ``aggregate`` est typé
 ``RunStatsAggregator``, pas ``TelemetryPort`` : c'est LUI qui porte le ``RunStats`` du
 run, le seul à savoir ``snapshot`` et ``record_unknown``. Le typer fort supprime tout
 garde ``isinstance`` en aval — le compilateur garantit ce que le code vérifiait à la
 main.
 
-Brancher un nouvel outil, c'est ajouter un champ ici et une colonne au behavior.
+Brancher un nouvel outil, c'est ajouter un champ ici et le livrer dans
+``WorkerTelemetryStack.emit``.
 """
 
 from dataclasses import dataclass
@@ -29,7 +29,7 @@ __all__ = ["WorkerBackends"]
 
 @dataclass(frozen=True)
 class WorkerBackends:
-    """Les backends d'une pile de worker, appariés aux champs d'``EventBehavior``.
+    """Les backends d'une pile de worker.
 
     ``log`` est un ``TelemetryPort`` interchangeable. ``aggregate`` est un
     ``RunStatsAggregator`` concret : il est le porteur du bilan, pas un simple

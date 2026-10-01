@@ -14,11 +14,11 @@ class TelemetryPort(Protocol):
     """
 
     def emit(self, event: AuditEvent) -> None:
-        """Route l'événement vers les backends déclarés par EVENT_CATALOG."""
+        """Compte l'événement au bilan du run."""
         ...
 
     def log(self, level: str, message: str, **context: Any) -> None:
-        """Log textuel, jamais filtré par le catalogue."""
+        """Log textuel."""
         ...
 
 
