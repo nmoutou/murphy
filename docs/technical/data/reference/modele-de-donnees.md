@@ -63,6 +63,19 @@ Contenu : le dump JSON du `ParsedDocument`, **sauf** :
 Donc : `identifier` (sérialisé), `source`, `title`, `content`, `metadata`,
 `citations`.
 
+### `pending_relations`
+
+Les `PendingRelation` : arêtes différées, dont la cible n'est pas (encore) dans le
+corpus — source_id, target_id, relation_type, metadata, first_seen_run, last_seen_run.
+Ni TTL ni retry_count : écrite une fois, promue une fois — ou jamais.
+
+Index **unique** `uq_pending_source_target_type` (source_id, target_id, relation_type) —
+c'est lui qui fait de l'upsert une union ; `idx_pending_target` (target_id) pour le
+rejeu ciblé.
+
+Une pendante dérive des documents : elle vit dans leur base et `nuke_all` l'efface avec
+eux.
+
 ## MongoDB — base méta `MURPHY_META`
 
 Préservée par `nuke_all` : la mémoire de ce qu'on a fait ne doit jamais partir avec les
@@ -71,7 +84,6 @@ données.
 | Collection | Contenu | Index |
 |---|---|---|
 | `meta_run_summaries` | Un `RunSummary` par run, à plat : run_id, `sources` (liste), dates, `status` (`ok`/`degraded`/`failed`), `counts`, `unknowns`, et `error_message` sur un run `failed` seulement. | unique (run_id), (started_at) |
-| `meta_pending_relations` | Les `PendingRelation` : arêtes différées (source_id, target_id, relation_type, metadata, first_seen_run, last_seen_run). Ni TTL ni retry_count : écrite une fois, promue une fois — ou jamais. | **unique** (source_id, target_id, relation_type) — c'est lui qui fait de l'upsert une union ; (target_id) pour le rejeu ciblé |
 
 ## Qdrant
 

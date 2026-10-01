@@ -34,6 +34,7 @@ from ragcore.tests.fakes import (
     FakeRuntime,
     InMemoryDocumentRepository,
     InMemoryGraphRepository,
+    InMemoryPendingRepository,
     InMemoryVectorRepository,
     RecordingTelemetry,
 )
@@ -124,6 +125,7 @@ def _use_case_factory(
                 documents=InMemoryDocumentRepository(),
                 graph=graph,
                 vectors=vectors,
+                pending=InMemoryPendingRepository(),
             ),
             telemetry,
         )

@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 
 from ragcore.adapters.storage.mongo.document_repository import MongoDocumentRepository
-from ragcore.adapters.storage.mongo.schemas import ensure_data_indexes
+from ragcore.adapters.storage.mongo.schemas import reset_data_collections
 from ragcore.adapters.storage.neo4j.graph_repository import Neo4jGraphRepository
 from ragcore.adapters.storage.qdrant.vector_repository import QdrantVectorRepository
 from ragcore.core.ports.runtime import AsyncRuntime
@@ -25,13 +25,15 @@ def nuke_all_node(
     récupérer la place que prenaient les collections Qdrant d'anciennes stratégies.
 
     Ce que le nuke efface — et ce qu'il PRÉSERVE :
-    - Mongo *données* : la collection `documents` (base `LEGIFRANCE`).
+    - Mongo *données* : les collections `documents` et `pending_relations` (base
+      `LEGIFRANCE`). Une pendante pointe vers des nœuds que le nuke efface : la
+      garder ferait rejouer un backlog sans sources ; le run suivant la retrouve.
     - Neo4j : le graphe entier.
     - Qdrant : **toutes** les collections du store, pas seulement celle du run —
       c'est là que se cache la place perdue.
-    - **PRÉSERVÉ : la base méta Mongo** (`MURPHY_META` : bilans de run,
-      pendantes). Un nuke ne doit jamais emporter la mémoire de ce qu'on a fait —
-      c'est elle qui rend un run *invérifiable* si elle disparaît, pas le corpus.
+    - **PRÉSERVÉ : la base méta Mongo** (`MURPHY_META` : bilans de run). Un nuke ne
+      doit jamais emporter la mémoire de ce qu'on a fait — c'est elle qui rend un run
+      *invérifiable* si elle disparaît, pas le corpus.
 
     Le garde-fou dev est appliqué en amont, par ``plan_run`` (``resolve_dev_settings``) :
     hors ``ENVIRONMENT=dev``, ``parameters.yml`` est ignoré et ``nuke_all`` arrive ici à
@@ -67,10 +69,7 @@ def nuke_all_node(
 def _drop_mongo(
     doc_repo: MongoDocumentRepository, pipeline_runtime: AsyncRuntime
 ) -> None:
-    logger.warning("nuke_all Mongo : suppression de la collection documents")
-    pipeline_runtime.run(doc_repo.drop_collection())
-    # Dropper une collection détruit ses index avec elle. Ceux que le hook a posés en
-    # `before_pipeline_run` viennent de disparaître : sans ce rappel, tout le run
-    # réécrit dans des collections nues, et l'unicité de `identifier` ne protège plus
-    # rien — en silence.
-    pipeline_runtime.run(ensure_data_indexes(doc_repo.database))
+    logger.warning(
+        "nuke_all Mongo : suppression des collections documents et pending_relations"
+    )
+    pipeline_runtime.run(reset_data_collections(doc_repo.database))

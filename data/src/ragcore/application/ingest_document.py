@@ -16,6 +16,7 @@ from ragcore.core.models import EmbeddedChunk, Identifier, ParsedDocument
 from ragcore.core.models.audit import build_event
 from ragcore.core.ports.document_repository import DocumentRepository
 from ragcore.core.ports.graph_repository import GraphRepository
+from ragcore.core.ports.pending_repository import PendingRelationRepository
 from ragcore.core.ports.telemetry import TelemetryPort
 from ragcore.core.ports.vector_repository import VectorRepository
 from ragcore.core.telemetry_events import DOCUMENT_PERSISTED
@@ -26,7 +27,10 @@ from .saga import SagaExecutor, SagaStep
 
 @dataclass(frozen=True)
 class IngestionStores:
-    """Les trois dépôts qu'écrit l'ingestion d'un document — typés par leurs ports.
+    """Les dépôts du corpus — typés par leurs ports.
+
+    L'ingestion d'un document écrit les trois premiers ; ``pending`` (les arêtes qui
+    attendent leur cible) n'est écrit qu'en phase 2, par ``ResolveRelationsService``.
 
     Le hook en ouvre un jeu (maintenance, phase 2) et chaque worker de la phase 1 le sien
     (§11) : ``orchestration/kedro/stores.open_document_stores`` les fabrique.
@@ -35,6 +39,7 @@ class IngestionStores:
     documents: DocumentRepository
     graph: GraphRepository
     vectors: VectorRepository
+    pending: PendingRelationRepository
 
 
 class IngestDocumentUseCase:

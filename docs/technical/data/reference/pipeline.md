@@ -41,8 +41,8 @@ Le hook est le **point d'assemblage** du run. Dans l'ordre :
    une requête de sonde mesure la dimension des vecteurs : c'est elle qui dimensionne la
    collection Qdrant. Échec = run arrêté avant tout nœud ;
 5. **Clients, index et dépôts du hook** (`stores.open_clients`, `ensure_indexes`,
-   `open_document_stores`, `open_meta_stores`) : `ensure_data_indexes` (LEGIFRANCE) et
-   `ensure_meta_indexes` (MURPHY_META).
+   `open_document_stores`, `open_meta_stores`) : `ensure_data_indexes` (LEGIFRANCE :
+   documents, pendantes) et `ensure_meta_indexes` (MURPHY_META : bilans).
 6. **La session du run** (`run_session.RunSession`) : le `PipelineContext` (run_id
    uuid4-hex, `sources` résolues par le plan, started_at ; sa propriété `source` vaut la
    source unique, ou `None` si multi-source), la pile de
@@ -72,12 +72,13 @@ Entrées : les quatre dépôts du hook, `nuke_all` (du plan du run).
 - `nuke_all: true` → le garde-fou a déjà joué en amont : hors `ENVIRONMENT=dev`, `plan_run`
   ignore `parameters.yml` et `nuke_all` arrive ici à `false` (l'absence de la variable vaut
   `prod`). Le nœud n'efface donc qu'en dev :
-  - Mongo `LEGIFRANCE` : la collection `documents` (et **repose les index**,
-    qu'un drop détruit avec la collection) ;
+  - Mongo `LEGIFRANCE` : les collections `documents` et `pending_relations`
+    (`schemas.reset_data_collections`, qui **repose les index** qu'un drop détruit avec
+    la collection) ;
   - Neo4j : le graphe entier ;
   - Qdrant : **toutes** les collections du store (c'est là que dorment les collections
     d'anciennes stratégies) ;
-  - **préservé** : la base méta `MURPHY_META` (bilans, pendantes) — un nuke ne doit
+  - **préservé** : la base méta `MURPHY_META` (bilans de run) — un nuke ne doit
     jamais emporter la mémoire de ce qu'on a fait.
 
 Chaque effacement est annoncé en `logger.warning`. Sortie : `nuke_done` — consommé par `connect`
@@ -188,7 +189,7 @@ Non parallélisé : un batch, sur la boucle du hook. Quatre temps
    sans emporter les arêtes d'autres runs. `relation.upserted` porte le compte des arêtes
    **réussies** (pas « tentées »).
 2. **Les trous vont au cache** : chaque relation dont la cible manque devient une
-   `PendingRelation` (`meta_pending_relations`, upsert-union sur la clé
+   `PendingRelation` (`LEGIFRANCE.pending_relations`, upsert-union sur la clé
    source/target/type) + événement `relation.pending`. Une pendante peut rester
    pendante indéfiniment — un arrêt qui cite une directive jamais ingérée est un lien
    légitime vers l'extérieur, pas une erreur.

@@ -22,7 +22,10 @@ from pymongo import UpdateOne
 from ragcore.adapters.storage.mongo.client import MongoClient
 from ragcore.core.models.pending import PendingKey, PendingRelation
 
-__all__ = ["MongoPendingRelationRepository"]
+__all__ = ["PENDING_RELATIONS_COLLECTION", "MongoPendingRelationRepository"]
+
+PENDING_RELATIONS_COLLECTION = "pending_relations"
+"""La collection des pendantes, dans la base de données (défaut : LEGIFRANCE)."""
 
 
 def _key_filter(key: PendingKey) -> dict[str, object]:
@@ -41,7 +44,7 @@ class MongoPendingRelationRepository:
         self,
         client: MongoClient,
         db_name: str,
-        collection: str = "meta_pending_relations",
+        collection: str = PENDING_RELATIONS_COLLECTION,
     ) -> None:
         self._collection = client[db_name][collection]
 

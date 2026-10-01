@@ -21,7 +21,10 @@ from ragcore.adapters.storage.mongo.client import create_mongo_client
 from ragcore.adapters.storage.mongo.pending_repository import (
     MongoPendingRelationRepository,
 )
-from ragcore.adapters.storage.mongo.schemas import ensure_meta_indexes
+from ragcore.adapters.storage.mongo.schemas import (
+    ensure_data_indexes,
+    reset_data_collections,
+)
 from ragcore.core.links import CITES
 from ragcore.core.models.enums import SourceName
 from ragcore.core.models.identifiers import RunId
@@ -29,7 +32,7 @@ from ragcore.core.models.pending import PendingRelation
 
 pytestmark = pytest.mark.integration
 
-DB = "MURPHY_META_TEST"
+DB = "LEGIFRANCE_TEST"
 
 
 def _pending(source: str, target: str, run_id: str) -> PendingRelation:
@@ -54,7 +57,7 @@ def mongo_uri():
 async def repo(mongo_uri):
     client = create_mongo_client(mongo_uri)
     await client.drop_database(DB)
-    await ensure_meta_indexes(client[DB])
+    await ensure_data_indexes(client[DB])
     yield MongoPendingRelationRepository(client, DB)
     client.close()
 
@@ -148,3 +151,18 @@ async def test_an_empty_delta_promotes_nothing(repo) -> None:
     await repo.upsert_many([_pending("A", "B", "run-1")])
 
     assert await repo.promotable_for(set()) == []
+
+
+async def test_the_nuke_empties_the_backlog_and_restores_the_unique_index(repo) -> None:
+    """Le nuke efface les pendantes avec le corpus — sans laisser une collection nue.
+
+    Un drop emporte les index : si la remise à neuf ne les reposait pas, le run suivant
+    empilerait les doublons sans que rien ne lève.
+    """
+    await repo.upsert_many([_pending("A", "B", "run-1")])
+
+    await reset_data_collections(repo._collection.database)  # noqa: SLF001
+
+    assert await repo.count() == 0
+    indexes = await repo._collection.index_information()  # noqa: SLF001
+    assert indexes["uq_pending_source_target_type"]["unique"] is True

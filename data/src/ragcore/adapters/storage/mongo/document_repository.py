@@ -49,7 +49,7 @@ class MongoDocumentRepository:
 
     @property
     def database(self) -> MongoDatabase:
-        """La DB qui porte la collection — de quoi reposer les index après un drop."""
+        """La base de données du corpus — celle que le nuke remet à neuf."""
         return self._database
 
     async def upsert(self, document: ParsedDocument) -> None:
@@ -87,7 +87,3 @@ class MongoDocumentRepository:
         await self._collection.delete_many(
             {"identifier": _serialize_identifier(identifier)}
         )
-
-    async def drop_collection(self) -> None:
-        """Drop the entire collection. Irreversible."""
-        await self._collection.drop()

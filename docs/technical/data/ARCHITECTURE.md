@@ -73,7 +73,7 @@ Déroulé détaillé nœud par nœud : [reference/pipeline.md](reference/pipelin
   Neo4j).
 - **Phase 2 — relations** (`resolveRelations`) : après la barrière, un service unique
   écrit les arêtes en batch, met en attente celles dont la cible n'est pas dans le corpus
-  (`meta_pending_relations`) et **promeut** les pendantes de runs passés dont la cible
+  (`LEGIFRANCE.pending_relations`) et **promeut** les pendantes de runs passés dont la cible
   vient d'arriver.
 
 ## Les principes qui structurent tout le reste

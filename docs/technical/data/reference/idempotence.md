@@ -68,7 +68,7 @@ erreur ni trace. D'où :
 
 - la **barrière structurelle** du DAG (`ingestion_outcome` → `resolveRelations`) : la
   phase 2 ne démarre qu'après que tous les nœuds du run existent ;
-- le **registre des pendantes** (`meta_pending_relations`) pour les cibles réellement
+- le **registre des pendantes** (`LEGIFRANCE.pending_relations`) pour les cibles réellement
   absentes du corpus : une arête différée est une donnée, pas un vide. Ni TTL ni
   compteur d'essais — écrite une fois, **promue** une fois (quand sa cible arrive dans le
   delta d'un run : le rejeu est borné par `written_node_ids`, jamais par la taille du
@@ -80,11 +80,12 @@ erreur ni trace. D'où :
 
 `nuke_all: true` + `ENVIRONMENT=dev` (ailleurs, `parameters.yml` est ignoré : rien n'est effacé) :
 
-- efface Mongo `LEGIFRANCE` (`documents`, puis **repose les index**),
-  le graphe Neo4j entier, et **toutes** les collections Qdrant (pas seulement
-  `QDRANT_COLLECTION`) ;
-- **préserve `MURPHY_META`** : bilans de run, pendantes. Un nuke ne doit
-  jamais rendre les runs passés invérifiables.
+- efface Mongo `LEGIFRANCE` (`documents` et `pending_relations`, puis **repose les
+  index**), le graphe Neo4j entier, et **toutes** les collections Qdrant (pas seulement
+  `QDRANT_COLLECTION`). Les pendantes partent avec le corpus : elles pointent vers des
+  nœuds effacés, et le run suivant retrouve celles qui manquent toujours ;
+- **préserve `MURPHY_META`** : les bilans de run. Un nuke ne doit jamais rendre les
+  runs passés invérifiables.
 
 Après un nuke, les bases sont vides : tout est première écriture, et les résiduels de
 saga ci-dessus n'existent pas.

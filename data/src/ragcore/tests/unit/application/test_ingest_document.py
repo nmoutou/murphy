@@ -25,6 +25,7 @@ from ragcore.core.telemetry_events import (
 from ragcore.tests.fakes import (
     InMemoryDocumentRepository,
     InMemoryGraphRepository,
+    InMemoryPendingRepository,
     InMemoryVectorRepository,
     RecordingTelemetry,
 )
@@ -58,6 +59,7 @@ def _use_case(stores: dict) -> IngestDocumentUseCase:
             documents=stores["document_repo"],
             graph=stores["graph_repo"],
             vectors=stores["vector_repo"],
+            pending=InMemoryPendingRepository(),
         ),
         stores["telemetry"],
     )

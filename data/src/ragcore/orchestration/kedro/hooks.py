@@ -108,7 +108,7 @@ class TelemetryHooks:
             # La phase 2 : un service unique, sur la boucle DU HOOK (pas parallélisé).
             "resolve_service": ResolveRelationsService(
                 graph_repo=stores.graph,
-                pending_repo=meta.pending,
+                pending_repo=stores.pending,
                 telemetry=session.telemetry,
             ),
             "pipeline_context": session.context,

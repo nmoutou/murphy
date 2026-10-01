@@ -7,9 +7,9 @@ from ..models.pending import PendingKey, PendingRelation
 class PendingRelationRepository(Protocol):
     """Cache des relations pendantes (§13) — aucune relation n'est jamais jetée.
 
-    Une pendante est une donnée *méta* (la santé de complétude du corpus), pas une
-    donnée métier : elle vit à côté de l'audit et des bilans de run, pas dans le
-    graphe. Ni TTL, ni compteur de tentatives — voir ``PendingRelation``.
+    Une pendante est une arête du corpus qui attend sa cible : elle vit avec les
+    documents dont elle dérive, et un nuke l'efface avec eux. Ni TTL, ni compteur de
+    tentatives — voir ``PendingRelation``.
     """
 
     async def upsert_many(self, pendings: list[PendingRelation]) -> None:

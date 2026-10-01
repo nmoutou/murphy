@@ -53,10 +53,9 @@ class InfraClients:
 
 @dataclass(frozen=True)
 class MetaStores:
-    """La base méta : bilans, relations en attente."""
+    """La base méta : les bilans de run."""
 
     summaries: MongoRunSummaryRepository
-    pending: MongoPendingRelationRepository
 
 
 def open_clients(settings: InfraSettings) -> InfraClients:
@@ -100,12 +99,13 @@ def open_document_stores(
             clients.neo4j, plan.node_labels, plan.node_hydration
         ),
         vectors=QdrantVectorRepository(clients.qdrant, plan.collection, vector_size),
+        pending=MongoPendingRelationRepository(clients.mongo, data_db),
     )
 
 
 def open_meta_stores(clients: InfraClients, settings: InfraSettings) -> MetaStores:
-    meta_db = settings.mongodb_meta_db_name
     return MetaStores(
-        summaries=MongoRunSummaryRepository(clients.mongo, meta_db),
-        pending=MongoPendingRelationRepository(clients.mongo, meta_db),
+        summaries=MongoRunSummaryRepository(
+            clients.mongo, settings.mongodb_meta_db_name
+        ),
     )
