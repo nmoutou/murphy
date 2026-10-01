@@ -150,9 +150,8 @@ def node_labels_by_prefix(
 ) -> dict[str, str]:
     """Les labels Neo4j de TOUTES les sources, pas seulement celles du run.
 
-    La dé-hydratation d'un nœud retire tous les labels connus : un run restreint à
-    ``cass`` doit pouvoir retirer ``Article`` d'un nœud LEGI. Deux sources qui donnent
-    deux labels au même préfixe sont une erreur de déclaration : elle lève.
+    Deux sources qui donnent deux labels au même préfixe sont une erreur de
+    déclaration : elle lève, quel que soit le périmètre du run.
     """
     merged: dict[str, str] = {}
     for source, definition in sources.items():

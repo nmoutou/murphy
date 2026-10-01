@@ -10,7 +10,6 @@ def test_un_prefixe_hors_table_recoit_le_repli() -> None:
     labels = NodeLabels(by_prefix={"LEGIARTI": "Article"})
 
     assert labels.label_for(Identifier(raw="JURITEXT000019333891")) == DEFAULT_LABEL
-    assert labels.known == (DEFAULT_LABEL, "Article")
 
 
 @pytest.mark.parametrize(
@@ -18,7 +17,6 @@ def test_un_prefixe_hors_table_recoit_le_repli() -> None:
     [
         ({"ARTI": "Article"}, "Préfixe"),
         ({"LEGIARTI": "Mon Label"}, "Label"),
-        ({"LEGIARTI": "Pending"}, "réservé"),
     ],
 )
 def test_un_label_ou_un_prefixe_mal_forme_leve(

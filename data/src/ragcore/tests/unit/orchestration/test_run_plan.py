@@ -175,7 +175,6 @@ def test_les_labels_neo4j_viennent_des_sources() -> None:
 
     assert labels.label_for(Identifier(raw="LEGIARTI000006419264")) == "Article"
     assert labels.label_for(Identifier(raw="JURITEXT000019333891")) == "Document"
-    assert labels.known == ("Document", "Article", "Texte", "Section")
 
 
 @pytest.mark.parametrize("path", ["nlp", "include_pth", "nuke_al"])

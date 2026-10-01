@@ -52,6 +52,15 @@ class IngestionStores:
     unformatted: UnformattedRelationRepository
 
 
+async def _nothing_to_compensate() -> None:
+    """La compensation du nœud Neo4j : il n'y a rien à défaire.
+
+    ``SagaExecutor`` ne compense que les steps TERMINÉS. Le nœud est le dernier : aucun
+    step ne peut échouer après lui, et s'il échoue lui-même, sa transaction Neo4j est
+    annulée — le ``MERGE`` raté n'a rien écrit.
+    """
+
+
 class IngestDocumentUseCase:
     def __init__(self, stores: IngestionStores, telemetry: TelemetryPort) -> None:
         self._document_repo = stores.documents
@@ -99,9 +108,8 @@ class IngestDocumentUseCase:
         échouer, pour fermer un trou qu'aucun run v0 n'emprunte.
 
         Neo4j en dernier : c'est le store le moins librement compensable (ses arêtes
-        entrantes viennent d'autres documents). En position terminale, sa compensation
-        n'est appelée que si LUI échoue — mais elle existe désormais (§8) : conditionnelle
-        (DETACH DELETE si orphelin, dé-hydratation en `:Pending` si cité), plus un `_noop`.
+        entrantes viennent d'autres documents). En position terminale, il n'a rien à
+        compenser (cf. ``_nothing_to_compensate``).
         """
         return [
             SagaStep(
@@ -122,12 +130,7 @@ class IngestDocumentUseCase:
             SagaStep(
                 name="neo4j_merge_node",
                 forward=lambda: self._graph_repo.merge_document_node(parsed),
-                # §8 : le nœud n'est plus intouchable. S'il n'est cité par personne, on le
-                # supprime ; s'il l'est, on le dé-hydrate en `:Pending` sans arracher la
-                # citation d'autrui. Fin du `_noop` — le nœud orphelin ne survit plus.
-                compensate=lambda: self._graph_repo.compensate_document_node(
-                    parsed.identifier
-                ),
+                compensate=_nothing_to_compensate,
             ),
         ]
 

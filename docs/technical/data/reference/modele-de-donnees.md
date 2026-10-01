@@ -141,7 +141,7 @@ données.
   `LEGISCTA` → `Section`, et `Document` (`DEFAULT_LABEL`) pour tout autre préfixe, dont
   les décisions. L'écriture ajoute le label sans retirer l'ancien : après un changement
   de table, un nœud déjà écrit porte les deux, même réingéré ; repartir de zéro demande
-  `nuke_all`. Un nœud cité dont le document manque porte `Pending`.
+  `nuke_all`.
 - **Hydratation** (ADR-022 §2) : en prod, nœud **maigre** (`title`, `source`). En dev (et seulement en dev), `parameters.yml` ouvre les vannes : `metadata`
   en props (clés chemin-complet), `include_path` (les fichiers XML source, écrits aussi
   dans Mongo), `include_content_neo4j` (le texte, prop `_text_content`). Neo4j est l'outil
@@ -149,9 +149,5 @@ données.
 - **Arêtes** : écrites en phase 2 uniquement, `MERGE (a)-[r:TYPE]->(b)` avec le **verbe
   comme type d'arête** (type paramétré natif), taguées du `run_id` qui les a posées
   (compensabilité à la maille du run). Une cible absente ne crée pas de nœud fantôme :
-  la relation part en pendante.
-- **Label `Pending`** : la compensation d'un nœud cité par d'autres le dé-hydrate en
-  `:Pending` au lieu de l'arracher (les arêtes entrantes appartiennent à d'autres
-  documents) ; un `merge_document_node` ultérieur le ré-hydrate naturellement. Plus de
-  label `Unknown` : une cible décrite est une ligne d'`unformatted_relations`, pas un
-  nœud.
+  la relation part en pendante. Une cible décrite est une ligne
+  d'`unformatted_relations`, pas un nœud.

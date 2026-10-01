@@ -93,19 +93,6 @@ class InMemoryGraphRepository:
         """§8 : ne défait QUE les arêtes taguées de ce run — pas toutes les sortantes."""
         self.edges = [(e, rid) for e, rid in self.edges if rid != run_id]
 
-    async def compensate_document_node(self, identifier: Identifier) -> None:
-        """§8 : orphelin → supprimé ; cité → dé-hydraté (reste une cible `:Pending`).
-
-        Le fake modélise la dé-hydratation par « le nœud reste dans `nodes` » : il
-        demeure une cible matchable, ce qui est tout ce dont les appelants ont besoin.
-        """
-        key = identifier.serialize()
-        has_incoming = any(
-            e.target_identifier.serialize() == key for e, _ in self.edges
-        )
-        if not has_incoming:
-            self.nodes.discard(key)
-
 
 class InMemoryPendingRepository:
     """Cache des pendantes — union idempotente sur la clé à trois champs (§13)."""

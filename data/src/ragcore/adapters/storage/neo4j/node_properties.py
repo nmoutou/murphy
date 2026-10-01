@@ -10,24 +10,10 @@ from ragcore.core.models.identifiers import IDENTIFIER_PREFIX_LENGTH, Identifier
 
 __all__ = [
     "DEFAULT_LABEL",
-    "PENDING_LABEL",
     "NodeHydration",
     "NodeLabels",
     "node_props",
 ]
-
-PENDING_LABEL = "Pending"
-"""L'état d'un nœud CITÉ dont le document a été compensé — ou n'est pas encore arrivé.
-
-Ne pas confondre avec l'ancien ``:Unknown``, qui confondait deux choses très
-différentes : (a) une cible *décrite en français*, qui n'arrivera jamais et n'est pas un
-document — elle est désormais une ``UnformattedRelation``, hors du graphe ; (b) une
-cible *identifiée* dont le document manque à l'appel, et qui peut parfaitement arriver
-au prochain run. Seul (b) mérite un nœud, et c'est celui-ci.
-
-``merge_document_node`` le ré-hydrate sans rien de spécial : son ``MERGE`` porte sur le
-seul ``identifier`` et retombe sur ce nœud quel que soit son label.
-"""
 
 DEFAULT_LABEL = "Document"
 """Le label d'un document dont aucune source ne déclare le préfixe (les décisions)."""
@@ -44,9 +30,8 @@ class NodeLabels:
     ``LEGIARTI`` donne ``Article``, et un préfixe que la table ne connaît pas reçoit
     ``DEFAULT_LABEL``.
 
-    Les labels sont validés à la construction, parce qu'ils finissent dans le TEXTE
-    d'une requête Cypher (``REMOVE n:Article:Texte…`` à la dé-hydratation) : un label
-    mal formé arrête le run ici, avec un message, plutôt que dans Neo4j.
+    Les labels sont validés à la construction : un label mal formé arrête le run ici,
+    avec un message, plutôt qu'à la première écriture d'un nœud dans Neo4j.
     """
 
     by_prefix: Mapping[str, str]
@@ -58,17 +43,12 @@ class NodeLabels:
                     f"Préfixe d'identifiant invalide dans les labels Neo4j : {prefix!r} "
                     f"(attendu : {IDENTIFIER_PREFIX_LENGTH} majuscules, p. ex. LEGIARTI)."
                 )
-        for label in self.known:
-            if not _LABEL_PATTERN.fullmatch(label) or label == PENDING_LABEL:
+        for label in self.by_prefix.values():
+            if not _LABEL_PATTERN.fullmatch(label):
                 raise ValueError(
                     f"Label Neo4j invalide : {label!r} (attendu : une majuscule puis "
-                    f"des lettres ou chiffres ; {PENDING_LABEL!r} est réservé)."
+                    "des lettres ou chiffres)."
                 )
-
-    @property
-    def known(self) -> tuple[str, ...]:
-        """Tous les labels que cette table peut poser, sans doublon."""
-        return tuple(dict.fromkeys((DEFAULT_LABEL, *self.by_prefix.values())))
 
     def label_for(self, identifier: Identifier) -> str:
         return self.by_prefix.get(identifier.prefix, DEFAULT_LABEL)

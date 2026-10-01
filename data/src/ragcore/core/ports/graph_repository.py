@@ -78,23 +78,3 @@ class GraphRepository(Protocol):
     ) -> None:
         """Supprime uniquement les relations sortantes (préserve les entrantes)."""
         ...
-
-    async def compensate_document_node(self, identifier: Identifier) -> None:
-        """Défait le nœud d'un document dont la saga a échoué — **sans casser le graphe**
-        (§8, fin du ``_noop``).
-
-        Le nœud n'est pas librement supprimable : d'AUTRES documents peuvent le citer
-        (arêtes entrantes). Le supprimer emporterait leurs citations — une perte muette
-        chez un tiers. La compensation est donc **conditionnelle** :
-
-        - **aucune arête entrante** → le nœud n'existe que pour ce document raté :
-          ``DETACH DELETE`` le retire entièrement ;
-        - **au moins une arête entrante** → le nœud est une CIBLE citée : on ne le
-          supprime pas, on le **dé-hydrate** en ``:Pending`` (il perd son contenu de
-          document et redevient une cible ATTENDUE — un document identifié qui manque
-          encore à l'appel, et qu'un run futur peut faire revenir).
-
-        C'est ce qui remplace le ``_noop`` : le nœud orphelin ne survit plus à un échec,
-        mais une cible citée n'est jamais arrachée au graphe d'autrui.
-        """
-        ...

@@ -14,44 +14,14 @@ from ragcore.core.models.identifiers import Identifier, RunId
 from ragcore.core.models.relation import Relation
 from ragcore.core.ports.graph_repository import RelationWriteResult
 
-from .node_properties import PENDING_LABEL, NodeHydration, NodeLabels, node_props
+from .node_properties import NodeHydration, NodeLabels, node_props
 
-__all__ = ["PENDING_LABEL", "Neo4jGraphRepository", "NodeHydration", "NodeLabels"]
+__all__ = ["Neo4jGraphRepository", "NodeHydration", "NodeLabels"]
 
 
 _MERGE_NODE = (
-    "MERGE (d {identifier: $identifier})"
-    " SET d:$($label)"
-    # Le document est là : il n'est plus attendu. Neo4j ignore le retrait d'un label
-    # absent, donc c'est sûr sur un nœud qui vient d'être créé.
-    f" REMOVE d:{PENDING_LABEL}"
-    " SET d += $props"
-    " RETURN d"
+    "MERGE (d {identifier: $identifier}) SET d:$($label) SET d += $props RETURN d"
 )
-
-_COUNT_INCOMING = (
-    "MATCH (n {identifier: $identifier})"
-    " OPTIONAL MATCH (n)<-[incoming]-()"
-    " RETURN count(incoming) AS entrantes"
-)
-
-_DETACH_DELETE_NODE = "MATCH (n {identifier: $identifier}) DETACH DELETE n"
-
-
-def _dehydrate_node_query(labels: NodeLabels) -> str:
-    """Ramène un nœud à l'état de cible attendue : ni label métier, ni props de document.
-
-    `apoc.create.removeLabels` n'est pas garanti (pas d'APOC en prod) : on retire les
-    labels connus par `REMOVE`. Neo4j ignore silencieusement le retrait d'un label absent
-    — la liste couvre donc tous les labels métier sans avoir à savoir lequel ce nœud
-    portait.
-    """
-    return (
-        "MATCH (n {identifier: $identifier})"
-        f" REMOVE n:{':'.join(labels.known)}"
-        f" SET n:{PENDING_LABEL}"
-        " REMOVE n.title, n.source"
-    )
 
 
 class Neo4jGraphRepository:
@@ -68,7 +38,6 @@ class Neo4jGraphRepository:
     ) -> None:
         self._driver = driver
         self._labels = labels
-        self._dehydrate_node = _dehydrate_node_query(labels)
         # Défaut = régime prod (nœud maigre). Le hook passe l'hydratation de dev.
         self._hydration = hydration or NodeHydration()
 
@@ -195,44 +164,6 @@ class Neo4jGraphRepository:
         query = "MATCH ()-[r]->() WHERE r.run_id = $run_id DELETE r"
         async with self._driver.session() as session:
             await session.run(query, run_id=run_id)
-
-    async def compensate_document_node(self, identifier: Identifier) -> None:
-        """Défait le nœud d'un document raté sans arracher les citations d'autrui (§8).
-
-        Conditionnel sur l'existence d'une arête ENTRANTE :
-
-        - aucune entrante → ``DETACH DELETE`` : le nœud n'existait que pour ce document ;
-        - au moins une entrante → **dé-hydratation** : le nœud est cité, on ne le
-          supprime pas. On lui retire ses labels métier et ses propriétés de document
-          pour le ramener au statut de cible ATTENDUE (``:Pending``). La référence
-          entrante survit ; le contenu du document raté, non.
-
-        **Lire le nombre d'entrantes, puis brancher** — deux requêtes, pas une acrobatie
-        Cypher mêlant ``DETACH DELETE`` et ``REMOVE`` sous condition dans la même passe
-        (fragile, et interdite d'APOC en prod). La fenêtre entre la lecture et l'écriture
-        n'est pas un risque ici : la compensation survient dans la saga d'UN document, et
-        l'invariant 2 du §11 (dispatch par clé) garantit qu'un seul worker touche ce nœud
-        à la fois — personne n'ajoute d'entrante en parallèle sur cet identifiant.
-
-        La ré-hydratation d'un ``:Pending`` vers un vrai document, quand le document
-        revient, est déjà le comportement de ``merge_document_node`` (le ``MERGE`` sur
-        ``identifier`` retombe sur le même nœud et réécrit ses props) : dé-hydrater n'est
-        donc pas une impasse, c'est un retour à l'état « cible en attente ».
-        """
-        identifier_value = identifier.serialize()
-        async with self._driver.session() as session:
-            result = await session.run(_COUNT_INCOMING, identifier=identifier_value)
-            record = await result.single()
-            # Le nœud n'existe pas (la saga a échoué AVANT le merge du nœud) : rien à
-            # défaire. La compensation est idempotente — c'est ce que la saga attend.
-            if record is None:
-                return
-            query = (
-                _DETACH_DELETE_NODE
-                if record["entrantes"] == 0
-                else self._dehydrate_node
-            )
-            await session.run(query, identifier=identifier_value)
 
     async def drop_all(self) -> None:
         """Detach-delete every node and relation. Irreversible."""

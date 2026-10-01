@@ -31,7 +31,7 @@ La phase 1 écrit chaque document par une saga de quatre steps, **dans cet ordre
 | 1 | `mongo_upsert` | `replace_one(upsert=True)` — remplacement atomique en place | `delete` (le rollback juste d'une première écriture) |
 | 2 | `mongo_unformatted_upsert` | upsert-union des relations non formatées du document (ADR-045) | `delete_first_seen` : seules les lignes du document nées dans ce run |
 | 3 | `qdrant_upsert` | `delete_by_document` **puis** `upsert` des points | `delete_by_document` |
-| 4 | `neo4j_merge_node` | `MERGE` du nœud (jamais ses arêtes) | conditionnelle : `DETACH DELETE` si orphelin, dé-hydratation en `:Pending` s'il est cité par d'autres |
+| 4 | `neo4j_merge_node` | `MERGE` du nœud (jamais ses arêtes) | aucune : step terminal, jamais compensé ; un `MERGE` raté est annulé par sa transaction |
 
 En cas d'échec d'un step, les steps déjà exécutés sont compensés en ordre inverse, les
 événements `saga.compensation.*` sont émis (y compris `saga.compensation.failed` si une
@@ -43,8 +43,8 @@ l'exception d'origine est relevée : le document est perdu, **pas le run** (il e
 moitié écrit n'est jamais compté ingéré.
 
 Choix d'ordre : Neo4j en dernier parce que c'est le store le moins librement compensable
-(ses arêtes entrantes appartiennent à d'autres documents) — en position terminale, sa
-compensation n'est appelée que si lui-même échoue.
+(ses arêtes entrantes appartiennent à d'autres documents). En position terminale, il n'a
+jamais à l'être : seuls les steps terminés sont compensés.
 
 ### Les résiduels assumés (v0)
 
