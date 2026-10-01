@@ -17,7 +17,7 @@ sort en silence.
 
 | Événement | Sens | Mongo | Agrégat |
 |---|---|---|---|
-| `pipeline.run.started` / `.completed` / `.failed` | Cycle de vie du run | ✓ | ✓ |
+| `pipeline.run.started` / `.completed` / `.failed` | Cycle de vie du run. Hors agrégat : le bilan le dit déjà par `started_at`, `ended_at` et `status`. | ✓ | — |
 | `document.fetched` | Documents vus par le connecteur (1 événement, `count` = lot). **Le dénominateur** de l'équation. | — | ✓ |
 | `document.skipped` | Écartés par le connecteur (artefacts d'export, illisibles), par raison. Porte son `count`. **Hors équation** : un fichier écarté n'est pas un document vu. | ✓ | ✓ |
 | `document.parsed` | Parse réussi | — | ✓ |

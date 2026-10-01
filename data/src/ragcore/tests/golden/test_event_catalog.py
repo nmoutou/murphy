@@ -12,9 +12,10 @@ from ragcore.core.telemetry_events import COUNT_CARRYING_EVENTS, EVENT_CATALOG
 
 # event_type -> (level, log, track_mongo, aggregate)
 GOLDEN: dict[str, tuple[str, bool, bool, bool]] = {
-    "pipeline.run.started": ("info", True, True, True),
-    "pipeline.run.completed": ("info", True, True, True),
-    "pipeline.run.failed": ("error", True, True, True),
+    # Hors agrégat : `started_at`, `ended_at` et `status` du bilan les disent déjà.
+    "pipeline.run.started": ("info", True, True, False),
+    "pipeline.run.completed": ("info", True, True, False),
+    "pipeline.run.failed": ("error", True, True, False),
     "document.fetched": ("info", False, False, True),
     "document.parsed": ("info", False, False, True),
     "document.invalidated": ("warning", True, True, True),

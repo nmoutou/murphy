@@ -95,23 +95,24 @@ cardinalité, c'est l'ajouter ICI — sinon son lot ne compte que pour un."""
 
 EVENT_CATALOG: dict[str, EventBehavior] = {
     # --- Cycle de vie du pipeline ---
+    # Hors agrégat : le bilan les porte déjà en `started_at`, `ended_at` et `status`.
     PIPELINE_RUN_STARTED: EventBehavior(
         level="info",
         log=True,
         track_mongo=True,
-        aggregate=True,
+        aggregate=False,
     ),
     PIPELINE_RUN_COMPLETED: EventBehavior(
         level="info",
         log=True,
         track_mongo=True,
-        aggregate=True,
+        aggregate=False,
     ),
     PIPELINE_RUN_FAILED: EventBehavior(
         level="error",
         log=True,
         track_mongo=True,
-        aggregate=True,
+        aggregate=False,
     ),
     # --- Cycle de vie d'un document ---
     DOCUMENT_FETCHED: EventBehavior(
