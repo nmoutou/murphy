@@ -27,8 +27,8 @@ class ParsedDocument(BaseModel):
 
     **Plus de champ ``unknowns``** (ADR-022 §1, modèle « trois portes ») : une balise
     non-configurée n'est pas un aveu qui voyage dans la donnée — c'est une MÉTADONNÉE
-    (clé chemin-complet), ou un LIEN si sa valeur référence un document. Le signal
-    ``tag.unconfigured``, lui, part en télémétrie au site de parse, jamais en base.
+    (clé chemin-complet), ou un LIEN si sa valeur référence un document. Les signaux
+    ``tags`` et ``links``, eux, partent en télémétrie au site de parse, jamais en base.
 
     **Plus de ``parsed_at``** : doublon de l'horodatage de ``document.persisted`` dans
     l'audit — deux horodatages pour un même fait finissent par diverger.

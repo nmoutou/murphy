@@ -14,8 +14,8 @@ nuke_all: true
 # doit quand même tourner : le modèle servi est vérifié au démarrage.
 embedding_enabled: false
 
-# `true` retire du document les métadonnées des balises non configurées ; le signal
-# `tag.unconfigured` est émis dans les deux cas (ADR-022 §1).
+# `true` retire les métadonnées et les arêtes non configurées ; les signaux `tags` et
+# `links` sont émis dans les deux cas (ADR-022 §1, ADR-048).
 skip_unconfigured: true
 
 # Les chemins des fichiers XML source (`source_files`), dans le document Mongo et sur

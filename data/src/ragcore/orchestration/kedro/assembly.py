@@ -158,7 +158,11 @@ def _workload_steps(
         embedder=embedder,
         extractor=RoutingRelationExtractor(
             {
-                source: GenericRelationExtractor(definition.table, source)
+                source: GenericRelationExtractor(
+                    definition.table,
+                    source,
+                    skip_unconfigured=plan.skip_unconfigured,
+                )
                 for source, definition in definitions.items()
             }
         ),

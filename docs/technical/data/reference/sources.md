@@ -98,14 +98,15 @@ Chaque balise déclarée porte **un** rôle, parmi quatre :
 | `META` | Tout champ plat qui n'est ni corps, ni lien, ni date — un défaut *déclaré*, jamais implicite. |
 
 La table porte aussi : `roots` (les racines XML que la source connaît — une racine
-inconnue ressort en `unknowns["racine"]`), `content_blocks` (les balises qui portent le
+inconnue ressort en `unknowns["roots"]`), `content_blocks` (les balises qui portent le
 texte, **dans l'ordre** — LEGI range le texte d'un article sous `BLOC_TEXTUEL`, mais un
 `TEXTE_VERSION` n'en a pas : le sien vit sous `VISAS`, `SIGNATAIRES`, `TP`), et la
 `LinkTable` de traduction des liens.
 
-**Le cliquet** : une balise sans rôle ne disparaît pas — elle ressort dans
-`unknowns["tag.unconfigured"]` et les golden tests la font échouer. Une balise qui a un
-rôle mais pas de renommage y ressort aussi (ADR-047), sans faire échouer le cliquet. Sur un corpus saturé la table ne
+**Le cliquet** : une balise sans rôle ne disparaît pas — sa valeur ressort dans
+`unknowns["tags"]` ou `unknowns["links"]`, sous sa clé chemin-complet, et les golden
+tests (qui parcourent l'arbre XML) la font échouer. Une métadonnée qui a un rôle mais
+pas de renommage ressort aussi dans `tags` (ADR-047), sans faire échouer le cliquet. Sur un corpus saturé la table ne
 déclare rien ; sur le prochain export DILA, une balise neuve sort dans le bilan du run au
 lieu de s'évaporer.
 
@@ -117,10 +118,12 @@ Une balise absente de la table est **routée**, pas jetée :
   **valeur**, jamais sur le nom d'attribut) → traitée comme un **lien** ;
 - sinon → **métadonnée**, sous sa clé chemin-complet.
 
-Dans les deux cas, le signal `tag.unconfigured` est déclaré au site de parse
-(`parseDocuments`), et le curseur `skip_unconfigured` (booléen, validé en
-tête de run, sans effet hors `ENVIRONMENT=dev` où la métadonnée est toujours retirée)
-décide ensuite du sort de la métadonnée — le signal survit toujours au filtre.
+Le signal est déclaré au site de parse (`parseDocuments`), sous la clé chemin-complet
+de la valeur : `links` pour un lien, `tags` pour une métadonnée (ADR-048). Une balise
+sans texte ni attribut ne laisse aucune trace. Le curseur `skip_unconfigured` (booléen,
+validé en tête de run, forcé à `true` hors `ENVIRONMENT=dev`) décide ensuite du sort de
+la donnée : la métadonnée est retirée au site de parse, l'arête heuristique à
+l'extraction — le signal survit toujours au filtre.
 
 ### Les invariants du parse
 
@@ -192,8 +195,13 @@ cible sur un seul critère — l'identification, jamais la source :
   demanderait de la sémantique juridique et appartient à une passe de résolution future) ;
   `sens` est conservé pour pouvoir orienter l'arête ce jour-là.
 
-Les inconnus d'extraction (`typelien`, `sens`, `identifiant`) voyagent dans la valeur de
-retour de l'extracteur et sont déclarés par le workload à la télémétrie du worker.
+Un `typelien` non traduit est un type de lien non configuré : l'arête entre sous son
+nom brut, et le mot ressort dans `unknowns["links"]`. Un lien qu'on ne sait pas écrire
+(`sens` inconnu, `@id` illisible, `typelien` qui ne peut pas être un verbe) est compté
+(`relation.unknown`). Les deux voyagent dans la valeur de retour de l'extracteur et sont
+déclarés par le workload à la télémétrie du worker. Avec `skip_unconfigured: true`,
+l'extracteur retire les arêtes d'un type non configuré — `typelien` inconnu ou
+heuristique (ADR-048).
 
 La hiérarchie déclarée en double (fermeture d'ancêtres côté article, arbre côté sections)
 est dédoublonnée en phase 2 par **réduction transitive** — contenance (`titre`) seulement,

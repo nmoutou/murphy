@@ -216,15 +216,14 @@ def test_une_balise_non_configuree_est_ROUTEE_et_SIGNALEE(fixtures_dir: Path) ->
     )
     parsed = result.document
 
-    # le signal, avec le fichier où le lire
-    assert result.unconfigured_tags == {"ZORG": "unknown_vocabulary.xml"}
     # La porte metadata : le texte ET l'attribut, sous des clés chemin-complet.
     assert parsed.metadata["article_zorg"] == "Une balise que le parser ne connaît pas."
     assert parsed.metadata["article_zorg_attribut_inconnu"] == "peu importe"
-    assert set(result.unconfigured_keys) == {
-        "article_zorg",
-        "article_zorg_attribut_inconnu",
-    }  # la poignée du curseur `skip`
+    # Le signal, par clé, avec le fichier où le lire — et la poignée du curseur `skip`.
+    assert result.unconfigured_tags == {
+        "article_zorg": "unknown_vocabulary.xml",
+        "article_zorg_attribut_inconnu": "unknown_vocabulary.xml",
+    }
     assert parsed.identifier.raw == ARTICLE_INCONNU
     assert "texte parfaitement ordinaire" in parsed.content  # le reste est parsé
 
@@ -233,8 +232,8 @@ def test_une_balise_connue_SANS_RENOMMAGE_est_non_configuree() -> None:
     """ADR-047 : seul le renommage configure une métadonnée.
 
     ``DERNIERE_MODIFICATION`` a un rôle (``META``) mais pas d'entrée dans
-    ``meta_renames`` : elle entre sous sa clé chemin-complet, ET elle est signalée, ET sa
-    clé est la poignée du curseur ``skip``. ``ORIGINE``, renommée, ne l'est pas.
+    ``meta_renames`` : elle entre sous sa clé chemin-complet, ET elle est signalée sous
+    cette clé — la poignée du curseur ``skip``. ``ORIGINE``, renommée, ne l'est pas.
     """
     tree = to_tree(
         ET.fromstring(
@@ -256,8 +255,7 @@ def test_une_balise_connue_SANS_RENOMMAGE_est_non_configuree() -> None:
     )
     key = "article_meta_meta_spec_meta_article_derniere_modification"
 
-    assert result.unconfigured_tags == {"DERNIERE_MODIFICATION": ""}  # aucun fichier
-    assert result.unconfigured_keys == (key,)
+    assert result.unconfigured_tags == {key: ""}  # aucun fichier
     assert result.document.metadata[key] == "2020-01-01"
     assert result.document.metadata["origine"] == "LEGI"
 
@@ -296,8 +294,35 @@ def test_une_valeur_au_format_DILA_devient_un_LIEN_pas_une_metadonnee(
     assert "article_zorg_ref" not in parsed.metadata
     # ZORG_SELF porte l'identité du document → auto-id, reste une métadonnée.
     assert parsed.metadata["article_zorg_self"] == ARTICLE_INCONNU
-    # Les DEUX sont signalées : le routage ne fait pas taire la vigie.
-    assert set(result.unconfigured_tags) == {"ZORG_REF", "ZORG_SELF"}
+    # Les DEUX sont signalées, chacune sous sa porte : le routage ne fait pas taire la
+    # vigie.
+    assert result.unconfigured_links == {"article_zorg_ref": ""}
+    assert result.unconfigured_tags == {"article_zorg_self": ""}
+
+
+def test_une_balise_non_configuree_VIDE_ne_laisse_aucune_trace() -> None:
+    """Sans texte ni attribut, une balise n'a rien à ingérer : ni métadonnée, ni signal.
+    Le signal naît des VALEURS, pas des balises (ADR-048)."""
+    tree = to_tree(
+        ET.fromstring(
+            "<ARTICLE>"
+            f"<META><META_COMMUN><ID>{ARTICLE_INCONNU}</ID></META_COMMUN></META>"
+            "<ZORG_VIDE/>"
+            "</ARTICLE>"
+        )
+    )
+    result = GenericParser(LEGI_ROLE_TABLE, _SN.LEGI).parse(
+        RawDocument(
+            source=SourceName.LEGI,
+            source_document_id="x",
+            payload={"content": [tree]},
+            fetched_at=datetime.now(UTC),
+        )
+    )
+
+    assert result.unconfigured_tags == {}
+    assert result.unconfigured_links == {}
+    assert "article_zorg_vide" not in result.document.metadata
 
 
 def test_un_xml_illisible_leve_ParseError_pas_ValidationError(

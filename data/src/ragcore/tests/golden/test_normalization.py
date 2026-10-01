@@ -18,10 +18,9 @@ from ragcore.core.services.exclusion_reasons import (
     REASON_VALIDATION_ERROR,
 )
 from ragcore.core.services.unknown_categories import (
+    CATEGORY_LINK,
     CATEGORY_ROOT,
-    CATEGORY_SENS,
-    CATEGORY_TYPELIEN,
-    CATEGORY_UNCONFIGURED_TAG,
+    CATEGORY_TAG,
 )
 
 SOURCE_NAMES = {
@@ -44,11 +43,11 @@ EXCLUSION_REASONS = {
     # supposé du parser.
     "unreadable",
 }
-# « balise » est devenu « tag.unconfigured » (ADR-022 §1, cascade des trois portes) : ce
-# n'est plus un inconnu dans la donnée, c'est le SIGNAL de la vigie de dérive DILA —
-# émis au site de parse, que la balise soit ingérée (metadata) ou retirée (skip).
-# Renommage SCIEMMENT acté ici : c'est tout l'objet du cliquet.
-UNKNOWN_CATEGORIES = {"typelien", "sens", "tag.unconfigured", "racine"}
+# Trois catégories plates (ADR-048) : les métadonnées non configurées, les racines, les
+# types de lien non configurés. `sens` et `identifiant` ne sont pas des types : un lien
+# qu'on ne sait pas écrire est compté par `relation.unknown`. Acté SCIEMMENT ici : c'est
+# tout l'objet du cliquet.
+UNKNOWN_CATEGORIES = {"tags", "roots", "links"}
 
 
 def test_identifiers_serialize_as_their_raw_value() -> None:
@@ -80,10 +79,9 @@ def test_unknown_categories_are_frozen() -> None:
     deviendrait illisible — des catégories jumelles qu'on ne saurait plus fusionner.
     """
     declared = {
-        CATEGORY_TYPELIEN,
-        CATEGORY_SENS,
-        CATEGORY_UNCONFIGURED_TAG,
+        CATEGORY_TAG,
         CATEGORY_ROOT,
+        CATEGORY_LINK,
     }
     assert declared == UNKNOWN_CATEGORIES
 

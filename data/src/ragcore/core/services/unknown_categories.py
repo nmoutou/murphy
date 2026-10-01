@@ -11,31 +11,32 @@ qui dit ce qu'il faudrait apprendre. ``RunStats.unknowns`` le porte jusqu'au
 propre vocabulaire, run après run.
 """
 
-CATEGORY_TYPELIEN = "typelien"
-"""Un ``<LIEN typelien="…">`` dont le verbe n'est pas dans la table de la source."""
+CATEGORY_TAG = "tags"
+"""Une métadonnée NON-CONFIGURÉE, sous sa clé chemin-complet (ADR-047, ADR-048) : la
+valeur d'une feuille connue sans renommage dans ``meta_renames``, ou celle d'une balise
+absente de la table qui a passé la porte metadata.
 
-CATEGORY_SENS = "sens"
-"""Un ``<LIEN sens="…">`` qui n'est ni ``source`` ni ``cible`` : l'arête ne peut
-pas être orientée, donc pas construite."""
-
-CATEGORY_UNCONFIGURED_TAG = "tag.unconfigured"
-"""Une balise XML NON-CONFIGURÉE — la vigie de dérive DILA (ADR-022 §1, ADR-047) :
-absente de la table de rôles, ou connue mais sans renommage dans ``meta_renames``.
-
-Ce n'est plus un « unknown » dans la donnée : la balise a été ROUTÉE (porte metadata ou
-porte liens, cascade des « trois portes ») et ce compteur est le signal qui survit au
-routage. Émis au site de parse, TOUJOURS — que le curseur ``dev.skip_unconfigured``
-retire ou non les métadonnées. On compte d'abord, on filtre ensuite.
+C'est la vigie de dérive DILA. Émise au site de parse, TOUJOURS — que le curseur
+``dev.skip_unconfigured`` retire ou non la métadonnée. On compte d'abord, on filtre
+ensuite.
 """
 
-CATEGORY_ROOT = "racine"
+CATEGORY_ROOT = "roots"
 """Une racine XML d'une famille de documents que la source ne connaît pas."""
 
-CATEGORY_IDENTIFIER = "identifiant"
-"""Un ``@id`` PRÉSENT mais que la table de la source ne sait pas transformer en
-identifiant (format inattendu). À distinguer d'un ``@id`` VIDE, qui est une absence
-de donnée, pas un inconnu. Le taire ferait disparaître l'arête en silence — le lien
-existait pourtant, la source l'a écrit."""
+CATEGORY_LINK = "links"
+"""Un type de lien NON-CONFIGURÉ (ADR-048) : un ``typelien`` que la table de la source ne
+traduit pas, ou la clé chemin-complet d'une balise absente de la table dont la valeur a
+la forme d'un identifiant DILA (lien heuristique).
+
+L'arête est écrite, sauf si le curseur ``dev.skip_unconfigured`` la retire. Un lien qui
+ne PEUT PAS être écrit (``sens`` inconnu, ``@id`` illisible) n'est pas un type de lien :
+il est compté par ``relation.unknown``, pas ici.
+"""
+
+UNKNOWN_CATEGORIES = (CATEGORY_TAG, CATEGORY_ROOT, CATEGORY_LINK)
+"""Les catégories du bilan, dans l'ordre où il les présente. Toutes y figurent, même
+vides : le schéma de ``run_summaries.unknowns`` ne varie pas d'un run à l'autre."""
 
 
 def declare_unknown(unknowns: dict[str, list[str]], category: str, value: str) -> None:
@@ -53,10 +54,9 @@ def declare_unknown(unknowns: dict[str, list[str]], category: str, value: str) -
 
 
 __all__ = [
-    "CATEGORY_IDENTIFIER",
+    "CATEGORY_LINK",
     "CATEGORY_ROOT",
-    "CATEGORY_SENS",
-    "CATEGORY_TYPELIEN",
-    "CATEGORY_UNCONFIGURED_TAG",
+    "CATEGORY_TAG",
+    "UNKNOWN_CATEGORIES",
     "declare_unknown",
 ]

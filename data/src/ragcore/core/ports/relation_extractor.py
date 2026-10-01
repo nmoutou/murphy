@@ -38,11 +38,17 @@ class ExtractionResult:
     """
 
     unknowns: dict[str, list[str]] = field(default_factory=dict)
-    """Catégorie (cf. ``core.services.unknown_categories``) -> vocabulaire non traduit.
+    """Catégorie (cf. ``core.services.unknown_categories``) -> vocabulaire non traduit :
+    les ``typelien`` inconnus, sous ``links``.
 
     Un ENSEMBLE, pas un compteur : « le typelien ``ZORGLUB`` est inconnu » est vrai
     une fois pour toutes. Vide = le vocabulaire de la source a tout couvert.
     """
+
+    lost_links: int = 0
+    """Les liens que la source a écrits mais qu'on ne sait pas écrire (``sens`` inconnu,
+    ``@id`` illisible, ``typelien`` qui ne peut pas être un verbe). L'appelant les compte
+    en ``relation.unknown`` ; un lien retiré par le curseur n'en fait pas partie."""
 
 
 @runtime_checkable

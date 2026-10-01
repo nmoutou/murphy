@@ -104,7 +104,7 @@ class GenericParser:
         return ParseResult(
             document=self._document(raw, facets, routing),
             unconfigured_tags=routing.tags,
-            unconfigured_keys=tuple(routing.keys),
+            unconfigured_links=routing.links,
             unknown_roots=routing.roots,
         )
 

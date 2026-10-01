@@ -26,6 +26,10 @@ CHUNK_TRUNCATED = "chunk.truncated"
 RELATION_UPSERTED = "relation.upserted"
 RELATION_PENDING = "relation.pending"  # cible absente → cache §13
 RELATION_PROMOTED = "relation.promoted"  # pendante enfin résolue
+# Un lien que la source a écrit mais qu'on ne sait pas écrire (``sens`` inconnu, ``@id``
+# illisible, ``typelien`` qui ne peut pas être un verbe) : l'arête n'existe pas. Le
+# COMPTER est ce qui l'empêche de disparaître en silence (ADR-048).
+RELATION_UNKNOWN = "relation.unknown"
 
 SAGA_COMPENSATION_STARTED = "saga.compensation.triggered"
 SAGA_COMPENSATION_COMPLETED = "saga.compensation.completed"
@@ -64,6 +68,7 @@ COUNT_CARRYING_EVENTS: frozenset[str] = frozenset(
         CHUNK_TRUNCATED,  # émis une fois en fin de run → nombre de chunks raccourcis
         DOCUMENT_VERSION_SKIPPED,  # émis une fois en fin de fetch → nombre d'artefacts
         DOCUMENT_UNREADABLE,  # émis une fois en fin de fetch → nombre d'illisibles
+        RELATION_UNKNOWN,  # émis une fois par document → nombre de liens perdus
     }
 )
 """Les événements dont ``payload[PAYLOAD_COUNT_KEY]`` EST leur poids d'agrégat. Tout autre
@@ -98,6 +103,7 @@ EVENT_TYPES: frozenset[str] = frozenset(
         RELATION_UPSERTED,
         RELATION_PENDING,
         RELATION_PROMOTED,
+        RELATION_UNKNOWN,
         # --- Saga (erreurs de transaction) ---
         SAGA_COMPENSATION_STARTED,
         SAGA_COMPENSATION_COMPLETED,

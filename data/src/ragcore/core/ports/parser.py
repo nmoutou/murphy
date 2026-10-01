@@ -13,14 +13,17 @@ class ParseResult:
     la télémétrie, ni l'environnement), donc ce qu'il constate voyage dans sa valeur de
     retour, et c'est l'appelant — le site de parse, qui tient la télémétrie — qui signale.
 
-    - ``unconfigured_tags`` : les balises non-configurées — absentes de la table de
-      rôles, ou connues mais sans renommage dans ``meta_renames`` (ADR-047) — chacune
-      avec le fichier de la première facette qui la porte. C'est le SIGNAL
-      (``tag.unconfigured``) — la vigie de dérive DILA. Il est émis même quand la
-      donnée est ingérée : on compte d'abord, on filtre ensuite.
-    - ``unconfigured_keys`` : les clés de ``document.metadata`` que ces balises ont
-      produites (clé chemin-complet). C'est la POIGNÉE du curseur ``skip`` : les
-      retirer juste avant l'ingestion, sans retoucher le parser.
+    Les signaux sont tenus par clé chemin-complet, chacune avec le fichier de la
+    première facette qui la porte (ADR-048). Ils sont émis même quand le curseur
+    ``skip_unconfigured`` retire la donnée : on compte d'abord, on filtre ensuite.
+
+    - ``unconfigured_tags`` : les clés de ``document.metadata`` non-configurées — d'une
+      balise absente de la table de rôles, ou connue sans renommage (ADR-047). C'est le
+      signal ``tags`` du bilan, et la POIGNÉE du curseur : les retirer juste avant
+      l'ingestion, sans retoucher le parser.
+    - ``unconfigured_links`` : les clés des balises absentes de la table dont la valeur
+      a la forme d'un identifiant DILA (liens heuristiques). Signal ``links`` du bilan ;
+      le curseur retire leurs arêtes à l'extraction.
     - ``unknown_roots`` : les racines de facette hors table — une famille de documents
       jamais déclarée — avec leur fichier. Signal seul : une racine inconnue n'a pas de
       valeur à ingérer.
@@ -28,7 +31,7 @@ class ParseResult:
 
     document: ParsedDocument
     unconfigured_tags: Mapping[str, str] = field(default_factory=dict)
-    unconfigured_keys: tuple[str, ...] = field(default=())
+    unconfigured_links: Mapping[str, str] = field(default_factory=dict)
     unknown_roots: Mapping[str, str] = field(default_factory=dict)
 
 

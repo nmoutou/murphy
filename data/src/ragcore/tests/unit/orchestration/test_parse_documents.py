@@ -19,7 +19,7 @@ from ragcore.core.models.enums import SourceName
 from ragcore.core.models.unknown_tally import UnknownExample, UnknownTally
 from ragcore.core.ports.parser import ParseResult
 from ragcore.core.services.exclusion_reasons import REASON_PARSE_ERROR
-from ragcore.core.services.unknown_categories import CATEGORY_UNCONFIGURED_TAG
+from ragcore.core.services.unknown_categories import CATEGORY_TAG
 from ragcore.core.telemetry_events import DOCUMENT_INVALIDATED
 from ragcore.orchestration.kedro.nodes.parse_documents import parse_documents_node
 from ragcore.sources.generic import GenericParser, to_tree
@@ -124,9 +124,7 @@ def test_une_balise_sans_renommage_est_SIGNALEE_dans_les_deux_cas(
         identifier="LEGIARTI000000000001", source_file=_SOURCE_FILE
     )
     assert telemetry.snapshot().unknowns == {
-        CATEGORY_UNCONFIGURED_TAG: {
-            "DERNIERE_MODIFICATION": UnknownTally(count=1, example=example)
-        }
+        CATEGORY_TAG: {_UNRENAMED_KEY: UnknownTally(count=1, example=example)}
     }
 
 

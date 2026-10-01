@@ -23,8 +23,9 @@ from ragcore.core.services.exclusion_reasons import (
     REASON_VALIDATION_ERROR,
 )
 from ragcore.core.services.unknown_categories import (
+    CATEGORY_LINK,
     CATEGORY_ROOT,
-    CATEGORY_UNCONFIGURED_TAG,
+    CATEGORY_TAG,
 )
 from ragcore.core.telemetry_events import DOCUMENT_INVALIDATED, DOCUMENT_PARSED
 
@@ -61,10 +62,11 @@ def parse_documents_node(
 
     C'est aussi le SITE DE PARSE — donc le site du signal et du curseur : le
     parser est pur et rend ses constats dans ``ParseResult`` ; ce nœud,
-    qui tient la télémétrie, déclare les balises non-configurées (``tag.unconfigured``,
-    TOUJOURS), puis applique le curseur ``skip_unconfigured`` — ``True`` retire
-    les métadonnées non-configurées du document juste avant qu'il parte vers
-    l'ingestion. Compter d'abord, filtrer ensuite : le signal précède le filtre.
+    qui tient la télémétrie, déclare les métadonnées, liens et racines non-configurés
+    (``tags``, ``links``, ``roots``, TOUJOURS), puis applique le curseur
+    ``skip_unconfigured`` — ``True`` retire les métadonnées non-configurées du document
+    juste avant qu'il parte vers l'ingestion (ses liens non-configurés, eux, sont retirés
+    à l'extraction). Compter d'abord, filtrer ensuite : le signal précède le filtre.
     Le curseur arrive déjà validé et arbitré par le plan du run (``run_plan.plan_run``).
     """
     site = _ParseSite(pipeline_context, telemetry)
@@ -98,15 +100,14 @@ def _apply_cursor(result: ParseResult, skip_unconfigured: bool) -> ParsedDocumen
     """Le CURSEUR — `skip` retire les métadonnées non-configurées du document, juste
     avant l'ingestion. `ParsedDocument` est frozen : on reconstruit."""
     parsed = result.document
-    if not skip_unconfigured or not result.unconfigured_keys:
+    if not skip_unconfigured or not result.unconfigured_tags:
         return parsed
-    stripped = set(result.unconfigured_keys)
     return parsed.model_copy(
         update={
             "metadata": {
                 key: value
                 for key, value in parsed.metadata.items()
-                if key not in stripped
+                if key not in result.unconfigured_tags
             }
         }
     )
@@ -145,15 +146,18 @@ class _ParseSite:
 
     def declare_signals(self, result: ParseResult) -> None:
         """Le SIGNAL — toujours, et AVANT le curseur : la vigie de dérive DILA compte
-        chaque balise/racine non-configurée au bilan de run, que la donnée soit ensuite
-        ingérée ou retirée. `skip` n'efface jamais le signal."""
+        chaque métadonnée, lien et racine non-configurés au bilan de run, que la donnée
+        soit ensuite ingérée ou retirée. `skip` n'efface jamais le signal."""
         identifier = result.document.identifier.serialize()
-        for tag, source_file in result.unconfigured_tags.items():
-            example = UnknownExample(identifier=identifier, source_file=source_file)
-            self.telemetry.record_unknown(CATEGORY_UNCONFIGURED_TAG, tag, example)
-        for root, source_file in result.unknown_roots.items():
-            example = UnknownExample(identifier=identifier, source_file=source_file)
-            self.telemetry.record_unknown(CATEGORY_ROOT, root, example)
+        signals = {
+            CATEGORY_TAG: result.unconfigured_tags,
+            CATEGORY_LINK: result.unconfigured_links,
+            CATEGORY_ROOT: result.unknown_roots,
+        }
+        for category, values in signals.items():
+            for value, source_file in values.items():
+                example = UnknownExample(identifier=identifier, source_file=source_file)
+                self.telemetry.record_unknown(category, value, example)
 
     def declare_parsed(self, raw: RawDocument, parsed: ParsedDocument) -> None:
         """Document valide — compté parsé, en route vers l'ingestion."""

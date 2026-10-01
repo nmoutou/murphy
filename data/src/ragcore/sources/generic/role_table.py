@@ -36,7 +36,7 @@ class RoleTable:
     roots: frozenset[str]
     """Les racines XML que la source connaît (``ARTICLE``, ``TEXTE_JURI_JUDI``…).
 
-    Une racine hors de cet ensemble ressort en ``unknowns["racine"]`` : c'est une famille
+    Une racine hors de cet ensemble ressort en ``unknowns["roots"]`` : c'est une famille
     de documents que la source n'a jamais déclarée, et le run doit le dire.
     """
 

@@ -4,12 +4,12 @@ C'est ici que se referme le fil rouge des lots 3 et 4. Trois choses n'existaient
 qu'en creux avant ce module, et il les rend concrètes toutes les trois :
 
 1. **Le dernier maillon des inconnus d'EXTRACTION.** L'extracteur remonte ses inconnus
-   (``typelien``, ``sens``, ``identifiant``) dans sa *valeur de retour*
-   (``extraction.unknowns``) — jamais par une télémétrie, car il ne tourne pas dans le
-   worker qui réduit ``RunStats``. Le workload, LUI, tient une ``WorkerTelemetry`` :
-   c'est donc lui qui les *déclare* (``record_unknown``). Les inconnus de PARSE
-   n'existent plus : les balises non-configurées sont routées par la
-   cascade et signalées au site de parse (``parseDocuments``).
+   (les ``typelien`` non traduits, sous ``links``) et ses liens perdus dans sa *valeur
+   de retour* — jamais par une télémétrie, car il ne tourne pas dans le worker qui
+   réduit ``RunStats``. Le workload, LUI, tient une ``WorkerTelemetry`` : c'est donc lui
+   qui les *déclare* (``record_unknown``, ``relation.unknown``). Les signaux de PARSE
+   (``tags``, liens heuristiques, ``roots``) sont déclarés au site de parse
+   (``parseDocuments``).
 
 2. **Le seul appelant de ``extract()`` hors tests.** L'extraction descend dans le
    worker (doctrine §9). ``nodes/persist.py`` était l'ancien appelant ; il est
@@ -31,6 +31,7 @@ from dataclasses import dataclass
 from ragcore.application.ingest_document import IngestDocumentUseCase
 from ragcore.application.ingestion_runner import DocumentWorkload, WorkloadResult
 from ragcore.application.run_context import PipelineContext
+from ragcore.core.models.audit import build_event
 from ragcore.core.models.document import ParsedDocument
 from ragcore.core.models.unknown_tally import UnknownExample
 from ragcore.core.ports.chunker import BaseChunker
@@ -41,6 +42,7 @@ from ragcore.core.ports.relation_extractor import (
 )
 from ragcore.core.ports.runtime import AsyncRuntime
 from ragcore.core.ports.telemetry import WorkerTelemetry
+from ragcore.core.telemetry_events import PAYLOAD_COUNT_KEY, RELATION_UNKNOWN
 
 __all__ = ["UseCaseFactory", "WorkloadSteps", "build_document_workload"]
 
@@ -95,11 +97,10 @@ def build_document_workload(
         runtime: AsyncRuntime,
         telemetry: WorkerTelemetry,
     ) -> WorkloadResult:
-        # Plus d'inconnus de PARSE ici : les balises non-configurées sont ROUTÉES par la
-        # cascade du parser (metadata ou lien) et SIGNALÉES au site de parse
-        # (parseDocuments, `tag.unconfigured`). Ne restent que les
-        # inconnus d'EXTRACTION (typelien/sens/identifiant), déclarés par `_extract`.
-        extraction = _extract(steps.extractor, parsed, telemetry)
+        # Les signaux de PARSE sont déclarés au site de parse (parseDocuments). Ne restent
+        # que ceux d'EXTRACTION — typelien inconnus, liens perdus — déclarés par
+        # `_extract`.
+        extraction = _extract(steps.extractor, parsed, telemetry, context)
 
         chunks = steps.chunker.chunk(parsed)
         # ``embed`` est le seul port de traitement asynchrone : le pont sync→async est
@@ -155,8 +156,9 @@ def _extract(
     extractor: BaseRelationExtractor,
     parsed: ParsedDocument,
     telemetry: WorkerTelemetry,
+    context: PipelineContext,
 ) -> ExtractionResult:
-    """Extrait les liens du document et déclare ses inconnus.
+    """Extrait les liens du document, déclare ses inconnus et compte ses liens perdus.
 
     L'extraction sépare les cibles identifiées (des arêtes, pour la phase 2) des cibles
     décrites (des relations non formatées, que la saga du document écrit). Ni les unes
@@ -167,6 +169,16 @@ def _extract(
     """
     extraction = extractor.extract(parsed)
     _declare_unknowns(telemetry, extraction.unknowns, parsed)
+    if extraction.lost_links:
+        telemetry.emit(
+            build_event(
+                event_type=RELATION_UNKNOWN,
+                run_id=context.run_id,
+                source=parsed.source,
+                document_id=parsed.identifier.serialize(),
+                payload={PAYLOAD_COUNT_KEY: extraction.lost_links},
+            )
+        )
     return extraction
 
 

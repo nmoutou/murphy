@@ -13,6 +13,7 @@ from xml.etree import ElementTree as ET
 from ragcore.core.links import (
     CITES,
     CONTAINS,
+    HEURISTIC_KIND,
     MODIFIES,
     REFERENCES,
     SUCCEEDED_BY,
@@ -23,11 +24,7 @@ from ragcore.core.models.enums import DocumentType, SourceName
 from ragcore.core.models.enums import SourceName as _SN
 from ragcore.core.models.identifiers import Identifier
 from ragcore.core.ports.relation_extractor import BaseRelationExtractor
-from ragcore.core.services.unknown_categories import (
-    CATEGORY_IDENTIFIER,
-    CATEGORY_SENS,
-    CATEGORY_TYPELIEN,
-)
+from ragcore.core.services.unknown_categories import CATEGORY_LINK
 from ragcore.sources.generic import GenericParser, GenericRelationExtractor, to_tree
 from ragcore.sources.legislatif.table import LEGI_ROLE_TABLE
 
@@ -248,17 +245,17 @@ def test_un_verbe_inconnu_ENTRE_mais_un_sens_inconnu_NON(
       juste, et elle corromprait le voisinage en silence. Elle n'entre **pas**.
 
     La règle qui les sépare : on ingère ce qu'on ne comprend pas, on n'invente pas ce
-    qu'on ne sait pas. Les deux cas sont déclarés — l'aveu, lui, est dû dans tous les cas.
+    qu'on ne sait pas. Les deux cas ressortent — l'aveu, lui, est dû dans tous les cas :
+    le verbe inconnu comme type de lien (``links``), le sens inconnu comme lien perdu
+    (``relation.unknown``).
     """
     document = _parse(fixtures_dir, "unknown_vocabulary.xml")
     result = GenericRelationExtractor(LEGI_ROLE_TABLE, SourceName.LEGI).extract(
         document
     )
 
-    assert result.unknowns == {
-        CATEGORY_TYPELIEN: ["ZORGLUB"],
-        CATEGORY_SENS: ["lateral"],
-    }
+    assert result.unknowns == {CATEGORY_LINK: ["ZORGLUB"]}
+    assert result.lost_links == 1
 
     verbs = {r.relation_type for r in result.relations}
     assert verbs == {CITES, "zorglub"}, (
@@ -308,13 +305,15 @@ def test_un_id_vide_ne_pollue_PAS_les_inconnus() -> None:
 
     assert result.relations == []
     assert result.unknowns == {}
+    assert result.lost_links == 0
 
 
 def test_un_id_PRESENT_mais_illisible_est_DECLARE_pas_jete() -> None:
     """La distinction jumelle de l'`id` vide : un `id` PRÉSENT mais que la table ne sait
     pas transformer (format inattendu) n'est PAS une absence — la source a écrit une
     référence. La taire (l'ancien `except: return None`) faisait disparaître l'arête en
-    silence. Elle se DÉCLARE désormais en `identifiant`, pour que le bilan la porte.
+    silence. Elle est COMPTÉE comme lien perdu (`relation.unknown`), pour que le bilan
+    la porte — sans polluer les types de lien inconnus.
     """
     document = _document_with_references(
         [{"kind": "LIEN", "id": "GARBAGE", "typelien": "CITATION", "sens": "source"}]
@@ -325,7 +324,34 @@ def test_un_id_PRESENT_mais_illisible_est_DECLARE_pas_jete() -> None:
     )
 
     assert result.relations == [], "l'arête n'est pas inventée : la cible est illisible"
-    assert result.unknowns == {CATEGORY_IDENTIFIER: ["GARBAGE"]}
+    assert result.unknowns == {}
+    assert result.lost_links == 1
+
+
+_CIBLE = "LEGIARTI000000000002"
+
+
+def test_le_curseur_RETIRE_les_aretes_non_configurees_mais_pas_le_signal() -> None:
+    """``skip_unconfigured`` (ADR-048) retire l'arête d'un ``typelien`` inconnu et l'arête
+    heuristique ; le lien configuré reste, et le signal sort dans les deux régimes."""
+    document = _document_with_references(
+        [
+            {"kind": "LIEN", "id": _CIBLE, "typelien": "ZORGLUB", "sens": "source"},
+            {"kind": "LIEN", "id": _CIBLE, "typelien": "CITATION", "sens": "source"},
+            {"kind": HEURISTIC_KIND, "id": _CIBLE, "tag": "ZORG_REF"},
+        ]
+    )
+
+    def verbs(skip: bool) -> set[str]:
+        extractor = GenericRelationExtractor(
+            LEGI_ROLE_TABLE, SourceName.LEGI, skip_unconfigured=skip
+        )
+        result = extractor.extract(document)
+        assert result.unknowns == {CATEGORY_LINK: ["ZORGLUB"]}
+        return {r.relation_type for r in result.relations}
+
+    assert verbs(skip=False) == {CITES, "zorglub", REFERENCES}
+    assert verbs(skip=True) == {CITES}
 
 
 def test_une_mort_nee_saccroche_en_branche_LATERALE_hors_chaine() -> None:

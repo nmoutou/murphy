@@ -25,6 +25,8 @@ GOLDEN = {
     "relation.upserted",
     "relation.pending",
     "relation.promoted",
+    # Un lien que la source a écrit et qu'on ne sait pas écrire (ADR-048).
+    "relation.unknown",
     "saga.compensation.triggered",
     "saga.compensation.completed",
     "saga.compensation.failed",
@@ -48,6 +50,7 @@ GOLDEN_COUNT_CARRYING = {
     "chunk.truncated",  # nombre de chunks raccourcis
     "document.version_skipped",  # nombre d'artefacts d'export écartés
     "document.unreadable",  # nombre de fichiers illisibles écartés
+    "relation.unknown",  # nombre de liens perdus d'un document
 }
 
 

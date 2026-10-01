@@ -26,12 +26,13 @@ n'en sort en silence.
 | `relation.upserted` | Arêtes **réussies** d'un batch (`count`) |
 | `relation.pending` | Cible absente → cache des pendantes |
 | `relation.promoted` | Pendante d'un run passé enfin résolue |
+| `relation.unknown` | Liens qu'on ne sait pas écrire (`sens` inconnu, `@id` illisible, `typelien` qui ne peut pas être un verbe) : 1 événement par document, `count` = liens perdus. L'arête n'existe pas ; un lien retiré par `skip_unconfigured` n'est pas compté. Ne change pas le statut du run (ADR-048). |
 | `saga.compensation.triggered` / `.completed` / `.failed` | Rollback d'une saga (`.failed` = un écrit partiel subsiste ; `success` du `.completed` dit la vérité : une seule compensation ratée et le rollback n'est pas propre) |
 
-**Contrat de cardinalité** : la plupart des événements pèsent 1. Cinq — et eux
+**Contrat de cardinalité** : la plupart des événements pèsent 1. Six — et eux
 exactement (`COUNT_CARRYING_EVENTS`) — portent leur poids dans `payload["count"]` :
 `document.fetched`, `document.version_skipped`, `document.unreadable`,
-`relation.upserted`, `chunk.truncated`.
+`relation.upserted`, `relation.unknown`, `chunk.truncated`.
 L'ensemble est nommé et verrouillé par golden : un émetteur qui prétend porter une cardinalité sans y figurer est
 un bug visible, pas une dérive muette.
 
@@ -70,9 +71,17 @@ commutative ferait dépendre le bilan de l'ordonnancement). Deux champs :
   des comptes, **plus petit** exemple — « le premier vu » dépendrait de l'ordre des
   workers. `source_file` est le fichier de la facette pour les inconnus de parse, le
   premier fichier du document pour ceux d'extraction.
-  Catégories : `tag.unconfigured` (balise absente de la table ou sans renommage,
-  ADR-047) / `racine` (parse), `typelien` / `sens` /
-  `identifiant` (extraction). Vide = toutes les balises sont renommées.
+  Trois catégories plates (ADR-048) :
+  - `tags` : les métadonnées non configurées (balise absente de la table ou sans
+    renommage, ADR-047), sous leur **clé chemin-complet** — la clé même qu'elles ont
+    dans `metadata` ;
+  - `roots` : les racines XML que la source ne déclare pas ;
+  - `links` : les types de lien non configurés — un `typelien` non traduit, ou la clé
+    chemin-complet d'une balise absente de la table dont la valeur est un identifiant
+    DILA (lien heuristique).
+
+  Une balise sans valeur n'y apparaît pas : elle n'a rien à ingérer. Un lien qu'on ne
+  sait pas écrire n'est pas un type de lien : il est compté par `relation.unknown`.
 
 **La remontée passe par le DAG, pas par le hook** : le node terminal `report` pousse
 `ingestion_outcome.stats` dans l'agrégat du run (`run_stats_sink`, que le hook finalise) — Kedro libère un `MemoryDataset` dès
@@ -111,8 +120,11 @@ document est plat :
 ```json
 { "run_id": "…", "sources": ["cass", "jade", "legi"], "status": "ok",
   "started_at": "…", "ended_at": "…", "counts": { "document.fetched": 1121, … },
-  "unknowns": { "tag.unconfigured": { "NUM_SEQUENCE": { "count": 98,
-    "example": { "identifier": "LEGITEXT…", "source_file": "/…/LEGITEXT….xml" } } } } }
+  "unknowns": {
+    "tags": { "textelr_meta_meta_spec_meta_texte_chronicle_num_sequence": { "count": 92,
+      "example": { "identifier": "LEGITEXT…", "source_file": "/…/LEGITEXT….xml" } } },
+    "roots": {},
+    "links": { "ZORGLUB": { "count": 1, "example": { … } } } } }
 ```
 
 `sources` est toujours une liste, même pour un run mono-source. `error_message` n'est

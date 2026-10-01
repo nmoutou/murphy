@@ -18,7 +18,14 @@ from ragcore.core.models.identifiers import RunId
 from ragcore.core.models.run_stats import RunStats
 from ragcore.core.models.run_summary import RunStatus, RunSummary
 from ragcore.core.models.unknown_tally import UnknownExample
+from ragcore.core.services.unknown_categories import UNKNOWN_CATEGORIES
 from ragcore.core.telemetry_events import COUNT_CARRYING_EVENTS, PAYLOAD_COUNT_KEY
+
+_EVERY_CATEGORY = RunStats(
+    counts={}, unknowns={category: {} for category in UNKNOWN_CATEGORIES}
+)
+"""Neutre pour la fusion, sauf qu'il fait exister chaque catégorie : un bilan sans
+inconnu dit ``"roots": {}``, il ne perd pas la clé (ADR-048)."""
 
 
 def _weight_of(event_type: str, payload: dict[str, Any]) -> int:
@@ -112,7 +119,7 @@ class RunStatsAggregator:
     ) -> RunSummary:
         """Projette l'agrégat en RunSummary — l'identité s'attache ici, une fois."""
         return RunSummary.of(
-            self._stats,
+            self._stats.merge(_EVERY_CATEGORY),
             context_run_id=self._run_id,
             sources=self._sources,
             started_at=self._started_at,

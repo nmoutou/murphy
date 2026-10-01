@@ -9,7 +9,7 @@ métadonnée, ni un lien — il **disparaît**. Aucune exception, aucun log, un 
 silencieusement amputé. C'est précisément la forme du bug qui a fait s'évaporer 16 227
 liens pendant des mois.
 
-Avec lui, la balise ressort dans ``ParseResult.unconfigured_tags``, ce test échoue, et
+Avec lui, la balise ressort du parcours de l'arbre, ce test échoue, et
 quelqu'un doit **décider** de son rôle. La décision peut être « c'est du bruit, rôle
 META » — mais elle est prise, et écrite. Depuis la cascade des « trois portes »,
 la donnée de la balise n'attend plus la décision : elle entre en métadonnée (clé
@@ -18,9 +18,10 @@ décision.
 
 **Le cliquet et l'instrument sont complémentaires**, et il faut les distinguer :
 
-- Le cliquet (ici) fige ce qu'on connaît : sur les fixtures, le signal doit être VIDE.
-- L'instrument (``tag.unconfigured`` → ``RunStats.unknowns`` → ``RunSummary``) découvre
-  ce qu'on ne connaît pas : sur un corpus neuf, la balise remonte dans le bilan du run.
+- Le cliquet (ici) fige ce qu'on connaît : sur les fixtures, aucune balise sans rôle.
+- L'instrument (``tags``/``links`` → ``RunStats.unknowns`` → ``RunSummary``) découvre
+  ce qu'on ne connaît pas : sur un corpus neuf, la donnée de la balise remonte dans le
+  bilan du run, sous sa clé chemin-complet.
 
 Le premier interdit la régression ; le second permet la saturation. Ni l'un ni l'autre
 seul ne suffit.
@@ -33,8 +34,10 @@ from pathlib import Path
 
 import pytest
 
+from ragcore.core.models.document import RawDocument
 from ragcore.core.models.enums import SourceName
 from ragcore.sources.generic import GenericParser, Role
+from ragcore.sources.generic.tree import walk
 from ragcore.sources.legislatif.file_connector import LegiFileConnector
 from ragcore.sources.legislatif.table import LEGI_ROLE_TABLE
 
@@ -46,12 +49,11 @@ FIXTURES = Path(__file__).parents[2] / "sources" / "legislatif" / "tests" / "fix
 _FIXTURE_PATHOLOGIQUE = "unknown_vocabulary.xml"
 
 
-def _parse_all() -> list:
-    async def run() -> list:
-        parser = GenericParser(LEGI_ROLE_TABLE, SourceName.LEGI)
+def _raws() -> list[RawDocument]:
+    async def run() -> list[RawDocument]:
         connector = LegiFileConnector(FIXTURES)
         return [
-            parser.parse(raw)
+            raw
             async for raw in connector.fetch_all()
             if not any(
                 Path(f).name == _FIXTURE_PATHOLOGIQUE for f in raw.payload["files"]
@@ -59,6 +61,16 @@ def _parse_all() -> list:
         ]
 
     return asyncio.run(run())
+
+
+def _tags_without_role(raw: RawDocument) -> set[str]:
+    """Les balises du document que ``LEGI_ROLE_TABLE`` ne connaît pas."""
+    return {
+        node["tag"]
+        for facet in raw.payload["content"]
+        for node in walk(facet)
+        if not LEGI_ROLE_TABLE.knows(node["tag"])
+    }
 
 
 def test_aucune_balise_du_corpus_ne_reste_sans_role() -> None:
@@ -70,20 +82,18 @@ def test_aucune_balise_du_corpus_ne_reste_sans_role() -> None:
 
     Depuis la cascade des « trois portes », une balise non-configurée n'est plus un
     ``unknown`` dans la donnée : elle est ROUTÉE (metadata ou lien) et SIGNALÉE dans le
-    ``ParseResult``. Le cliquet lit désormais le signal — il garde exactement la même
-    chose : sur les fixtures saturées, il doit être vide.
-
-    Le signal porte aussi les balises connues SANS renommage (ADR-047) : elles ont un
-    rôle, le cliquet ne les retient donc pas.
+    ``ParseResult``, sous ses clés de métadonnée (ADR-048). Le signal ne nomme donc plus
+    la balise, et porte aussi celles qui ont un rôle sans renommage (ADR-047) : le
+    cliquet parcourt lui-même l'arbre et demande le rôle de chaque balise.
     """
     orphelines: dict[str, set[str]] = {}
+    parser = GenericParser(LEGI_ROLE_TABLE, SourceName.LEGI)
 
-    for result in _parse_all():
-        sans_role = {
-            tag for tag in result.unconfigured_tags if not LEGI_ROLE_TABLE.knows(tag)
-        }
+    for raw in _raws():
+        sans_role = _tags_without_role(raw)
         if sans_role:
             orphelines.setdefault("tag", set()).update(sans_role)
+        result = parser.parse(raw)
         if result.unknown_roots:
             orphelines.setdefault("racine", set()).update(result.unknown_roots)
 
@@ -99,25 +109,29 @@ def test_le_cliquet_est_CAPABLE_d_echouer() -> None:
 
     Un test qui n'échoue jamais est un test qui n'observe rien. Celui-ci prouve que
     l'instrument fonctionne : sur la fixture qui porte une balise ``<ZORG>`` délibérément
-    absente de la table, le ``ParseResult`` la **signale** — et sa valeur, routée par la
-    cascade, entre en métadonnée sous sa clé chemin-complet au lieu de disparaître.
+    absente de la table, le parcours la **trouve**, le ``ParseResult`` **signale** sa
+    valeur — et cette valeur, routée par la cascade, entre en métadonnée sous sa clé
+    chemin-complet au lieu de disparaître.
     """
-    parser = GenericParser(LEGI_ROLE_TABLE, SourceName.LEGI)
 
-    async def run():
+    async def run() -> RawDocument:
         async for raw in LegiFileConnector(FIXTURES).fetch_all():
             if any(Path(f).name == _FIXTURE_PATHOLOGIQUE for f in raw.payload["files"]):
-                return parser.parse(raw)
+                return raw
         pytest.fail(f"La fixture {_FIXTURE_PATHOLOGIQUE} est introuvable")
 
-    result = asyncio.run(run())
+    raw = asyncio.run(run())
+    result = GenericParser(LEGI_ROLE_TABLE, SourceName.LEGI).parse(raw)
 
-    assert "ZORG" in result.unconfigured_tags, (
-        "La balise non-configurée doit être SIGNALÉE. Si elle ne l'est pas, le cliquet "
+    assert _tags_without_role(raw) == {"ZORG"}, (
+        "La balise sans rôle doit être TROUVÉE. Si elle ne l'est pas, le cliquet "
         "ci-dessus ne garde rien du tout."
     )
+    assert "article_zorg" in result.unconfigured_tags, (
+        "Sa valeur doit être SIGNALÉE, sous sa clé chemin-complet."
+    )
     assert result.document.metadata["article_zorg"], (
-        "Et sa valeur doit être INGÉRÉE (porte metadata) — routée, pas jetée."
+        "Et INGÉRÉE (porte metadata) — routée, pas jetée."
     )
 
 

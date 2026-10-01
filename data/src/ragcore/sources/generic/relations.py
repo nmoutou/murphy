@@ -28,11 +28,20 @@ __all__ = ["GenericRelationExtractor"]
 
 
 class GenericRelationExtractor:
-    """Branche la table d'une source sur la mécanique du domaine. Rien de plus."""
+    """Branche la table d'une source sur la mécanique du domaine — et applique le curseur.
 
-    def __init__(self, table: RoleTable, source: SourceName) -> None:
+    ``skip_unconfigured`` retire les arêtes d'un type de lien non-configuré (heuristiques,
+    ``typelien`` inconnu — ADR-048), comme le site de parse retire les métadonnées
+    non-configurées. Le signal, lui, sort toujours (``unknowns``) : on compte d'abord, on
+    filtre ensuite.
+    """
+
+    def __init__(
+        self, table: RoleTable, source: SourceName, *, skip_unconfigured: bool = False
+    ) -> None:
         self._table = table
         self._source = source
+        self._skip_unconfigured = skip_unconfigured
 
     @property
     def source_name(self) -> SourceName:
@@ -55,8 +64,12 @@ class GenericRelationExtractor:
                 source=self._source,
             ),
         )
+        unconfigured = (
+            [] if self._skip_unconfigured else extracted.unconfigured_relations
+        )
         return ExtractionResult(
-            relations=extracted.relations,
-            unknowns=extracted.unknowns,
+            relations=extracted.relations + unconfigured,
             unformatted_relations=extracted.unformatted_relations,
+            unknowns=extracted.unknowns,
+            lost_links=extracted.lost_links,
         )

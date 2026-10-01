@@ -110,14 +110,15 @@ Pour chaque `RawDocument` :
    Dans les deux cas le document part dans `to_skip`. Toute autre exception sort du
    contrat du parser : c'est un bug du run, elle remonte et l'arrête. Il n'y a **pas** de
    troisième voie : un document parse ou il est rejeté — jamais ignoré.
-2. **Signal des balises non-configurées** — TOUJOURS, avant le curseur :
-   `record_unknown("tag.unconfigured", …)` et `record_unknown("root", …)` pour ce que la
-   cascade du parser a rangé sans que la table le lui apprenne. C'est la vigie de dérive
+2. **Signal des données non-configurées** — TOUJOURS, avant le curseur :
+   `record_unknown` en `tags`, `links` et `roots` (clés chemin-complet, ADR-048) pour ce
+   que la cascade du parser a rangé sans que la table le lui apprenne. C'est la vigie de dérive
    DILA : elle compte, que la donnée soit ensuite gardée ou retirée.
 3. **Curseur `skip_unconfigured`** (booléen, arbitré par `plan_run` en tête de
    run, avant tout nœud) : à `true`, les métadonnées non-configurées sont
-   retirées du document juste avant l'ingestion. Hors `ENVIRONMENT=dev`, le plan impose
-   `true`. On compte d'abord, on filtre ensuite.
+   retirées du document juste avant l'ingestion (les arêtes non configurées le sont à
+   l'extraction). Hors `ENVIRONMENT=dev`, le plan impose `true`. On compte d'abord, on
+   filtre ensuite.
 4. Émet `document.parsed`. Le document part à l'ingestion, qu'il soit déjà en base ou
    non : la saga le réécrit en place (voir [idempotence.md](idempotence.md)).
 
@@ -153,9 +154,10 @@ Entrées : `to_process`, `runner`, contexte. Le nœud est mince : il lance
 
 1. **Extraction** (`extractor.extract(parsed)`) — AVANT le chunking : elle sépare les
    cibles identifiées (→ relations, pour la phase 2) des cibles décrites (→ relations
-   non formatées, que la saga du document écrit, ADR-045). Les inconnus
-   d'extraction (`typelien`, `sens`, `identifiant`) sont déclarés à la télémétrie du
-   worker.
+   non formatées, que la saga du document écrit, ADR-045). Les `typelien` non traduits
+   sont déclarés à la télémétrie du worker (`links`), les liens qu'on ne sait pas écrire
+   comptés (`relation.unknown`). Avec `skip_unconfigured`, les arêtes d'un type non
+   configuré sont retirées (ADR-048).
 2. **Chunking** (`chunker.chunk(parsed)`) — voir [sources.md](sources.md#le-chunking).
 3. **Embedding** (`runtime.run(embedder.embed(chunks))`) — sauté si l'interrupteur
    d'embedding est coupé (dev, ADR-023) : zéro vecteur calculé ni écrit, Qdrant reste

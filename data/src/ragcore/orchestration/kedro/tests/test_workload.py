@@ -32,6 +32,8 @@ from ragcore.core.models.relation import Relation
 from ragcore.core.models.unformatted_relation import UnformattedRelation
 from ragcore.core.models.unknown_tally import UnknownExample, UnknownTally
 from ragcore.core.ports.relation_extractor import ExtractionResult
+from ragcore.core.services.unknown_categories import CATEGORY_LINK
+from ragcore.core.telemetry_events import PAYLOAD_COUNT_KEY, RELATION_UNKNOWN
 from ragcore.orchestration.kedro.workload import WorkloadSteps, build_document_workload
 from ragcore.tests.fakes import (
     FakeRuntime,
@@ -70,7 +72,7 @@ def _doc() -> ParsedDocument:
 
 def _zorglub_seen_once() -> dict[str, dict[str, UnknownTally]]:
     example = UnknownExample(identifier=SELF.serialize(), source_file=SOURCE_FILE)
-    return {"typelien": {"ZORGLUB": UnknownTally(count=1, example=example)}}
+    return {CATEGORY_LINK: {"ZORGLUB": UnknownTally(count=1, example=example)}}
 
 
 class _StubChunker:
@@ -109,12 +111,13 @@ class _StubExtractor:
     """Rend un résultat FIXE — le workload n'invente rien, il transmet.
 
     Une relation (pour prouver qu'elle sort sans être écrite), une relation non formatée
-    (pour prouver qu'elle est écrite dès la phase 1) et un inconnu (pour prouver qu'il
-    est déclaré).
+    (pour prouver qu'elle est écrite dès la phase 1), un inconnu (pour prouver qu'il
+    est déclaré) et, à la demande, des liens perdus (pour prouver qu'ils sont comptés).
     """
 
-    def __init__(self) -> None:
+    def __init__(self, lost_links: int = 0) -> None:
         self.calls = 0
+        self._lost_links = lost_links
 
     def extract(self, document: ParsedDocument) -> ExtractionResult:
         self.calls += 1
@@ -128,7 +131,8 @@ class _StubExtractor:
                 )
             ],
             unformatted_relations=[DESCRIBED],
-            unknowns={"typelien": ["ZORGLUB"]},
+            unknowns={CATEGORY_LINK: ["ZORGLUB"]},
+            lost_links=self._lost_links,
         )
 
 
@@ -193,14 +197,30 @@ def test_les_inconnus_de_lextraction_sont_DECLARES() -> None:
 
     ``extraction.unknowns`` vient de l'extracteur, qui ne tient pas la télémétrie.
     C'est le workload qui les déclare — et ``snapshot()`` est la preuve que le tuyau
-    coule. Les inconnus de PARSE n'existent plus : les balises
-    non-configurées sont routées par la cascade et signalées au site de parse
-    (``parseDocuments``, ``tag.unconfigured``), jamais ici.
+    coule. Les signaux de PARSE (``tags``, liens heuristiques, ``roots``) sont déclarés
+    au site de parse (``parseDocuments``), jamais ici.
     """
     _result, _graph, _vectors, telemetry = _run(_doc())
 
     unknowns = telemetry.snapshot().unknowns
     assert unknowns == _zorglub_seen_once()
+
+
+def test_les_liens_perdus_sont_COMPTES_en_relation_unknown() -> None:
+    """Un lien que l'extraction ne sait pas écrire ne disparaît pas en silence : le
+    workload émet ``relation.unknown``, porteur du nombre de liens perdus (ADR-048)."""
+    _result, _graph, _vectors, telemetry = _run(
+        _doc(), extractor=_StubExtractor(lost_links=2)
+    )
+
+    (event,) = telemetry.events_of(RELATION_UNKNOWN)
+    assert event.payload == {PAYLOAD_COUNT_KEY: 2}
+
+
+def test_sans_lien_perdu_relation_unknown_n_est_PAS_emis() -> None:
+    _result, _graph, _vectors, telemetry = _run(_doc())
+
+    assert telemetry.events_of(RELATION_UNKNOWN) == []
 
 
 def test_la_phase_1_NECRIT_AUCUNE_arete() -> None:

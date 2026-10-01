@@ -143,9 +143,10 @@ def test_sources_list_every_ingested_source() -> None:
 
 
 def test_unknowns_defaults_to_empty_not_none() -> None:
-    """Un run qui a tout compris déclare un vide, pas une absence."""
+    """Un run qui a tout compris déclare un vide, pas une absence — catégorie par
+    catégorie : le schéma du bilan ne varie pas d'un run à l'autre (ADR-048)."""
     summary = RunStatsAggregator(RUN, (), datetime.now(UTC)).finalize(RunStatus.OK)
-    assert summary.unknowns == {}
+    assert summary.unknowns == {"tags": {}, "roots": {}, "links": {}}
 
 
 def test_aggregator_declares_what_it_could_not_name(

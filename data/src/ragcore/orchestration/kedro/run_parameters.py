@@ -70,8 +70,8 @@ def resolve_dev_settings(dev: DevParameters, environment: Environment) -> DevPar
     écrire les chemins des fichiers source ou hydrater les nœuds Neo4j (ADR-022). Un
     ``parameters.yml`` traîné de dev en prod ne doit pouvoir ni effacer une base, ni
     produire une collection vide, ni écrire dans Mongo ou sur chaque nœud les chemins
-    de fichiers du poste d'ingestion. Le signal
-    ``tag.unconfigured``, lui, est émis dans les deux régimes.
+    de fichiers du poste d'ingestion. Les signaux ``tags`` et ``links``, eux, sont émis
+    dans les deux régimes.
     """
     return dev if environment == DEV_ENVIRONMENT else SAFE_DEV_SETTINGS
 

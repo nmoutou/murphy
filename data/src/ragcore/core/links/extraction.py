@@ -32,12 +32,8 @@ from pydantic import ValidationError as PydanticValidationError
 from ..models.identifiers import Identifier
 from ..models.relation import Relation
 from ..models.unformatted_relation import UnformattedRelation
-from ..services.unknown_categories import (
-    CATEGORY_IDENTIFIER,
-    CATEGORY_SENS,
-    CATEGORY_TYPELIEN,
-    declare_unknown,
-)
+from ..services.unknown_categories import CATEGORY_LINK, declare_unknown
+from .orientation import orient
 from .subject import LinkSubject
 from .table import LinkTable
 from .unformatted import unformatted_relation_from
@@ -69,18 +65,6 @@ un rôle déclaré et un verbe précis.
 """
 
 
-SENS_SOURCE = "source"
-SENS_CIBLE = "cible"
-"""Les deux rôles qu'un document peut jouer dans une arête qu'il déclare.
-
-``sens="source"`` → *moi → lié*. ``sens="cible"`` → *lié → moi*.
-
-Preuve empirique de cette lecture : l'article ``LEGIARTI000031367659`` (2015) porte des
-liens ``sens="cible" typelien="CITATION"`` vers un arrêté de **2024**. Un article de 2015
-ne cite pas le futur — c'est donc l'arrêté qui le cite.
-"""
-
-
 @dataclass(frozen=True)
 class ExtractedLinks:
     """Ce que l'extraction a produit — et ce qu'elle n'a pas su nommer.
@@ -92,6 +76,20 @@ class ExtractedLinks:
 
     relations: list[Relation] = field(default_factory=list)
     unknowns: dict[str, list[str]] = field(default_factory=dict)
+    """Les types de lien non-configurés (catégorie ``links``) : les ``typelien`` que la
+    table ne traduit pas. Les liens heuristiques, eux, sont signalés au parse, où leur
+    clé chemin-complet est connue."""
+
+    unconfigured_relations: list[Relation] = field(default_factory=list)
+    """Les arêtes d'un type de lien NON-CONFIGURÉ (ADR-048) : heuristiques, ou d'un
+    ``typelien`` inconnu. Séparées de ``relations`` pour que le curseur
+    ``skip_unconfigured`` puisse les retirer sans que l'extraction le connaisse."""
+
+    lost_links: int = 0
+    """Les liens que la source a écrits mais qu'on ne sait pas écrire : ``sens``
+    inconnu, ``@id`` illisible, ``typelien`` qui ne peut pas être un verbe. Ils ne
+    deviennent pas des arêtes ; ce compte est ce qui les empêche de disparaître en
+    silence (``relation.unknown``)."""
 
     unformatted_relations: list[UnformattedRelation] = field(default_factory=list)
     """Les cibles DÉCRITES — celles dont l'``@id`` était vide.
@@ -114,9 +112,9 @@ def extract_links(
     a pas typés — le faire aurait mis la table de traduction dans deux modules à la fois.
 
     Ici, le domaine traduit. Ce qu'il ne sait pas traduire, il l'INGÈRE SOUS SON NOM BRUT
-    et le déclare. Il ne le jette pas.
+    et le déclare. Il ne le jette pas. Ce qu'il ne sait pas écrire, il le compte.
     """
-    extraction = _Extraction(table=table, subject=subject, unknowns={})
+    extraction = _Extraction(table=table, subject=subject)
     unformatted_relations: list[UnformattedRelation] = []
 
     # Les liens de VERSION se traitent EN GROUPE (cf. `versions.py`) : la chaîne est une
@@ -130,7 +128,8 @@ def extract_links(
         extracted = extraction.from_reference(reference)
         # Deux natures, un seul aiguillage — l'identification de la cible. Le `match`
         # dit lequel des deux plans reçoit la balise : le graphe, ou les relations non
-        # formatées.
+        # formatées. `None` : rien pour ces deux plans — un lien perdu, ou une arête
+        # non-configurée, que `_Extraction` a déjà rangée à part.
         match extracted:
             case Relation():
                 relations.append(extracted)
@@ -147,21 +146,27 @@ def extract_links(
     return ExtractedLinks(
         relations=relations,
         unknowns=extraction.unknowns,
+        unconfigured_relations=extraction.unconfigured,
+        lost_links=len(extraction.lost),
         unformatted_relations=unformatted_relations,
     )
 
 
 @dataclass(frozen=True)
 class _Extraction:
-    """L'extraction des liens d'UN document : sa table, son sujet, ses inconnus.
+    """L'extraction des liens d'UN document : sa table, son sujet, et ce qu'elle range à
+    part — ses inconnus, ses arêtes non-configurées, ses liens perdus.
 
-    Ces trois-là voyagent ensemble d'une balise à l'autre ; les porter une fois évite de
-    les repasser à chaque étape de la cascade.
+    Ils voyagent ensemble d'une balise à l'autre ; les porter une fois évite de les
+    repasser à chaque étape de la cascade.
     """
 
     table: LinkTable
     subject: LinkSubject
-    unknowns: dict[str, list[str]]
+    unknowns: dict[str, list[str]] = field(default_factory=dict)
+    unconfigured: list[Relation] = field(default_factory=list)
+    lost: list[str] = field(default_factory=list)
+    """La valeur fautive de chaque lien perdu — seul son nombre sort."""
 
     def identified(self, references: Sequence[Mapping[str, Any]]) -> list[VersionEntry]:
         """Les références dont la cible s'identifie, avec leur identifiant."""
@@ -183,7 +188,8 @@ class _Extraction:
         """
         kind = reference.get("kind", "")
         if kind == HEURISTIC_KIND:
-            return self._heuristic(reference)
+            self._heuristic(reference)
+            return None
 
         linked = self.identifier(reference.get("id", ""))
         if linked is None:
@@ -199,23 +205,26 @@ class _Extraction:
             )
         return self._typed(reference, linked)
 
-    def _heuristic(self, reference: Mapping[str, Any]) -> Relation | None:
+    def _heuristic(self, reference: Mapping[str, Any]) -> None:
         """La cascade du parser a reconnu une valeur au format DILA sur une balise
         non-configurée.
 
         Pas de `typelien`, pas de `sens` : la source n'a rien déclaré. Orientation par
         construction (le document courant PORTE la référence), verbe générique
         `references`. La balise d'origine survit en métadonnée d'arête — c'est elle qui
-        dira, plus tard, quoi apprendre à la table.
+        dira, plus tard, quoi apprendre à la table. L'arête est NON-CONFIGURÉE : elle va
+        à part, là où le curseur peut la retirer.
         """
         linked = self.identifier(reference.get("id", ""))
         if linked is None:
-            return None
-        return self.subject.relation(
-            self.subject.current,
-            linked,
-            REFERENCES,
-            {"kind": reference.get("tag", ""), "origin": "heuristic"},
+            return
+        self.unconfigured.append(
+            self.subject.relation(
+                self.subject.current,
+                linked,
+                REFERENCES,
+                {"kind": reference.get("tag", ""), "origin": "heuristic"},
+            )
         )
 
     def _typed(
@@ -228,27 +237,25 @@ class _Extraction:
 
         if relation_verb is None:
             # Le mot ne peut pas ÊTRE un verbe (vide, caractères interdits) : il n'y a
-            # rien à écrire dans le graphe. Ce n'est pas un renoncement — c'est
-            # l'absence de mot.
-            declare_unknown(self.unknowns, CATEGORY_TYPELIEN, raw_typelien or "<vide>")
+            # rien à écrire dans le graphe, et ce n'est pas un type de lien. Le lien est
+            # perdu, et compté.
+            self.lost.append(raw_typelien)
             return None
 
         if not known:
             # Le verbe entre dans le graphe SOUS SON NOM BRUT, et le fait est déclaré.
-            # L'arête existe : c'est là toute la différence avec la version qu'on
-            # remplace.
-            declare_unknown(self.unknowns, CATEGORY_TYPELIEN, raw_typelien)
+            declare_unknown(self.unknowns, CATEGORY_LINK, raw_typelien)
 
         raw_sens = reference.get("sens", "")
-        oriented = _orient(self.subject.current, linked, raw_sens)
+        oriented = orient(self.subject.current, linked, raw_sens)
         if oriented is None:
             # Une arête qu'on ne sait pas orienter, on ne l'écrit pas au hasard : un
-            # graphe faux ne se distingue pas d'un graphe vrai. On dit qu'on n'a pas su.
-            declare_unknown(self.unknowns, CATEGORY_SENS, raw_sens or "<vide>")
+            # graphe faux ne se distingue pas d'un graphe vrai. On compte le lien perdu.
+            self.lost.append(raw_sens)
             return None
 
         edge_source, edge_target = oriented
-        return self.subject.relation(
+        relation = self.subject.relation(
             edge_source,
             edge_target,
             relation_verb,
@@ -258,6 +265,11 @@ class _Extraction:
             # en base.
             {"typelien": raw_typelien, "sens": raw_sens},
         )
+        if known:
+            return relation
+        # Un `typelien` inconnu est un type de lien NON-CONFIGURÉ : l'arête va à part.
+        self.unconfigured.append(relation)
+        return None
 
     def from_ancestor(self, ancestor: Mapping[str, Any]) -> Relation | None:
         """L'ancêtre CONTIENT le document courant. Orientation fixe, jamais ambiguë."""
@@ -279,23 +291,6 @@ class _Extraction:
         except PydanticValidationError:
             # `@id` présent mais illisible : la source a écrit une référence qu'on ne
             # sait pas transformer. La taire ferait disparaître l'arête en silence ; on
-            # la DÉCLARE, pour que le bilan la porte.
-            declare_unknown(self.unknowns, CATEGORY_IDENTIFIER, raw_id)
+            # la COMPTE, pour que le bilan la porte (`relation.unknown`).
+            self.lost.append(raw_id)
             return None
-
-
-def _orient(
-    current: Identifier, linked: Identifier, sens: str
-) -> tuple[Identifier, Identifier] | None:
-    """Oriente l'arête selon le RÔLE que le document courant y joue.
-
-    Rend ``None`` si le ``sens`` est inconnu — l'appelant le déclare. C'est ce qui
-    remplace l'ancien ``_invert``, lequel ajoutait l'arête inverse **en plus** de
-    l'originale : il DOUBLAIT chaque relation et rendait le graphe symétrique. Ici, un
-    lien donne exactement une arête, orientée à la construction et jamais retournée.
-    """
-    if sens == SENS_SOURCE:
-        return current, linked
-    if sens == SENS_CIBLE:
-        return linked, current
-    return None

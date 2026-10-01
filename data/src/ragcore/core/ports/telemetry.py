@@ -48,7 +48,7 @@ class WorkerTelemetry(TelemetryPort, Protocol):
 
         L'appelant n'est jamais le parser ni l'extracteur — ils ne voient pas la
         télémétrie du worker. Ils REMONTENT leurs inconnus dans leur valeur de retour
-        (``ParsedDocument.unknowns``, ``ExtractionResult.unknowns``) ; c'est le worker,
+        (``ParseResult``, ``ExtractionResult.unknowns``) ; c'est le worker,
         qui tient cette pile, qui les déclare ici. Sans quoi ``RunStats.unknowns``
         resterait le tuyau vide qu'il est : plombé de bout en bout, et sans producteur.
         """

@@ -1,6 +1,6 @@
 # ADR-047 — Une balise sans renommage est non configurée
 
-**Statut** : ✅ Accepté (1er octobre 2026) — amende ADR-022 §1
+**Statut** : ✅ Accepté (1er octobre 2026) — amende ADR-022 §1 · **amendé par ADR-048** (signal par clé chemin-complet en `tags`, `unconfigured_keys` supprimé)
 
 ## Contexte
 

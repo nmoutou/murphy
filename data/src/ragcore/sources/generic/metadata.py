@@ -5,8 +5,8 @@ vérités.
 
 **Une balise sans renommage est NON-CONFIGURÉE** (ADR-047). Elle n'est pas perdue : elle
 entre sous sa clé chemin-complet, comme une balise absente de la table. Mais, comme elle,
-elle est SIGNALÉE (``routing.tags``) et sa clé est la poignée du curseur
-``skip_unconfigured`` (``routing.keys``). Seul le renommage (``meta_renames``) fait d'une
+elle est SIGNALÉE sous sa clé (``routing.tags``), qui est aussi la poignée du curseur
+``skip_unconfigured``. Seul le renommage (``meta_renames``) fait d'une
 balise une métadonnée configurée.
 
 **Le rôle décide, pas l'emplacement.** ``<META>`` n'est pas un territoire : un ``<LIEN>``
@@ -53,8 +53,7 @@ def collect_metadata(
                 continue
             routing.metadata[key] = node["text"].strip()
             if rename is None:
-                routing.tags.setdefault(node["tag"], source_file)
-                routing.keys.append(key)
+                routing.tags.setdefault(key, source_file)
 
 
 def _meta_leaves(

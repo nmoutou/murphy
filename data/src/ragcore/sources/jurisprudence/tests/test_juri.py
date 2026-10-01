@@ -13,8 +13,11 @@ from pathlib import Path
 import pytest
 
 from ragcore.core.links import CITES, LinkSubject, extract_links
+from ragcore.core.models.document import RawDocument
 from ragcore.core.models.enums import DocumentType, SourceName
+from ragcore.core.ports.parser import ParseResult
 from ragcore.sources.generic import GenericParser
+from ragcore.sources.generic.tree import walk
 from ragcore.sources.jurisprudence import (
     JURI_ADMIN_ROLE_TABLE,
     JURI_CONSTIT_ROLE_TABLE,
@@ -27,20 +30,24 @@ from ragcore.sources.jurisprudence import (
 FIXTURES = Path(__file__).parent / "fixtures"
 
 
-def _parse_result(name: str, source: SourceName):
-    async def run():
+def _raw(name: str, source: SourceName) -> RawDocument:
+    async def run() -> RawDocument:
         connector = JuriFileConnector(FIXTURES, source)
         async for raw in connector.fetch_all():
             if Path(raw.payload["files"][0]).name == name:
-                root = raw.payload["content"][0]["tag"]
-                return GenericParser(ROLE_TABLE_BY_ROOT[root], source).parse(raw)
+                return raw
         pytest.fail(f"Fixture introuvable : {name}")
 
     return asyncio.run(run())
 
 
+def _parse_result(raw: RawDocument, source: SourceName) -> ParseResult:
+    root = raw.payload["content"][0]["tag"]
+    return GenericParser(ROLE_TABLE_BY_ROOT[root], source).parse(raw)
+
+
 def _parse(name: str, source: SourceName):
-    return _parse_result(name, source).document
+    return _parse_result(_raw(name, source), source).document
 
 
 def test_une_citation_decrite_devient_une_RELATION_NON_FORMATEE_jamais_une_arete() -> (
@@ -108,8 +115,9 @@ def test_la_juri_n_a_AUCUNE_balise_sans_role() -> None:
     interdit la régression, l'instrument permet la saturation ; ni l'un ni l'autre seul ne
     suffit.
 
-    Le signal ``unconfigured_tags`` porte aussi les balises connues SANS renommage
-    (ADR-047) : le cliquet ne garde que celles que la table ne connaît pas du tout.
+    Le signal ``unconfigured_tags`` est tenu par clé de métadonnée, et porte aussi les
+    balises connues SANS renommage (ADR-047, ADR-048) : le cliquet parcourt donc
+    lui-même l'arbre, et ne garde que les balises que la table ne connaît pas du tout.
     """
     orphelines: dict[str, set[str]] = {}
 
@@ -118,10 +126,16 @@ def test_la_juri_n_a_AUCUNE_balise_sans_role() -> None:
         ("jade.xml", SourceName.JADE, JURI_ADMIN_ROLE_TABLE),
         ("constit.xml", SourceName.CONSTIT, JURI_CONSTIT_ROLE_TABLE),
     ):
-        result = _parse_result(fixture, source)
-        sans_role = {tag for tag in result.unconfigured_tags if not table.knows(tag)}
+        raw = _raw(fixture, source)
+        sans_role = {
+            node["tag"]
+            for facet in raw.payload["content"]
+            for node in walk(facet)
+            if not table.knows(node["tag"])
+        }
         if sans_role:
             orphelines.setdefault("tag", set()).update(sans_role)
+        result = _parse_result(raw, source)
         if result.unknown_roots:
             orphelines.setdefault("racine", set()).update(result.unknown_roots)
 

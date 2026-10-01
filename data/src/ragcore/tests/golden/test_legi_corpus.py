@@ -74,14 +74,17 @@ def _run() -> dict:
             relations.extend(extracted.relations)
             chunks += len(chunker.chunk(parsed))
 
-            # Côté parse, l'inconnu n'existe plus : la balise
-            # non-configurée est ROUTÉE (metadata/lien) et SIGNALÉE. Le cliquet agrège
-            # le signal sous sa catégorie de bilan, `tag.unconfigured` — la même que
-            # celle que parseDocuments déclare en télémétrie.
-            if result.unconfigured_tags:
-                unknowns["tag.unconfigured"].update(result.unconfigured_tags)
-            if result.unknown_roots:
-                unknowns["racine"].update(result.unknown_roots)
+            # Côté parse, l'inconnu n'existe plus : la donnée non-configurée est ROUTÉE
+            # (metadata/lien) et SIGNALÉE. Le cliquet agrège le signal sous ses
+            # catégories de bilan — les mêmes que parseDocuments déclare en télémétrie.
+            signals = {
+                "tags": result.unconfigured_tags,
+                "links": result.unconfigured_links,
+                "roots": result.unknown_roots,
+            }
+            for category, values in signals.items():
+                if values:
+                    unknowns[category].update(values)
             for category, values in extracted.unknowns.items():
                 unknowns[category].update(values)
 
@@ -186,7 +189,7 @@ def test_un_typelien_inconnu_produit_une_ARETE_et_pas_un_vide() -> None:
     assert edge.metadata["typelien"] == "ZORGLUB", "et l'original survit en métadonnée"
 
     # …et il est déclaré. L'arête existe, l'aveu aussi.
-    assert "ZORGLUB" in result["unknowns"]["typelien"]
+    assert "ZORGLUB" in result["unknowns"]["links"]
 
 
 def test_le_graphe_EXISTE() -> None:
@@ -264,18 +267,24 @@ def test_les_inconnus_sont_DECLARES_et_pas_jetes() -> None:
     """
     result = _run()
 
-    # « balise » est devenu « tag.unconfigured » (cascade des trois portes) : ZORG n'est plus un
-    # inconnu dans la donnée — sa valeur est en métadonnée, et LE SIGNAL le déclare. Les
-    # balises connues SANS renommage sont non-configurées elles aussi (ADR-047).
+    # Trois catégories plates (ADR-048). ZORG n'est plus un inconnu dans la donnée : ses
+    # valeurs sont en métadonnée, et LE SIGNAL les déclare sous leurs clés. Les balises
+    # connues SANS renommage sont non-configurées elles aussi (ADR-047). `sens="lateral"`
+    # n'est pas un type de lien : c'est un lien perdu, compté en `relation.unknown`.
+    chronicle = "meta_meta_spec_meta_texte_chronicle"
     assert result["unknowns"] == {
-        "typelien": ["ZORGLUB"],
-        "sens": ["lateral"],
-        "tag.unconfigured": [
-            "DERNIERE_MODIFICATION",
-            "NUM_PARUTION",
-            "NUM_SEQUENCE",
-            "ORIGINE_PUBLI",
-            "TITRE",
-            "ZORG",
+        "links": ["ZORGLUB"],
+        "tags": [
+            "article_zorg",
+            "article_zorg_attribut_inconnu",
+            f"texte_version_{chronicle}_derniere_modification",
+            f"texte_version_{chronicle}_num_parution",
+            f"texte_version_{chronicle}_num_sequence",
+            f"texte_version_{chronicle}_origine_publi",
+            "texte_version_meta_meta_spec_meta_texte_version_titre",
+            f"textelr_{chronicle}_derniere_modification",
+            f"textelr_{chronicle}_num_parution",
+            f"textelr_{chronicle}_num_sequence",
+            f"textelr_{chronicle}_origine_publi",
         ],
     }
