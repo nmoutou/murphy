@@ -13,8 +13,7 @@ import logging
 from dataclasses import dataclass
 from typing import Any
 
-from ragcore.adapters.storage.mongo.audit_repository import MongoAuditRepository
-from ragcore.adapters.telemetry import MongoAuditTelemetryAdapter, RunStatsAggregator
+from ragcore.adapters.telemetry import RunStatsAggregator
 from ragcore.adapters.telemetry.factory import assemble_telemetry
 from ragcore.adapters.telemetry.registry_aware import RegistryAwareTelemetry
 from ragcore.application.run_context import PipelineContext
@@ -35,8 +34,6 @@ logger = logging.getLogger(__name__)
 
 def start_telemetry(
     context: PipelineContext,
-    audit_repo: MongoAuditRepository,
-    runtime: AsyncRuntime,
 ) -> tuple[RegistryAwareTelemetry, RunStatsAggregator]:
     """Monte la pile de télémétrie du run et l'agrégat qui fera son bilan.
 
@@ -49,7 +46,6 @@ def start_telemetry(
     )
     telemetry = assemble_telemetry(
         TelemetryRegistry.from_catalog(EVENT_CATALOG),
-        mongo=MongoAuditTelemetryAdapter(audit_repo, runtime),
         aggregate=aggregator,
     )
     return telemetry, aggregator
@@ -101,20 +97,14 @@ class RunSession:
         1. Les chunks que l'embedder a dû raccourcir. Le compteur vit sur l'embedder (il
            est le seul à voir le refus du service) et il est lu ICI, une fois, après tous
            les workers. Déclarés AUSSI sur un run cassé : le raccourcissement a bien eu
-           lieu, et il pointe une config à corriger. Émis AVANT le drain, pour que
-           l'événement soit vidé.
-        2. Le drain AVANT le bilan : c'est lui qui révèle les écritures d'audit perdues,
-           et un bilan persisté avant de le savoir déclarerait `ok` un run dont il ne
-           peut plus prouver la complétude. Sur un run cassé, le statut reste `failed`,
-           mais savoir si la trace elle aussi est trouée décide de ce qu'on peut
-           conclure du reste.
-        3. Le bilan, dont le statut se dérive des compteurs — dont ceux que le node
+           lieu, et il pointe une config à corriger. Émis AVANT le bilan, pour qu'il y
+           figure.
+        2. Le bilan, dont le statut se dérive des compteurs — dont ceux que le node
            `report` a poussés depuis les workers.
 
         Rend le bilan persisté.
         """
         self._declare_truncations()
-        self._drain_and_declare()
         return self._persist_summary(status, error_message)
 
     def _declare_truncations(self) -> None:
@@ -142,24 +132,6 @@ class RunSession:
             "%d chunk(s) raccourci(s) pour tenir dans la fenêtre du modèle. Le corpus est "
             "complet, mais la fin de ces chunks n'est pas indexée : baisser `CHUNKING_MAX_CHARS`.",
             truncations,
-        )
-
-    def _drain_and_declare(self) -> None:
-        """Attend les écritures d'audit en vol, et DÉCLARE celles qui ont échoué.
-
-        Le compte doit entrer dans l'agrégat AVANT le bilan pour que ``_status_from`` le
-        voie. Le drain n'est pas la fermeture : le bilan a encore besoin de la boucle (il
-        y écrit le sommaire, de façon *synchrone* : il n'y laisse donc rien en vol).
-        C'est bien pour ça que le port sépare ``drain()`` de ``close()``.
-        """
-        report = self.runtime.drain()
-        if not report.failed:
-            return
-        self.aggregator.record_audit_failure(report.failed)
-        logger.error(
-            "%d écriture(s) d'audit PERDUE(S) : le bilan de ce run repose sur des "
-            "compteurs incomplets — il est déclaré `degraded`.",
-            report.failed,
         )
 
     def _persist_summary(

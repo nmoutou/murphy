@@ -17,11 +17,7 @@ from ragcore.core.models.enums import SourceName
 from ragcore.core.models.identifiers import RunId
 from ragcore.core.models.run_stats import RunStats
 from ragcore.core.models.run_summary import RunStatus, RunSummary
-from ragcore.core.telemetry_events import (
-    AUDIT_WRITE_FAILED,
-    COUNT_CARRYING_EVENTS,
-    PAYLOAD_COUNT_KEY,
-)
+from ragcore.core.telemetry_events import COUNT_CARRYING_EVENTS, PAYLOAD_COUNT_KEY
 
 
 def _weight_of(event_type: str, payload: dict[str, Any]) -> int:
@@ -75,8 +71,7 @@ class RunStatsAggregator:
     def emit(self, event: AuditEvent) -> None:
         weight = _weight_of(event.event_type, event.payload or {})
         # ⚠️ DETTE : PAS de compteurs par source. Sur un run multi-source, le bilan dit
-        # « 3 compensations » sans dire *chez qui* ; il faut aller lire la `source` de
-        # chaque événement dans `meta_audit_events`. Compter par source demanderait un
+        # « 3 compensations » sans dire *chez qui*. Compter par source demanderait un
         # axe de plus sur `RunStats`, de même monoïde : ça se fait dans le modèle, pas ici.
         self._stats = self._stats.with_count(event.event_type, weight)
 
@@ -86,19 +81,6 @@ class RunStatsAggregator:
     def record_unknown(self, category: str, value: str) -> None:
         """Un vocabulaire non reconnu se DÉCLARE — il ne se jette pas en silence."""
         self._stats = self._stats.with_unknown(category, value)
-
-    def record_audit_failure(self, n: int = 1) -> None:
-        """Une écriture d'audit perdue — comptée ICI, jamais réémise.
-
-        Elle ne repasse **pas** par le fan-out, et c'est la seule façon de couper la
-        récursion : réémettre un ``AuditEvent`` depuis le chemin d'émission qui vient
-        d'échouer, c'est risquer qu'il échoue à son tour, donc qu'il se réémette. Ici
-        on écrit dans un dictionnaire en mémoire — ça ne peut pas rater sur du réseau.
-
-        Le compteur voyage jusqu'au bilan par le monoïde, comme tout le reste : c'est
-        ``snapshot()`` qui le rendra, et la fusion inter-workers le sommera.
-        """
-        self._stats = self._stats.with_count(AUDIT_WRITE_FAILED, n)
 
     def snapshot(self) -> RunStats:
         """L'agrégat local, à fusionner avec celui des autres workers."""
@@ -119,7 +101,7 @@ class RunStatsAggregator:
         self._stats = self._stats.merge(stats)
 
     def close(self) -> None:
-        """Rien à drainer : l'agrégat vit en mémoire."""
+        """Rien à fermer : l'agrégat vit en mémoire."""
         return
 
     def finalize(

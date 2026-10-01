@@ -10,7 +10,6 @@ import importlib
 
 import pytest
 
-from ragcore.core.ports.audit_repository import AuditRepository
 from ragcore.core.ports.chunker import BaseChunker
 from ragcore.core.ports.connector import BaseConnector
 from ragcore.core.ports.embedder import BaseEmbedder
@@ -31,11 +30,6 @@ from ragcore.core.ports.telemetry import TelemetryPort
         (
             "ragcore.adapters.telemetry.registry_aware",
             "RegistryAwareTelemetry",
-            TelemetryPort,
-        ),
-        (
-            "ragcore.adapters.telemetry.mongo_audit",
-            "MongoAuditTelemetryAdapter",
             TelemetryPort,
         ),
         ("ragcore.adapters.telemetry.noop", "NoopTelemetry", TelemetryPort),
@@ -80,6 +74,5 @@ def test_ports_expose_the_methods_their_callers_call() -> None:
         (BaseParser, "parse"),
         (BaseChunker, "chunk"),
         (BaseRelationExtractor, "extract"),
-        (AuditRepository, "append"),
     ]:
         assert hasattr(port, method), f"{port.__name__}.{method} manquant"

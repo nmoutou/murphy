@@ -83,7 +83,7 @@ Déroulé détaillé nœud par nœud : [reference/pipeline.md](reference/pipelin
    les valides ; le modèle servi par TEI est vérifié (`GET /info`) avant la moindre écriture.
 
 2. **« Rien en silence ».** Tout ce qui est vu est compté : documents écartés, invalidés,
-   échoués, compensations, écritures d'audit perdues, vocabulaire inconnu. Le statut d'un
+   échoués, compensations, vocabulaire inconnu. Le statut d'un
    run (`ok`/`degraded`/`failed`) se **dérive des compteurs** — l'équation de complétude
    `vus == ingérés + exclus + échoués` — jamais de l'absence d'exception.
    Voir [reference/telemetrie.md](reference/telemetrie.md).

@@ -10,8 +10,7 @@ class TelemetryPort(Protocol):
     """Émission des événements d'audit et des logs.
 
     Synchrone : les appelants (saga, use cases, nœuds) émettent depuis du code
-    async sans `await`. Un backend qui écrit en base fait le pont lui-même
-    (cf. MongoAuditTelemetryAdapter).
+    async sans `await`. Un backend qui écrirait en base ferait le pont lui-même.
     """
 
     def emit(self, event: AuditEvent) -> None:
@@ -32,23 +31,7 @@ class WorkerTelemetry(TelemetryPort, Protocol):
         ...
 
     def close(self) -> None:
-        """Ferme les backends du worker (fichiers, écritures en vol)."""
-        ...
-
-    def record_audit_failure(self, n: int = 1) -> None:
-        """Déclare une écriture d'audit PERDUE — la télémétrie s'observe elle-même.
-
-        Le principe « la télémétrie ne fait jamais échouer l'ingestion » est bon, et il
-        ne bouge pas. Mais il était appliqué comme « la télémétrie ne dit rien quand elle
-        rate » : les quatre points qui avalent une exception (le fan-out, la fermeture
-        des backends, le pont sync de Mongo, le drain de la boucle) la logguaient en
-        ``warning`` sans jamais la compter. Ne pas casser ne doit pas signifier ne pas
-        dire.
-
-        L'appelant est toujours un point d'avalement, jamais un émetteur métier. Le
-        compte va DROIT à l'agrégat, sans repasser par ``emit`` : sinon l'échec d'une
-        écriture déclencherait une écriture, qui pourrait échouer à son tour.
-        """
+        """Ferme les backends du worker."""
         ...
 
     def record_unknown(self, category: str, value: str) -> None:

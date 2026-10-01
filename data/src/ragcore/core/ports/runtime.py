@@ -12,8 +12,6 @@ où ``adapters/runtime/asyncio_runtime.py`` implémente ce contrat (lot 3).
 from collections.abc import Coroutine
 from typing import Any, Protocol, TypeVar, runtime_checkable
 
-from ..models.drain_report import DrainReport
-
 T = TypeVar("T")
 
 
@@ -25,43 +23,8 @@ class AsyncRuntime(Protocol):
         """Exécute une coroutine jusqu'à son terme sur la boucle de ce worker."""
         ...
 
-    def spawn(self, coro: Coroutine[Any, Any, Any]) -> None:
-        """Lance une coroutine sans l'attendre — le runtime en GARDE la référence.
-
-        C'est la seule façon de lancer une écriture d'audit en fire-and-forget. Un
-        appelant qui ferait ``loop.create_task`` lui-même perdrait sa tâche de deux
-        façons : le GC peut la ramasser en vol (asyncio n'en tient qu'une référence
-        faible), et ``asyncio.all_tasks()`` l'oublie dès qu'elle est terminée — donc
-        le drain ne verrait jamais celles qui ont raté *vite*, qui sont justement le
-        cas courant d'un backend en panne.
-        """
-        ...
-
-    def drain(self) -> DrainReport:
-        """Attend les tâches en vol et DIT ce qui a raté. Idempotent.
-
-        Le drain est ce qui donne l'audit *at-least-once* : les écritures de
-        télémétrie lancées en fire-and-forget doivent aboutir avant la fermeture,
-        sinon un run peut se terminer en ayant perdu la trace de ce qu'il a fait.
-
-        Il est SÉPARÉ de ``close()`` parce que son résultat doit pouvoir entrer dans
-        le bilan : le hook persiste le ``RunSummary`` **avant** de fermer son runtime,
-        et il s'en sert pour l'écrire. Draine-t-on dans ``close()`` seulement, et
-        l'échec d'écriture d'audit arrive après le bilan qu'il aurait dû dégrader —
-        trop tard, et invisible.
-
-        L'appel reste facultatif : ``close()`` draine encore de lui-même. La séquence
-        complète est ``drain()`` → *compter les échecs* → *persister le bilan* →
-        ``close()``.
-        """
-        ...
-
     def close(self) -> None:
-        """Ferme la boucle. Draine d'abord si personne ne l'a fait — sûr par défaut.
-
-        Le compte du drain est alors PERDU (il n'a nulle part où aller) : un appelant
-        qui veut voir les écritures ratées appelle ``drain()`` lui-même, avant.
-        """
+        """Ferme la boucle. Idempotent."""
         ...
 
 

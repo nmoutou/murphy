@@ -17,8 +17,6 @@ from ragcore.adapters.config.settings import EmbeddingRuntimeSettings, InfraSett
 from ragcore.adapters.embedding.served_model import inspect_served_model
 from ragcore.adapters.embedding.tei_embedder import EmbeddingTransport, TeiEmbedder
 from ragcore.adapters.runtime import AsyncioRuntimeFactory
-from ragcore.adapters.storage.mongo.audit_repository import MongoAuditRepository
-from ragcore.adapters.storage.mongo.client import create_mongo_client
 from ragcore.adapters.telemetry.factory import WorkerTelemetryFactory
 from ragcore.application.ingest_document import IngestDocumentUseCase
 from ragcore.application.ingestion_runner import IngestionRunner
@@ -189,7 +187,7 @@ def build_runner(
     return IngestionRunner(
         workload=workload,
         runtime_factory=AsyncioRuntimeFactory(),
-        telemetry_factory=_telemetry_factory(settings, context),
+        telemetry_factory=_telemetry_factory(context),
         worker_count=_WORKER_COUNT,
     )
 
@@ -211,15 +209,9 @@ def _use_case_factory(
     return use_case_factory
 
 
-def _telemetry_factory(
-    settings: InfraSettings, context: PipelineContext
-) -> WorkerTelemetryFactory:
-    meta_db = settings.mongodb_meta_db_name
+def _telemetry_factory(context: PipelineContext) -> WorkerTelemetryFactory:
     return WorkerTelemetryFactory(
         run_id=context.run_id,
         sources=context.sources,
         started_at=context.started_at,
-        audit_repo_factory=lambda runtime: MongoAuditRepository(
-            create_mongo_client(settings.mongodb_uri), meta_db
-        ),
     )

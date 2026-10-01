@@ -1,4 +1,4 @@
-"""``WorkerBackends`` — les trois backends d'un worker, chacun à sa place NOMMÉE.
+"""``WorkerBackends`` — les backends d'un worker, chacun à sa place NOMMÉE.
 
 Avant, ``RegistryAwareTelemetry`` recevait un ``dict[str, TelemetryPort]`` et
 retrouvait ses backends par des clés-chaînes : ``self._backends["log"]``,
@@ -7,16 +7,14 @@ nommément : une clé-chaîne est un contrat que rien ne vérifie — une faute 
 (``"aggregat"``) ou un backend manquant ne se voit qu'à l'exécution, et le type de
 l'agrégat doit être re-prouvé à chaque usage.
 
-Ici, les trois rôles sont des CHAMPS. Le ``behavior`` (``EventBehavior``, déjà
-typé : ``log``/``track_mongo``/``aggregate``) s'apparie un pour un
-avec eux. Et ``aggregate`` est typé ``RunStatsAggregator``, pas ``TelemetryPort`` :
-c'est LUI qui porte le ``RunStats`` du run, le seul à savoir ``snapshot``,
-``record_unknown``, ``record_audit_failure``. Le typer fort supprime tout garde
-``isinstance`` en aval — le compilateur garantit ce que le code vérifiait à la main.
+Ici, les rôles sont des CHAMPS. Le ``behavior`` (``EventBehavior``, déjà typé :
+``log``/``aggregate``) s'apparie un pour un avec eux. Et ``aggregate`` est typé
+``RunStatsAggregator``, pas ``TelemetryPort`` : c'est LUI qui porte le ``RunStats`` du
+run, le seul à savoir ``snapshot`` et ``record_unknown``. Le typer fort supprime tout
+garde ``isinstance`` en aval — le compilateur garantit ce que le code vérifiait à la
+main.
 
-L'ordre de fermeture est une propriété de CE type, pas de son consommateur :
-l'agrégat se ferme EN DERNIER, sans quoi il ne serait plus là pour compter l'échec
-de fermeture des deux autres. ``closable_in_order`` le grave ici, une fois.
+Brancher un nouvel outil, c'est ajouter un champ ici et une colonne au behavior.
 """
 
 from dataclasses import dataclass
@@ -30,28 +28,24 @@ __all__ = ["WorkerBackends"]
 
 @dataclass(frozen=True)
 class WorkerBackends:
-    """Les trois backends d'une pile de worker, appariés aux champs d'``EventBehavior``.
+    """Les backends d'une pile de worker, appariés aux champs d'``EventBehavior``.
 
-    ``log``/``mongo`` sont des ``TelemetryPort`` interchangeables (un
-    ``NoopTelemetry`` remplace ``mongo`` en mode local). ``aggregate`` est un
+    ``log`` est un ``TelemetryPort`` interchangeable. ``aggregate`` est un
     ``RunStatsAggregator`` concret : il est le porteur du bilan, pas un simple
     récepteur d'événements.
     """
 
     log: TelemetryPort
-    mongo: TelemetryPort
     aggregate: RunStatsAggregator
 
     def closable_in_order(self) -> list[tuple[str, TelemetryPort]]:
         """Les backends à fermer, ``aggregate`` en DERNIER.
 
         Le nom accompagne chaque backend : il nomme un échec de fermeture dans les
-        logs. L'agrégat ferme en dernier parce qu'il est
-        le seul à pouvoir enregistrer la mort des autres — le fermer d'abord, ce
-        serait perdre le compte des pertes qui suivent.
+        logs. L'agrégat ferme en dernier : c'est lui qui rend le bilan, il doit
+        survivre aux autres.
         """
         return [
             ("log", self.log),
-            ("mongo", self.mongo),
             ("aggregate", self.aggregate),
         ]

@@ -63,8 +63,7 @@ jamais de run silencieusement vide.
 Ce qu'un run laisse derrière lui :
 
 - les corpus dans Mongo `LEGIFRANCE`, Qdrant (collection `QDRANT_COLLECTION`) et Neo4j ;
-- le bilan (`RunSummary`) dans `MURPHY_META.meta_run_summaries` ;
-- la trace événementielle dans `MURPHY_META.meta_audit_events`.
+- le bilan (`RunSummary`) dans `MURPHY_META.meta_run_summaries`.
 
 ### Développer
 

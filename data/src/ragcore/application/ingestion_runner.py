@@ -196,11 +196,17 @@ def _declare_failure(
     jamais dans l'agrégat. Résultat : le RunSummary annonçait « ok » sur un run qui avait
     perdu 98 documents.
 
-    La `reason` est le TYPE de l'exception, pas son message : le message porte des
-    identifiants et des chiffres, il donnerait autant de raisons que d'échecs dans
-    `meta_audit_events`. Le type, lui, regroupe — et c'est ce qu'on veut lire : « 98
-    fuites, toutes sur le même mur ». Le message reste dans `error`.
+    Le log nomme le document et son erreur : c'est la seule trace de QUEL document a
+    échoué, le bilan n'en garde que le compte. La `reason` du payload est le TYPE de
+    l'exception, pas son message : le type regroupe — « 98 fuites, toutes sur le même
+    mur ». Le message reste dans `error`.
     """
+    logger.error(
+        "document.failed %s (%s) : %s",
+        parsed.identifier.serialize(),
+        type(exc).__name__,
+        exc,
+    )
     telemetry.emit(
         build_event(
             event_type=DOCUMENT_FAILED,
@@ -215,28 +221,6 @@ def _declare_failure(
 
 
 def _close_worker(runtime: AsyncRuntime, telemetry: WorkerTelemetry) -> None:
-    """Ferme un worker. L'ordre est un invariant, pas une préférence :
-
-    1. `drain()` — attend les écritures d'audit en vol ET dit combien ont levé. Avant,
-       ce compte était jeté : une écriture ratée en contexte async ne produisait rien,
-       pas même un log.
-    2. `record_audit_failure` — le compte entre dans l'agrégat, donc dans le
-       `snapshot()` que le worker rend ensuite, donc dans le bilan du run. Il DOIT
-       passer avant `telemetry.close()` : après, la pile est morte.
-    3. `telemetry.close()` — ferme les backends.
-    4. `runtime.close()` — ferme la boucle, qui n'a plus rien à porter.
-
-    Drainer après avoir fermé la télémétrie « marcherait » (l'agrégat vit en mémoire,
-    son close() ne fait rien) — mais ce serait s'appuyer sur un détail d'implémentation
-    pour un invariant de correction.
-    """
-    report = runtime.drain()
-    if report.failed:
-        telemetry.record_audit_failure(report.failed)
-        logger.error(
-            "%d écriture(s) d'audit PERDUE(S) au drain d'un worker : le bilan de ce run "
-            "est déclaré `degraded`.",
-            report.failed,
-        )
+    """Ferme un worker : ses backends d'abord, sa boucle ensuite."""
     telemetry.close()
     runtime.close()

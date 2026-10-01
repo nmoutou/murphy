@@ -12,7 +12,7 @@ delete-puis-insert Qdrant, `MERGE` Neo4j) : rejouer un run donne le même état.
 **pas de SKIP** ni de hash de contenu.
 
 Un document qui ne parse pas émet `document.invalidated` (`reason`, chemin source,
-message d'erreur), écrit dans l'audit `MURPHY_META` : compté, jamais silencieusement
+message d'erreur), journalisé en console et compté au bilan : jamais silencieusement
 ignoré.
 
 Le modèle de rejeu est **at-least-once** : la source XML reste la vérité d'autorité, et
@@ -83,7 +83,7 @@ erreur ni trace. D'où :
 - efface Mongo `LEGIFRANCE` (`documents`, puis **repose les index**),
   le graphe Neo4j entier, et **toutes** les collections Qdrant (pas seulement
   `QDRANT_COLLECTION`) ;
-- **préserve `MURPHY_META`** : audit, bilans de run, pendantes. Un nuke ne doit
+- **préserve `MURPHY_META`** : bilans de run, pendantes. Un nuke ne doit
   jamais rendre les runs passés invérifiables.
 
 Après un nuke, les bases sont vides : tout est première écriture, et les résiduels de

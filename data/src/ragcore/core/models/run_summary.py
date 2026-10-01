@@ -20,7 +20,6 @@ from enum import StrEnum
 from pydantic import BaseModel, ConfigDict
 
 from ragcore.core.telemetry_events import (
-    AUDIT_WRITE_FAILED,
     DOCUMENT_FAILED,
     DOCUMENT_FETCHED,
     DOCUMENT_INVALIDATED,
@@ -111,7 +110,7 @@ class RunSummary(BaseModel):
 def _status_from(stats: RunStats) -> RunStatus:
     """``OK`` seulement si TOUT ce qui a été vu a été ingéré — ou écarté sciemment.
 
-    Trois propriétés distinctes, qu'il ne faut pas confondre, et qui mènent toutes à
+    Deux propriétés distinctes, qu'il ne faut pas confondre, et qui mènent toutes deux à
     ``DEGRADED`` :
 
     1. **Le run a-t-il tout ingéré ?**  ``échoués == 0``.
@@ -122,17 +121,8 @@ def _status_from(stats: RunStats) -> RunStatus:
        C'est l'équation de complétude. Si elle ne tombe pas juste, des documents ont
        disparu **sans que rien ne les compte** — le pire cas, car il est invisible.
 
-    3. **Le run est-il CROYABLE ?**  ``audit.write.failed == 0``.
-       Les deux premières propriétés se lisent dans des compteurs. Si l'audit qui produit
-       ces compteurs a perdu des écritures, alors leur verdict ne vaut plus rien : une
-       équation qui tombe juste sur des chiffres incomplets ne prouve rien du tout. Un
-       audit troué ne dit pas *qu'il manque des documents* — il dit qu'on **ne peut plus
-       savoir** s'il en manque, ce qui est précisément le cas qu'on refuse de laisser
-       passer pour `ok`.
-
     ``DEGRADED`` = « le run est allé au bout, mais on ne peut pas le déclarer complet ».
-    Les trois situations le méritent ; seules les deux dernières sont un bug du pipeline
-    lui-même.
+    Les deux situations le méritent ; seule la seconde est un bug du pipeline lui-même.
 
     **Pourquoi ce n'est plus « aucune compensation ».** L'ancienne version ne regardait
     que ``SAGA_COMPENSATION_STARTED`` — elle ratait donc toute fuite survenue AVANT la
@@ -148,14 +138,6 @@ def _status_from(stats: RunStats) -> RunStatus:
     invalides du dénominateur — l'équation tomberait juste en oubliant précisément ceux
     qu'elle doit compter.
     """
-    # ⚠️ AVANT le court-circuit « rien vu », et ce n'est pas un détail d'ordre : un audit
-    # défaillant peut avoir perdu jusqu'au `document.fetched`. Tester la complétude en
-    # premier ferait alors passer un run aveugle pour un run à vide — donc pour un `ok`.
-    # La propriété la plus faible (« mes compteurs sont-ils fiables ? ») se vérifie
-    # d'abord, parce que toutes les autres en dépendent.
-    if stats.counts.get(AUDIT_WRITE_FAILED, 0):
-        return RunStatus.DEGRADED
-
     seen = stats.counts.get(DOCUMENT_FETCHED, 0)
     if not seen:
         # Rien vu, rien à rendre : un run à vide est complet, pas dégradé.

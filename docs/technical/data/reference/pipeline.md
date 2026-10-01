@@ -46,8 +46,8 @@ Le hook est le **point d'assemblage** du run. Dans l'ordre :
 6. **La session du run** (`run_session.RunSession`) : le `PipelineContext` (run_id
    uuid4-hex, `sources` résolues par le plan, started_at ; sa propriété `source` vaut la
    source unique, ou `None` si multi-source), la pile de
-   télémétrie (registre construit depuis `EVENT_CATALOG`, backends console,
-   audit Mongo, agrégateur `RunStats`).
+   télémétrie (registre construit depuis `EVENT_CATALOG`, backends console et
+   agrégateur `RunStats`).
 7. **Briques de traitement** (`assembly.build_processing_stack`) : `CompositeConnector`
    (un connecteur par source, routé), `RoutingParser` (un `GenericParser` par source,
    chacun avec sa table de rôles), `StructuralChunker` (`CHUNKING_MAX_CHARS` / `CHUNKING_OVERLAP_CHARS`),
@@ -79,7 +79,7 @@ Entrées : les quatre dépôts du hook, `nuke_all` (du plan du run).
   - Neo4j : le graphe entier ;
   - Qdrant : **toutes** les collections du store (c'est là que dorment les collections
     d'anciennes stratégies) ;
-  - **préservé** : la base méta `MURPHY_META` (audit, bilans, pendantes) — un nuke ne doit
+  - **préservé** : la base méta `MURPHY_META` (bilans, pendantes) — un nuke ne doit
     jamais emporter la mémoire de ce qu'on a fait.
 
 Émet `maintenance.nuke_all.executed`. Sortie : `nuke_done` — consommé par `connect`
@@ -146,11 +146,10 @@ Entrées : `to_process`, `runner`, contexte. Le nœud est mince : il lance
   et le mur est le GPU (parse 0,9 ms, chunk 0,1 ms, embed ~1 364 ms).
 - **Un échec de document ne casse pas le run** : l'exception est attrapée, comptée
   (`document.failed`, avec `reason` = le *type* de l'exception — le type regroupe, le
-  message, gardé dans `error`, disperserait les raisons) et le document rejoint `failures`
+  message, gardé dans `error`, disperserait les raisons), journalisée en `logger.error`
+  (seule trace de *quel* document a échoué) et le document rejoint `failures`
   (identifiant + message : un échec anonyme est un échec qu'on ne peut pas rejouer).
-- **Fin de shard, ordre invariant** : `runtime.drain()` (attend les écritures d'audit en
-  vol et compte celles qui ont levé) → `record_audit_failure` → `telemetry.close()` →
-  `runtime.close()`.
+- **Fin de shard** : `telemetry.close()` → `runtime.close()`.
 
 ### Le workload d'un document (`orchestration/kedro/workload.py`)
 
@@ -230,17 +229,14 @@ nominal (`after_pipeline_run`), dans l'ordre — et l'ordre est l'enjeu :
 2. **Déclaration des troncatures** : le compteur `truncations` de l'embedder (chunks
    raccourcis pour tenir dans la fenêtre du modèle) devient un événement
    `chunk.truncated`. Le corpus est complet, mais la config est à corriger.
-3. **Drain avant bilan** : les écritures d'audit encore en vol sont attendues ; celles qui
-   ont échoué entrent dans l'agrégat (`audit.write.failed`). Un bilan persisté avant de le
-   savoir déclarerait `ok` un run dont il ne peut plus prouver la complétude.
-4. **Persistance du bilan** (statut demandé : `ok`) : le statut annoncé est
+3. **Persistance du bilan** (statut demandé : `ok`) : le statut annoncé est
    **re-dérivé des compteurs** (`RunSummary.of` → `_status_from`) — voir
    [telemetrie.md](telemetrie.md#le-statut-dun-run). Upsert Mongo
    (`meta_run_summaries`).
-5. Le hook ferme son runtime.
+4. Le hook ferme son runtime.
 
 Chemin d'erreur (`on_pipeline_error`) : `pipeline.run.failed` émis, puis la **même
-clôture** (les troncatures et le drain valent aussi sur un run cassé), bilan persisté en
+clôture** (les troncatures valent aussi sur un run cassé), bilan persisté en
 `failed` (avec le message d'erreur), runtime fermé.
 Si l'assemblage a échoué avant que la session existe, le hook ne fait que fermer son
 runtime.

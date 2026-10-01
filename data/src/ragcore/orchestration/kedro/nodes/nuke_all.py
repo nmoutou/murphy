@@ -35,7 +35,7 @@ def nuke_all_node(
     - Neo4j : le graphe entier.
     - Qdrant : **toutes** les collections du store, pas seulement celle du run —
       c'est là que se cache la place perdue.
-    - **PRÉSERVÉ : la base méta Mongo** (`MURPHY_META` : audit, bilans de run,
+    - **PRÉSERVÉ : la base méta Mongo** (`MURPHY_META` : bilans de run,
       pendantes). Un nuke ne doit jamais emporter la mémoire de ce qu'on a fait —
       c'est elle qui rend un run *invérifiable* si elle disparaît, pas le corpus.
 

@@ -4,7 +4,7 @@ Source de vérité unique : les constantes et leur routage vers les backends
 sont déclarés au même endroit.
 
 Comportement par défaut pour tout event_type non listé :
-  level="info", log=True, track_mongo=True, aggregate=True
+  level="warning", log=True, aggregate=True
 """
 
 from ragcore.core.services.telemetry_registry import EventBehavior
@@ -37,11 +37,6 @@ CHUNK_TRUNCATED = "chunk.truncated"
 RELATION_UPSERTED = "relation.upserted"
 RELATION_PENDING = "relation.pending"  # cible absente → cache §13
 RELATION_PROMOTED = "relation.promoted"  # pendante enfin résolue
-
-# La télémétrie qui n'a pas su s'écrire. L'audit observe le run ; ce compteur observe
-# l'audit — sans lui, un backend défaillant rendrait TOUS les autres compteurs
-# invérifiables sans que rien ne le dise.
-AUDIT_WRITE_FAILED = "audit.write.failed"
 
 SAGA_COMPENSATION_STARTED = "saga.compensation.triggered"
 SAGA_COMPENSATION_COMPLETED = "saga.compensation.completed"
@@ -95,7 +90,6 @@ cardinalité, c'est l'ajouter ICI — sinon son lot ne compte que pour un."""
 # Champs :
 #   level       : niveau de log textuel ("info" | "warning" | "error")
 #   log         : stdout via ConsoleLogTelemetry
-#   track_mongo : collection audit MongoDB
 #   aggregate   : RunStatsAggregator (RunSummary)
 # ---------------------------------------------------------------------------
 
@@ -105,38 +99,32 @@ EVENT_CATALOG: dict[str, EventBehavior] = {
     PIPELINE_RUN_STARTED: EventBehavior(
         level="info",
         log=True,
-        track_mongo=True,
         aggregate=False,
     ),
     PIPELINE_RUN_COMPLETED: EventBehavior(
         level="info",
         log=True,
-        track_mongo=True,
         aggregate=False,
     ),
     PIPELINE_RUN_FAILED: EventBehavior(
         level="error",
         log=True,
-        track_mongo=True,
         aggregate=False,
     ),
     # --- Cycle de vie d'un document ---
     DOCUMENT_FETCHED: EventBehavior(
         level="info",
         log=False,
-        track_mongo=False,
         aggregate=True,
     ),
     DOCUMENT_PARSED: EventBehavior(
         level="info",
         log=False,
-        track_mongo=False,
         aggregate=True,
     ),
     DOCUMENT_INVALIDATED: EventBehavior(
         level="warning",
         log=True,
-        track_mongo=True,
         aggregate=True,
     ),
     # Ce que le connecteur ÉCARTE, porteur de son `count`. Compté au bilan, mais HORS
@@ -145,20 +133,17 @@ EVENT_CATALOG: dict[str, EventBehavior] = {
     DOCUMENT_VERSION_SKIPPED: EventBehavior(
         level="warning",
         log=False,
-        track_mongo=True,
         aggregate=True,
     ),
     DOCUMENT_UNREADABLE: EventBehavior(
         level="warning",
         log=False,
-        track_mongo=True,
         aggregate=True,
     ),
     # --- Traitement ---
     DOCUMENT_PERSISTED: EventBehavior(
         level="info",
         log=True,
-        track_mongo=True,
         aggregate=True,
     ),
     # La FUITE : un document vu, parsé, jamais ingéré. `aggregate=True` est tout l'enjeu —
@@ -168,77 +153,49 @@ EVENT_CATALOG: dict[str, EventBehavior] = {
     DOCUMENT_FAILED: EventBehavior(
         level="error",
         log=True,
-        track_mongo=True,
         aggregate=True,
     ),
     CHUNK_TRUNCATED: EventBehavior(
         level="warning",
         log=True,
-        track_mongo=True,
         aggregate=True,
     ),
     # --- Relations ---
     RELATION_UPSERTED: EventBehavior(
         level="warning",
         log=False,
-        track_mongo=False,
         aggregate=True,
     ),
     RELATION_PENDING: EventBehavior(
-        # Une arête différée est une DONNÉE, pas un vide : elle va en base méta,
-        # au même titre que le cache §13 qu'elle accompagne.
         level="warning",
         log=False,
-        track_mongo=True,
         aggregate=True,
     ),
     RELATION_PROMOTED: EventBehavior(
         level="info",
         log=False,
-        track_mongo=False,
-        aggregate=True,
-    ),
-    # --- La télémétrie qui se surveille elle-même ---
-    # `track_mongo=False`, et ce n'est pas un oubli : écrire en Mongo qu'on n'a pas su
-    # écrire en Mongo est un serpent qui se mord la queue — au mieux ça échoue aussi, au
-    # pire ça récurse. Le compteur vit dans l'AGRÉGAT (mémoire, ne peut pas échouer sur du
-    # réseau) et voyage jusqu'au bilan par le monoïde `RunStats`, comme les autres.
-    #
-    # `aggregate=True` est tout l'enjeu, exactement comme pour `document.failed` : les
-    # quatre points qui avalaient une écriture ratée la LOGGAIENT déjà (`_LOGGER.warning`).
-    # Le problème n'a jamais été qu'on ne le disait pas — c'est qu'on ne le COMPTAIT pas,
-    # donc que le bilan ne pouvait pas en tenir compte. Un échec qui ne compte pas est un
-    # échec qui n'existe pas pour le statut du run.
-    AUDIT_WRITE_FAILED: EventBehavior(
-        level="error",
-        log=True,
-        track_mongo=False,
         aggregate=True,
     ),
     # --- Saga (erreurs de transaction) ---
     SAGA_COMPENSATION_STARTED: EventBehavior(
         level="error",
         log=True,
-        track_mongo=True,
         aggregate=True,
     ),
     SAGA_COMPENSATION_COMPLETED: EventBehavior(
         level="warning",
         log=True,
-        track_mongo=True,
         aggregate=True,
     ),
     SAGA_COMPENSATION_FAILED: EventBehavior(
         level="error",
         log=True,
-        track_mongo=True,
         aggregate=True,
     ),
     # --- Maintenance ---
     MAINTENANCE_NUKE_ALL_EXECUTED: EventBehavior(
         level="warning",
         log=True,
-        track_mongo=True,
         aggregate=False,
     ),
 }

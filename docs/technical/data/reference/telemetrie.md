@@ -11,26 +11,25 @@ et `run_summary.py` (l'agrégat et le bilan).
 ## Le catalogue d'événements — source de vérité unique
 
 Chaque `event_type` déclare son comportement dans `EVENT_CATALOG` (`EventBehavior`) :
-niveau de log, et routage vers chacun des quatre backends. Le golden test
+niveau de log, et routage vers chacun des deux backends. Le golden test
 `tests/golden/test_event_catalog.py` verrouille le catalogue : rien n'y entre ni n'en
 sort en silence.
 
-| Événement | Sens | Mongo | Agrégat |
-|---|---|---|---|
-| `pipeline.run.started` / `.completed` / `.failed` | Cycle de vie du run. Hors agrégat : le bilan le dit déjà par `started_at`, `ended_at` et `status`. | ✓ | — |
-| `document.fetched` | Documents vus par le connecteur (1 événement, `count` = lot). **Le dénominateur** de l'équation. | — | ✓ |
-| `document.version_skipped` / `document.unreadable` | Écartés par le connecteur : artefacts d'export (`versions.xml`) / XML illisibles. Un compteur par raison, chacun porte son `count`. **Hors équation** : un fichier écarté n'est pas un document vu. | ✓ | ✓ |
-| `document.parsed` | Parse réussi | — | ✓ |
-| `document.invalidated` | Rejet au parse (validation ou lecture) : `reason`, `uid` (chemin source), `error` | ✓ | ✓ |
-| `document.persisted` | Saga complète | ✓ | ✓ |
-| `document.failed` | **La fuite** : vu, jamais ingéré (saga échouée/compensée). `reason` = type d'exception. | ✓ | ✓ |
-| `chunk.truncated` | Chunks raccourcis par l'embedder pour tenir dans la fenêtre du modèle (1 événement en fin de run, `count`). Pas une fuite — mais la fin de ces chunks n'est pas indexée : `CHUNKING_MAX_CHARS` à corriger. | ✓ | ✓ |
-| `relation.upserted` | Arêtes **réussies** d'un batch (`count`) | — | ✓ |
-| `relation.pending` | Cible absente → cache des pendantes | ✓ | ✓ |
-| `relation.promoted` | Pendante d'un run passé enfin résolue | — | ✓ |
-| `saga.compensation.triggered` / `.completed` / `.failed` | Rollback d'une saga (`.failed` = un écrit partiel subsiste ; `success` du `.completed` dit la vérité : une seule compensation ratée et le rollback n'est pas propre) | ✓ | ✓ |
-| `audit.write.failed` | **La télémétrie qui se surveille** : une écriture d'audit perdue. Jamais vers Mongo (écrire en Mongo qu'on n'a pas su écrire en Mongo récurse) — le compteur vit dans l'agrégat mémoire. | — | ✓ |
-| `maintenance.nuke_all.executed` | Maintenance | ✓ | — |
+| Événement | Sens | Agrégat |
+|---|---|---|
+| `pipeline.run.started` / `.completed` / `.failed` | Cycle de vie du run. Hors agrégat : le bilan le dit déjà par `started_at`, `ended_at` et `status`. | — |
+| `document.fetched` | Documents vus par le connecteur (1 événement, `count` = lot). **Le dénominateur** de l'équation. | ✓ |
+| `document.version_skipped` / `document.unreadable` | Écartés par le connecteur : artefacts d'export (`versions.xml`) / XML illisibles. Un compteur par raison, chacun porte son `count`. **Hors équation** : un fichier écarté n'est pas un document vu. | ✓ |
+| `document.parsed` | Parse réussi | ✓ |
+| `document.invalidated` | Rejet au parse (validation ou lecture) : `reason`, `uid` (chemin source), `error` | ✓ |
+| `document.persisted` | Saga complète | ✓ |
+| `document.failed` | **La fuite** : vu, jamais ingéré (saga échouée/compensée). `reason` = type d'exception. | ✓ |
+| `chunk.truncated` | Chunks raccourcis par l'embedder pour tenir dans la fenêtre du modèle (1 événement en fin de run, `count`). Pas une fuite — mais la fin de ces chunks n'est pas indexée : `CHUNKING_MAX_CHARS` à corriger. | ✓ |
+| `relation.upserted` | Arêtes **réussies** d'un batch (`count`) | ✓ |
+| `relation.pending` | Cible absente → cache des pendantes | ✓ |
+| `relation.promoted` | Pendante d'un run passé enfin résolue | ✓ |
+| `saga.compensation.triggered` / `.completed` / `.failed` | Rollback d'une saga (`.failed` = un écrit partiel subsiste ; `success` du `.completed` dit la vérité : une seule compensation ratée et le rollback n'est pas propre) | ✓ |
+| `maintenance.nuke_all.executed` | Maintenance | — |
 
 **Contrat de cardinalité** : la plupart des événements pèsent 1. Cinq — et eux
 exactement (`COUNT_CARRYING_EVENTS`) — portent leur poids dans `payload["count"]` :
@@ -44,16 +43,19 @@ un bug visible, pas une dérive muette.
 Assemblés par le hook (`adapters/telemetry/factory.py:assemble_telemetry`), routés par le
 registre :
 
-1. **Console** (`console_log.py`) — lisibilité immédiate, selon `log`/`level`.
-2. **Audit Mongo** (`mongo_audit.py`) — `MURPHY_META.meta_audit_events`, rétention
-   infinie, écritures asynchrones **drainées** en fin de run (celles qui ont échoué
-   deviennent `audit.write.failed`).
-3. **Agrégateur** (`aggregator.py:RunStatsAggregator`) — les compteurs dont le bilan
+1. **Console** (`console_log.py`) — les logs textuels (`telemetry.log`). ⚠️ Son `emit`
+   ne fait rien : la colonne `log` du catalogue n'affiche aucun événement.
+2. **Agrégateur** (`aggregator.py:RunStatsAggregator`) — les compteurs dont le bilan
    sortira.
 
+Il n'y a pas de trace événement par événement : le bilan ne garde que des compteurs.
+Le détail d'un échec (quel document, quelle erreur) est dans les logs console — un
+`logger` dédié pour `document.failed`, `document.invalidated` et les compensations
+ratées. Brancher un outil d'observabilité, c'est ajouter un backend à `WorkerBackends`
+et une colonne de routage à `EventBehavior`.
+
 **Un stack par worker.** Les workers de la phase 1 ne partagent pas la pile du hook :
-`WorkerTelemetryFactory` construit pour chacun ses backends sur sa boucle (un client
-Motor est lié à la boucle qui l'a touché en premier). Chaque worker tient son
+`WorkerTelemetryFactory` construit la sienne pour chacun. Chaque worker tient son
 `RunStats` local.
 
 ## `RunStats` — l'agrégat mergeable
@@ -62,11 +64,9 @@ Un **monoïde de fusion** : élément neutre `empty()`, opérateur `merge` assoc
 commutatif** (les workers finissent dans un ordre non déterministe — une fusion non
 commutative ferait dépendre le bilan de l'ordonnancement). Deux champs :
 
-- `counts` : event_type → occurrences (fusion : somme). Le détail d'un compteur (raison
-  d'un rejet, étape d'une compensation ratée) est dans le payload des événements de
-  `meta_audit_events` ; `audit.write.failed`, qui n'y va jamais, nomme son backend dans
-  les logs. ⚠️ Dette ouverte : pas de compteurs par **source**, un run multi-sources
-  rend un bilan où l'échec est anonyme quant à sa provenance ;
+- `counts` : event_type → occurrences (fusion : somme). ⚠️ Dette ouverte : pas de
+  compteurs par **source**, un run multi-sources rend un bilan où l'échec est anonyme
+  quant à sa provenance ;
 - `unknowns` : catégorie → vocabulaire que le run n'a pas su nommer (ensemble dédupliqué,
   pas un compteur : « la balise foo est inconnue » est vraie une fois pour toutes).
   Catégories : `tag.unconfigured` / `racine` (parse), `typelien` / `sens` /
@@ -82,21 +82,18 @@ les pousser les compterait deux fois).
 
 `RunSummary` = l'identité du run (run_id, `sources`, dates) + les `counts` et les
 `unknowns` de l'agrégat, recopiés à plat + le `status`. Le statut annoncé « ok » par le hook est **re-dérivé des compteurs**
-(`_status_from`) — trois propriétés, vérifiées dans cet ordre :
+(`_status_from`) — deux propriétés :
 
-1. **Croyable ?** `audit.write.failed == 0`. Vérifiée en premier : si l'audit a perdu des
-   écritures, les autres compteurs ne prouvent plus rien (un audit troué ne dit pas qu'il
-   manque des documents — il dit qu'on ne peut plus savoir).
-2. **Complet ?** `fetched == persisted + invalidated + failed` — **l'équation de
+1. **Complet ?** `fetched == persisted + invalidated + failed` — **l'équation de
    complétude**. Si elle ne tombe pas juste (dans les deux sens : un excédent est un
    double comptage), des documents ont disparu sans que rien ne les compte.
-3. **Sans perte ?** `failed == 0`. Un document échoué est déclaré et rejouable — mais pas
+2. **Sans perte ?** `failed == 0`. Un document échoué est déclaré et rejouable — mais pas
    ingéré.
 
 | Statut | Sens |
 |---|---|
 | `ok` | Tout ce qui a été vu a été ingéré ou écarté sciemment. |
-| `degraded` | Le run est allé au bout mais ne peut pas se déclarer complet (une des trois propriétés a cassé). |
+| `degraded` | Le run est allé au bout mais ne peut pas se déclarer complet (une des deux propriétés a cassé). |
 | `failed` | Le pipeline a levé ; rien ne garantit l'état des stores. Si la casse précède le node `report`, le bilan est pauvre (les stats des workers ne remontent que par lui) — le statut reste vrai. |
 
 Le référentiel est `document.fetched`, jamais `document.parsed` (un invalidé n'est pas

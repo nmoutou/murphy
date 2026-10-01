@@ -18,16 +18,6 @@ _DATA_INDEXES: dict[str, list[IndexModel]] = {
 """Les index de la base de données (défaut : LEGIFRANCE), par collection."""
 
 _META_INDEXES: dict[str, list[IndexModel]] = {
-    # Pas de TTL : rétention infinie de l'audit.
-    "meta_audit_events": [
-        IndexModel([("occurred_at", ASCENDING)], name="idx_audit_occurred_at"),
-        IndexModel(
-            [("document_id", ASCENDING), ("occurred_at", ASCENDING)],
-            name="idx_audit_document_occurred_at",
-        ),
-        IndexModel([("run_id", ASCENDING)], name="idx_audit_run_id"),
-        IndexModel([("event_type", ASCENDING)], name="idx_audit_event_type"),
-    ],
     "meta_run_summaries": [
         IndexModel(
             [("run_id", ASCENDING)],

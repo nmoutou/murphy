@@ -14,7 +14,6 @@ import neo4j
 from qdrant_client import AsyncQdrantClient
 
 from ragcore.adapters.config.settings import InfraSettings
-from ragcore.adapters.storage.mongo.audit_repository import MongoAuditRepository
 from ragcore.adapters.storage.mongo.client import MongoClient, create_mongo_client
 from ragcore.adapters.storage.mongo.document_repository import MongoDocumentRepository
 from ragcore.adapters.storage.mongo.pending_repository import (
@@ -54,9 +53,8 @@ class InfraClients:
 
 @dataclass(frozen=True)
 class MetaStores:
-    """La base méta : audit, bilans, relations en attente."""
+    """La base méta : bilans, relations en attente."""
 
-    audit: MongoAuditRepository
     summaries: MongoRunSummaryRepository
     pending: MongoPendingRelationRepository
 
@@ -108,7 +106,6 @@ def open_document_stores(
 def open_meta_stores(clients: InfraClients, settings: InfraSettings) -> MetaStores:
     meta_db = settings.mongodb_meta_db_name
     return MetaStores(
-        audit=MongoAuditRepository(clients.mongo, meta_db),
         summaries=MongoRunSummaryRepository(clients.mongo, meta_db),
         pending=MongoPendingRelationRepository(clients.mongo, meta_db),
     )

@@ -1,4 +1,4 @@
-"""La clôture d'un run : l'ORDRE (raccourcis → drain → bilan).
+"""La clôture d'un run : l'ORDRE (raccourcis → bilan).
 
 Chaque test vise une conséquence observable de cet ordre : ce qui atterrit dans le
 bilan persisté.
@@ -15,7 +15,6 @@ from ragcore.core.models.audit import build_event
 from ragcore.core.models.run_summary import RunStatus, RunSummary
 from ragcore.core.ports.embedder import BaseEmbedder
 from ragcore.core.telemetry_events import (
-    AUDIT_WRITE_FAILED,
     CHUNK_TRUNCATED,
     DOCUMENT_FETCHED,
     DOCUMENT_PERSISTED,
@@ -98,21 +97,6 @@ def test_un_run_casse_persiste_un_bilan_failed(
 
     assert summary.status is RunStatus.FAILED
     assert spies.summaries.upserted == [summary]
-
-
-def test_une_ecriture_d_audit_perdue_au_drain_degrade_le_bilan(
-    spies: _Spies,
-) -> None:
-    """Le drain passe AVANT le bilan : sinon le run serait `ok` sur des compteurs
-    qu'on sait incomplets."""
-    runtime = FakeRuntime(worker_id=-1, drain_failures=2)
-    try:
-        summary = _session(spies, runtime).close(RunStatus.OK)
-    finally:
-        runtime.close()
-
-    assert summary.counts[AUDIT_WRITE_FAILED] == 2
-    assert summary.status is RunStatus.DEGRADED
 
 
 def test_les_chunks_raccourcis_se_declarent_meme_sur_un_run_casse(

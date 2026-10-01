@@ -146,7 +146,7 @@ class TelemetryHooks:
     ) -> RunSession:
         """Ouvre le contexte du run et sa télémétrie."""
         context = PipelineContext.create(sources=sources)
-        telemetry, aggregator = start_telemetry(context, meta.audit, self._runtime)
+        telemetry, aggregator = start_telemetry(context)
         self._session = RunSession(
             context=context,
             telemetry=telemetry,

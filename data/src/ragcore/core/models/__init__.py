@@ -2,7 +2,6 @@ from .audit import AuditEvent
 from .chunk import Chunk, EmbeddedChunk
 from .citation import Citation
 from .document import ParsedDocument, RawDocument
-from .drain_report import DrainReport
 from .enums import SourceName, TargetStore
 from .identifiers import (
     DocumentId,
@@ -20,7 +19,6 @@ __all__ = [
     "Chunk",
     "Citation",
     "DocumentId",
-    "DrainReport",
     "Identifier",
     "EmbeddedChunk",
     "ParsedDocument",
