@@ -10,31 +10,30 @@ Ajouter un événement = ajouter sa ligne ci-dessous, sciemment.
 from ragcore.core.services.telemetry_registry import EventBehavior
 from ragcore.core.telemetry_events import COUNT_CARRYING_EVENTS, EVENT_CATALOG
 
-# event_type -> (level, log, aggregate)
-GOLDEN: dict[str, tuple[str, bool, bool, bool]] = {
+# event_type -> aggregate
+GOLDEN: dict[str, bool] = {
     # Hors agrégat : `started_at`, `ended_at` et `status` du bilan les disent déjà.
-    "pipeline.run.started": ("info", True, False),
-    "pipeline.run.completed": ("info", True, False),
-    "pipeline.run.failed": ("error", True, False),
-    "document.fetched": ("info", False, True),
-    "document.parsed": ("info", False, True),
-    "document.invalidated": ("warning", True, True),
-    "document.version_skipped": ("warning", False, True),
-    "document.unreadable": ("warning", False, True),
-    "document.persisted": ("info", True, True),
-    # La FUITE : vu, jamais ingéré. `aggregate=True` (3e) est l'enjeu — sans lui l'échec
+    "pipeline.run.started": False,
+    "pipeline.run.completed": False,
+    "pipeline.run.failed": False,
+    "document.fetched": True,
+    "document.parsed": True,
+    "document.invalidated": True,
+    "document.version_skipped": True,
+    "document.unreadable": True,
+    "document.persisted": True,
+    # La FUITE : vu, jamais ingéré. `aggregate=True` est l'enjeu — sans lui l'échec
     # est tracé mais pas compté, et le run se déclare « ok » en perdant des documents.
-    "document.failed": ("error", True, True),
+    "document.failed": True,
     # Pas une fuite (le document est ingéré) mais pas rien : la fin du chunk n'est pas
     # indexée. Non nul = `CHUNKING_MAX_CHARS` incompatible avec la fenêtre du modèle.
-    "chunk.truncated": ("warning", True, True),
-    "relation.upserted": ("warning", False, True),
-    "relation.pending": ("warning", False, True),
-    "relation.promoted": ("info", False, True),
-    "saga.compensation.triggered": ("error", True, True),
-    "saga.compensation.completed": ("warning", True, True),
-    "saga.compensation.failed": ("error", True, True),
-    "maintenance.nuke_all.executed": ("warning", True, False),
+    "chunk.truncated": True,
+    "relation.upserted": True,
+    "relation.pending": True,
+    "relation.promoted": True,
+    "saga.compensation.triggered": True,
+    "saga.compensation.completed": True,
+    "saga.compensation.failed": True,
 }
 
 
@@ -47,13 +46,9 @@ def test_catalog_has_exactly_the_golden_events() -> None:
 
 def test_each_event_keeps_its_routing() -> None:
     for event_type, expected in GOLDEN.items():
-        behavior = EVENT_CATALOG[event_type]
-        actual = (
-            behavior.level,
-            behavior.log,
-            behavior.aggregate,
+        assert EVENT_CATALOG[event_type].aggregate == expected, (
+            f"Routage modifié pour {event_type!r}"
         )
-        assert actual == expected, f"Routage modifié pour {event_type!r}"
 
 
 def test_every_entry_is_a_behavior() -> None:

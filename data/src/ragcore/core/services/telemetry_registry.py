@@ -8,19 +8,13 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class EventBehavior:
-    """Comportement d'un type d'événement : level + destination backends."""
+    """Comportement d'un type d'événement : les backends qui le reçoivent."""
 
-    level: str  # "debug" | "info" | "warning" | "error"
-    log: bool  # → ConsoleLogTelemetry (stdout)
     aggregate: bool  # → RunStatsAggregator (stats en mémoire + run_summary)
 
 
 # Comportement par défaut pour les événements non listés explicitement
-_DEFAULT_BEHAVIOR = EventBehavior(
-    level="warning",
-    log=True,
-    aggregate=True,
-)
+_DEFAULT_BEHAVIOR = EventBehavior(aggregate=True)
 
 
 class TelemetryRegistry:

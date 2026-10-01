@@ -55,8 +55,6 @@ def _nuke_all() -> Node:
             "vector_repo",
             # Déjà arbitré par le plan du run : refusé hors dev avant tout nœud.
             "nuke_all",
-            "pipeline_context",
-            "telemetry",
             "pipeline_runtime",
         ],
         outputs="nuke_done",

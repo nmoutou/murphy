@@ -20,68 +20,54 @@ from ragcore.core.telemetry_events import DOCUMENT_PERSISTED
 RUN = RunId("r-1")
 
 
-class ExplodingBackend:
-    """Un backend qui refuse d'écrire, ou de se fermer."""
-
-    def __init__(self, *, on_emit: bool = True, on_close: bool = False) -> None:
-        self._on_emit = on_emit
-        self._on_close = on_close
+class ExplodingAggregator(RunStatsAggregator):
+    """Un agrégat qui refuse l'événement."""
 
     def emit(self, event: AuditEvent) -> None:
-        if self._on_emit:
-            raise RuntimeError("le backend refuse l'événement")
+        raise RuntimeError("l'agrégat refuse l'événement")
+
+
+class ExplodingLog:
+    """Un backend de log qui refuse de se fermer."""
+
+    def emit(self, event: AuditEvent) -> None:
+        return
 
     def log(self, level: str, message: str, **context: Any) -> None:
         return
 
     def close(self) -> None:
-        if self._on_close:
-            raise RuntimeError("le backend refuse de se fermer")
+        raise RuntimeError("le backend refuse de se fermer")
 
 
-def _telemetry(log_backend: ExplodingBackend) -> RegistryAwareTelemetry:
+def _telemetry(aggregate: RunStatsAggregator) -> RegistryAwareTelemetry:
     registry = TelemetryRegistry.from_catalog(
-        {DOCUMENT_PERSISTED: EventBehavior(level="info", log=True, aggregate=True)}
+        {DOCUMENT_PERSISTED: EventBehavior(aggregate=True)}
     )
     return RegistryAwareTelemetry(
         registry=registry,
-        backends=WorkerBackends(
-            log=log_backend,
-            aggregate=RunStatsAggregator(
-                run_id=RUN,
-                sources=(SourceName.LEGI,),
-                started_at=datetime.now(UTC),
-            ),
-        ),
+        backends=WorkerBackends(log=ExplodingLog(), aggregate=aggregate),
     )
 
 
+def _aggregator(cls: type[RunStatsAggregator] = RunStatsAggregator) -> Any:
+    return cls(run_id=RUN, sources=(SourceName.LEGI,), started_at=datetime.now(UTC))
+
+
 def test_a_backend_that_raises_does_not_fail_the_ingestion() -> None:
-    telemetry = _telemetry(ExplodingBackend())
+    telemetry = _telemetry(_aggregator(ExplodingAggregator))
     telemetry.emit(build_event(DOCUMENT_PERSISTED, RUN))  # ne lève pas — l'assertion
 
 
-def test_the_aggregate_still_receives_the_event() -> None:
-    """Un backend qui tombe n'emporte pas l'agrégat : le compteur reste juste."""
-    telemetry = _telemetry(ExplodingBackend())
-
-    telemetry.emit(build_event(DOCUMENT_PERSISTED, RUN))
-
-    assert telemetry.snapshot().counts[DOCUMENT_PERSISTED] == 1
-
-
 def test_a_backend_that_fails_to_close_does_not_stop_the_others() -> None:
-    telemetry = _telemetry(ExplodingBackend(on_emit=False, on_close=True))
+    telemetry = _telemetry(_aggregator())
 
     telemetry.close()  # ne lève pas — l'assertion
 
 
 def test_the_aggregate_is_closed_last() -> None:
     """L'agrégat rend le bilan : il doit survivre aux autres backends."""
-    backends = WorkerBackends(
-        log=ExplodingBackend(),
-        aggregate=RunStatsAggregator(RUN, (SourceName.LEGI,), datetime.now(UTC)),
-    )
+    backends = WorkerBackends(log=ExplodingLog(), aggregate=_aggregator())
 
     names = [name for name, _ in backends.closable_in_order()]
 

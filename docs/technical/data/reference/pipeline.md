@@ -82,7 +82,7 @@ Entrées : les quatre dépôts du hook, `nuke_all` (du plan du run).
   - **préservé** : la base méta `MURPHY_META` (bilans, pendantes) — un nuke ne doit
     jamais emporter la mémoire de ce qu'on a fait.
 
-Émet `maintenance.nuke_all.executed`. Sortie : `nuke_done` — consommé par `connect`
+Chaque effacement est annoncé en `logger.warning`. Sortie : `nuke_done` — consommé par `connect`
 uniquement comme **signal d'ordre** (arête du DAG).
 
 ## 2. `connect`

@@ -11,7 +11,7 @@ et `run_summary.py` (l'agrégat et le bilan).
 ## Le catalogue d'événements — source de vérité unique
 
 Chaque `event_type` déclare son comportement dans `EVENT_CATALOG` (`EventBehavior`) :
-niveau de log, et routage vers chacun des deux backends. Le golden test
+un seul champ, `aggregate`, qui dit s'il est compté au bilan. Le golden test
 `tests/golden/test_event_catalog.py` verrouille le catalogue : rien n'y entre ni n'en
 sort en silence.
 
@@ -29,7 +29,6 @@ sort en silence.
 | `relation.pending` | Cible absente → cache des pendantes | ✓ |
 | `relation.promoted` | Pendante d'un run passé enfin résolue | ✓ |
 | `saga.compensation.triggered` / `.completed` / `.failed` | Rollback d'une saga (`.failed` = un écrit partiel subsiste ; `success` du `.completed` dit la vérité : une seule compensation ratée et le rollback n'est pas propre) | ✓ |
-| `maintenance.nuke_all.executed` | Maintenance | — |
 
 **Contrat de cardinalité** : la plupart des événements pèsent 1. Cinq — et eux
 exactement (`COUNT_CARRYING_EVENTS`) — portent leur poids dans `payload["count"]` :
@@ -43,8 +42,8 @@ un bug visible, pas une dérive muette.
 Assemblés par le hook (`adapters/telemetry/factory.py:assemble_telemetry`), routés par le
 registre :
 
-1. **Console** (`console_log.py`) — les logs textuels (`telemetry.log`). ⚠️ Son `emit`
-   ne fait rien : la colonne `log` du catalogue n'affiche aucun événement.
+1. **Console** (`console_log.py`) — les logs textuels (`telemetry.log`) ; elle ne reçoit
+   aucun événement.
 2. **Agrégateur** (`aggregator.py:RunStatsAggregator`) — les compteurs dont le bilan
    sortira.
 
@@ -52,7 +51,7 @@ Il n'y a pas de trace événement par événement : le bilan ne garde que des co
 Le détail d'un échec (quel document, quelle erreur) est dans les logs console — un
 `logger` dédié pour `document.failed`, `document.invalidated` et les compensations
 ratées. Brancher un outil d'observabilité, c'est ajouter un backend à `WorkerBackends`
-et une colonne de routage à `EventBehavior`.
+et un champ de routage à `EventBehavior`.
 
 **Un stack par worker.** Les workers de la phase 1 ne partagent pas la pile du hook :
 `WorkerTelemetryFactory` construit la sienne pour chacun. Chaque worker tient son

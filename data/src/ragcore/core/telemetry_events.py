@@ -3,8 +3,7 @@
 Source de vérité unique : les constantes et leur routage vers les backends
 sont déclarés au même endroit.
 
-Comportement par défaut pour tout event_type non listé :
-  level="warning", log=True, aggregate=True
+Comportement par défaut pour tout event_type non listé : aggregate=True
 """
 
 from ragcore.core.services.telemetry_registry import EventBehavior
@@ -44,8 +43,6 @@ SAGA_COMPENSATION_COMPLETED = "saga.compensation.completed"
 # raté) que RIEN d'autre ne compte : le document, lui, est déjà compté FAILED. Sans ce
 # compteur, l'état corrompu resterait invisible au bilan — une perte sans compteur.
 SAGA_COMPENSATION_FAILED = "saga.compensation.failed"
-
-MAINTENANCE_NUKE_ALL_EXECUTED = "maintenance.nuke_all.executed"
 
 
 # ---------------------------------------------------------------------------
@@ -87,115 +84,39 @@ cardinalité, c'est l'ajouter ICI — sinon son lot ne compte que pour un."""
 # ---------------------------------------------------------------------------
 # Catalogue : event_type → EventBehavior
 # ---------------------------------------------------------------------------
-# Champs :
-#   level       : niveau de log textuel ("info" | "warning" | "error")
-#   log         : stdout via ConsoleLogTelemetry
+# Champ :
 #   aggregate   : RunStatsAggregator (RunSummary)
 # ---------------------------------------------------------------------------
 
 EVENT_CATALOG: dict[str, EventBehavior] = {
     # --- Cycle de vie du pipeline ---
     # Hors agrégat : le bilan les porte déjà en `started_at`, `ended_at` et `status`.
-    PIPELINE_RUN_STARTED: EventBehavior(
-        level="info",
-        log=True,
-        aggregate=False,
-    ),
-    PIPELINE_RUN_COMPLETED: EventBehavior(
-        level="info",
-        log=True,
-        aggregate=False,
-    ),
-    PIPELINE_RUN_FAILED: EventBehavior(
-        level="error",
-        log=True,
-        aggregate=False,
-    ),
+    PIPELINE_RUN_STARTED: EventBehavior(aggregate=False),
+    PIPELINE_RUN_COMPLETED: EventBehavior(aggregate=False),
+    PIPELINE_RUN_FAILED: EventBehavior(aggregate=False),
     # --- Cycle de vie d'un document ---
-    DOCUMENT_FETCHED: EventBehavior(
-        level="info",
-        log=False,
-        aggregate=True,
-    ),
-    DOCUMENT_PARSED: EventBehavior(
-        level="info",
-        log=False,
-        aggregate=True,
-    ),
-    DOCUMENT_INVALIDATED: EventBehavior(
-        level="warning",
-        log=True,
-        aggregate=True,
-    ),
+    DOCUMENT_FETCHED: EventBehavior(aggregate=True),
+    DOCUMENT_PARSED: EventBehavior(aggregate=True),
+    DOCUMENT_INVALIDATED: EventBehavior(aggregate=True),
     # Ce que le connecteur ÉCARTE, porteur de son `count`. Compté au bilan, mais HORS
     # équation : un fichier écarté n'est PAS un document vu, et `_status_from` ne lit que
     # `document.fetched` pour dénominateur — jamais ces compteurs.
-    DOCUMENT_VERSION_SKIPPED: EventBehavior(
-        level="warning",
-        log=False,
-        aggregate=True,
-    ),
-    DOCUMENT_UNREADABLE: EventBehavior(
-        level="warning",
-        log=False,
-        aggregate=True,
-    ),
+    DOCUMENT_VERSION_SKIPPED: EventBehavior(aggregate=True),
+    DOCUMENT_UNREADABLE: EventBehavior(aggregate=True),
     # --- Traitement ---
-    DOCUMENT_PERSISTED: EventBehavior(
-        level="info",
-        log=True,
-        aggregate=True,
-    ),
+    DOCUMENT_PERSISTED: EventBehavior(aggregate=True),
     # La FUITE : un document vu, parsé, jamais ingéré. `aggregate=True` est tout l'enjeu —
     # l'échec partait auparavant en `telemetry.log()`, donc en console SEULEMENT : il était
     # tracé sans être compté, et le run se déclarait « ok » en ayant perdu 98 documents.
     # Un échec qui ne compte pas est un échec qui n'existe pas pour le bilan.
-    DOCUMENT_FAILED: EventBehavior(
-        level="error",
-        log=True,
-        aggregate=True,
-    ),
-    CHUNK_TRUNCATED: EventBehavior(
-        level="warning",
-        log=True,
-        aggregate=True,
-    ),
+    DOCUMENT_FAILED: EventBehavior(aggregate=True),
+    CHUNK_TRUNCATED: EventBehavior(aggregate=True),
     # --- Relations ---
-    RELATION_UPSERTED: EventBehavior(
-        level="warning",
-        log=False,
-        aggregate=True,
-    ),
-    RELATION_PENDING: EventBehavior(
-        level="warning",
-        log=False,
-        aggregate=True,
-    ),
-    RELATION_PROMOTED: EventBehavior(
-        level="info",
-        log=False,
-        aggregate=True,
-    ),
+    RELATION_UPSERTED: EventBehavior(aggregate=True),
+    RELATION_PENDING: EventBehavior(aggregate=True),
+    RELATION_PROMOTED: EventBehavior(aggregate=True),
     # --- Saga (erreurs de transaction) ---
-    SAGA_COMPENSATION_STARTED: EventBehavior(
-        level="error",
-        log=True,
-        aggregate=True,
-    ),
-    SAGA_COMPENSATION_COMPLETED: EventBehavior(
-        level="warning",
-        log=True,
-        aggregate=True,
-    ),
-    SAGA_COMPENSATION_FAILED: EventBehavior(
-        level="error",
-        log=True,
-        aggregate=True,
-    ),
-    # --- Maintenance ---
-    MAINTENANCE_NUKE_ALL_EXECUTED: EventBehavior(
-        level="warning",
-        log=True,
-        aggregate=False,
-    ),
+    SAGA_COMPENSATION_STARTED: EventBehavior(aggregate=True),
+    SAGA_COMPENSATION_COMPLETED: EventBehavior(aggregate=True),
+    SAGA_COMPENSATION_FAILED: EventBehavior(aggregate=True),
 }

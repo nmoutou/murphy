@@ -52,15 +52,14 @@ class RegistryAwareTelemetry:
 
         Le `event_type` est préservé tel quel — le registry contrôle le routage,
         pas le contenu. L'appariement est un pour un avec les champs du behavior :
-        ``log``→``log``, ``aggregate``→``aggregate``.
+        ``aggregate``→``aggregate``. Le backend ``log`` ne reçoit pas d'événements : il
+        ne sert que ``log()``.
 
         Un backend qui lève ne fait pas tomber les autres, et ne fait pas tomber
         l'ingestion (cf. ``_deliver``).
         """
         behavior = self._registry.behavior_for(event.event_type)
 
-        if behavior.log:
-            self._deliver("log", self._backends.log, event)
         if behavior.aggregate:
             self._deliver("aggregate", self._backends.aggregate, event)
 

@@ -6,11 +6,7 @@ from ragcore.adapters.storage.mongo.document_repository import MongoDocumentRepo
 from ragcore.adapters.storage.mongo.schemas import ensure_data_indexes
 from ragcore.adapters.storage.neo4j.graph_repository import Neo4jGraphRepository
 from ragcore.adapters.storage.qdrant.vector_repository import QdrantVectorRepository
-from ragcore.application.run_context import PipelineContext
-from ragcore.core.models.audit import build_event
 from ragcore.core.ports.runtime import AsyncRuntime
-from ragcore.core.ports.telemetry import TelemetryPort
-from ragcore.core.telemetry_events import MAINTENANCE_NUKE_ALL_EXECUTED
 
 logger = logging.getLogger(__name__)
 
@@ -20,8 +16,6 @@ def nuke_all_node(
     graph_repo: Neo4jGraphRepository,
     vector_repo: QdrantVectorRepository,
     nuke_all: bool,
-    pipeline_context: PipelineContext,
-    telemetry: TelemetryPort,
     pipeline_runtime: AsyncRuntime,
 ) -> dict[str, bool]:
     """Efface TOUTES les données de TOUTES les bases quand ``nuke_all=true``.
@@ -67,22 +61,7 @@ def nuke_all_node(
     # Setup partagé, hors du drop : la collection du run doit exister
     # avant que le pool ne démarre, qu'on vienne de tout dropper ou non.
     pipeline_runtime.run(vector_repo.ensure_collection())
-
-    _emit_nuked(telemetry, pipeline_context, dropped)
     return dropped
-
-
-def _emit_nuked(
-    telemetry: TelemetryPort, context: PipelineContext, dropped: dict[str, bool]
-) -> None:
-    telemetry.emit(
-        build_event(
-            event_type=MAINTENANCE_NUKE_ALL_EXECUTED,
-            run_id=context.run_id,
-            source=context.source,
-            payload=dropped,
-        )
-    )
 
 
 def _drop_mongo(

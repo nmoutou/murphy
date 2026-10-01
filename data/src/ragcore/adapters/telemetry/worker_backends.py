@@ -7,8 +7,9 @@ nommément : une clé-chaîne est un contrat que rien ne vérifie — une faute 
 (``"aggregat"``) ou un backend manquant ne se voit qu'à l'exécution, et le type de
 l'agrégat doit être re-prouvé à chaque usage.
 
-Ici, les rôles sont des CHAMPS. Le ``behavior`` (``EventBehavior``, déjà typé :
-``log``/``aggregate``) s'apparie un pour un avec eux. Et ``aggregate`` est typé
+Ici, les rôles sont des CHAMPS. ``log`` sert les logs textuels (``log()``) ;
+``aggregate`` reçoit les événements que le ``behavior`` (``EventBehavior``) lui route.
+Et ``aggregate`` est typé
 ``RunStatsAggregator``, pas ``TelemetryPort`` : c'est LUI qui porte le ``RunStats`` du
 run, le seul à savoir ``snapshot`` et ``record_unknown``. Le typer fort supprime tout
 garde ``isinstance`` en aval — le compilateur garantit ce que le code vérifiait à la
