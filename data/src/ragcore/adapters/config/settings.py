@@ -151,7 +151,6 @@ class InfraSettings(BaseSettings):
 
     Toutes les sources partagent la même collection Qdrant : même normalisation, même
     chunking, même modèle."""
-    meta_jsonl_dir: Path = Path("data/08_reporting")
 
     @field_validator("environment", mode="before")
     @classmethod

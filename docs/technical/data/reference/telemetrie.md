@@ -15,22 +15,22 @@ niveau de log, et routage vers chacun des quatre backends. Le golden test
 `tests/golden/test_event_catalog.py` verrouille le catalogue : rien n'y entre ni n'en
 sort en silence.
 
-| Événement | Sens | JSONL | Mongo | Agrégat |
-|---|---|---|---|---|
-| `pipeline.run.started` / `.completed` / `.failed` | Cycle de vie du run | ✓ | ✓ | ✓ |
-| `document.fetched` | Documents vus par le connecteur (1 événement, `count` = lot). **Le dénominateur** de l'équation. | ✓ | — | ✓ |
-| `document.skipped` | Écartés par le connecteur (artefacts d'export, illisibles), par raison. Porte son `count`. **Hors équation** : un fichier écarté n'est pas un document vu. | ✓ | ✓ | ✓ |
-| `document.parsed` | Parse réussi | ✓ | — | ✓ |
-| `document.invalidated` | Rejet au parse (validation ou lecture) : `reason`, `uid` (chemin source), `error` | ✓ | ✓ | ✓ |
-| `document.persisted` | Saga complète | ✓ | ✓ | ✓ |
-| `document.failed` | **La fuite** : vu, jamais ingéré (saga échouée/compensée). `reason` = type d'exception. | ✓ | ✓ | ✓ |
-| `chunk.truncated` | Chunks raccourcis par l'embedder pour tenir dans la fenêtre du modèle (1 événement en fin de run, `count`). Pas une fuite — mais la fin de ces chunks n'est pas indexée : `CHUNKING_MAX_CHARS` à corriger. | ✓ | ✓ | ✓ |
-| `relation.upserted` | Arêtes **réussies** d'un batch (`count`) | ✓ | — | ✓ |
-| `relation.pending` | Cible absente → cache des pendantes | ✓ | ✓ | ✓ |
-| `relation.promoted` | Pendante d'un run passé enfin résolue | ✓ | — | ✓ |
-| `saga.compensation.triggered` / `.completed` / `.failed` | Rollback d'une saga (`.failed` = un écrit partiel subsiste ; `success` du `.completed` dit la vérité : une seule compensation ratée et le rollback n'est pas propre) | ✓ | ✓ | ✓ |
-| `audit.write.failed` | **La télémétrie qui se surveille** : une écriture d'audit perdue. Jamais vers Mongo (écrire en Mongo qu'on n'a pas su écrire en Mongo récurse) — le compteur vit dans l'agrégat mémoire. | ✓ | — | ✓ |
-| `maintenance.nuke_all.executed` | Maintenance | ✓ | ✓ | — |
+| Événement | Sens | Mongo | Agrégat |
+|---|---|---|---|
+| `pipeline.run.started` / `.completed` / `.failed` | Cycle de vie du run | ✓ | ✓ |
+| `document.fetched` | Documents vus par le connecteur (1 événement, `count` = lot). **Le dénominateur** de l'équation. | — | ✓ |
+| `document.skipped` | Écartés par le connecteur (artefacts d'export, illisibles), par raison. Porte son `count`. **Hors équation** : un fichier écarté n'est pas un document vu. | ✓ | ✓ |
+| `document.parsed` | Parse réussi | — | ✓ |
+| `document.invalidated` | Rejet au parse (validation ou lecture) : `reason`, `uid` (chemin source), `error` | ✓ | ✓ |
+| `document.persisted` | Saga complète | ✓ | ✓ |
+| `document.failed` | **La fuite** : vu, jamais ingéré (saga échouée/compensée). `reason` = type d'exception. | ✓ | ✓ |
+| `chunk.truncated` | Chunks raccourcis par l'embedder pour tenir dans la fenêtre du modèle (1 événement en fin de run, `count`). Pas une fuite — mais la fin de ces chunks n'est pas indexée : `CHUNKING_MAX_CHARS` à corriger. | ✓ | ✓ |
+| `relation.upserted` | Arêtes **réussies** d'un batch (`count`) | — | ✓ |
+| `relation.pending` | Cible absente → cache des pendantes | ✓ | ✓ |
+| `relation.promoted` | Pendante d'un run passé enfin résolue | — | ✓ |
+| `saga.compensation.triggered` / `.completed` / `.failed` | Rollback d'une saga (`.failed` = un écrit partiel subsiste ; `success` du `.completed` dit la vérité : une seule compensation ratée et le rollback n'est pas propre) | ✓ | ✓ |
+| `audit.write.failed` | **La télémétrie qui se surveille** : une écriture d'audit perdue. Jamais vers Mongo (écrire en Mongo qu'on n'a pas su écrire en Mongo récurse) — le compteur vit dans l'agrégat mémoire. | — | ✓ |
+| `maintenance.nuke_all.executed` | Maintenance | ✓ | — |
 
 **Contrat de cardinalité** : la plupart des événements pèsent 1. Quatre — et eux
 exactement (`COUNT_CARRYING_EVENTS`) — portent leur poids dans `payload["count"]` :
@@ -45,12 +45,10 @@ Assemblés par le hook (`adapters/telemetry/factory.py:assemble_telemetry`), rou
 registre :
 
 1. **Console** (`console_log.py`) — lisibilité immédiate, selon `log`/`level`.
-2. **JSONL** (`jsonl_file.py`) — la trace complète :
-   `data/08_reporting/events/{iso}_{run_id}.jsonl`.
-3. **Audit Mongo** (`mongo_audit.py`) — `MURPHY_META.meta_audit_events`, rétention
+2. **Audit Mongo** (`mongo_audit.py`) — `MURPHY_META.meta_audit_events`, rétention
    infinie, écritures asynchrones **drainées** en fin de run (celles qui ont échoué
    deviennent `audit.write.failed`).
-4. **Agrégateur** (`aggregator.py:RunStatsAggregator`) — les compteurs dont le bilan
+3. **Agrégateur** (`aggregator.py:RunStatsAggregator`) — les compteurs dont le bilan
    sortira.
 
 **Un stack par worker.** Les workers de la phase 1 ne partagent pas la pile du hook :
@@ -107,5 +105,4 @@ saga et a laissé passer « ok » un run qui avait perdu 98 documents à l'embed
 toute saga. L'équation attrape toutes les causes, y compris celles qu'on n'a pas encore
 rencontrées.
 
-Persistance du bilan : JSON local (`data/08_reporting/stats/{iso}_{run_id}.json`) +
-upsert Mongo (`meta_run_summaries`, unique par run_id).
+Persistance du bilan : upsert Mongo (`meta_run_summaries`, unique par run_id).

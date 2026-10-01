@@ -14,7 +14,7 @@ Docker de serving ; il ne partage avec le backend que les bases de données.
 | [reference/modele-de-donnees.md](reference/modele-de-donnees.md) | Les modèles Pydantic et ce qui est réellement écrit dans Mongo (les deux bases), Qdrant et Neo4j — collections, index, schémas. |
 | [reference/configuration.md](reference/configuration.md) | `parameters.yml` champ par champ et le `.env.dev` racine. |
 | [reference/idempotence.md](reference/idempotence.md) | La réécriture en place, la saga et ses compensations, `nuke_all`. |
-| [reference/telemetrie.md](reference/telemetrie.md) | Le catalogue d'événements, les backends (console/JSONL/Mongo/agrégat), l'équation de complétude et le statut `ok`/`degraded`/`failed`. |
+| [reference/telemetrie.md](reference/telemetrie.md) | Le catalogue d'événements, les backends (console/Mongo/agrégat), l'équation de complétude et le statut `ok`/`degraded`/`failed`. |
 
 ---
 
@@ -63,10 +63,8 @@ jamais de run silencieusement vide.
 Ce qu'un run laisse derrière lui :
 
 - les corpus dans Mongo `LEGIFRANCE`, Qdrant (collection `QDRANT_COLLECTION`) et Neo4j ;
-- le bilan (`RunSummary`) dans `data/08_reporting/stats/*.json` et Mongo
-  `MURPHY_META.meta_run_summaries` ;
-- la trace événementielle dans `data/08_reporting/events/*.jsonl` et
-  `MURPHY_META.meta_audit_events`.
+- le bilan (`RunSummary`) dans `MURPHY_META.meta_run_summaries` ;
+- la trace événementielle dans `MURPHY_META.meta_audit_events`.
 
 ### Développer
 

@@ -10,33 +10,33 @@ Ajouter un événement = ajouter sa ligne ci-dessous, sciemment.
 from ragcore.core.services.telemetry_registry import EventBehavior
 from ragcore.core.telemetry_events import COUNT_CARRYING_EVENTS, EVENT_CATALOG
 
-# event_type -> (level, log, track_jsonl, track_mongo, aggregate)
-GOLDEN: dict[str, tuple[str, bool, bool, bool, bool]] = {
-    "pipeline.run.started": ("info", True, True, True, True),
-    "pipeline.run.completed": ("info", True, True, True, True),
-    "pipeline.run.failed": ("error", True, True, True, True),
-    "document.fetched": ("info", False, True, False, True),
-    "document.parsed": ("info", False, True, False, True),
-    "document.invalidated": ("warning", True, True, True, True),
-    "document.skipped": ("warning", False, True, True, True),
-    "document.persisted": ("info", True, True, True, True),
-    # La FUITE : vu, jamais ingéré. `aggregate=True` (5e) est l'enjeu — sans lui l'échec
+# event_type -> (level, log, track_mongo, aggregate)
+GOLDEN: dict[str, tuple[str, bool, bool, bool]] = {
+    "pipeline.run.started": ("info", True, True, True),
+    "pipeline.run.completed": ("info", True, True, True),
+    "pipeline.run.failed": ("error", True, True, True),
+    "document.fetched": ("info", False, False, True),
+    "document.parsed": ("info", False, False, True),
+    "document.invalidated": ("warning", True, True, True),
+    "document.skipped": ("warning", False, True, True),
+    "document.persisted": ("info", True, True, True),
+    # La FUITE : vu, jamais ingéré. `aggregate=True` (4e) est l'enjeu — sans lui l'échec
     # est tracé mais pas compté, et le run se déclare « ok » en perdant des documents.
-    "document.failed": ("error", True, True, True, True),
+    "document.failed": ("error", True, True, True),
     # Pas une fuite (le document est ingéré) mais pas rien : la fin du chunk n'est pas
     # indexée. Non nul = `CHUNKING_MAX_CHARS` incompatible avec la fenêtre du modèle.
-    "chunk.truncated": ("warning", True, True, True, True),
-    "relation.upserted": ("warning", False, True, False, True),
-    "relation.pending": ("warning", False, True, True, True),
-    "relation.promoted": ("info", False, True, False, True),
-    # La télémétrie qui n'a pas su s'écrire. `track_mongo=False` (4e) est DÉLIBÉRÉ :
+    "chunk.truncated": ("warning", True, True, True),
+    "relation.upserted": ("warning", False, False, True),
+    "relation.pending": ("warning", False, True, True),
+    "relation.promoted": ("info", False, False, True),
+    # La télémétrie qui n'a pas su s'écrire. `track_mongo=False` (3e) est DÉLIBÉRÉ :
     # écrire en Mongo qu'on n'a pas su écrire en Mongo échouerait à son tour. Le compteur
     # vit dans l'agrégat (mémoire) et voyage par le monoïde `RunStats`.
-    "audit.write.failed": ("error", True, True, False, True),
-    "saga.compensation.triggered": ("error", True, True, True, True),
-    "saga.compensation.completed": ("warning", True, True, True, True),
-    "saga.compensation.failed": ("error", True, True, True, True),
-    "maintenance.nuke_all.executed": ("warning", True, True, True, False),
+    "audit.write.failed": ("error", True, False, True),
+    "saga.compensation.triggered": ("error", True, True, True),
+    "saga.compensation.completed": ("warning", True, True, True),
+    "saga.compensation.failed": ("error", True, True, True),
+    "maintenance.nuke_all.executed": ("warning", True, True, False),
 }
 
 
@@ -53,7 +53,6 @@ def test_each_event_keeps_its_routing() -> None:
         actual = (
             behavior.level,
             behavior.log,
-            behavior.track_jsonl,
             behavior.track_mongo,
             behavior.aggregate,
         )

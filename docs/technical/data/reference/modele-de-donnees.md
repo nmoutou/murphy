@@ -124,10 +124,3 @@ données.
   `:Pending` au lieu de l'arracher (les arêtes entrantes appartiennent à d'autres
   documents) ; un `merge_document_node` ultérieur le ré-hydrate naturellement. Plus de
   label `Unknown` : une cible décrite est une `Citation` sur le document, pas un nœud.
-
-## Fichiers locaux (`data/08_reporting/`)
-
-- `events/{iso}_{run_id}.jsonl` — la trace événementielle complète du run (backend JSONL
-  de la télémétrie).
-- `stats/{iso}_{run_id}.json` — le `RunSummary` sérialisé (le même que dans
-  `meta_run_summaries`).

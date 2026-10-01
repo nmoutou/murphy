@@ -45,8 +45,8 @@ Le hook est le **point d'assemblage** du run. Dans l'ordre :
    `ensure_meta_indexes` (MURPHY_META).
 6. **La session du run** (`run_session.RunSession`) : le `PipelineContext` (run_id
    uuid4-hex, source — `None` si multi-source, started_at), la pile de
-   télémétrie (registre construit depuis `EVENT_CATALOG`, backends JSONL
-   `data/08_reporting/events/`, audit Mongo, agrégateur `RunStats`).
+   télémétrie (registre construit depuis `EVENT_CATALOG`, backends console,
+   audit Mongo, agrégateur `RunStats`).
 7. **Briques de traitement** (`assembly.build_processing_stack`) : `CompositeConnector`
    (un connecteur par source, routé), `RoutingParser` (un `GenericParser` par source,
    chacun avec sa table de rôles), `StructuralChunker` (`CHUNKING_MAX_CHARS` / `CHUNKING_OVERLAP_CHARS`),
@@ -234,8 +234,8 @@ nominal (`after_pipeline_run`), dans l'ordre — et l'ordre est l'enjeu :
    savoir déclarerait `ok` un run dont il ne peut plus prouver la complétude.
 4. **Persistance du bilan** (statut demandé : `ok`) : le statut annoncé est
    **re-dérivé des compteurs** (`RunSummary.of` → `_status_from`) — voir
-   [telemetrie.md](telemetrie.md#le-statut-dun-run). Écrit en JSON
-   (`data/08_reporting/stats/`) et upsert Mongo (`meta_run_summaries`).
+   [telemetrie.md](telemetrie.md#le-statut-dun-run). Upsert Mongo
+   (`meta_run_summaries`).
 5. Le hook ferme son runtime.
 
 Chemin d'erreur (`on_pipeline_error`) : `pipeline.run.failed` émis, puis la **même

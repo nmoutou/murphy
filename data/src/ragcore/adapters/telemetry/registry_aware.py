@@ -18,7 +18,7 @@ _LOGGER = logging.getLogger(__name__)
 class RegistryAwareTelemetry:
     """Fan-out guidé par un TelemetryRegistry — la pile de télémétrie d'UN worker.
 
-    Dispatche chaque emit() vers les 4 backends selon le behavior_for(event_type).
+    Dispatche chaque emit() vers les 3 backends selon le behavior_for(event_type).
     Les exceptions des delegates sont isolées (best-effort) : la télémétrie observe
     l'ingestion, elle ne la fait jamais échouer. Isolées, mais **comptées** : un
     backend qui rate son écriture émarge à ``audit.write.failed``, donc au bilan du
@@ -42,7 +42,7 @@ class RegistryAwareTelemetry:
         """
         Args:
             registry: TelemetryRegistry qui map event_type → EventBehavior
-            backends: WorkerBackends — les 4 rôles (log/jsonl/mongo/aggregate) wirés
+            backends: WorkerBackends — les 3 rôles (log/mongo/aggregate) wirés
                 en amont. ``aggregate`` porte le RunStats que snapshot() rend au pool.
         """
         self._registry = registry
@@ -53,8 +53,7 @@ class RegistryAwareTelemetry:
 
         Le `event_type` est préservé tel quel — le registry contrôle le routage,
         pas le contenu. L'appariement est un pour un avec les champs du behavior :
-        ``log``→``log``, ``track_jsonl``→``jsonl``, ``track_mongo``→``mongo``,
-        ``aggregate``→``aggregate``.
+        ``log``→``log``, ``track_mongo``→``mongo``, ``aggregate``→``aggregate``.
 
         Un backend qui lève ne fait pas tomber les autres, et ne fait pas tomber
         l'ingestion — mais il est désormais COMPTÉ (cf. ``_deliver``).
@@ -63,8 +62,6 @@ class RegistryAwareTelemetry:
 
         if behavior.log:
             self._deliver("log", self._backends.log, event)
-        if behavior.track_jsonl:
-            self._deliver("jsonl", self._backends.jsonl, event)
         if behavior.track_mongo:
             self._deliver("mongo", self._backends.mongo, event)
         if behavior.aggregate:
@@ -128,9 +125,9 @@ class RegistryAwareTelemetry:
         """Ferme les backends de ce worker. Un backend qui refuse de mourir ne doit
         pas empêcher les autres de le faire — mais il ne meurt plus en silence.
 
-        Une fermeture qui échoue est une PERTE : c'est là qu'un fichier se vide sur
-        disque, qu'un buffer part à la poubelle. Elle se compte donc comme un échec
-        d'écriture, au même titre qu'un ``emit`` raté.
+        Une fermeture qui échoue est une PERTE : c'est là qu'un buffer part à la
+        poubelle. Elle se compte donc comme un échec d'écriture, au même titre qu'un
+        ``emit`` raté.
 
         L'ordre compte : l'agrégat est fermé **en dernier** (``closable_in_order``),
         sans quoi il ne serait plus là pour enregistrer les échecs de ceux qui le

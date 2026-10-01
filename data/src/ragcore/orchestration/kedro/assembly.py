@@ -219,7 +219,6 @@ def _telemetry_factory(
         run_id=context.run_id,
         source=context.source,
         started_at=context.started_at,
-        events_dir=Path(settings.meta_jsonl_dir) / "events",
         audit_repo_factory=lambda runtime: MongoAuditRepository(
             create_mongo_client(settings.mongodb_uri), meta_db
         ),

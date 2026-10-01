@@ -12,7 +12,6 @@ class EventBehavior:
 
     level: str  # "debug" | "info" | "warning" | "error"
     log: bool  # → ConsoleLogTelemetry (stdout)
-    track_jsonl: bool  # → JsonlFileTelemetry (fichier local)
     track_mongo: bool  # → MongoAuditTelemetryAdapter (audit MongoDB)
     aggregate: bool  # → RunStatsAggregator (stats en mémoire + run_summary)
 
@@ -21,7 +20,6 @@ class EventBehavior:
 _DEFAULT_BEHAVIOR = EventBehavior(
     level="warning",
     log=True,
-    track_jsonl=True,
     track_mongo=True,
     aggregate=True,
 )

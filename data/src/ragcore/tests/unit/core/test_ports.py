@@ -38,7 +38,6 @@ from ragcore.core.ports.telemetry import TelemetryPort
             "MongoAuditTelemetryAdapter",
             TelemetryPort,
         ),
-        ("ragcore.adapters.telemetry.jsonl_file", "JsonlFileTelemetry", TelemetryPort),
         ("ragcore.adapters.telemetry.noop", "NoopTelemetry", TelemetryPort),
         # Le parser et le chunker sont GÉNÉRIQUES : un seul de chacun, pour six sources.
         # `sources/legi/` n'apporte plus qu'une table et un extracteur-coquille.

@@ -9,18 +9,12 @@ entière ou n'existe pas.
 
 from __future__ import annotations
 
-import json
 import logging
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Any
 
 from ragcore.adapters.storage.mongo.audit_repository import MongoAuditRepository
-from ragcore.adapters.telemetry import (
-    JsonlFileTelemetry,
-    MongoAuditTelemetryAdapter,
-    RunStatsAggregator,
-)
+from ragcore.adapters.telemetry import MongoAuditTelemetryAdapter, RunStatsAggregator
 from ragcore.adapters.telemetry.factory import assemble_telemetry
 from ragcore.adapters.telemetry.registry_aware import RegistryAwareTelemetry
 from ragcore.application.run_context import PipelineContext
@@ -30,7 +24,6 @@ from ragcore.core.ports.embedder import BaseEmbedder
 from ragcore.core.ports.run_summary_repository import RunSummaryRepository
 from ragcore.core.ports.runtime import AsyncRuntime
 from ragcore.core.ports.telemetry import TelemetryPort
-from ragcore.core.services.run_artifacts import run_scoped_filename
 from ragcore.core.services.telemetry_registry import TelemetryRegistry
 from ragcore.core.telemetry_events import CHUNK_TRUNCATED, EVENT_CATALOG
 from ragcore.orchestration.kedro.assembly import ReportsTruncations
@@ -41,7 +34,6 @@ logger = logging.getLogger(__name__)
 
 
 def start_telemetry(
-    meta_root: Path,
     context: PipelineContext,
     audit_repo: MongoAuditRepository,
     runtime: AsyncRuntime,
@@ -57,11 +49,6 @@ def start_telemetry(
     )
     telemetry = assemble_telemetry(
         TelemetryRegistry.from_catalog(EVENT_CATALOG),
-        jsonl=JsonlFileTelemetry(
-            events_dir=meta_root / "events",
-            run_id=context.run_id,
-            started_at=context.started_at,
-        ),
         mongo=MongoAuditTelemetryAdapter(audit_repo, runtime),
         aggregate=aggregator,
     )
@@ -77,7 +64,6 @@ class RunSession:
     aggregator: RunStatsAggregator
     """L'agrégat du run. Le node `report` y POUSSE les stats des workers (il est le
     `run_stats_sink` du catalogue) ; `close` le finalise en bilan."""
-    stats_dir: Path
     summaries: RunSummaryRepository
     embedder: BaseEmbedder
     """Gardé pour l'interroger en fin de run : un chunk qu'il a dû raccourcir pour tenir
@@ -179,19 +165,12 @@ class RunSession:
     def _persist_summary(
         self, status: RunStatus, error_message: str | None
     ) -> RunSummary:
-        """Finalise l'agrégat et persiste le RunSummary (fichier JSON + Mongo).
+        """Finalise l'agrégat et persiste le RunSummary dans Mongo.
 
         Le statut annoncé n'est **pas** celui qui sort (``finalize`` le re-dérive des
         compteurs). Qui veut savoir si le run est vraiment `ok` doit lire le bilan, pas
         ce qu'il a demandé.
         """
         summary = self.aggregator.finalize(status=status, error_message=error_message)
-        path = self.stats_dir / run_scoped_filename(
-            summary.run_id, summary.started_at, ".json"
-        )
-        path.write_text(
-            json.dumps(summary.model_dump(mode="json"), ensure_ascii=False, indent=2),
-            encoding="utf-8",
-        )
         self.runtime.run(self.summaries.upsert(summary))
         return summary

@@ -61,7 +61,6 @@ def settings(tmp_path: Path) -> InfraSettings:
         qdrant_url="http://localhost:1",
         qdrant_collection="chunks",
         xml_source_path=tmp_path,
-        meta_jsonl_dir=tmp_path / "meta",
     )
 
 

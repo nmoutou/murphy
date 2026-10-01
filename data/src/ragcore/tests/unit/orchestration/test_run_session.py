@@ -6,7 +6,6 @@ bilan persisté.
 
 from collections.abc import Iterator
 from datetime import UTC, datetime
-from pathlib import Path
 
 import pytest
 
@@ -42,15 +41,14 @@ class _TruncatingEmbedder(NoopEmbedder):
 
 
 class _Spies:
-    def __init__(self, stats_dir: Path) -> None:
-        self.stats_dir = stats_dir
+    def __init__(self) -> None:
         self.summaries = _SpySummaries()
         self.telemetry = RecordingTelemetry()
 
 
 @pytest.fixture
-def spies(tmp_path: Path) -> _Spies:
-    return _Spies(tmp_path)
+def spies() -> _Spies:
+    return _Spies()
 
 
 @pytest.fixture
@@ -78,7 +76,6 @@ def _session(
         context=context,
         telemetry=spies.telemetry,
         aggregator=aggregator,
-        stats_dir=spies.stats_dir,
         summaries=spies.summaries,
         embedder=embedder or NoopEmbedder(dimension=768),
         runtime=runtime,
@@ -89,9 +86,6 @@ def test_un_run_complet_est_persiste(spies: _Spies, runtime: FakeRuntime) -> Non
     summary = _session(spies, runtime).close(RunStatus.OK)
 
     assert summary.status is RunStatus.OK
-    assert len(list(spies.stats_dir.glob("*.json"))) == 1, (
-        "le bilan est écrit en fichier"
-    )
     assert spies.summaries.upserted == [summary]
 
 

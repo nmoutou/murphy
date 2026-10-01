@@ -220,7 +220,7 @@ def _close_worker(runtime: AsyncRuntime, telemetry: WorkerTelemetry) -> None:
     2. `record_audit_failure` — le compte entre dans l'agrégat, donc dans le
        `snapshot()` que le worker rend ensuite, donc dans le bilan du run. Il DOIT
        passer avant `telemetry.close()` : après, la pile est morte.
-    3. `telemetry.close()` — vide les backends (le JSONL sur disque).
+    3. `telemetry.close()` — ferme les backends.
     4. `runtime.close()` — ferme la boucle, qui n'a plus rien à porter.
 
     Drainer après avoir fermé la télémétrie « marcherait » (l'agrégat vit en mémoire,

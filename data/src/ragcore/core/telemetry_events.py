@@ -4,7 +4,7 @@ Source de vérité unique : les constantes et leur routage vers les backends
 sont déclarés au même endroit.
 
 Comportement par défaut pour tout event_type non listé :
-  level="info", log=True, track_jsonl=True, track_mongo=True, aggregate=True
+  level="info", log=True, track_mongo=True, aggregate=True
 """
 
 from ragcore.core.services.telemetry_registry import EventBehavior
@@ -89,9 +89,8 @@ cardinalité, c'est l'ajouter ICI — sinon son lot ne compte que pour un."""
 # Champs :
 #   level       : niveau de log textuel ("info" | "warning" | "error")
 #   log         : stdout via ConsoleLogTelemetry
-#   track_jsonl : fichier JSONL local (audit complet)
 #   track_mongo : collection audit MongoDB
-#   aggregate   : RunStatsAggregator (RunSummary + stats JSON)
+#   aggregate   : RunStatsAggregator (RunSummary)
 # ---------------------------------------------------------------------------
 
 EVENT_CATALOG: dict[str, EventBehavior] = {
@@ -99,21 +98,18 @@ EVENT_CATALOG: dict[str, EventBehavior] = {
     PIPELINE_RUN_STARTED: EventBehavior(
         level="info",
         log=True,
-        track_jsonl=True,
         track_mongo=True,
         aggregate=True,
     ),
     PIPELINE_RUN_COMPLETED: EventBehavior(
         level="info",
         log=True,
-        track_jsonl=True,
         track_mongo=True,
         aggregate=True,
     ),
     PIPELINE_RUN_FAILED: EventBehavior(
         level="error",
         log=True,
-        track_jsonl=True,
         track_mongo=True,
         aggregate=True,
     ),
@@ -121,21 +117,18 @@ EVENT_CATALOG: dict[str, EventBehavior] = {
     DOCUMENT_FETCHED: EventBehavior(
         level="info",
         log=False,
-        track_jsonl=True,
         track_mongo=False,
         aggregate=True,
     ),
     DOCUMENT_PARSED: EventBehavior(
         level="info",
         log=False,
-        track_jsonl=True,
         track_mongo=False,
         aggregate=True,
     ),
     DOCUMENT_INVALIDATED: EventBehavior(
         level="warning",
         log=True,
-        track_jsonl=True,
         track_mongo=True,
         aggregate=True,
     ),
@@ -146,7 +139,6 @@ EVENT_CATALOG: dict[str, EventBehavior] = {
         # `document.fetched` pour dénominateur — jamais ce compteur.
         level="warning",
         log=False,
-        track_jsonl=True,
         track_mongo=True,
         aggregate=True,
     ),
@@ -154,7 +146,6 @@ EVENT_CATALOG: dict[str, EventBehavior] = {
     DOCUMENT_PERSISTED: EventBehavior(
         level="info",
         log=True,
-        track_jsonl=True,
         track_mongo=True,
         aggregate=True,
     ),
@@ -165,14 +156,12 @@ EVENT_CATALOG: dict[str, EventBehavior] = {
     DOCUMENT_FAILED: EventBehavior(
         level="error",
         log=True,
-        track_jsonl=True,
         track_mongo=True,
         aggregate=True,
     ),
     CHUNK_TRUNCATED: EventBehavior(
         level="warning",
         log=True,
-        track_jsonl=True,
         track_mongo=True,
         aggregate=True,
     ),
@@ -180,7 +169,6 @@ EVENT_CATALOG: dict[str, EventBehavior] = {
     RELATION_UPSERTED: EventBehavior(
         level="warning",
         log=False,
-        track_jsonl=True,
         track_mongo=False,
         aggregate=True,
     ),
@@ -189,14 +177,12 @@ EVENT_CATALOG: dict[str, EventBehavior] = {
         # au même titre que le cache §13 qu'elle accompagne.
         level="warning",
         log=False,
-        track_jsonl=True,
         track_mongo=True,
         aggregate=True,
     ),
     RELATION_PROMOTED: EventBehavior(
         level="info",
         log=False,
-        track_jsonl=True,
         track_mongo=False,
         aggregate=True,
     ),
@@ -214,7 +200,6 @@ EVENT_CATALOG: dict[str, EventBehavior] = {
     AUDIT_WRITE_FAILED: EventBehavior(
         level="error",
         log=True,
-        track_jsonl=True,
         track_mongo=False,
         aggregate=True,
     ),
@@ -222,21 +207,18 @@ EVENT_CATALOG: dict[str, EventBehavior] = {
     SAGA_COMPENSATION_STARTED: EventBehavior(
         level="error",
         log=True,
-        track_jsonl=True,
         track_mongo=True,
         aggregate=True,
     ),
     SAGA_COMPENSATION_COMPLETED: EventBehavior(
         level="warning",
         log=True,
-        track_jsonl=True,
         track_mongo=True,
         aggregate=True,
     ),
     SAGA_COMPENSATION_FAILED: EventBehavior(
         level="error",
         log=True,
-        track_jsonl=True,
         track_mongo=True,
         aggregate=True,
     ),
@@ -244,7 +226,6 @@ EVENT_CATALOG: dict[str, EventBehavior] = {
     MAINTENANCE_NUKE_ALL_EXECUTED: EventBehavior(
         level="warning",
         log=True,
-        track_jsonl=True,
         track_mongo=True,
         aggregate=False,
     ),

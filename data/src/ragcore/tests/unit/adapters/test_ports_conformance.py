@@ -17,9 +17,6 @@ disent — voir ``tests/integration/``.
 """
 
 from datetime import UTC, datetime
-from pathlib import Path
-
-import pytest
 
 from ragcore.adapters.embedding import EmbeddingTransport, TeiEmbedder
 from ragcore.adapters.runtime import AsyncioRuntime, AsyncioRuntimeFactory
@@ -38,7 +35,6 @@ from ragcore.adapters.storage.neo4j.graph_repository import (
 from ragcore.adapters.storage.qdrant.vector_repository import QdrantVectorRepository
 from ragcore.adapters.telemetry import (
     ConsoleLogTelemetry,
-    JsonlFileTelemetry,
     NoopTelemetry,
     RunStatsAggregator,
     WorkerTelemetryFactory,
@@ -62,17 +58,11 @@ from ragcore.core.ports.vector_repository import VectorRepository
 RUN_ID = "abc123"
 
 
-@pytest.fixture
-def events_dir(tmp_path: Path) -> Path:
-    return tmp_path / "events"
-
-
-def _telemetry_factory(events_dir: Path) -> WorkerTelemetryFactory:
+def _telemetry_factory() -> WorkerTelemetryFactory:
     return WorkerTelemetryFactory(
         run_id=RUN_ID,
         source=SourceName.LEGI,
         started_at=datetime.now(UTC),
-        events_dir=events_dir,
     )
 
 
@@ -173,12 +163,9 @@ class TestRuntime:
 
 
 class TestTelemetry:
-    def test_the_backends_are_telemetry_ports(self, events_dir: Path) -> None:
+    def test_the_backends_are_telemetry_ports(self) -> None:
         assert isinstance(NoopTelemetry(), TelemetryPort)
         assert isinstance(ConsoleLogTelemetry(), TelemetryPort)
-        assert isinstance(
-            JsonlFileTelemetry(events_dir, RUN_ID, datetime.now(UTC)), TelemetryPort
-        )
 
     def test_the_aggregator_is_a_worker_telemetry(self) -> None:
         aggregator = RunStatsAggregator(
@@ -188,14 +175,14 @@ class TestTelemetry:
         )
         assert isinstance(aggregator, WorkerTelemetry)
 
-    def test_the_factory_and_the_stack_it_builds(self, events_dir: Path) -> None:
+    def test_the_factory_and_the_stack_it_builds(self) -> None:
         """Le test qui a attrapé la pile incomplète.
 
         ``RegistryAwareTelemetry`` n'exposait que ``emit`` et ``log`` : elle n'était
         donc PAS un ``WorkerTelemetry``, et le pool n'aurait pas pu la consommer —
         alors que c'est précisément la pile qu'il consomme.
         """
-        factory = _telemetry_factory(events_dir)
+        factory = _telemetry_factory()
         assert isinstance(factory, TelemetryFactory)
 
         runtime = AsyncioRuntimeFactory().build(0)
@@ -205,16 +192,9 @@ class TestTelemetry:
         finally:
             runtime.close()
 
-    def test_each_worker_gets_its_own_stack_and_its_own_file(
-        self, events_dir: Path
-    ) -> None:
-        """L'invariant 1 pour la télémétrie : rien de partagé, donc rien à verrouiller.
-
-        Le ``threading.Lock`` de ``JsonlFileTelemetry`` a disparu parce que chaque
-        worker écrit dans SON fichier. Si les deux piles partageaient un fichier, le
-        verrou serait de retour — et §11 avec lui.
-        """
-        factory = _telemetry_factory(events_dir)
+    def test_each_worker_gets_its_own_stack(self) -> None:
+        """L'invariant 1 pour la télémétrie : rien de partagé, donc rien à verrouiller."""
+        factory = _telemetry_factory()
         runtime_factory = AsyncioRuntimeFactory()
         r0, r1 = runtime_factory.build(0), runtime_factory.build(1)
 
@@ -224,22 +204,21 @@ class TestTelemetry:
             assert first is not second
             # Des agrégats distincts : la réduction du monoïde n'aurait aucun sens
             # si les workers écrivaient dans le même.
-            assert first.snapshot() is not None
             assert (
-                first._backends.jsonl._path  # noqa: SLF001
-                != second._backends.jsonl._path  # noqa: SLF001
+                first._backends.aggregate  # noqa: SLF001
+                is not second._backends.aggregate  # noqa: SLF001
             )
         finally:
             r0.close()
             r1.close()
 
-    def test_an_unknown_reaches_the_aggregate(self, events_dir: Path) -> None:
+    def test_an_unknown_reaches_the_aggregate(self) -> None:
         """Un vocabulaire non reconnu se DÉCLARE. Le fan-out doit le router vers
         l'agrégat, sinon le run tairait ce qu'il n'a pas compris.
         """
         runtime = AsyncioRuntimeFactory().build(0)
         try:
-            stack = _telemetry_factory(events_dir).build(0, runtime)
+            stack = _telemetry_factory().build(0, runtime)
             stack.record_unknown("balise", "TRUC_INCONNU")
 
             assert stack.snapshot().unknowns == {"balise": ["TRUC_INCONNU"]}

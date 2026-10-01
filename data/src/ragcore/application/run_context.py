@@ -29,9 +29,8 @@ class PipelineContext(BaseModel):
     def create(cls, source: SourceName | None = None) -> "PipelineContext":
         """Ouvre un run neuf : identifiant tiré, horloge démarrée.
 
-        Le ``run_id`` est un hex nu, sans tiret : il est repris tel quel dans les
-        noms de fichiers de télémétrie (``{iso}_{run_id}.jsonl``), donc il doit
-        traverser un système de fichiers sans se faire échapper.
+        Le ``run_id`` est un hex nu, sans tiret : la clé du run dans l'audit et le
+        bilan Mongo.
         """
         return cls(
             run_id=RunId(uuid4().hex),

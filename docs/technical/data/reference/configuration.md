@@ -74,7 +74,6 @@ service.
 | `QDRANT_COLLECTION` | — (**obligatoire**) | Le nom fixe de la collection Qdrant, lu aussi par le backend. Absente = levée au chargement des settings. |
 | `XML_SOURCE_PATH` | `/mnt/data/Murphy/src` | La racine du corpus, **absolue** (un chemin relatif absent ne lève pas — il donne zéro document, indiscernable d'un run réussi). |
 | `SOURCE` | `all` | Les sources d'un run nu. `all` = les six ingérables (un défaut `legi` laissait cinq bases sur six intactes, en silence). Surchargeable par `--params source=…`. |
-| `META_JSONL_DIR` | `data/08_reporting` | Où vivent `events/` et `stats/`. |
 
 ### `EmbeddingRuntimeSettings` (préfixe `EMBEDDING_`)
 
