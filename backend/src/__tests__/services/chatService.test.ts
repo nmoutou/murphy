@@ -1,8 +1,3 @@
-/**
- * Chat Service Tests
- * The RAG pipeline end to end, with its infrastructure boundaries mocked
- */
-
 import type { InferUIMessageChunk } from 'ai';
 import { createChatStream, extractQuestionFromMessages } from '../../services/chatService';
 import { getInfraClients } from '../../infra/clients';
@@ -47,7 +42,7 @@ const chunkOf = (chunkId: string, charStart: number, text: string, score: number
   documentType: 'article',
 });
 const SECOND_START = FIRST_SENTENCE.length + 1;
-/** Two passages of the same article, the second ranked first */
+/** Deux passages du même article, le second classé premier */
 const CHUNKS = [chunkOf('chunk-2', SECOND_START, SECOND_SENTENCE, 0.91), chunkOf('chunk-1', 0, FIRST_SENTENCE, 0.72)];
 
 const userMessage = (text: string, id = 'user-1'): AppUIMessage => ({
@@ -56,7 +51,7 @@ const userMessage = (text: string, id = 'user-1'): AppUIMessage => ({
   parts: [{ type: 'text', text }],
 });
 
-/** A client that stays until the end */
+/** Un client qui reste jusqu'au bout */
 const NOT_ABORTED = new AbortController().signal;
 
 const readAllParts = async (stream: ReadableStream<AppChunk>): Promise<AppChunk[]> => {

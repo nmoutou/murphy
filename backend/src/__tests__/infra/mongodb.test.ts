@@ -1,15 +1,10 @@
-/**
- * MongoDB Client Tests
- * The read of the parent documents by their key, over a mocked driver
- */
-
 import type { MongoConfig } from '../../config';
 import { MongoDbClient } from '../../infra/mongodb';
 
 const mockFind = jest.fn();
 const mockToArray = jest.fn();
 
-// A class, not a `jest.fn`: `restoreMocks` would reset its implementation between tests
+// Une classe, pas un `jest.fn` : `restoreMocks` réinitialiserait son implémentation entre les tests
 jest.mock('mongodb', () => ({
   MongoClient: class {
     async connect() {

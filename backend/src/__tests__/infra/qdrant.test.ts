@@ -1,15 +1,10 @@
-/**
- * Qdrant Client Tests
- * The search call and the check of its payloads against the contract, over a mocked Qdrant client
- */
-
 import { QdrantVectorClient } from '../../infra/qdrant';
 
 const mockSearch = jest.fn();
 const mockCollectionExists = jest.fn();
 const mockQdrantClientConstructor = jest.fn();
 
-// A class, not a `jest.fn`: `restoreMocks` would reset its implementation between tests
+// Une classe, pas un `jest.fn` : `restoreMocks` réinitialiserait son implémentation entre les tests
 jest.mock('@qdrant/qdrant-js', () => ({
   QdrantClient: class {
     search = mockSearch;
@@ -28,7 +23,7 @@ jest.mock('../../utils/logger', () => {
 const OPTIONS = { url: 'http://qdrant.test', timeoutMs: 2500, collection: 'collection-test', minScore: 0.5 };
 const VECTOR = [0.1, 0.2, 0.3];
 const TOP_K = 3;
-/** `nature` is optional in the contract, `document_type` is not */
+/** `nature` est facultatif dans le contrat, `document_type` non */
 const CONTRACT_PAYLOAD = {
   chunk_id: 'LEGITEXT000006069577_0001',
   identifier: 'LEGITEXT000006069577',

@@ -1,9 +1,7 @@
 """La structure déclarée d'un document : ses liens bruts et ses ancêtres.
 
-Le parser rend le vocabulaire de la source tel quel (``typelien``, ``sens``, ``id``) ;
-c'est ``core/links`` qui le traduit, et qui déclare ce qu'il ne sait pas traduire. Typer
-ici mettrait la table de traduction dans deux modules à la fois — et c'est exactement
-ainsi qu'elles divergent.
+Le vocabulaire de la source reste tel quel : seul ``core/links`` le traduit, pour que
+la table de traduction ne vive qu'à un endroit.
 """
 
 from __future__ import annotations
@@ -20,7 +18,6 @@ __all__ = ["read_context", "read_references"]
 
 
 def read_references(facets: list[Node], table: RoleTable) -> list[dict[str, Any]]:
-    """Les liens déclarés, **BRUTS** — le parser ne les type pas."""
     references: list[dict[str, Any]] = []
     for facet in facets:
         references.extend(_declared_links(facet, table))
@@ -30,7 +27,6 @@ def read_references(facets: list[Node], table: RoleTable) -> list[dict[str, Any]
 
 
 def _declared_links(facet: Node, table: RoleTable) -> list[dict[str, Any]]:
-    """Les liens typés par la source (``typelien``/``sens``), où qu'ils soient."""
     return [
         {
             "kind": tag,
@@ -45,10 +41,8 @@ def _declared_links(facet: Node, table: RoleTable) -> list[dict[str, Any]]:
 
 
 def _structural_links(facet: Node, table: RoleTable) -> list[dict[str, Any]]:
-    """Les liens STRUCTURELS : cherchés UNIQUEMENT dans leurs conteneurs déclarés.
-
-    Sous ``<VERSIONS>``, un ``LIEN_ART`` désigne les autres versions du MÊME article —
-    pas une contenance : il a son propre circuit (``_version_links``).
+    """Cherchés seulement dans leurs conteneurs déclarés : sous ``<VERSIONS>``, un
+    ``LIEN_ART`` désigne une autre version du même article, pas une contenance.
     """
     return [
         {
@@ -63,8 +57,7 @@ def _structural_links(facet: Node, table: RoleTable) -> list[dict[str, Any]]:
 
 
 def _version_links(facet: Node, table: RoleTable) -> list[dict[str, Any]]:
-    """Les liens de VERSION : l'axe temporel, sous son kind dédié. La datation
-    (debut/fin/etat/num) voyage avec la référence — elle finira sur l'arête."""
+    """La datation voyage avec la référence, jusqu'à l'arête."""
     return [
         {
             "kind": VERSION_KIND,
@@ -82,12 +75,8 @@ def _version_links(facet: Node, table: RoleTable) -> list[dict[str, Any]]:
 
 
 def read_context(facets: list[Node], table: RoleTable) -> list[dict[str, Any]]:
-    """Les ANCÊTRES du document.
-
-    ``<CONTEXTE>`` déclare la *fermeture transitive* de la contenance — jusqu'à neuf
-    niveaux d'un coup, pas seulement le parent direct. C'est la raison d'être de
-    ``core/services/relation_reduction`` : l'union de cette fermeture et de l'arbre
-    déclaré par les sections doit être réduite pour redonner l'arbre.
+    """Tous les ancêtres, pas seulement le parent : ``<CONTEXTE>`` déclare la fermeture
+    transitive, que ``relation_reduction`` réduit en phase 2.
     """
     context: list[dict[str, Any]] = []
     for facet in facets:

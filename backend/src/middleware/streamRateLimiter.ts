@@ -1,8 +1,6 @@
 /**
- * Stream Rate Limiter
- * Per-IP budget for the chat pipeline, stricter than the global limiter. POST
- * `/api/v1/chat/streams`, POST `/api/v1/chat/completions` and the WebSocket
- * draw from the same budget: each one runs the whole pipeline, the LLM included.
+ * Budget par IP du pipeline de chat, plus strict que le limiteur global. `/streams`,
+ * `/completions` et le WebSocket le partagent : chacun lance tout le pipeline, LLM compris.
  */
 
 import rateLimit, { ipKeyGenerator, MemoryStore } from 'express-rate-limit';
@@ -15,10 +13,7 @@ import { HTTP_STATUS } from '../utils/httpStatus';
 
 const streamQuotaStore = new MemoryStore();
 
-/**
- * HTTP side. The key is the default `ipKeyGenerator(req.ip)`: `req.ip` only
- * honours `X-Forwarded-For` as far as `trust proxy` allows (`app.ts`).
- */
+/** `req.ip` ne suit `X-Forwarded-For` que si `trust proxy` l'autorise (`app.ts`) */
 export const streamRateLimiter = rateLimit({
   windowMs: config.http.streamRateLimit.windowMs,
   limit: config.http.streamRateLimit.limit,
@@ -32,9 +27,8 @@ export const streamRateLimiter = rateLimit({
 });
 
 /**
- * WebSocket side. The upgrade request is not an Express request, so the
- * middleware cannot run on it: each chat message counts one hit on the same
- * store instead. Resolves `false` once the budget is spent.
+ * Pendant WebSocket : l'upgrade n'est pas une requête Express, donc chaque message
+ * compte un hit sur le même store. `false` une fois le budget épuisé.
  */
 export const consumeStreamQuota = async (remoteAddress: string | undefined): Promise<boolean> => {
   if (!remoteAddress) return false;

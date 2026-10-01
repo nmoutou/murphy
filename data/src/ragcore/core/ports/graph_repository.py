@@ -9,16 +9,10 @@ from ..models.relation import Relation
 
 @dataclass(frozen=True)
 class RelationWriteResult:
-    """Ce que l'écriture des arêtes a vraiment fait.
-
-    Le ``None`` que retournait ``upsert_relations`` était le mensonge de comptage
-    (§12) : ``RELATION_UPSERTED`` émettait ``count=len(relations)`` — le nombre de
-    relations *tentées*. Une arête dont le ``MATCH (b)`` ne trouve rien n'est pas
-    écrite, ne lève rien, et n'émettait rien : elle disparaissait en silence.
+    """Ce que l'écriture des arêtes a vraiment fait : une arête dont le ``MATCH (b)``
+    échoue n'est pas écrite et ne lève rien.
 
     Invariant : ``len(written) + len(pending) == len(relations en entrée)``.
-    Aucune relation ne se perd entre l'entrée et la sortie — c'est *cela* qui rend
-    §12 (comptage exact) et §13 (cache des pendantes) vérifiables.
     """
 
     written: list[Relation] = field(default_factory=list)
@@ -27,54 +21,37 @@ class RelationWriteResult:
 
 @runtime_checkable
 class GraphRepository(Protocol):
-    """Stockage du graphe (Neo4j) — merge intelligent (pas de delete-node)."""
+    """Stockage du graphe (Neo4j) — merge, jamais de suppression de nœud."""
 
     async def merge_document_node(self, document: ParsedDocument) -> None: ...
 
     async def upsert_relations(
         self, relations: list[Relation], run_id: RunId
     ) -> RelationWriteResult:
-        """Écrit les arêtes et RAPPORTE celles dont la cible n'existait pas.
+        """Une arête dont la cible n'existe pas remonte dans ``.pending`` ; l'appelant
+        décide de son sort.
 
-        Une arête dont le ``MATCH (b)`` échoue n'est ni écrite, ni jetée : elle
-        remonte dans ``.pending``. C'est l'appelant (ResolveRelationsService) qui
-        décide de son sort — le repository, lui, ne connaît pas le cache §13.
-
-        ``run_id`` **tague chaque arête écrite** (§8). Il n'est pas une propriété de la
-        ``Relation`` — la même arête peut être (ré)écrite par des runs différents — mais
-        du *geste d'écriture* : c'est lui qui rend la compensation par run possible
-        (``delete_relations_by_run``). Sans lui, compenser un run reviendrait à supprimer
-        TOUTES les arêtes sortantes d'un document, y compris celles qu'un autre run
-        avait légitimement posées.
+        ``run_id`` tague chaque arête écrite : c'est ce qui permet de compenser un run
+        sans toucher aux arêtes posées par un autre.
         """
         ...
 
     async def delete_relations_by_run(self, run_id: RunId) -> None:
-        """Supprime les arêtes écrites par CE run — et elles seules (§8).
-
-        C'est la compensation à la maille du run : ``stratégie A`` (compensation
-        systématique). Elle détache exactement ce que ``upsert_relations`` a tagué de ce
-        ``run_id``, jamais plus. La sur-suppression que ``delete_relations_from`` risque
-        (toutes les sortantes d'un nœud, quel qu'en soit l'auteur) est précisément ce que
-        cette maille évite : un run rejoué ou annulé ne peut défaire que son propre
-        ouvrage.
-        """
+        """Supprime les arêtes taguées de ce run, et elles seules : un run ne peut
+        défaire que son propre ouvrage."""
         ...
 
     async def existing_node_ids(self, identifiers: list[Identifier]) -> set[str]:
-        """Sous-ensemble (sérialisé) des identifiants qui existent comme nœuds.
+        """Sous-ensemble, sérialisé comme les clés des pendantes, des identifiants qui
+        existent comme nœuds.
 
-        Retourne des chaînes sérialisées : la comparaison avec les clés du cache
-        (§13) se fait ainsi dans le même vocabulaire.
-
-        Aucun chemin de production ne l'appelle encore (le §13 rejeu ciblé n'est pas
-        câblé) : elle sert de point d'observation aux tests d'intégration Neo4j —
-        contrat assumé vers v1, pas code mort.
+        Pas encore appelée en production (le rejeu ciblé n'est pas câblé) : elle sert
+        aux tests d'intégration.
         """
         ...
 
     async def delete_relations_from(
         self, identifier: Identifier, source: SourceName
     ) -> None:
-        """Supprime uniquement les relations sortantes (préserve les entrantes)."""
+        """Les sortantes seulement ; les entrantes sont préservées."""
         ...

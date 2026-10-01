@@ -4,9 +4,9 @@ module.exports = {
   roots: ['<rootDir>/src'],
   testMatch: ['**/__tests__/**/*.ts', '**/?(*.)+(spec|test).ts'],
   transform: {
-    // TS151002 asks for `isolatedModules: true`, which would switch ts-jest to
-    // transpile-only and stop type-checking the tests (`tsc` excludes them).
-    // The warning targets ESM interop; this package is CommonJS.
+    // TS151002 réclame `isolatedModules: true`, qui passerait ts-jest en transpilation
+    // seule : les tests ne seraient plus typés (`tsc` les exclut). L'avertissement vise
+    // l'interop ESM ; ce paquet est CommonJS.
     '^.+\\.ts$': ['ts-jest', { diagnostics: { ignoreCodes: [151002] } }],
   },
   collectCoverageFrom: [
@@ -20,14 +20,12 @@ module.exports = {
   coverageDirectory: 'coverage',
   coverageReporters: ['text', 'lcov', 'html'],
   
-  // Prevent hanging tests
   testTimeout: 10000,
   
-  // Clear mocks between tests
   clearMocks: true,
   restoreMocks: true,
 
-  // Checked only by `jest --coverage`
+  // Vérifié seulement par `jest --coverage`
   coverageThreshold: {
     global: {
       branches: 40,

@@ -1,9 +1,3 @@
-/**
- * ChatBox Tests
- * The question field: sent by Enter or the send button, never blank, and replaced by a
- * cancel button while an answer streams
- */
-
 import { describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';

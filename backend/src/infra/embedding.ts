@@ -1,8 +1,3 @@
-/**
- * TEI (Text Embeddings Inference) Client
- * Handles embedding generation with configurable timeout
- */
-
 import type { EmbeddingConfig } from '../config';
 import type { EmbeddingVector, RagFailure } from '../types/rag';
 import { logger as rootLogger } from '../utils/logger';
@@ -23,8 +18,8 @@ const isNumberArray = (value: unknown): value is number[] =>
   Array.isArray(value) && value.every((component) => typeof component === 'number');
 
 /**
- * First vector of a TEI `/v1/embeddings` response (`{ data: [{ embedding }] }`)
- * @throws Error when the body does not have that shape
+ * Premier vecteur d'une réponse TEI `/v1/embeddings` (`{ data: [{ embedding }] }`)
+ * @throws si le corps n'a pas cette forme
  */
 const readEmbedding = (body: unknown): EmbeddingVector => {
   const entries = isRecord(body) ? body.data : undefined;
@@ -34,18 +29,10 @@ const readEmbedding = (body: unknown): EmbeddingVector => {
   return embedding;
 };
 
-/**
- * Embedding client for TEI service
- */
 export class EmbeddingClient {
   constructor(private readonly settings: EmbeddingConfig) {}
 
-  /**
-   * Embed a single text string
-   * @param text Text to embed
-   * @returns Embedding vector, sized by the configured model
-   * @throws RagError with stage='embedding'
-   */
+  /** @throws RagError d'étape `embedding` */
   async embedText(text: string): Promise<EmbeddingVector> {
     const startTime = Date.now();
     logger.info({ textLength: text.length, modelName: this.settings.modelName }, 'Embedding request started');

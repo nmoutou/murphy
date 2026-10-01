@@ -1,9 +1,4 @@
-"""L'extracteur : le module qui fait exister le graphe.
-
-L'ancienne version produisait **zéro relation** sur ce corpus — les 16 227 liens
-tombaient dans un ``except ValueError: continue``. Ces tests sont ce qui empêche ce
-silence de revenir.
-"""
+"""L'extracteur de liens de LEGI, qui fait exister le graphe."""
 
 from datetime import UTC, datetime
 from pathlib import Path
@@ -60,15 +55,8 @@ def test_lextracteur_satisfait_son_port() -> None:
 
 
 def test_UN_lien_donne_UNE_arete(fixtures_dir: Path) -> None:
-    """L'INVARIANT du lot, et ce qui interdit le retour de ``_invert``.
-
-    ``_invert`` ajoutait l'arête inverse **en plus** de l'originale : il doublait chaque
-    relation et rendait le graphe symétrique. Une citation devenait une co-citation, et
-    « A modifie B » impliquait « B modifie A ».
-
-    L'orientation n'est pas une passe appliquée après coup : c'est une propriété établie
-    à la construction, depuis ``sens``.
-    """
+    """Un lien donne une arête, orientée à la construction depuis ``sens`` : jamais
+    l'arête inverse en plus."""
     document = _parse(fixtures_dir, f"{ARTICLE_RICHE}.xml")
     result = GenericRelationExtractor(LEGI_ROLE_TABLE, SourceName.LEGI).extract(
         document
@@ -76,10 +64,8 @@ def test_UN_lien_donne_UNE_arete(fixtures_dir: Path) -> None:
 
     liens = [r for r in document.structure["references"] if r["id"]]
     ancestors = document.structure["context"]
-    # La SEULE exception à « un lien = une arête », et elle est voulue : les liens de
-    # VERSION se traitent EN GROUPE — la chaîne est une propriété de la liste, pas de
-    # chaque lien. Un document n'émet que les arêtes qui LE touchent (précédente → moi,
-    # moi → suivante), jamais le produit cartésien. Tout le reste est bijectif.
+    # Seule exception : les liens de version se traitent en groupe, et un document
+    # n'émet que les maillons de la chaîne qui le touchent.
     versions = [r for r in liens if r["kind"] == VERSION_KIND]
     chain = [r for r in result.relations if r.relation_type == SUCCEEDED_BY]
 
@@ -90,16 +76,14 @@ def test_UN_lien_donne_UNE_arete(fixtures_dir: Path) -> None:
         len([r for r in liens if r["kind"] == "LIEN"]) == 23
     )  # l'article riche, mesuré
     assert len(versions) == 25  # sa liste <VERSIONS> complète, lui-même inclus
-    assert len(chain) == 2  # et il n'en sort que SES deux maillons
+    assert len(chain) == 2  # et il n'en sort que ses deux maillons
 
 
 def test_les_versions_forment_une_CHAINE_dans_le_sens_du_temps(
     fixtures_dir: Path,
 ) -> None:
-    """L'article riche a 25 versions ; l'ancien ``has_version`` en faisait 24 arêtes
-    « dans tous les sens ». La chaîne n'en émet que DEUX depuis ce document : sa
-    précédente → lui, lui → sa suivante. L'auto-référence, jadis jetée, est devenue
-    l'ancre qui le localise dans sa propre liste triée par ``debut``.
+    """Sur 25 versions, la chaîne n'émet que deux arêtes depuis ce document : sa
+    précédente → lui, lui → sa suivante. L'auto-référence l'ancre dans la liste triée.
     """
     document = _parse(fixtures_dir, f"{ARTICLE_RICHE}.xml")
     result = GenericRelationExtractor(LEGI_ROLE_TABLE, SourceName.LEGI).extract(
@@ -111,20 +95,15 @@ def test_les_versions_forment_une_CHAINE_dans_le_sens_du_temps(
         (r.source_identifier.raw, r.target_identifier.raw): r.metadata for r in chain
     }
 
-    # Sa précédente → lui : la datation de l'arête est celle de la CIBLE — l'arête dit
-    # « succédé par cette version-ci, en vigueur de debut à fin ».
+    # La datation de l'arête est celle de sa cible
     assert edges[("LEGIARTI000006389955", ARTICLE_RICHE)]["debut"] == "2002-01-01"
-    # Lui → sa suivante, dans le sens de l'écoulement du temps.
+    # Lui → sa suivante, dans le sens du temps
     assert edges[(ARTICLE_RICHE, "LEGIARTI000006389957")]["debut"] == "2002-02-28"
 
 
 def test_sens_cible_signifie_que_LAUTRE_pointe_vers_MOI(fixtures_dir: Path) -> None:
-    """La preuve de l'orientation, et elle est empirique.
-
-    L'article riche (2015) porte des liens ``sens="cible"``. Si l'orientation était
-    inverse, un article de 2015 « citerait » des textes postérieurs à sa propre
-    rédaction. C'est l'AUTRE qui le cite : l'arête va du lié vers moi.
-    """
+    """Preuve empirique : l'article (2015) porte des liens ``sens="cible"`` vers des
+    textes postérieurs. C'est l'autre qui le cite."""
     document = _parse(fixtures_dir, f"{ARTICLE_RICHE}.xml")
     result = GenericRelationExtractor(LEGI_ROLE_TABLE, SourceName.LEGI).extract(
         document
@@ -154,9 +133,8 @@ def test_sens_source_signifie_que_JE_pointe_vers_LAUTRE(fixtures_dir: Path) -> N
 def test_les_paires_actives_et_passives_partagent_leur_verbe(
     fixtures_dir: Path,
 ) -> None:
-    """``MODIFIE`` et ``MODIFICATION`` donnent tous deux ``MODIFIES`` — c'est le même
-    verbe, vu de ses deux bouts. Ce qui les distingue est l'orientation, pas le type.
-    """
+    """``MODIFIE`` et ``MODIFICATION`` sont le même verbe vu de ses deux bouts : seule
+    l'orientation les distingue."""
     document = _parse(fixtures_dir, f"{ARTICLE_RICHE}.xml")
     result = GenericRelationExtractor(LEGI_ROLE_TABLE, SourceName.LEGI).extract(
         document
@@ -166,16 +144,13 @@ def test_les_paires_actives_et_passives_partagent_leur_verbe(
     typeliens = {r.metadata["typelien"] for r in modifies}
 
     assert typeliens == {"MODIFIE", "MODIFICATION"}
-    # Le même verbe, mais chacun orienté par SON sens : les deux arêtes ne pointent pas
-    # dans la même direction.
+    # Le même verbe, chacun orienté par son sens
     assert len({r.source_identifier.raw for r in modifies}) == 2
 
 
 def test_le_typelien_dorigine_SURVIT_dans_les_metadonnees(fixtures_dir: Path) -> None:
-    """``REFERENCES`` recouvre neuf typelien distincts. Sans cette trace, ``CODIFICATION``
-    et ``CONCORDANCE`` seraient indiscernables une fois en base — on aurait traduit au
-    prix d'un oubli.
-    """
+    """``REFERENCES`` recouvre plusieurs ``typelien`` : l'original survit en
+    métadonnée, sinon ils seraient indiscernables en base."""
     document = _parse(fixtures_dir, f"{ARTICLE_RICHE}.xml")
     result = GenericRelationExtractor(LEGI_ROLE_TABLE, SourceName.LEGI).extract(
         document
@@ -186,10 +161,7 @@ def test_le_typelien_dorigine_SURVIT_dans_les_metadonnees(fixtures_dir: Path) ->
 
 
 def test_la_hierarchie_devient_des_aretes_CONTAINS(fixtures_dir: Path) -> None:
-    """Une section CONTIENT ses articles (``LIEN_ART``), un texte ses sections. Ce type
-    n'existait pas avant le lot 4 : la colonne vertébrale du corpus n'avait aucun type
-    sous lequel s'écrire.
-    """
+    """Une section contient ses articles, un texte ses sections."""
     document = _parse(fixtures_dir, f"{SECTION_ARTICLES}.xml")
     result = GenericRelationExtractor(LEGI_ROLE_TABLE, SourceName.LEGI).extract(
         document
@@ -204,9 +176,8 @@ def test_la_hierarchie_devient_des_aretes_CONTAINS(fixtures_dir: Path) -> None:
 
 
 def test_les_ancetres_du_contexte_CONTIENNENT_le_document(fixtures_dir: Path) -> None:
-    """``<CONTEXTE>`` déclare la fermeture transitive : l'ancêtre contient le document,
-    et l'arête va de l'ancêtre VERS lui. Orientation fixe, jamais ambiguë.
-    """
+    """``<CONTEXTE>`` déclare la fermeture transitive : l'arête va de l'ancêtre vers le
+    document."""
     document = _parse(fixtures_dir, f"{ARTICLE_SIMPLE}.xml")
     result = GenericRelationExtractor(LEGI_ROLE_TABLE, SourceName.LEGI).extract(
         document
@@ -227,27 +198,13 @@ def test_les_ancetres_du_contexte_CONTIENNENT_le_document(fixtures_dir: Path) ->
 def test_un_verbe_inconnu_ENTRE_mais_un_sens_inconnu_NON(
     fixtures_dir: Path,
 ) -> None:
-    """LE test de l'instrument — et la distinction qui en fait tout le sel.
+    """Le corpus réel ne produit aucun inconnu : la fixture synthétique porte deux liens
+    pathologiques, qui ne se valent pas.
 
-    Le corpus réel ne produit AUCUN inconnu : les 16 typelien sont couverts. Il ne peut
-    donc pas prouver que l'instrument fonctionne — d'où cette fixture synthétique, qui
-    porte 3 liens dont 2 pathologiques.
-
-    **Les deux pathologies ne se valent pas, et c'est le cœur du contrat :**
-
-    - ``typelien="ZORGLUB"`` — le mot est inconnu, mais il *est* un mot. L'arête est
-      donc réelle : quelque chose relie bien ces deux documents, on ne sait simplement
-      pas encore comment ça s'appelle. Elle **entre**, sous son nom brut. Ne pas l'écrire
-      reviendrait à nier un lien que la source affirme.
-
-    - ``sens="lateral"`` — on ne sait pas **dans quel sens** va l'arête. Ici, écrire
-      quand même serait inventer : une arête mal orientée ne se distingue pas d'une arête
-      juste, et elle corromprait le voisinage en silence. Elle n'entre **pas**.
-
-    La règle qui les sépare : on ingère ce qu'on ne comprend pas, on n'invente pas ce
-    qu'on ne sait pas. Les deux cas ressortent — l'aveu, lui, est dû dans tous les cas :
-    le verbe inconnu comme type de lien (``links``), le sens inconnu comme lien perdu
-    (``relation.unknown``).
+    - ``typelien="ZORGLUB"`` : un mot inconnu, mais la source affirme le lien. L'arête
+      entre, sous son nom brut, et le type est déclaré en ``links``.
+    - ``sens="lateral"`` : l'orienter serait inventer, et une arête mal orientée ne se
+      distingue pas d'une juste. Elle n'entre pas, et compte en ``relation.unknown``.
     """
     document = _parse(fixtures_dir, "unknown_vocabulary.xml")
     result = GenericRelationExtractor(LEGI_ROLE_TABLE, SourceName.LEGI).extract(
@@ -267,9 +224,8 @@ def test_un_verbe_inconnu_ENTRE_mais_un_sens_inconnu_NON(
 
 
 def test_une_cible_JORF_garde_son_identifiant_tel_quel() -> None:
-    """568 arêtes du corpus pointent vers JORF. Leur cible est nommée par son identifiant
-    brut, la clé même sous laquelle un document JORF serait écrit.
-    """
+    """Les arêtes vers JORF nomment leur cible par son identifiant brut, la clé sous
+    laquelle un document JORF serait écrit."""
     document = _document_with_references(
         [
             {
@@ -291,10 +247,8 @@ def test_une_cible_JORF_garde_son_identifiant_tel_quel() -> None:
 
 
 def test_un_id_vide_ne_pollue_PAS_les_inconnus() -> None:
-    """89 ``<LIEN id="">`` dans le corpus. Un identifiant absent n'est pas un vocabulaire
-    inconnu : il n'y a rien à apprendre d'un attribut vide. Le déclarer noierait les
-    vrais inconnus sous du bruit.
-    """
+    """Un ``id`` vide n'est pas un vocabulaire inconnu : rien à apprendre d'un attribut
+    vide."""
     document = _document_with_references(
         [{"kind": "LIEN", "id": "", "typelien": "CITATION", "sens": "source"}]
     )
@@ -309,12 +263,8 @@ def test_un_id_vide_ne_pollue_PAS_les_inconnus() -> None:
 
 
 def test_un_id_PRESENT_mais_illisible_est_DECLARE_pas_jete() -> None:
-    """La distinction jumelle de l'`id` vide : un `id` PRÉSENT mais que la table ne sait
-    pas transformer (format inattendu) n'est PAS une absence — la source a écrit une
-    référence. La taire (l'ancien `except: return None`) faisait disparaître l'arête en
-    silence. Elle est COMPTÉE comme lien perdu (`relation.unknown`), pour que le bilan
-    la porte — sans polluer les types de lien inconnus.
-    """
+    """Un ``id`` présent mais illisible n'est pas une absence : la source a écrit une
+    référence. Il est compté en ``relation.unknown``, pas dans les types inconnus."""
     document = _document_with_references(
         [{"kind": "LIEN", "id": "GARBAGE", "typelien": "CITATION", "sens": "source"}]
     )
@@ -355,14 +305,10 @@ def test_le_curseur_RETIRE_les_aretes_non_configurees_mais_pas_le_signal() -> No
 
 
 def test_une_mort_nee_saccroche_en_branche_LATERALE_hors_chaine() -> None:
-    """Le cas réel L641-6 du corpus, en synthétique : un texte A modifie l'article avec
-    effet différé, un texte B révoque la disposition avant l'échéance — la version
-    qu'A aurait produite est MORT-NÉE (``etat`` en ``_MORT_NE``, jamais en vigueur).
-
-    Poids juridique nul : la chaîner affirmerait qu'à une date D elle fut le droit
-    applicable, ce qui n'est jamais arrivé. Elle s'accroche donc en branche latérale à
-    la version en vigueur au moment de l'avortement — et l'``etat`` sur l'arête permet
-    de l'écarter (``WHERE r.etat <> 'MODIFIE_MORT_NE'`` restitue la chaîne stricte).
+    """Une version mort-née (``etat`` en ``_MORT_NE``) n'a jamais été le droit
+    applicable : hors chaîne, elle s'accroche en branche latérale à la version en
+    vigueur à l'avortement. L'``etat`` sur l'arête permet de l'écarter
+    (``WHERE r.etat <> 'MODIFIE_MORT_NE'``).
     """
     me = "LEGIARTI000000000001"  # l'identifiant du helper : la version en vigueur
     document = _document_with_references(
@@ -409,7 +355,7 @@ def test_une_mort_nee_saccroche_en_branche_LATERALE_hors_chaine() -> None:
     }
     assert set(edges) == {
         ("LEGIARTI000000000009", me),  # ma précédente → moi
-        (me, "LEGIARTI000000000003"),  # moi → ma suivante : la chaîne SAUTE la mort-née
+        (me, "LEGIARTI000000000003"),  # moi → ma suivante : la chaîne saute la mort-née
         (me, "LEGIARTI000000000002"),  # moi → ma jumelle mort-née, en latéral
     }
     assert edges[(me, "LEGIARTI000000000002")]["etat"] == "MODIFIE_MORT_NE"
@@ -417,10 +363,8 @@ def test_une_mort_nee_saccroche_en_branche_LATERALE_hors_chaine() -> None:
 
 
 def test_une_mort_nee_recoit_son_arete_et_nen_emet_AUCUNE() -> None:
-    """Vue depuis le document mort-né lui-même : son arête entrante vient de la version
-    en vigueur au moment de l'avortement (la dernière vivante avant son ``debut``
-    théorique), et il n'émet RIEN — une version jamais née n'a pas de suite.
-    """
+    """Vue depuis la mort-née : son arête entrante vient de la version en vigueur à
+    l'avortement, et elle n'émet rien."""
     me = "LEGIARTI000000000001"  # cette fois, le helper incarne la mort-née
     document = _document_with_references(
         [

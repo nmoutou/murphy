@@ -1,8 +1,3 @@
-/**
- * Qdrant Vector Database Client
- * Handles semantic search over the configured collection
- */
-
 import { QdrantClient } from '@qdrant/qdrant-js';
 import { documentTypeSchema, type DocumentType } from '@murphy/contract/messages';
 import type { QdrantConfig } from '../config';
@@ -44,8 +39,8 @@ const readDocumentType = (payload: Payload): DocumentType | undefined => {
 };
 
 /**
- * Checks a point's payload against the serving contract (ADR-039 §2)
- * @throws RagError `CONTRACT_VIOLATION` naming the point when a field is missing
+ * Vérifie le payload d'un point contre le contrat de service (ADR-039)
+ * @throws RagError `CONTRACT_VIOLATION` nommant le point si un champ manque
  */
 export const toRetrievedChunk = ({ id, score, payload }: ScoredPoint): RetrievedChunk => {
   const chunkId = readString(payload, 'chunk_id');
@@ -61,9 +56,6 @@ export const toRetrievedChunk = ({ id, score, payload }: ScoredPoint): Retrieved
   return { chunkId, identifier, charStart, charEnd, score, documentType, nature: readString(payload, 'nature') };
 };
 
-/**
- * Qdrant client for vector similarity search
- */
 export class QdrantVectorClient {
   private readonly client: QdrantClient;
 
@@ -71,10 +63,7 @@ export class QdrantVectorClient {
     this.client = new QdrantClient({ url: options.url, timeout: options.timeoutMs });
   }
 
-  /**
-   * Checks at boot that the configured collection can be served
-   * @throws Error when Qdrant is unreachable or the collection does not exist
-   */
+  /** @throws si Qdrant est injoignable ou la collection absente */
   async assertCollectionExists(): Promise<void> {
     const { url, collection } = this.options;
     const { exists } = await this.client.collectionExists(collection).catch((error) => {
@@ -88,13 +77,7 @@ export class QdrantVectorClient {
     logger.info({ collection }, 'Qdrant collection found');
   }
 
-  /**
-   * Search for similar vectors
-   * @param vector Embedding vector of the question
-   * @param topK Number of results to return
-   * @returns The chunks ranked by similarity, their payload checked against the contract
-   * @throws RagError with stage='retrieval'
-   */
+  /** @throws RagError d'étape `retrieval`, ou `CONTRACT_VIOLATION` sur un payload invalide */
   async searchVectors(vector: EmbeddingVector, topK: number): Promise<RetrievedChunk[]> {
     const startTime = Date.now();
     const { collection, minScore } = this.options;
@@ -114,7 +97,7 @@ export class QdrantVectorClient {
       throw ragError;
     }
 
-    // Outside the `try`: a contract violation must not be reported as a failed search
+    // Hors du `try` : une violation de contrat n'est pas une recherche échouée
     const chunks = points.map(toRetrievedChunk);
     logger.info({ resultCount: chunks.length, minScore, durationMs: Date.now() - startTime }, 'Qdrant search completed');
     return chunks;

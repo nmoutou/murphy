@@ -1,8 +1,4 @@
-"""Télémétrie enregistreuse — un backend par worker, sans aucun verrou.
-
-Aucune section critique ici, et ce n'est pas un raccourci de test : c'est le point.
-Chaque worker a SA pile ; rien n'est partagé, donc rien n'est à protéger.
-"""
+"""Télémétrie enregistreuse, une par worker : rien de partagé, donc aucun verrou."""
 
 from typing import Any
 

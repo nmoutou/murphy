@@ -1,14 +1,7 @@
-"""Nœud phase 2 — les arêtes, après la barrière.
+"""Nœud de la phase 2 : il consomme l'``IngestionOutcome``, donc ne tourne qu'une fois
+tous les nœuds du run écrits.
 
-Ce nœud consomme l'``IngestionOutcome`` de la phase 1 : c'est cette dépendance de
-données qui EST la barrière. Kedro ne peut pas l'ordonnancer avant que tous les nœuds
-du run existent, donc ``ResolveRelationsService`` peut faire ses ``MATCH`` sans risque
-qu'une cible manque parce qu'elle n'est pas encore écrite (le reste — les cibles
-réellement absentes du corpus — part au registre des pendantes, §13).
-
-Le service est async ; le pont sync→async est le ``pipeline_runtime`` du hook (sa
-boucle, ses clients). Ce nœud n'est PAS parallélisé : il traite l'union en un batch,
-pas document par document. Il n'a donc pas besoin du pool.
+Non parallélisé : il traite l'union en un batch, sur le runtime du hook.
 """
 
 from __future__ import annotations
@@ -30,7 +23,6 @@ def resolve_relations_node(
     pipeline_runtime: AsyncRuntime,
     pipeline_context: PipelineContext,
 ) -> ResolutionOutcome:
-    """Réduit puis écrit les arêtes du run, et promeut les pendantes résolues."""
     return pipeline_runtime.run(
         resolve_service.execute(
             ingestion_outcome.relations,

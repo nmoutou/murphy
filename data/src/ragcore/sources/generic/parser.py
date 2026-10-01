@@ -1,29 +1,11 @@
-"""Le parser générique — **un seul**, pour six sources.
+"""Le parser générique, unique pour toutes les sources, guidé par une table de rôles.
 
-**Ce qu'il n'est pas : une réécriture.** Le parser LEGI était *déjà* générique — sa
-mécanique (parcourir l'arbre, relever les blocs de texte, aplatir les métadonnées) ne
-contenait pas un mot de LEGI. Ce qu'il contenait de LEGI tenait dans quatre constantes de
-module. Ce fichier est le même code, dont les constantes sont devenues un argument.
+Invariant dont dépend le chunker : ``content`` et ``structure["sections"]`` viennent de
+la même fonction (``_text_blocks``), dans le même ordre, donc chaque section est un
+morceau littéral de ``content``.
 
-C'est la mesure du succès de §3 : *une source nouvelle = une table, pas un second
-parser*. La jurisprudence n'écrira pas une ligne de ce fichier.
-
-**L'invariant qu'il garantit, et dont le chunker dépend.** ``content`` et
-``structure["sections"]`` sont lus par la MÊME fonction (``_text_blocks``), dans le même
-ordre. Chaque section est donc un **morceau littéral** de ``content``, et
-``content.find(section)`` le retrouve toujours. Deux sources divergentes auraient produit
-des ``char_start`` qui ne pointent nulle part — et un offset faux ne lève rien : il
-désigne simplement le mauvais passage, et personne ne s'en aperçoit.
-
-**Aucune lemmatisation, et ce n'est pas un allègement — c'est une correction.** L'ancien
-``_clean_text`` passait le contenu dans spaCy. Mesuré sur un vrai article :
-
-    avant : « Le directeur général est nommé par décret pour une durée de trois ans »
-    après : « directeur général nommer décret durée an »
-
-Ce sac de lemmes partait dans Mongo — donc s'affichait à l'utilisateur comme *source* —
-et était embarqué par ``all-mpnet-base-v2``, un modèle de phrases entraîné sur du texte
-naturel. Le texte original n'était stocké nulle part : la destruction était irréversible.
+Aucune lemmatisation : le contenu s'affiche à l'utilisateur et part dans un modèle de
+phrases entraîné sur du texte naturel.
 """
 
 from __future__ import annotations
@@ -57,13 +39,6 @@ __all__ = ["GenericParser"]
 
 
 class GenericParser:
-    """Interprète un document XML transcrit, guidé par une table de rôles.
-
-    Le connecteur a transcrit l'arbre sans rien comprendre ; la table dit ce que chaque
-    balise signifie ; ce parser fait le travail. Aucun des trois ne connaît les deux
-    autres.
-    """
-
     def __init__(self, table: RoleTable, source: SourceName) -> None:
         self._table = table
         self._source = source
@@ -73,20 +48,11 @@ class GenericParser:
         return self._source
 
     def parse(self, raw: RawDocument) -> ParseResult:
-        """Interprète les facettes d'un document.
+        """Lève ``ValidationError`` si le document est lisible mais irrecevable (dont
+        ``CollisionError``, ADR-049), ``ParseError`` s'il est illisible : un refus métier
+        et une panne de lecture ne sont pas comptés sous la même raison.
 
-        Lève ``ValidationError`` si le document est lisible mais irrecevable (pas
-        d'identifiant, identifiant mal formé, facettes sans ordre déclaré) — dont
-        ``CollisionError`` pour une collision non configurée (ADR-049) —, ``ParseError``
-        s'il est illisible. Les
-        appelants comptent sur cette distinction : l'une est un refus métier, l'autre une
-        panne de lecture, et ``document.invalidated`` ne les compte pas sous la même
-        raison.
-
-        Rend un ``ParseResult`` : le document, plus les signaux des balises
-        non-configurées — absentes de la table (cascade → metadata ou lien) ou sans
-        renommage (→ metadata sous leur clé chemin-complet) —, et les collisions de
-        valeurs. Le parser reste PUR : il constate et rend, il ne compte rien.
+        Pur : les signaux non configurés et les collisions sont rendus, pas comptés.
         """
         try:
             return self._interpret(raw)
@@ -157,7 +123,6 @@ class GenericParser:
         return content
 
     def _identifier(self, facets: list[Node]) -> Identifier:
-        """L'identifiant du document, lu dans la balise que la table de rôles désigne."""
         for facet in facets:
             node = first(facet, self._table.identifier_tag)
             if node is None or not node["text"].strip():
@@ -167,20 +132,13 @@ class GenericParser:
             try:
                 return Identifier(raw=raw_id)
             except PydanticValidationError as exc:
-                # Sans ce relais, la pydantic.ValidationError échapperait au
-                # `except ValidationError` des appelants et se ferait compter comme une
-                # erreur de parsing — un refus métier maquillé en panne de lecture.
+                # Sinon l'erreur pydantic serait comptée en panne de lecture
                 raise ValidationError(f"Identifiant invalide : {raw_id!r}") from exc
 
         raise ValidationError("Identifiant absent du document")
 
     def _title(self, facets: list[Node]) -> str:
-        """Le premier titre trouvé, dans l'ordre de préférence de la table.
-
-        À la fusion, ``TEXTE_VERSION`` apporte ``<TITRE>`` et ``TEXTELR`` n'apporte rien :
-        c'est exactement pourquoi les deux doivent être lues ensemble, et pourquoi l'ordre
-        de ``title_tags`` est une décision, pas un détail.
-        """
+        """Le premier titre trouvé, dans l'ordre de préférence de la table."""
         for tag in self._table.title_tags:
             for facet in facets:
                 node = first(facet, tag)
@@ -189,37 +147,24 @@ class GenericParser:
         return ""
 
     def _content(self, facets: list[Node]) -> str:
-        """Le texte réel du document — débalisé, normalisé, et RIEN DE PLUS.
-
-        Un document sans bloc de contenu (une section de plan, mesuré : 0/287 chez LEGI)
-        rend la chaîne vide, et le chunker n'en fera aucun chunk. C'est la vérité, pas un
-        échec : un nœud de structure n'est pas un porteur de texte.
-        """
+        """Débalisé, normalisé, rien de plus. Vide pour une section de plan, qui ne
+        porte pas de texte."""
         return normalize_text(
             "\n\n".join(text for _, text in self._text_blocks(facets) if text.strip())
         )
 
     def _sections(self, facets: list[Node]) -> list[dict[str, Any]]:
-        """Les blocs textuels du document, avec leur chemin structurel.
-
-        **Exactement les mêmes blocs que ``_content``, dans le même ordre.** C'est ce qui
-        rend les offsets du chunker vérifiables : chaque section est un morceau littéral
-        de ``content``, donc ``content.find(section)`` le retrouve toujours.
-        """
+        """Les mêmes blocs que ``_content``, dans le même ordre, avec leur chemin."""
         return [
             {"path": path, "text": normalize_text(text)}
             for path, text in self._text_blocks(facets)
             if text.strip()
         ]
 
-    # ── Source UNIQUE de `_content` et `_sections` ─────────────────────────────
+    # ── Source unique de `_content` et `_sections` ─────────────────────────────
 
     def _text_blocks(self, facets: list[Node]) -> list[tuple[list[str], str]]:
-        """Les blocs de texte, dans l'ordre : ``(chemin structurel, texte)``.
-
-        **Les faire diverger de ``_content``, c'est garantir que les offsets des chunks
-        pointeront à côté du texte qu'ils prétendent découper.** D'où cette source unique.
-        """
+        """``(chemin structurel, texte)``, dans l'ordre."""
         return [
             ([facet["tag"], block_tag], text)
             for facet in facets
@@ -231,11 +176,10 @@ class GenericParser:
 
 
 def _ordered(sourced: list[SourcedFacet], table: RoleTable) -> list[SourcedFacet]:
-    """Les facettes dans l'ordre de ``table.roots`` : celui des valeurs d'une même clé
-    (ADR-049). Les livrer dans l'ordre des chemins de fichiers en ferait un accident.
+    """Dans l'ordre de ``table.roots``, qui fixe celui des valeurs d'une clé (ADR-049).
 
-    Un document à plusieurs facettes n'a pas d'ordre si l'une a une racine non déclarée,
-    ou si deux partagent leur racine : il est refusé plutôt que trié au hasard.
+    Sans ordre possible (racine non déclarée ou partagée), le document est refusé
+    plutôt que trié au hasard.
     """
     if len(sourced) <= 1:
         return sourced
@@ -249,8 +193,8 @@ def _ordered(sourced: list[SourcedFacet], table: RoleTable) -> list[SourcedFacet
 
 
 def _sourced(facets: list[Node], files: Sequence[str]) -> list[SourcedFacet]:
-    """Chaque facette avec son fichier : les connecteurs les livrent en listes
-    parallèles. Un payload sans fichiers (tests) donne un fichier vide."""
+    """Les connecteurs livrent facettes et fichiers en listes parallèles. Sans fichiers
+    (tests), le fichier est vide."""
     return [
         (facet, files[index] if index < len(files) else "")
         for index, facet in enumerate(facets)

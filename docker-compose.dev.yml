@@ -18,8 +18,8 @@ services:
   backend:
     build:
       target: development
-    # Sources only: dependencies live in the image, and no root-owned node_modules
-    # appears on the host
+    # Les sources seulement : les dépendances vivent dans l'image, et aucun
+    # node_modules appartenant à root n'apparaît sur l'hôte
     volumes:
       - ./backend/src:/app/backend/src:cached
     command: npm run dev:watch
@@ -30,7 +30,7 @@ services:
   frontend:
     build:
       target: development
-    # `next dev` reads it at startup; production inlines it at build time instead
+    # Lu au démarrage par `next dev` ; la production l'inline au build
     environment:
       - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
     volumes:

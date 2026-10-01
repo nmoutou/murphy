@@ -18,34 +18,19 @@ def nuke_all_node(
     nuke_all: bool,
     pipeline_runtime: AsyncRuntime,
 ) -> dict[str, bool]:
-    """Efface TOUTES les données de TOUTES les bases quand ``nuke_all=true``.
+    """Efface toutes les données de toutes les bases quand ``nuke_all=true``.
 
-    Tourne en tête d'ingestion. C'est le levier disque du développement : les données
-    n'ont aucune valeur en v0, et ``force_drop`` par store était trop chirurgical pour
-    récupérer la place que prenaient les collections Qdrant d'anciennes stratégies.
+    - Mongo : `documents`, `pending_relations` et `unformatted_relations`, qui
+      pointent vers les nœuds effacés ;
+    - Neo4j : le graphe entier ;
+    - Qdrant : toutes les collections du store, pas seulement celle du run.
 
-    Ce que le nuke efface — et ce qu'il PRÉSERVE :
-    - Mongo *données* : les collections `documents`, `pending_relations` et
-      `unformatted_relations` (base `MURPHY_DATA`). Une pendante pointe vers des nœuds
-      que le nuke efface : la garder ferait rejouer un backlog sans sources ; le run
-      suivant la retrouve. Une relation non formatée part avec le document qui
-      l'énonce, pour la même raison.
-    - Neo4j : le graphe entier.
-    - Qdrant : **toutes** les collections du store, pas seulement celle du run —
-      c'est là que se cache la place perdue.
-    - **PRÉSERVÉ : la base méta Mongo** (`MURPHY_META` : bilans de run). Un nuke ne
-      doit jamais emporter la mémoire de ce qu'on a fait — c'est elle qui rend un run
-      *invérifiable* si elle disparaît, pas le corpus.
-
-    Le garde-fou dev est appliqué en amont, par ``plan_run`` (``resolve_dev_settings``) :
-    hors ``ENVIRONMENT=dev``, ``parameters.yml`` est ignoré et ``nuke_all`` arrive ici à
-    ``False``.
+    La base méta (bilans de run) est préservée. Hors ``ENVIRONMENT=dev``, ``nuke_all``
+    arrive ici à ``False`` (``resolve_dev_settings``).
     """
     if not nuke_all:
-        # Setup partagé quand même : la collection doit exister avant le pool de
-        # workers, qu'on ait nuké ou démarré à froid. La laisser aux workers les met
-        # en course, et Qdrant répond `409` à tous sauf un — un document perdu par
-        # worker perdant.
+        # La collection doit exister avant le pool : créée par les workers, elle les
+        # mettrait en course (`409`)
         pipeline_runtime.run(vector_repo.ensure_collection())
         return {"mongodb": False, "neo4j": False, "qdrant": False}
 
@@ -62,8 +47,6 @@ def nuke_all_node(
 
     dropped: dict[str, bool] = {"mongodb": True, "neo4j": True, "qdrant": True}
 
-    # Setup partagé, hors du drop : la collection du run doit exister
-    # avant que le pool ne démarre, qu'on vienne de tout dropper ou non.
     pipeline_runtime.run(vector_repo.ensure_collection())
     return dropped
 

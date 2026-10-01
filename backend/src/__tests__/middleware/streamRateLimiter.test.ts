@@ -1,16 +1,10 @@
-/**
- * Stream Rate Limiter Tests
- * The per-IP stream budget, on the WebSocket side (`consumeStreamQuota`) and on
- * the real app (a forged `X-Forwarded-For` must not dodge it)
- */
-
 import request from 'supertest';
 import app from '../../app';
 import { consumeStreamQuota } from '../../middleware/streamRateLimiter';
 
 jest.mock('../../services/chatService', () => ({ createChatStream: jest.fn() }));
 jest.mock('../../infra/clients', () => ({ getInfraClients: jest.fn() }));
-// `pino-http` (request logger) needs a real Pino instance
+// `pino-http` exige une vraie instance Pino
 jest.mock('../../utils/logger', () => ({
   logger: jest.requireActual<typeof import('pino')>('pino').pino({ level: 'silent' }),
 }));
@@ -46,8 +40,8 @@ describe('consumeStreamQuota', () => {
 
 describe('POST /api/v1/chat/streams rate limit', () => {
   it('is not dodged by forging a new X-Forwarded-For on each request', async () => {
-    // express-rate-limit flags the header it ignores; that warning is what a
-    // missing `trust proxy` looks like once deployed behind a proxy
+    // express-rate-limit signale l'en-tête qu'il ignore : c'est le symptôme d'un
+    // `trust proxy` manquant derrière un proxy
     const consoleError = jest.spyOn(console, 'error').mockImplementation(() => undefined);
     const statuses: number[] = [];
     for (let attempt = 0; attempt <= STREAM_MAX_REQUESTS; attempt++) {
@@ -66,7 +60,7 @@ describe('POST /api/v1/chat/streams rate limit', () => {
 
 describe('POST /api/v1/chat/completions rate limit', () => {
   it('draws from the budget of /streams', async () => {
-    // Spends what the previous tests left of the loopback budget, whatever that is
+    // Épuise ce que les tests précédents ont laissé du budget de loopback
     let streamsStatus = HTTP_BAD_REQUEST;
     for (let attempt = 0; attempt <= STREAM_MAX_REQUESTS && streamsStatus !== HTTP_TOO_MANY_REQUESTS; attempt++) {
       streamsStatus = (await request(app).post('/api/v1/chat/streams').send({ messages: [] })).status;

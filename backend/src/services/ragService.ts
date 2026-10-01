@@ -1,8 +1,3 @@
-/**
- * RAG Service
- * Helper functions for the Retrieval-Augmented Generation pipeline.
- */
-
 import type { Passage, RetrievedChunk } from '../types/rag';
 import { logger as rootLogger } from '../utils/logger';
 import { getInfraClients } from '../infra/clients';
@@ -10,7 +5,7 @@ import { assemblePassages } from './passages';
 
 const logger = rootLogger.child({ context: 'ragService' });
 
-/** Stands in for the passages in the French system prompt when the search found none */
+/** Remplace les passages dans le prompt système quand la recherche n'en trouve aucun */
 const NO_PASSAGE_CONTEXT = 'Aucun document pertinent trouvé.';
 
 export interface EmbedResult {
@@ -41,8 +36,7 @@ export const retrieveChunks = async (embedding: number[], topK: number): Promise
 };
 
 /**
- * Reads the parent documents of the chunks, then cuts each passage out of its parent
- * @throws RagError with stage='retrieval', `CONTRACT_VIOLATION` when a parent or its offsets do not match
+ * @throws RagError d'étape `retrieval`, `CONTRACT_VIOLATION` si un parent ou ses offsets ne collent pas
  */
 export const fetchPassages = async (chunks: readonly RetrievedChunk[]): Promise<PassageFetchResult> => {
   if (chunks.length === 0) {
@@ -54,7 +48,7 @@ export const fetchPassages = async (chunks: readonly RetrievedChunk[]): Promise<
   return { passages: assemblePassages(chunks, documents), docFetchMs: Date.now() - start };
 };
 
-/** The LLM reads the passage alone, not its whole document (ADR-039 §4) */
+/** Le LLM lit le passage seul, pas son document entier (ADR-039) */
 export const buildContextString = (passages: readonly Passage[]): string => {
   if (passages.length === 0) {
     return NO_PASSAGE_CONTEXT;

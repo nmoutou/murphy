@@ -5,15 +5,11 @@ from ..models.chunk import Chunk, EmbeddedChunk
 
 @runtime_checkable
 class BaseEmbedder(Protocol):
-    """Vectorisation des fragments.
-
-    Le seul port de traitement qui soit asynchrone : l'implémentation appelle le service
-    d'embedding, par lots.
-    """
+    """Vectorisation des fragments, par lots auprès du service d'embedding."""
 
     @property
     def dimension(self) -> int:
-        """La taille des vecteurs produits : celle de la collection Qdrant."""
+        """Celle de la collection Qdrant."""
         ...
 
     async def embed(self, chunks: list[Chunk]) -> list[EmbeddedChunk]: ...

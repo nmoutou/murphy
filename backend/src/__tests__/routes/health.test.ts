@@ -1,8 +1,3 @@
-/**
- * Health Routes Tests
- * Global status derived from the TEI, Qdrant and MongoDB checks, over a mocked `fetch` and ping
- */
-
 import express, { Express } from 'express';
 import request from 'supertest';
 import healthRouter from '../../routes/health';
@@ -21,7 +16,7 @@ const HTTP_OK = 200;
 const HTTP_SERVER_ERROR = 500;
 const HTTP_SERVICE_UNAVAILABLE = 503;
 
-/** Answers the TEI (`/health`) and Qdrant (`/healthz`) checks with the given HTTP statuses */
+/** Répond aux sondes TEI (`/health`) et Qdrant (`/healthz`) avec les statuts donnés */
 const mockHttpServices = (teiStatus: number, qdrantStatus: number): void => {
   jest.spyOn(global, 'fetch').mockImplementation(async (url) => {
     const status = String(url).endsWith('/healthz') ? qdrantStatus : teiStatus;

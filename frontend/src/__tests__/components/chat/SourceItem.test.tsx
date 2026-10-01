@@ -1,8 +1,3 @@
-/**
- * Source Item Tests
- * A retrieved passage, shown with its document type and, when meaningful, its legal nature
- */
-
 import { describe, expect, it } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import type { DocumentChunk } from '@murphy/contract/messages';

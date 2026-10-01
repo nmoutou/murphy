@@ -1,10 +1,7 @@
 """Implémentation Neo4j du GraphRepository.
 
-Un nœud est identifié par son seul ``identifier`` sérialisé (p. ex.
-``LEGIARTI000006419264``) — jamais par un champ deviné parmi plusieurs candidats : un
-identifiant unique et explicite est ce qui rend le ``MERGE`` déterministe. Un nœud porte
-deux labels : ``Document``, qui porte la contrainte d'unicité, et celui de son
-``document_type`` (``Article``, ``Decision``…).
+Un nœud est identifié par son seul ``identifier`` sérialisé et porte deux labels :
+``Document``, qui porte la contrainte d'unicité, et celui de son ``document_type``.
 """
 
 import neo4j
@@ -27,27 +24,18 @@ _MERGE_NODE = (
 
 
 class Neo4jGraphRepository:
-    """Neo4j implementation of GraphRepository.
-
-    Utilise `identifier` (sérialisé) comme champ clé unique pour tous les nœuds.
-    """
-
     def __init__(
         self,
         driver: neo4j.AsyncDriver,
         hydration: NodeHydration | None = None,
     ) -> None:
         self._driver = driver
-        # Défaut = régime prod (nœud maigre). Le hook passe l'hydratation de dev.
+        # Défaut : nœud maigre, comme en prod
         self._hydration = hydration or NodeHydration()
 
     async def merge_document_node(self, document: ParsedDocument) -> None:
-        """Merge un nœud document : ``Document``, plus le label de son type.
-
-        Le ``MERGE`` porte sur ``Document`` et ``identifier`` : il passe par la contrainte
-        d'unicité. Le label de type s'ajoute ensuite. Il ne change jamais pour un
-        identifiant, puisque le type se déduit de son préfixe.
-        """
+        """Le ``MERGE`` porte sur ``Document`` et ``identifier``, donc sur la contrainte
+        d'unicité ; le label de type, déduit du préfixe, s'ajoute ensuite."""
         async with self._driver.session() as session:
             await session.run(
                 _MERGE_NODE,
@@ -59,33 +47,16 @@ class Neo4jGraphRepository:
     async def upsert_relations(
         self, relations: list[Relation], run_id: RunId
     ) -> RelationWriteResult:
-        """Crée ou met à jour les relations, et rapporte celles qui n'ont pas pris.
+        """Le type d'arête est le verbe, pour une traversée native
+        (``MATCH (a)-[:CITES]->(b)``). Le paramétrer (``$(...)``, Cypher 5.26+) est sûr :
+        un ``ValidatedVerb`` n'a rien à injecter.
 
-        **Le type d'arête est le VERBE, et c'est le point.** L'ancienne version écrivait
-        toutes les arêtes sous un type constant ``:REFERENCES`` et rangeait le verbe réel
-        dans une *propriété*. Le graphe n'avait alors qu'un seul type de lien : le
-        voisinage du serving (le rôle même de Neo4j ici) devait scanner **toutes** les
-        arêtes puis filtrer sur une propriété, là où ``MATCH (a)-[:CITES]->(b)`` est une
-        traversée native indexée. Le verbe était une donnée *dans* le graphe au lieu
-        d'être la *structure* du graphe.
-
-        ``MERGE (a)-[r:$($relation_type)]->(b)`` — le type d'arête paramétré, natif
-        depuis Cypher 5.26 (vérifié aussi sur 2025.09, sans APOC). La sûreté ne vient pas
-        d'un échappement : elle vient du type. ``Relation.relation_type`` est un
-        ``ValidatedVerb`` — il ne peut pas contenir autre chose que
-        ``[a-z][a-z0-9_]*``, donc il n'y a rien à injecter.
-
-        Un ``MATCH`` qui ne matche pas produit zéro ligne : la requête réussit, ne lève
-        rien, et n'écrit rien. Le ``RETURN r`` était déjà là — il n'était simplement
-        jamais lu, et l'arête disparaissait en silence. Le consommer suffit à distinguer
-        l'écrit du différé.
+        Un ``MATCH`` sans résultat réussit sans rien écrire : seul le ``RETURN r``
+        distingue l'arête écrite de la différée.
         """
         written: list[Relation] = []
         pending: list[Relation] = []
 
-        # La cible IDENTIFIÉE doit exister : `MATCH (b)`. Si le document cité n'est pas
-        # (encore) dans le corpus, la requête ne rend rien et l'arête part au cache des
-        # pendantes (§13) — elle sera rejouée quand la cible arrivera.
         matched = (
             f"MATCH (a:{DOCUMENT_LABEL} {{identifier: $source_identifier}})"
             f" MATCH (b:{DOCUMENT_LABEL} {{identifier: $target_identifier}})"
@@ -93,10 +64,6 @@ class Neo4jGraphRepository:
             " SET r += $props SET r.run_id = $run_id RETURN r"
         )
 
-        # Il n'y a plus qu'un cas. Une cible DÉCRITE ne devient plus une arête vers un
-        # placeholder : elle est une relation non formatée (ADR-045), écrite dans Mongo
-        # et jamais dans le graphe. Toute relation qui arrive ici a donc une cible
-        # identifiée, et le seul motif légitime est le `MATCH`.
         async with self._driver.session() as session:
             for relation in relations:
                 result = await session.run(
@@ -116,7 +83,6 @@ class Neo4jGraphRepository:
         return RelationWriteResult(written=written, pending=pending)
 
     async def existing_node_ids(self, identifiers: list[Identifier]) -> set[str]:
-        """Les identifiants (sérialisés) qui existent bel et bien comme nœuds."""
         if not identifiers:
             return set()
 
@@ -134,12 +100,7 @@ class Neo4jGraphRepository:
     async def delete_relations_from(
         self, identifier: Identifier, source: SourceName
     ) -> None:
-        """Supprime les seules relations SORTANTES du nœud, sans toucher au nœud.
-
-        Le ``MATCH`` porte sur l'``identifier`` sérialisé — la même clé que ``merge``, donc
-        on retrouve exactement le nœud écrit. Ne supprimer que le sortant préserve les
-        arêtes qu'un AUTRE document a posées vers celui-ci.
-        """
+        """Les sortantes seulement : les arêtes posées par d'autres documents restent."""
         identifier_value = identifier.serialize()
 
         query = (
@@ -152,20 +113,12 @@ class Neo4jGraphRepository:
             )
 
     async def delete_relations_by_run(self, run_id: RunId) -> None:
-        """Détache les arêtes taguées de ce ``run_id`` — et elles seules (§8).
-
-        La maille de compensation. ``upsert_relations`` pose ``r.run_id`` sur chaque
-        arête écrite ; ici on ne défait QUE celles-là. La différence avec
-        ``delete_relations_from`` est le cœur du §8 : cette dernière supprime *toutes*
-        les sortantes d'un nœud, quel qu'en soit l'auteur — un run rejoué emporterait les
-        arêtes qu'un autre run avait posées. Filtrer sur ``run_id`` borne la suppression
-        à l'ouvrage du run, exactement.
-        """
+        """Les arêtes taguées de ce run, et elles seules."""
         query = "MATCH ()-[r]->() WHERE r.run_id = $run_id DELETE r"
         async with self._driver.session() as session:
             await session.run(query, run_id=run_id)
 
     async def drop_all(self) -> None:
-        """Detach-delete every node and relation. Irreversible."""
+        """Irréversible."""
         async with self._driver.session() as session:
             await session.run("MATCH (n) DETACH DELETE n")

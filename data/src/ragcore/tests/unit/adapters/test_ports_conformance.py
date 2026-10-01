@@ -1,19 +1,9 @@
-"""Chaque adaptateur satisfait-il le port qu'il prétend implémenter ?
+"""Chaque adaptateur satisfait-il son port ? Le typage est structurel : aucun adaptateur
+n'hérite de son port, et ``isinstance`` contre un ``@runtime_checkable Protocol`` est la
+seule façon de vérifier la promesse.
 
-Le typage est **structurel** : aucun adaptateur n'hérite de son port. Rien, dans le
-code, ne relie ``Neo4jGraphRepository`` à ``GraphRepository`` — sinon la promesse
-qu'ils ont la même forme. ``isinstance`` contre un ``@runtime_checkable Protocol``
-est la seule façon d'EXÉCUTER cette promesse.
-
-Ce fichier n'est pas une formalité. C'est lui qui attrape :
-
-- ``Neo4jGraphRepository`` qui ne s'importait pas (``RelationWriteResult`` manquant) ;
-- la pile de télémétrie (``WorkerTelemetryStack``) qui n'exposait ni ``snapshot`` ni ``close``, et n'était
-  donc PAS consommable par le pool — alors qu'elle est la pile que le pool consomme.
-
-Ce qu'il ne prouve pas, et qu'il ne peut pas prouver : que le Cypher, le filtre
-Qdrant ou l'``$setOnInsert`` font ce qu'on croit. Cela, seules les vraies bases le
-disent — voir ``tests/integration/``.
+Ce que ces tests ne prouvent pas (Cypher, filtres Qdrant, ``$setOnInsert``), seules les
+vraies bases le disent : ``tests/integration/``.
 """
 
 from datetime import UTC, datetime
@@ -68,9 +58,7 @@ def _telemetry_factory() -> WorkerTelemetryFactory:
 
 
 class TestStorageAdapters:
-    """Les clients sont ``None`` : construire l'objet n'ouvre aucune connexion, et
-    la conformité est une propriété de la CLASSE, pas de la base derrière.
-    """
+    """Clients à ``None`` : la conformité est une propriété de la classe."""
 
     def test_mongo_document_repository(self) -> None:
         repo = MongoDocumentRepository.__new__(MongoDocumentRepository)
@@ -81,21 +69,19 @@ class TestStorageAdapters:
         assert isinstance(repo, RunSummaryRepository)
 
     def test_mongo_pending_repository(self) -> None:
-        """Le dépôt du §13 : sans lui, une arête différée redevient un silence."""
+        """Sans lui, une arête différée serait perdue."""
         repo = MongoPendingRelationRepository.__new__(MongoPendingRelationRepository)
         assert isinstance(repo, PendingRelationRepository)
 
     def test_mongo_unformatted_repository(self) -> None:
-        """Le dépôt d'ADR-045 : sans lui, une cible décrite redevient un silence."""
+        """Sans lui, une cible décrite serait perdue (ADR-045)."""
         repo = MongoUnformattedRelationRepository.__new__(
             MongoUnformattedRelationRepository
         )
         assert isinstance(repo, UnformattedRelationRepository)
 
     def test_neo4j_graph_repository(self) -> None:
-        """Le test qui a attrapé le ``NameError`` : le module ne s'importait pas,
-        et son ``upsert_relations`` annonçait un ``RelationWriteResult`` inconnu.
-        """
+        """Le module doit s'importer, ``RelationWriteResult`` compris."""
         repo = Neo4jGraphRepository(driver=None)
         assert isinstance(repo, GraphRepository)
 
@@ -108,7 +94,7 @@ class TestEmbedders:
     """Le seul embedder : TEI."""
 
     def test_tei_embedder(self) -> None:
-        # La construire n'ouvre aucune connexion : la conformité reste hors-réseau.
+        # La construire n'ouvre aucune connexion
         assert isinstance(
             TeiEmbedder(
                 EmbeddingModel(model_name="whatever", dimension=768),
@@ -119,7 +105,7 @@ class TestEmbedders:
 
 
 class TestRuntime:
-    """Le port qui condamne la globale ``_LOOP``."""
+    """Une boucle par runtime."""
 
     def test_the_runtime_and_its_factory(self) -> None:
         factory = AsyncioRuntimeFactory()
@@ -132,11 +118,8 @@ class TestRuntime:
             runtime.close()
 
     def test_each_worker_gets_its_own_loop(self) -> None:
-        """L'invariant 1, à la racine : deux workers ne partagent PAS de boucle.
-
-        Une boucle partagée redeviendrait le point de sérialisation que §11 supprime
-        — et les clients Motor posés dessus seraient inutilisables ailleurs.
-        """
+        """Deux workers ne partagent pas de boucle : les clients posés dessus seraient
+        inutilisables ailleurs."""
         factory = AsyncioRuntimeFactory()
         first, second = factory.build(0), factory.build(1)
         try:
@@ -147,9 +130,7 @@ class TestRuntime:
             second.close()
 
     def test_close_is_idempotent(self) -> None:
-        """Le pool ferme sa pile en ``finally`` : une double fermeture ne doit pas
-        transformer un échec d'ingestion en un second échec, plus bruyant.
-        """
+        """Une double fermeture ne doit pas ajouter un second échec au premier."""
         runtime = AsyncioRuntime()
         runtime.close()
         runtime.close()
@@ -180,12 +161,7 @@ class TestTelemetry:
         assert isinstance(aggregator, WorkerTelemetry)
 
     def test_the_factory_and_the_stack_it_builds(self) -> None:
-        """Le test qui a attrapé la pile incomplète.
-
-        ``WorkerTelemetryStack`` n'exposait que ``emit`` et ``log`` : elle n'était
-        donc PAS un ``WorkerTelemetry``, et le pool n'aurait pas pu la consommer —
-        alors que c'est précisément la pile qu'il consomme.
-        """
+        """La pile du pool expose bien ``snapshot`` et ``close``."""
         factory = _telemetry_factory()
         assert isinstance(factory, TelemetryFactory)
 
@@ -197,7 +173,7 @@ class TestTelemetry:
             runtime.close()
 
     def test_each_worker_gets_its_own_stack(self) -> None:
-        """L'invariant 1 pour la télémétrie : rien de partagé, donc rien à verrouiller."""
+        """Rien de partagé entre workers, donc rien à verrouiller."""
         factory = _telemetry_factory()
         runtime_factory = AsyncioRuntimeFactory()
         r0, r1 = runtime_factory.build(0), runtime_factory.build(1)
@@ -206,8 +182,7 @@ class TestTelemetry:
             first, second = factory.build(0, r0), factory.build(1, r1)
 
             assert first is not second
-            # Des agrégats distincts : la réduction du monoïde n'aurait aucun sens
-            # si les workers écrivaient dans le même.
+            # Des agrégats distincts, sinon la réduction n'aurait aucun sens
             assert (
                 first._backends.aggregate  # noqa: SLF001
                 is not second._backends.aggregate  # noqa: SLF001
@@ -217,9 +192,7 @@ class TestTelemetry:
             r1.close()
 
     def test_an_unknown_reaches_the_aggregate(self) -> None:
-        """Un vocabulaire non reconnu se DÉCLARE. Le fan-out doit le router vers
-        l'agrégat, sinon le run tairait ce qu'il n'a pas compris.
-        """
+        """Un inconnu est routé vers l'agrégat, sinon le bilan le tairait."""
         runtime = AsyncioRuntimeFactory().build(0)
         try:
             stack = _telemetry_factory().build(0, runtime)

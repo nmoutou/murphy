@@ -1,8 +1,4 @@
-/**
- * useRagChat Tests
- * `useChat` wired to the WebSocket transport and the contract's schemas, against a fake
- * backend sending the parts of `backend/src/services/chatService.ts`, in its order
- */
+// Le faux backend envoie les parts de `backend/src/services/chatService.ts`, dans son ordre
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, renderHook, waitFor } from '@testing-library/react';
@@ -54,7 +50,7 @@ const SETTLED_STATUSES = ['ready', 'error'];
 const receiveAll = (socket: FakeWebSocket, parts: UIMessageChunk[]) =>
   parts.forEach((part) => socket.receive(part));
 
-/** The hook, and a way to ask the question: it resolves once the socket is open */
+/** Le hook, et de quoi poser la question : résolu une fois la socket ouverte */
 const renderChat = () => {
   const sockets = stubWebSocket();
   const { result } = renderHook(() => useRagChat());
@@ -71,8 +67,8 @@ const renderChat = () => {
   };
 
   /**
-   * The backend's side, until useChat is done with the answer. An answer that never
-   * settles fails `waitFor`, instead of leaving an `act` open for the next tests.
+   * Le côté backend, jusqu'à ce que useChat en ait fini. Une réponse qui ne se termine
+   * jamais fait échouer `waitFor` au lieu de laisser un `act` ouvert pour la suite.
    */
   const answer = async (reply: () => void, sending: Promise<void>) => {
     act(reply);

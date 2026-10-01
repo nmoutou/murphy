@@ -1,11 +1,7 @@
-"""ResolveRelationsService — la phase 2 : les arêtes, en batch, après la barrière.
+"""La phase 2 : les arêtes, en batch.
 
-La barrière n'est pas dans ce fichier : c'est l'arête du DAG entre le node de
-phase 1 et celui de phase 2. Ce service tient pour acquis que tous les nœuds du run
-existent déjà — et c'est le pipeline, pas un ``join()`` enfoui, qui le garantit.
-L'hypothèse est donc déclarée, jamais implicite.
-
-Ce service possède le registre des pendantes (§13). Personne d'autre n'y touche.
+Suppose que tous les nœuds du run existent : c'est l'arête du DAG entre les phases 1
+et 2 qui le garantit. Seul ce service touche au registre des pendantes.
 """
 
 from dataclasses import dataclass
@@ -30,22 +26,18 @@ __all__ = ["ResolutionOutcome", "ResolveRelationsService"]
 
 @dataclass(frozen=True)
 class ResolutionOutcome:
-    """La sortie du node de phase 2 — de la donnée, comme la phase 1."""
+    """La sortie du nœud de phase 2."""
 
     stats: RunStats
     written_count: int
-    """Arêtes de CE run réellement écrites — pas « tentées »."""
+    """Réellement écrites, pas tentées."""
     pending_count: int
-    """Arêtes de CE run différées : leur cible n'est pas (encore) dans le corpus."""
+    """Différées : leur cible n'est pas (encore) dans le corpus."""
     promoted_count: int
-    """Pendantes de runs PASSÉS enfin résolues, parce que leur cible vient d'arriver."""
+    """Pendantes de runs passés, résolues parce que leur cible vient d'arriver."""
 
     reduced_count: int = 0
-    """Arêtes éliminées par la réduction transitive — REDONDANTES, pas absentes.
-
-    Une arête réduite n'est ni écrite ni pendante : le chemin la dit déjà. La compter
-    à part est ce qui préserve la lisibilité de l'invariant
-    ``written + pending == entrée (réduite)``."""
+    """Redondantes, éliminées par la réduction transitive : ni écrites ni pendantes."""
 
 
 class ResolveRelationsService:
@@ -67,23 +59,14 @@ class ResolveRelationsService:
     ) -> ResolutionOutcome:
         stats = RunStats.empty()
 
-        # 0. La réduction transitive, à l'échelle du CORPUS — et ici seulement.
-        #    L'extracteur ne voit qu'un document ; la hiérarchie d'un article se
-        #    déclare des deux côtés à la fois (sa propre fermeture d'ancêtres, et
-        #    l'arbre que déclarent les sections, dans D'AUTRES fichiers). Réduire par
-        #    document était donc structurellement impossible. Ce service ne touche que
-        #    la CONTENANCE : réduire une citation détruirait un fait.
+        # À l'échelle du corpus : la hiérarchie d'un article se déclare aussi dans
+        # d'autres fichiers
         submitted = len(relations)
         relations = reduce_transitively(relations)
         reduced_count = submitted - len(relations)
 
-        # 1. Écriture en batch. Ce qui ne s'écrit pas ressort — rien ne s'évapore.
-        #    Chaque arête écrite est taguée du `run_id` (§8) : c'est ce qui la rend
-        #    compensable à la maille du run (delete_relations_by_run), sans emporter
-        #    les arêtes qu'un autre run a posées sur le même document.
         result = await self._graph_repo.upsert_relations(relations, context.run_id)
 
-        # 2. Les trous sont une donnée : ils vont au cache, et on le DIT.
         await self._record_pending(result.pending, context)
         if result.pending:
             stats = stats.with_count(RELATION_PENDING, len(result.pending))
@@ -92,9 +75,8 @@ class ResolveRelationsService:
             self._announce_written(result.written, context)
             stats = stats.with_count(RELATION_UPSERTED)
 
-        # 3. Rejeu ciblé : on ne retente QUE les pendantes dont la cible vient
-        #    d'arriver. Le rejeu est borné par le delta du run, jamais par la taille
-        #    du backlog — une pendante qui dort depuis 200 runs ne coûte rien.
+        # Ne retente que les pendantes dont la cible vient d'arriver : le coût suit le
+        # delta du run, jamais la taille du backlog
         promoted_count = await self._promote(written_node_ids, context)
         if promoted_count:
             stats = stats.with_count(RELATION_PROMOTED, promoted_count)
@@ -119,9 +101,8 @@ class ResolveRelationsService:
         )
 
         if result.pending:
-            # La cible vient pourtant d'être écrite : c'est donc la SOURCE qui
-            # manque. On ne supprime pas — une pendante qu'on ne sait pas résoudre
-            # reste une donnée vraie.
+            # La cible vient d'être écrite : c'est la source qui manque. La pendante
+            # reste.
             self._telemetry.log(
                 "warning",
                 "relation.promotion.incomplete",
@@ -139,7 +120,6 @@ class ResolveRelationsService:
     async def _record_pending(
         self, pending: list[Relation], context: PipelineContext
     ) -> None:
-        """Les arêtes différées vont au registre des pendantes, chacune DÉCLARÉE."""
         if not pending:
             return
         await self._pending_repo.upsert_many(
@@ -154,9 +134,7 @@ class ResolveRelationsService:
     def _announce_written(
         self, written: list[Relation], context: PipelineContext
     ) -> None:
-        """`count` porte les arêtes RÉUSSIES. Il portait auparavant les relations
-        tentées : un MATCH raté n'émettait rien, et la relation disparaissait sans
-        laisser de trace dans les compteurs."""
+        """`count` porte les arêtes réussies, pas tentées."""
         self._telemetry.emit(
             build_event(
                 event_type=RELATION_UPSERTED,

@@ -1,7 +1,5 @@
-"""Doublures en mémoire — le lot 2 se vérifie sans Mongo, sans Neo4j, sans Qdrant.
-
-Elles vivent sous ``tests/`` et non sous ``adapters/`` : un dépôt en mémoire livré
-dans le package de production serait du code que la production n'exécute jamais.
+"""Doublures en mémoire, pour tester sans Mongo, Neo4j ni Qdrant. Hors du paquet de
+production, qui ne les exécuterait jamais.
 """
 
 from .embedder import NoopEmbedder

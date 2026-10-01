@@ -1,9 +1,7 @@
-"""La forme de ``parameters.yml`` : un modèle strict, validé une fois en tête de run.
+"""La forme de ``parameters.yml``, validée en tête de run.
 
-C'est le seul endroit du dépôt qui connaisse la forme du YAML. Une clé inconnue,
-absente ou mal typée arrête le run avant tout nœud, et toutes les erreurs sont listées
-ensemble, chacune par son chemin dans le fichier. Strict veut dire sans conversion :
-``"false"`` n'est pas un booléen.
+Une clé inconnue, absente ou mal typée arrête le run, toutes les erreurs listées
+ensemble. Strict : ``"false"`` n'est pas un booléen.
 """
 
 from __future__ import annotations
@@ -29,35 +27,27 @@ class _StrictParameters(BaseModel):
 
 
 class DevParameters(_StrictParameters):
-    """Tout ``parameters.yml`` : des commodités de dev. Hors ``dev``, le fichier entier
-    est remplacé par les valeurs sûres (``run_parameters.resolve_dev_settings``) ; il
-    est validé partout."""
+    """Validé partout, même là où les valeurs sûres le remplacent."""
 
     nuke_all: bool
     embedding_enabled: bool
     skip_unconfigured: bool
     include_path: bool
-    """Les chemins des fichiers XML source (``source_files``), dans Mongo et Neo4j."""
+    """Écrits dans Mongo et Neo4j."""
     include_content_neo4j: bool
-    """Le texte du document sur son nœud Neo4j (``_text_content``)."""
+    """Sous ``_text_content``."""
 
 
 class RunParameters(_StrictParameters):
-    """``parameters.yml`` plus les ``--params`` de la ligne de commande.
-
-    Kedro fusionne les ``--params`` à la racine, avec les clés du fichier. ``source``
-    n'est pas une commodité de dev : elle vaut en prod aussi, donc elle est rangée à
-    part, et le reste passe sous ``dev`` (``validate_parameters``). Une faute
-    (``sorce=cass``) est une clé inconnue du fichier."""
+    """``parameters.yml`` plus les ``--params``, que Kedro fusionne à la racine.
+    ``source`` vaut aussi en prod : elle est rangée à part, le reste sous ``dev``."""
 
     dev: DevParameters
     source: str | None = None
-    """``--params source=cass``. ``None`` : pas de ``--params source``, le run prend
-    ``SOURCE`` du ``.env``."""
+    """``None`` : le run prend ``SOURCE`` de l'environnement."""
 
 
 def validate_parameters(params: dict[str, Any]) -> RunParameters:
-    """Les paramètres du run, typés — ou un ARRÊT qui liste toutes les erreurs."""
     dev_params = {key: value for key, value in params.items() if key != _SOURCE_KEY}
     run_params = {_DEV_FIELD: dev_params}
     if _SOURCE_KEY in params:
@@ -72,7 +62,7 @@ def validate_parameters(params: dict[str, Any]) -> RunParameters:
 
 
 def _describe(error: ErrorDetails) -> str:
-    """L'erreur au chemin du fichier : ``dev`` est une rangée du modèle, pas une clé."""
+    """Au chemin du fichier : ``dev`` est une rangée du modèle, pas une clé."""
     loc = error["loc"]
     if loc[:1] == (_DEV_FIELD,):
         loc = loc[1:]

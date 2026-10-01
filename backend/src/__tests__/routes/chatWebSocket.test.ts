@@ -1,8 +1,3 @@
-/**
- * Chat WebSocket Tests
- * A real WebSocket server on an ephemeral port, over a mocked pipeline and quota
- */
-
 import http from 'http';
 import { WebSocket } from 'ws';
 import type { ClientOptions } from 'ws';
@@ -57,7 +52,7 @@ interface TestServer {
   readonly url: string;
 }
 
-/** A real HTTP server on an ephemeral port, with the chat socket attached as `server.ts` does */
+/** Un vrai serveur HTTP sur un port éphémère, la socket de chat attachée comme dans `server.ts` */
 const startServer = async (firstMessageTimeoutMs?: number): Promise<TestServer> => {
   const server = http.createServer();
   attachChatWebSocket({ server, allowedOrigins: [ALLOWED_ORIGIN], firstMessageTimeoutMs });
@@ -84,7 +79,7 @@ beforeEach(() => {
   jest.mocked(consumeStreamQuota).mockResolvedValue(true);
 });
 
-/** Sends one raw message and collects every part received until the server closes the socket */
+/** Envoie un message brut et collecte les parts reçues jusqu'à la fermeture par le serveur */
 const exchange = (rawPayload: string): Promise<unknown[]> =>
   new Promise((resolve, reject) => {
     const received: unknown[] = [];
@@ -101,10 +96,10 @@ const HANDSHAKE_HEADERS = {
   'Sec-WebSocket-Key': 'dGhlIHNhbXBsZSBub25jZQ==',
   'Sec-WebSocket-Version': '13',
 };
-/** Text frame "hi" without the mask bit, which RFC 6455 requires from a client */
+/** Trame texte "hi" sans le bit de masque, que la RFC 6455 exige d'un client */
 const UNMASKED_FRAME = Buffer.from([0x81, 0x02, 0x68, 0x69]);
 
-/** Upgrades by hand, writes one raw frame, and resolves with the first bytes the server sends back */
+/** Upgrade à la main, écrit une trame brute et rend les premiers octets renvoyés par le serveur */
 const sendRawFrame = (frame: Buffer): Promise<Buffer> =>
   new Promise((resolve, reject) => {
     const request = http.request(serverUrl.replace(/^ws/, 'http'), { headers: HANDSHAKE_HEADERS });
@@ -119,7 +114,7 @@ const sendRawFrame = (frame: Buffer): Promise<Buffer> =>
     request.end();
   });
 
-/** Opens a socket, sends `rawPayload` when given, and resolves with the code the server closes it with */
+/** Ouvre une socket, envoie `rawPayload` s'il est fourni, et rend le code de fermeture du serveur */
 const closeCodeAfter = (url: string, rawPayload?: string): Promise<number> =>
   new Promise((resolve, reject) => {
     const client = new WebSocket(url);
@@ -130,7 +125,7 @@ const closeCodeAfter = (url: string, rawPayload?: string): Promise<number> =>
 
 const SWITCHING_PROTOCOLS = 101;
 
-/** Resolves with the handshake's HTTP status: 101 once the socket opens, the refusal status otherwise */
+/** Rend le statut HTTP de la poignée de main : 101 si la socket s'ouvre, sinon celui du refus */
 const handshakeStatus = (options: ClientOptions): Promise<number> =>
   new Promise((resolve, reject) => {
     const client = new WebSocket(serverUrl, options);
@@ -223,7 +218,7 @@ describe('chat WebSocket', () => {
     let pipelineSignal: AbortSignal | undefined;
     jest.mocked(createChatStream).mockImplementation(async (_messages, abortSignal) => {
       pipelineSignal = abortSignal;
-      // A pipeline still running: one part, and the stream stays open
+      // Un pipeline encore en cours : une part, et le flux reste ouvert
       return new ReadableStream<AppChunk>({ start: (controller) => controller.enqueue(ANSWER_PARTS[0]) });
     });
 
@@ -231,7 +226,7 @@ describe('chat WebSocket', () => {
     client.on('open', () => client.send(JSON.stringify(VALID_PAYLOAD)));
     client.on('message', () => client.close());
     await new Promise((resolve) => client.on('close', resolve));
-    // The server may see the close before or after the client does
+    // Le serveur peut voir la fermeture avant ou après le client
     await new Promise<void>((resolve) => {
       if (pipelineSignal?.aborted) resolve();
       pipelineSignal?.addEventListener('abort', () => resolve());

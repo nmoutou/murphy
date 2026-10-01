@@ -43,19 +43,11 @@ class InMemoryVectorRepository:
 
 
 class InMemoryGraphRepository:
-    """Le fake central du lot 2 : il rejoue le ``MATCH (b)`` de Neo4j.
-
-    Une arête dont la cible n'est pas un nœud connu n'est pas écrite — exactement
-    comme en Cypher, où le ``MATCH`` ne matche pas, la requête réussit, et rien
-    n'est créé. La différence, ici comme dans le nouveau contrat, c'est qu'on le
-    DIT : la relation ressort dans ``pending`` au lieu de disparaître.
-    """
+    """Rejoue le ``MATCH (b)`` de Neo4j : une arête vers une cible inconnue n'est pas
+    écrite, et ressort dans ``pending``."""
 
     def __init__(self) -> None:
-        # `nodes` rejoue le `MATCH` de Cypher ; `edges` porte (arête, run_id) pour que la
-        # compensation par run (§8) ait de quoi filtrer. Les cibles DÉCRITES n'y figurent
-        # plus : elles ne sont plus des nœuds mais des relations non formatées (cf.
-        # `core.models.unformatted_relation`), et n'atteignent donc jamais ce dépôt.
+        # `edges` porte (arête, run_id) pour la compensation par run
         self.nodes: set[str] = set()
         self.edges: list[tuple[Relation, RunId]] = []
 
@@ -90,12 +82,12 @@ class InMemoryGraphRepository:
         ]
 
     async def delete_relations_by_run(self, run_id: RunId) -> None:
-        """§8 : ne défait QUE les arêtes taguées de ce run — pas toutes les sortantes."""
+        """Ne défait que les arêtes taguées de ce run."""
         self.edges = [(e, rid) for e, rid in self.edges if rid != run_id]
 
 
 class InMemoryPendingRepository:
-    """Cache des pendantes — union idempotente sur la clé à trois champs (§13)."""
+    """Union idempotente sur la clé à trois champs."""
 
     def __init__(self) -> None:
         self.pendings: dict[PendingKey, PendingRelation] = {}
@@ -107,7 +99,7 @@ class InMemoryPendingRepository:
             if existing is None:
                 self.pendings[pending.key] = pending
             else:
-                # first_seen_run ne bouge jamais : c'est la date de naissance du trou.
+                # first_seen_run ne bouge jamais
                 self.pendings[pending.key] = existing.model_copy(
                     update={"last_seen_run": pending.last_seen_run}
                 )
@@ -126,7 +118,7 @@ class InMemoryPendingRepository:
 
 @dataclass(frozen=True)
 class StoredUnformatted:
-    """Une ligne d'``unformatted_relations`` : la relation et ses deux estampilles."""
+    """La relation et ses deux estampilles de run."""
 
     relation: UnformattedRelation
     first_seen_run: RunId
@@ -137,7 +129,7 @@ UnformattedKey = tuple[str, str, str, str]
 
 
 class InMemoryUnformattedRepository:
-    """Relations non formatées — union idempotente sur la clé à quatre champs."""
+    """Union idempotente sur la clé à quatre champs."""
 
     def __init__(self) -> None:
         self.rows: dict[UnformattedKey, StoredUnformatted] = {}
@@ -153,7 +145,7 @@ class InMemoryUnformattedRepository:
                 relation.sens,
             )
             existing = self.rows.get(key)
-            # first_seen_run ne bouge jamais : seul last_seen_run avance.
+            # first_seen_run ne bouge jamais : seul last_seen_run avance
             first_seen_run = existing.first_seen_run if existing else run_id
             self.rows[key] = StoredUnformatted(relation, first_seen_run, run_id)
 

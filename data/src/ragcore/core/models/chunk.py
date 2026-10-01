@@ -12,7 +12,7 @@ class Chunk(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     chunk_id: str
-    parent_identifier: Identifier  # lien au document parent
+    parent_identifier: Identifier
     document_type: DocumentType  # celui du parent
     nature: str | None = None  # celle du parent
 
@@ -25,8 +25,6 @@ class Chunk(BaseModel):
 
 
 class EmbeddedChunk(BaseModel):
-    """Chunk augmenté d'un vecteur d'embedding."""
-
     model_config = ConfigDict(frozen=True)
 
     chunk: Chunk

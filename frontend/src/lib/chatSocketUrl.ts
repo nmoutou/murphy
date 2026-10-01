@@ -1,14 +1,11 @@
-/**
- * Where the browser opens the chat WebSocket. Only the backend base URL is
- * configured (`NEXT_PUBLIC_API_URL`); the socket path is the backend's.
- */
+/** Seule l'URL de base du backend est configurée ; le chemin de la socket est celui du backend. */
 
 const DEFAULT_BACKEND_URL = 'http://localhost:5000';
 const CHAT_SOCKET_PATH = '/api/v1/chat/ws';
 const SECURE_HTTP_PROTOCOL = 'https:';
 
 export const getChatSocketUrl = (): string => {
-  // Read literally: Next only inlines `process.env.NEXT_PUBLIC_*` written out in full
+  // Lu littéralement : Next n'inline que `process.env.NEXT_PUBLIC_*` écrit en entier
   const backendUrl = process.env.NEXT_PUBLIC_API_URL || DEFAULT_BACKEND_URL;
 
   let socketUrl: URL;

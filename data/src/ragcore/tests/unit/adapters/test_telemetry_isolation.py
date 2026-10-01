@@ -1,8 +1,5 @@
-"""La télémétrie observe l'ingestion, elle ne la fait jamais échouer.
-
-Un backend qui lève — à l'émission ou à la fermeture — est isolé : il ne casse ni
-l'ingestion, ni les autres backends. Ces tests provoquent l'échec, c'est leur seule
-raison d'être : le chemin nominal, où rien ne rate, ne prouve rien de l'isolement.
+"""Un backend de télémétrie qui lève, à l'émission ou à la fermeture, ne casse ni
+l'ingestion ni les autres backends.
 """
 
 from datetime import UTC, datetime
@@ -49,13 +46,13 @@ def _aggregator(cls: type[RunStatsAggregator] = RunStatsAggregator) -> Any:
 
 def test_a_backend_that_raises_does_not_fail_the_ingestion() -> None:
     telemetry = _telemetry(_aggregator(ExplodingAggregator))
-    telemetry.emit(build_event(DOCUMENT_PERSISTED, RUN))  # ne lève pas — l'assertion
+    telemetry.emit(build_event(DOCUMENT_PERSISTED, RUN))  # ne lève pas : c'est le test
 
 
 def test_a_backend_that_fails_to_close_does_not_stop_the_others() -> None:
     telemetry = _telemetry(_aggregator())
 
-    telemetry.close()  # ne lève pas — l'assertion
+    telemetry.close()  # ne lève pas : c'est le test
 
 
 def test_the_aggregate_is_closed_last() -> None:

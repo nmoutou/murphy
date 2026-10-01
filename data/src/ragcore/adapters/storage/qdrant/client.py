@@ -1,4 +1,4 @@
-"""Fabrique du client Qdrant — une fonction, jamais un singleton (cf. mongo/client.py)."""
+"""Une fonction, jamais un singleton (cf. mongo/client.py)."""
 
 from qdrant_client import AsyncQdrantClient
 

@@ -1,6 +1,4 @@
-"""data file for ensuring the package is executable
-as `data` and `python -m data`
-"""
+"""Rend le paquet exécutable : `data` et `python -m data`."""
 
 import sys
 from pathlib import Path

@@ -1,13 +1,13 @@
 import { vi } from 'vitest';
 
 /**
- * A chat socket driven by the test, which plays the backend: it opens, sends parts,
- * fails or drops when told to. Like a real socket, it fires `close` once, whichever side
- * closes; unlike one, it still delivers parts afterwards, to test the client's guards.
+ * Socket de chat pilotée par le test, qui joue le backend. Comme une vraie, elle émet
+ * `close` une seule fois ; contrairement à une vraie, elle livre encore des parts après,
+ * pour tester les gardes du client.
  */
 export class FakeWebSocket {
   readonly sent: string[] = [];
-  /** Closed by the client */
+  /** Fermée par le client */
   readonly close = vi.fn(() => this.drop());
   private isClosed = false;
   onopen: (() => void) | null = null;
@@ -37,7 +37,7 @@ export class FakeWebSocket {
     this.onerror?.();
   }
 
-  /** Closed by the backend */
+  /** Fermée par le backend */
   drop(): void {
     if (this.isClosed) return;
     this.isClosed = true;
@@ -45,7 +45,7 @@ export class FakeWebSocket {
   }
 }
 
-/** Replaces the global `WebSocket`; the returned list fills as the code opens sockets */
+/** Remplace le `WebSocket` global ; la liste rendue se remplit à chaque socket ouverte */
 export const stubWebSocket = (): FakeWebSocket[] => {
   const sockets: FakeWebSocket[] = [];
   class TrackedWebSocket extends FakeWebSocket {

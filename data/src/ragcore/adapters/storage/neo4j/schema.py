@@ -1,8 +1,5 @@
-"""Le schéma du graphe : la contrainte d'unicité des nœuds documents.
-
-Un index Neo4j se rattache toujours à un label. Sans elle, toute recherche par
-``identifier`` parcourrait tous les nœuds, et rien n'empêcherait deux nœuds de partager
-un identifiant. ``drop_all`` (``MATCH (n) DETACH DELETE n``) la laisse en place.
+"""La contrainte d'unicité des nœuds documents, qui sert aussi d'index. ``drop_all`` la
+laisse en place.
 """
 
 import neo4j
@@ -20,6 +17,6 @@ _CREATE_CONSTRAINT = (
 
 
 async def ensure_graph_constraints(driver: neo4j.AsyncDriver) -> None:
-    """Pose la contrainte d'unicité de ``(:Document).identifier``. Idempotent."""
+    """Idempotent."""
     async with driver.session() as session:
         await session.run(_CREATE_CONSTRAINT)

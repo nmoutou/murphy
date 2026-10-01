@@ -1,10 +1,5 @@
-"""Le node `parse_documents` ne range en `parse_error` que ce que le port promet.
-
-Le contrat de ``BaseParser`` : ``ValidationError`` si le document est irrecevable,
-``ParseError`` s'il est illisible. Le node rattrapait tout ``Exception`` comme une
-« autre erreur de parsing » : un bug du run (un document qu'aucun parser ne sait
-router) devenait un rejet PAR DOCUMENT, compté et exclu en silence. Il remonte
-désormais, et arrête le run.
+"""``parse_documents`` ne range en rejet que ce que le port promet (``ValidationError``,
+``ParseError``) : toute autre exception est un bug du run, qui l'arrête.
 """
 
 from datetime import UTC, datetime
@@ -40,7 +35,7 @@ _ARTICLE_WITH_UNRENAMED_META = (
 
 
 class _FailingParser:
-    """Parser idiot : lève l'exception qu'on lui donne, pour chaque document."""
+    """Lève l'exception donnée, pour chaque document."""
 
     def __init__(self, error: Exception) -> None:
         self._error = error
@@ -81,8 +76,8 @@ def test_une_ParseError_exclut_le_document_et_le_compte() -> None:
 
 
 def test_une_exception_HORS_contrat_arrete_le_run() -> None:
-    """Le cas réel : ``RoutingParser`` lève ``ValueError`` pour un document qu'aucun
-    parser ne sait router. Ce n'est pas un document illisible, c'est un bug du run."""
+    """``RoutingParser`` lève ``ValueError`` pour un document qu'il ne sait pas router :
+    un bug du run, pas un document illisible."""
     telemetry = RecordingTelemetry()
 
     with pytest.raises(ValueError, match="Aucun parser"):

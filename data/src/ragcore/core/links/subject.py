@@ -16,12 +16,7 @@ __all__ = ["LinkSubject"]
 
 @dataclass(frozen=True)
 class LinkSubject:
-    """Le document dont on extrait les liens — les deux faits qui ne varient jamais.
-
-    ``current`` et ``source`` voyagent ensemble d'un bout à l'autre de l'extraction : ils
-    ne décrivent pas deux paramètres, ils décrivent *un* document. Les nommer évite de
-    les repasser deux par deux.
-    """
+    """Le document dont on extrait les liens."""
 
     current: Identifier
     source: SourceName
@@ -33,8 +28,7 @@ class LinkSubject:
         relation_verb: RelationVerb,
         metadata: Mapping[str, Any],
     ) -> Relation:
-        """Une arête déclarée par ce document. Les métadonnées vides ne sont pas
-        écrites."""
+        """Les métadonnées vides ne sont pas écrites."""
         return Relation(
             source_identifier=edge_source,
             target_identifier=edge_target,

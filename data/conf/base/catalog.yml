@@ -1,10 +1,8 @@
 # ============================================================
-# Objets runtime — injectés par TelemetryHooks.before_pipeline_run
+# Objets vivants — posés au catalogue par TelemetryHooks.before_pipeline_run
 # ============================================================
-# Ce ne sont pas des données mais des objets vivants (dépôts, fabriques, services)
-# que le hook construit et pose au catalogue avant le run. Le DAG les NOMME, le hook
-# les FOURNIT. Tout est `MemoryDataset` / `copy_mode: assign` : on passe la référence,
-# jamais une copie — un client Mongo copié n'aurait plus de sens.
+# Le DAG les nomme, le hook les fournit. `copy_mode: assign` passe la référence, jamais
+# une copie : un client Mongo copié n'a plus de sens.
 
 # --- Composants source (lus par les nœuds de maintenance) ---
 connector:
@@ -46,9 +44,8 @@ telemetry:
   type: MemoryDataset
   copy_mode: assign
 
-# L'agrégateur du run, vu par le node `report` comme un simple `RunStatsSink`.
-# `copy_mode: assign` n'est pas cosmétique : sans lui Kedro COPIERAIT l'agrégateur, et le
-# node pousserait les stats des workers dans un clone que personne ne finalise.
+# L'agrégateur du run. Sans `copy_mode: assign`, Kedro le copierait et `report`
+# pousserait les stats des workers dans un clone que personne ne finalise.
 run_stats_sink:
   type: MemoryDataset
   copy_mode: assign

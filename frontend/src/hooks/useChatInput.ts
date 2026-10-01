@@ -6,13 +6,13 @@ interface ChatInputOptions {
   readonly disabled: boolean;
 }
 
-/** The question being typed: sent on submit unless blank or while a stream runs */
+/** Envoyée à la soumission, sauf si vide ou pendant une réponse */
 export function useChatInput({ onEnter, disabled }: ChatInputOptions) {
   const [content, setContent] = useState('');
 
   const handleChange = (event: ChangeEvent<HTMLInputElement>) => setContent(event.target.value);
 
-  // Enter in the field submits the form natively, NumpadEnter included
+  // Entrée soumet le formulaire nativement, NumpadEnter compris
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (disabled || !content.trim()) return;

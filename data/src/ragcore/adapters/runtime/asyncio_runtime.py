@@ -1,13 +1,7 @@
-"""Une boucle asyncio PAR INSTANCE — la fin de la globale `_LOOP`.
+"""Une boucle asyncio par instance, donc par worker.
 
-``utils/async_utils.py`` tenait la boucle dans une variable de module. Une seule
-boucle pour tout le pipeline, c'est un point de sérialisation : avec N workers,
-tout le monde s'y presse, et les clients Motor/Neo4j créés dessus sont liés à
-*elle* — donc impossibles à isoler par worker.
-
-Ici, la boucle est un attribut d'instance. Le pool en construit une par worker via
-la fabrique, et il n'y a plus rien à partager — donc plus rien à verrouiller. Le
-verrou ne disparaît pas par discipline : il disparaît parce qu'il n'a plus d'objet.
+Les clients Motor et Neo4j sont liés à la boucle qui les crée : une boucle partagée
+empêcherait de les isoler par worker.
 """
 
 import asyncio
@@ -20,7 +14,7 @@ T = TypeVar("T")
 
 
 class AsyncioRuntime:
-    """La boucle d'UN worker, et le pont sync→async qui va avec."""
+    """La boucle d'un worker, et le pont sync→async qui va avec."""
 
     def __init__(self) -> None:
         self._loop = asyncio.new_event_loop()
@@ -29,14 +23,14 @@ class AsyncioRuntime:
         return self._loop.run_until_complete(coro)
 
     def close(self) -> None:
-        """Ferme la boucle. Idempotent : un second appel ne fait rien."""
+        """Idempotent."""
         if self._loop.is_closed():
             return
         self._loop.close()
 
 
 class AsyncioRuntimeFactory:
-    """Fabrique un runtime NEUF par worker — jamais deux fois le même."""
+    """Un runtime neuf par worker, jamais deux fois le même."""
 
     def build(self, worker_id: int) -> AsyncioRuntime:
         del worker_id  # l'isolement ne dépend pas de l'identité du worker

@@ -1,8 +1,3 @@
-/**
- * Configuration Tests
- * `loadConfig` over a fake environment: defaults, overrides, validation, report
- */
-
 import { loadConfig } from '../config';
 
 const REQUIRED_ENV = {

@@ -1,16 +1,8 @@
-"""Le §12 contre un VRAI Neo4j — le seul endroit où il puisse être prouvé.
+"""Le dépôt de graphe contre un vrai Neo4j : un fake ne ferait que rejouer notre lecture
+de Cypher.
 
-``InMemoryGraphRepository`` rejoue ma *lecture* de Cypher. Si j'ai mal lu Cypher,
-le fake ment avec moi : il confirmerait mon erreur au lieu de l'attraper. Toute la
-doctrine du comptage exact repose sur une affirmation qu'aucun test unitaire ne
-peut trancher —
-
-    un ``MATCH`` qui ne matche pas produit ZÉRO ligne : la requête réussit, ne lève
-    rien, et n'écrit rien.
-
-C'est de là que venait le mensonge (``count=len(relations)`` = les relations
-*tentées*). Ce fichier vérifie que ``result.single()`` rend bien ``None`` dans ce
-cas, donc que l'arête ressort en ``pending`` au lieu de s'évaporer.
+L'affirmation à prouver : un ``MATCH`` sans résultat réussit sans rien écrire, et
+``result.single()`` rend ``None``, donc l'arête ressort en ``pending``.
 """
 
 from datetime import UTC, datetime
@@ -57,14 +49,8 @@ def _relation(source: int, target: int) -> Relation:
 
 
 NEO4J_IMAGE = "neo4j:2025.09.0"
-"""**La version de la PRODUCTION** (``docker-compose.base.yml``), pas une autre.
-
-Elle était figée à ``5.26`` : on validait donc le dépôt contre un moteur que personne ne
-fait tourner. Le type d'arête dynamique (``MERGE (a)-[r:$($verb)]->(b)``) marche sur les
-deux — mais c'est un fait *mesuré*, pas un fait *garanti*, et une divergence de version
-entre le test et la production est précisément ce qui transforme un fait mesuré en
-mauvaise surprise.
-"""
+"""La version de production (``docker-compose.base.yml``) : le type d'arête dynamique
+est un fait mesuré sur une version, pas garanti sur toutes."""
 
 
 @pytest.fixture(scope="module")
@@ -86,33 +72,15 @@ async def repo(neo4j_url):
 
 
 async def _edge_types(repo) -> list[str]:
-    """Les types d'arête RÉELLEMENT écrits dans le graphe.
-
-    On interroge Neo4j, pas l'objet Python : c'est la seule façon de prouver que le verbe
-    est devenu la *structure* du graphe et pas une simple propriété portée par lui.
-    """
+    """Interroge Neo4j, pas l'objet Python : le verbe doit être la structure du graphe."""
     async with repo._driver.session() as session:  # noqa: SLF001 — on inspecte le graphe, pas le repo
         result = await session.run("MATCH ()-[r]->() RETURN type(r) AS t")
         return sorted([record["t"] async for record in result])
 
 
 async def test_the_verb_IS_the_edge_type(repo) -> None:
-    """LE test du lot, côté graphe. Le verbe est la STRUCTURE, pas une propriété.
-
-    L'ancienne version écrivait **toutes** les arêtes sous un type constant
-    ``:REFERENCES`` et rangeait le verbe réel dans une propriété ``relation_type``. Le
-    graphe n'avait alors qu'un seul type de lien.
-
-    Ce n'est pas un détail de style. Dans Neo4j, le **type d'arête est ce qui est indexé
-    et traversable** : ``MATCH (a)-[:CITES]->(b)`` est une opération native, là où
-    ``MATCH (a)-[r:REFERENCES]->(b) WHERE r.relation_type = 'cites'`` balaye toutes les
-    arêtes du graphe avant de filtrer. Le voisinage est *le* rôle de Neo4j ici — c'est là
-    que se paie le soin mis à l'extraction des liens.
-
-    Un verbe canonique et un mot brut non traduit deviennent tous deux un type d'arête :
-    le graphe porte ``ZORGLUB`` comme il porte ``CITES``, et le serving peut ignorer ce
-    qu'il ne comprend pas — ce qu'il ne pourrait pas faire d'une arête inexistante.
-    """
+    """Le verbe est le type d'arête, pas une propriété : ``MATCH (a)-[:CITES]->(b)`` est
+    une traversée native. Un mot brut non traduit devient un type d'arête lui aussi."""
     await repo.merge_document_node(_doc(1))
     await repo.merge_document_node(_doc(2))
     await repo.merge_document_node(_doc(3))
@@ -129,9 +97,7 @@ async def test_the_verb_IS_the_edge_type(repo) -> None:
     result = await repo.upsert_relations([canonical, raw], RUN)
     assert len(result.written) == 2, "les deux arêtes sont écrites"
 
-    # Mesuré : Neo4j écrit le type d'arête TEL QUEL, sans le majusculer. La convention
-    # `:CITES` de la documentation Cypher est un usage, pas une contrainte du moteur — et
-    # c'est bien le verbe normalisé de `ValidatedVerb` qui atterrit dans le graphe.
+    # Neo4j écrit le type tel quel, sans le majusculer : `:CITES` n'est qu'un usage
     assert await _edge_types(repo) == ["cites", "zorglub"], (
         "le verbe EST le type d'arête — et le mot brut y a droit "
         "au même titre que le verbe canonique"
@@ -139,9 +105,9 @@ async def test_the_verb_IS_the_edge_type(repo) -> None:
 
 
 async def test_an_edge_whose_target_is_missing_comes_back_as_pending(repo) -> None:
-    """LE test du §12. Sur l'ancien code, cette arête disparaissait en silence."""
+    """Une arête vers une cible absente ressort en ``pending``, sans disparaître."""
     await repo.merge_document_node(_doc(1))  # la source existe
-    # ... mais PAS la cible : le document 2 n'a jamais été ingéré.
+    # ... mais pas la cible : le document 2 n'a jamais été ingéré.
 
     result = await repo.upsert_relations([_relation(1, 2)], RUN)
 
@@ -161,11 +127,8 @@ async def test_an_edge_between_two_existing_nodes_is_written(repo) -> None:
 
 
 async def test_nothing_is_lost_between_input_and_output(repo) -> None:
-    """L'invariant du port : ``len(written) + len(pending) == len(entrée)``.
-
-    C'est lui qui rend le comptage exact possible : une relation est écrite ou
-    différée, jamais évaporée.
-    """
+    """``len(written) + len(pending) == len(entrée)`` : une relation est écrite ou
+    différée, jamais évaporée."""
     await repo.merge_document_node(_doc(1))
     await repo.merge_document_node(_doc(2))
     relations = [_relation(1, 2), _relation(1, 99), _relation(2, 98)]
@@ -191,13 +154,8 @@ async def test_a_pending_edge_becomes_written_once_its_target_arrives(repo) -> N
 
 
 async def test_upserting_the_same_edge_twice_creates_one_edge(repo) -> None:
-    """``MERGE``, pas ``CREATE`` : rejouer un run ne doit pas doubler le graphe.
-
-    Le ``MERGE`` porte désormais sur ``(a)-[:cites]->(b)`` — l'identité de l'arête *est*
-    son verbe. Auparavant elle portait sur ``(a)-[:REFERENCES {relation_type}]->(b)`` :
-    l'unicité venait d'une propriété. Les deux sont idempotents, mais pour des raisons
-    différentes, et c'est bien la nouvelle qu'on vérifie ici.
-    """
+    """``MERGE``, pas ``CREATE`` : rejouer un run ne double pas le graphe. L'identité de
+    l'arête est son verbe."""
     await repo.merge_document_node(_doc(1))
     await repo.merge_document_node(_doc(2))
 
@@ -222,9 +180,7 @@ async def test_existing_node_ids_returns_only_what_exists(repo) -> None:
 
 
 async def test_deleting_outgoing_edges_preserves_the_node(repo) -> None:
-    """Neo4j est en position terminale : ses arêtes ENTRANTES viennent d'autres
-    documents. Supprimer le nœud les emporterait — d'où le delete ciblé.
-    """
+    """Seules les sortantes partent : les entrantes viennent d'autres documents."""
     await repo.merge_document_node(_doc(1))
     await repo.merge_document_node(_doc(2))
     await repo.upsert_relations([_relation(1, 2)], RUN)
@@ -241,15 +197,12 @@ async def test_deleting_outgoing_edges_preserves_the_node(repo) -> None:
     )
     assert remaining == {"LEGIARTI000000000001", "LEGIARTI000000000002"}
 
-    # Compté SANS nommer de type : `MATCH ()-[r:REFERENCES]->()` — ce que ce test faisait
-    # — ne compte plus rien depuis que le verbe est le type d'arête. Il aurait donc validé
-    # un `delete_relations_from` qui ne supprime RIEN. Un test qui n'observe pas ce qu'il
-    # prétend observer est pire qu'un test absent : il rassure.
+    # Compté sans nommer de type : le verbe est le type d'arête
     assert await _edge_types(repo) == [], "les arêtes sortantes sont parties…"
     # …et les nœuds, eux, sont restés (assertion ci-dessus).
 
 
-# --- §8 : la compensation à la maille du run, contre la vraie base -------------------
+# --- La compensation par run, contre la vraie base ---------------------------------
 
 
 async def _edge_count(repo) -> int:
@@ -261,26 +214,20 @@ async def _edge_count(repo) -> int:
 
 
 async def test_delete_by_run_removes_only_this_runs_edges(repo) -> None:
-    """LE test du §8. Deux runs écrivent depuis le MÊME document ; compenser l'un ne
-    doit défaire QUE ses arêtes, jamais celles de l'autre.
-
-    C'est exactement ce que ``delete_relations_from`` ne sait pas faire : il supprime
-    toutes les sortantes du nœud, sans distinguer l'auteur. Sur cette confusion, un run
-    rejoué emporterait l'ouvrage d'un run précédent — la sur-suppression que la maille
-    par ``run_id`` supprime.
-    """
+    """Deux runs écrivent depuis le même document : compenser l'un ne défait que ses
+    arêtes."""
     for n in (1, 2, 3):
         await repo.merge_document_node(_doc(n))
 
     run_a = RunId("run-A")
     run_b = RunId("run-B")
 
-    # Le document 1 cite le 2 dans le run A, et le 3 dans le run B.
+    # Le document 1 cite le 2 dans le run A, et le 3 dans le run B
     await repo.upsert_relations([_relation(1, 2)], run_a)
     await repo.upsert_relations([_relation(1, 3)], run_b)
     assert await _edge_count(repo) == 2
 
-    # On compense le run A. Son arête (1→2) part ; celle du run B (1→3) reste.
+    # On compense le run A : 1→2 part, 1→3 reste
     await repo.delete_relations_by_run(run_a)
 
     assert await _edge_count(repo) == 1, "seule l'arête du run A est défaite"

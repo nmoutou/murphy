@@ -1,12 +1,7 @@
-"""Nœud Kedro : parse les documents et sépare ceux à ingérer de ceux rejetés.
+"""Parse les documents : ceux qui parsent partent à l'ingestion, déjà en base ou non ;
+les autres sont rejetés et comptés (``document.invalidated``).
 
-Un document qui parse part à l'ingestion, qu'il soit déjà en base ou non : la saga
-réécrit en place (``replace_one`` Mongo, delete-puis-insert Qdrant, ``MERGE`` Neo4j). Un
-document qui NE parse pas est rejeté (``document.invalidated``, dans l'audit) : il est
-compté, pas silencieusement ignoré. Il n'y a pas de troisième voie « SKIP ».
-
-Les collisions de métadonnées (ADR-049), celles d'un document parsé comme d'un document
-refusé, sont comptées au bilan (``collisions``) : un compte par (document, clé).
+Les collisions (ADR-049) sont comptées par (document, clé), document refusé compris.
 """
 
 from __future__ import annotations
@@ -40,8 +35,6 @@ logger = logging.getLogger(__name__)
 
 @dataclass(frozen=True)
 class _Rejection:
-    """Comment un document écarté au parse est tracé : raison et log."""
-
     reason: str
     log_message: str
 
@@ -59,24 +52,13 @@ def parse_documents_node(
     raw_documents: list[RawDocument],
     parser: BaseParser,
     pipeline_context: PipelineContext,
-    # WorkerTelemetry, pas TelemetryPort : ce nœud DÉCLARE (`record_unknown`), il
-    # n'émet pas seulement. Le stack du hook (WorkerTelemetryStack) le fournit.
+    # WorkerTelemetry, pas TelemetryPort : ce nœud déclare aussi (`record_unknown`)
     telemetry: WorkerTelemetry,
     skip_unconfigured: bool,
 ) -> tuple[list[ParsedDocument], list[str]]:
-    """Parse les documents : ceux qui parsent partent à l'ingestion, les autres sont rejetés.
-
-    Un rejet (``ValidationError`` ou ``ParseError``) émet ``document.invalidated`` avec
-    sa raison, son chemin source et le message d'erreur.
-
-    C'est aussi le SITE DE PARSE — donc le site du signal et du curseur : le
-    parser est pur et rend ses constats dans ``ParseResult`` ; ce nœud,
-    qui tient la télémétrie, déclare les métadonnées, liens et racines non-configurés
-    (``tags``, ``links``, ``roots``, TOUJOURS), puis applique le curseur
-    ``skip_unconfigured`` — ``True`` retire les métadonnées non-configurées du document
-    juste avant qu'il parte vers l'ingestion (ses liens non-configurés, eux, sont retirés
-    à l'extraction). Compter d'abord, filtrer ensuite : le signal précède le filtre.
-    Le curseur arrive déjà validé et arbitré par le plan du run (``run_plan.plan_run``).
+    """Le site de parse : déclare toujours les signaux non configurés (``tags``,
+    ``links``, ``roots``), puis applique ``skip_unconfigured``, qui retire les
+    métadonnées non configurées. Les liens non configurés sont retirés à l'extraction.
     """
     site = _ParseSite(pipeline_context, telemetry)
     to_process: list[ParsedDocument] = []
@@ -99,26 +81,23 @@ def parse_documents_node(
 def _parse(
     raw: RawDocument, parser: BaseParser, site: _ParseSite
 ) -> ParseResult | None:
-    """Le résultat du parse, ou ``None`` pour un document rejeté — déjà tracé."""
+    """``None`` pour un document rejeté, déjà tracé."""
     try:
         return parser.parse(raw)
     except CollisionError as exc:
-        # Refusé, mais ses collisions sont le propos même du refus : elles comptent.
         site.declare_collisions(exc.collisions)
         site.exclude(raw, exc, _COLLISION_REJECTION)
     except ValidationError as exc:
         site.exclude(raw, exc, _VALIDATION_REJECTION)
     except ParseError as exc:
-        # Document illisible. Toute autre exception sort du contrat de BaseParser :
-        # c'est un bug du run (un document qu'aucun parser ne sait router), pas un
-        # document à exclure — elle remonte et arrête le run.
+        # Toute autre exception sort du contrat de BaseParser : un bug, qui arrête le run
         site.exclude(raw, exc, _PARSE_REJECTION)
     return None
 
 
 def _apply_cursor(result: ParseResult, skip_unconfigured: bool) -> ParsedDocument:
-    """Le CURSEUR — `skip` retire les métadonnées non-configurées du document, juste
-    avant l'ingestion. `ParsedDocument` est frozen : on reconstruit."""
+    """Retire les métadonnées non configurées. `ParsedDocument` est figé : on le
+    reconstruit."""
     parsed = result.document
     if not skip_unconfigured or not result.unconfigured_tags:
         return parsed
@@ -135,19 +114,16 @@ def _apply_cursor(result: ParseResult, skip_unconfigured: bool) -> ParsedDocumen
 
 @dataclass(frozen=True)
 class _ParseSite:
-    """Le site de parse : ce qui trace un rejet, un signal ou un document parsé.
+    """Trace un rejet, un signal ou un document parsé.
 
-    La source n'est PAS lue du contexte : en run multi-source, `context.source` vaut
-    None et effacerait l'attribution de source sur CHAQUE événement. Chaque `raw` porte
-    sa vraie origine (`raw.source`), même quand le parsing échoue — c'est elle qui doit
-    être tracée.
+    La source vient de `raw.source`, jamais du contexte : en run multi-source,
+    `context.source` vaut None.
     """
 
     context: PipelineContext
     telemetry: WorkerTelemetry
 
     def exclude(self, raw: RawDocument, exc: Exception, rejection: _Rejection) -> None:
-        """Un document écarté est COMPTÉ (``document.invalidated``), jamais ignoré."""
         logger.warning(rejection.log_message, raw.source_document_id)
         self.telemetry.emit(
             build_event(
@@ -165,9 +141,7 @@ class _ParseSite:
         )
 
     def declare_signals(self, result: ParseResult) -> None:
-        """Le SIGNAL — toujours, et AVANT le curseur : la vigie de dérive DILA compte
-        chaque métadonnée, lien et racine non-configurés au bilan de run, que la donnée
-        soit ensuite ingérée ou retirée. `skip` n'efface jamais le signal."""
+        """Toujours, et avant le curseur : `skip` n'efface jamais le signal."""
         identifier = result.document.identifier.serialize()
         signals = {
             CATEGORY_TAG: result.unconfigured_tags,
@@ -180,7 +154,6 @@ class _ParseSite:
                 self.telemetry.record_unknown(category, value, example)
 
     def declare_parsed(self, raw: RawDocument, parsed: ParsedDocument) -> None:
-        """Document valide — compté parsé, en route vers l'ingestion."""
         self.telemetry.emit(
             build_event(
                 event_type=DOCUMENT_PARSED,
@@ -191,6 +164,6 @@ class _ParseSite:
         )
 
     def declare_collisions(self, collisions: Sequence[Collision]) -> None:
-        """Une collision par (document, clé) : un compte au bilan, et ses fichiers."""
+        """Une par (document, clé)."""
         for collision in collisions:
             self.telemetry.record_collision(collision.key, collision.source_files())

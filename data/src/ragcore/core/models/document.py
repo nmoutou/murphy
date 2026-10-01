@@ -19,23 +19,10 @@ class RawDocument(BaseModel):
 
 
 class ParsedDocument(BaseModel):
-    """Document après parsing : structuré, prêt pour le chunking.
+    """Document parsé, prêt pour le chunking.
 
-    Un seul ``identifier`` nomme le document, quelle que soit sa source : c'est lui, et lui seul, qui sert de clé partout en aval
-    (Mongo, Qdrant, nœud Neo4j). Pas de hash de contenu : chaque run réécrit le document
-    en place sous cet identifiant, sans comparer d'octets.
-
-    **Plus de champ ``unknowns``** (ADR-022 §1, modèle « trois portes ») : une balise
-    non-configurée n'est pas un aveu qui voyage dans la donnée — c'est une MÉTADONNÉE
-    (clé chemin-complet), ou un LIEN si sa valeur référence un document. Les signaux
-    ``tags`` et ``links``, eux, partent en télémétrie au site de parse, jamais en base.
-
-    **Plus de ``parsed_at``** : doublon de l'horodatage de ``document.persisted`` dans
-    l'audit — deux horodatages pour un même fait finissent par diverger.
-
-    **Plus de champ ``citations``** (ADR-045) : une cible décrite n'est pas une propriété
-    du document qui l'énonce, c'est une relation non formatée. L'extraction la remet à
-    la saga, qui l'écrit dans sa propre collection.
+    ``identifier`` est sa seule clé en aval (Mongo, Qdrant, nœud Neo4j). Pas de hash de
+    contenu : chaque run réécrit le document en place.
     """
 
     model_config = ConfigDict(frozen=True)
@@ -53,10 +40,8 @@ class ParsedDocument(BaseModel):
     metadata: dict[str, Any]
 
     source_files: tuple[str, ...] = ()
-    """Les FICHIERS XML dont ce document est issu (un article LEGI = jusqu'à 2 facettes).
+    """Les fichiers XML d'origine (un article LEGI = jusqu'à 2 facettes).
 
-    De la provenance, pas du contenu : ce champ sert l'inspection en dev, et n'est écrit
-    dans Mongo et sur le nœud Neo4j qu'avec ``include_path`` (``parameters.yml``,
-    ADR-022 amendé) — sinon les dépôts l'excluent. Un chemin absolu du poste
-    d'ingestion n'a de sens nulle part ailleurs que sur ce poste.
+    Écrits dans Mongo et sur le nœud Neo4j seulement avec ``include_path`` : un chemin
+    absolu du poste d'ingestion n'a de sens que sur ce poste.
     """

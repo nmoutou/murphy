@@ -1,12 +1,5 @@
-"""Le pont sync→async, mais PAR INSTANCE (§11).
-
-``utils/async_utils.py`` tient une boucle asyncio dans une *variable globale*. Avec
-N workers, cette boucle unique redevient un point de sérialisation : tout le monde
-s'y presse, et les clients créés dessus ne peuvent pas être isolés par worker.
-
-Ce port dit l'inverse : un worker = un runtime = une boucle + ses clients. Rien
-n'est partagé, donc il n'y a rien à verrouiller. La globale ``_LOOP`` meurt le jour
-où ``adapters/runtime/asyncio_runtime.py`` implémente ce contrat (lot 3).
+"""Le pont sync→async, par worker : une boucle et ses clients chacun, rien de partagé,
+donc rien à verrouiller.
 """
 
 from collections.abc import Coroutine
@@ -19,17 +12,15 @@ T = TypeVar("T")
 class AsyncRuntime(Protocol):
     """Une boucle asyncio et ses clients, propres à *un* worker."""
 
-    def run(self, coro: Coroutine[Any, Any, T]) -> T:
-        """Exécute une coroutine jusqu'à son terme sur la boucle de ce worker."""
-        ...
+    def run(self, coro: Coroutine[Any, Any, T]) -> T: ...
 
     def close(self) -> None:
-        """Ferme la boucle. Idempotent."""
+        """Idempotent."""
         ...
 
 
 @runtime_checkable
 class AsyncRuntimeFactory(Protocol):
-    """Fabrique un runtime *neuf* — un par worker, jamais partagé."""
+    """Un runtime neuf par worker, jamais partagé."""
 
     def build(self, worker_id: int) -> AsyncRuntime: ...

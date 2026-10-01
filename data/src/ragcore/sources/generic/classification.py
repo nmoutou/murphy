@@ -1,9 +1,5 @@
-"""Le type et la nature d'un document : deux axes, deux lectures.
-
-Le **type** (``DocumentType``) dit la forme du document — article, section, texte,
-décision. Il se déduit du préfixe de l'identifiant, la seule donnée présente et validée
-sur tous les documents. La **nature** dit sa qualification juridique (``LOI``,
-``ARRET``, ``QPC``…) : la balise ``NATURE`` de la source, facultative.
+"""Le type d'un document (sa forme, déduite du préfixe de l'identifiant, seule donnée
+validée partout) et sa nature (sa qualification juridique, facultative).
 """
 
 from ragcore.core.exceptions import ValidationError
@@ -17,11 +13,8 @@ __all__ = ["document_type_of", "nature_of"]
 
 
 def document_type_of(identifier: Identifier, table: RoleTable) -> DocumentType:
-    """Le type que la table déclare pour le préfixe de l'identifiant.
-
-    Lève ``ValidationError`` (un refus métier, compté par le run) si la table ne déclare
-    pas ce préfixe : aucun document n'entre sans type.
-    """
+    """Lève ``ValidationError`` si la table ne déclare pas le préfixe : aucun document
+    n'entre sans type."""
     document_type = table.document_types.get(identifier.prefix)
     if document_type is None:
         declared = ", ".join(sorted(table.document_types)) or "aucun"
@@ -34,11 +27,8 @@ def document_type_of(identifier: Identifier, table: RoleTable) -> DocumentType:
 
 
 def nature_of(facets: list[Node], table: RoleTable) -> str | None:
-    """La première nature non vide des facettes, en majuscules.
-
-    ``None`` si aucune facette n'en porte, ou si elle figure parmi les natures qui
-    n'apportent rien (``uninformative_natures``).
-    """
+    """La première nature non vide des facettes, en majuscules ; ``None`` si aucune ou
+    si elle n'apporte rien (``uninformative_natures``)."""
     for facet in facets:
         node = first(facet, table.nature_tag)
         if node is None or not node["text"].strip():

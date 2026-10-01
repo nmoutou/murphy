@@ -1,8 +1,3 @@
-/**
- * LLM Provider
- * OpenAI-compatible provider with streaming support
- */
-
 import type { LlmConfig } from '../config';
 import type { RagFailure } from '../types/rag';
 import { logger as rootLogger } from '../utils/logger';
@@ -22,7 +17,7 @@ interface ChatCompletionPayload {
   stream: boolean;
 }
 
-/** One streamed chunk of an OpenAI-compatible API; `content` is null on some chunks (end of answer) */
+/** `content` est null sur certains morceaux (fin de réponse) */
 interface ChatCompletionChunk {
   choices?: Array<{ delta?: { content?: string | null } }>;
 }
@@ -30,16 +25,16 @@ interface ChatCompletionChunk {
 const SSE_DATA_PREFIX = 'data: ';
 const SSE_DONE_MARKER = '[DONE]';
 const LINE_SEPARATOR = '\n';
-/** Named like the error of `AbortSignal.timeout`, so that `toRagError` classifies it as a timeout */
+/** Le nom de l'erreur d'`AbortSignal.timeout` : `toRagError` la classe en timeout */
 const TIMEOUT_ERROR_NAME = 'TimeoutError';
 const LLM_FAILURE: RagFailure = { stage: 'llm', code: 'API_ERROR', operation: 'stream LLM response' };
 
-/** The system prompt is not the provider's business: the pipeline (`chatService`) builds the messages */
+/** Le prompt système ne regarde pas le provider : `chatService` construit les messages */
 export type LLMProviderOptions = Omit<LlmConfig, 'systemPrompt'>;
 
 /**
- * Token carried by one line of the stream (SSE `data: …` or raw JSON line).
- * Blank lines, the end marker and non-JSON lines carry none: they yield ''.
+ * Jeton d'une ligne du flux (SSE `data: …` ou JSON brut). Lignes vides, marqueur de
+ * fin et lignes non JSON donnent ''.
  */
 const extractToken = (rawLine: string): string => {
   const line = rawLine.trim();
@@ -63,15 +58,14 @@ const extractToken = (rawLine: string): string => {
 };
 
 /**
- * Complete lines of a text stream. A line split across two pieces is emitted
- * once whole; a last piece without a final newline is dropped.
+ * Lignes complètes d'un flux texte. Une ligne coupée entre deux morceaux sort une fois
+ * entière ; un dernier morceau sans saut de ligne final est perdu.
  */
 async function* readLines(text: AsyncIterable<string>): AsyncGenerator<string, void, undefined> {
   let buffer = '';
   for await (const piece of text) {
     buffer += piece;
     const lines = buffer.split(LINE_SEPARATOR);
-    // The last element is an incomplete line: keep it for the next piece
     buffer = lines.pop() ?? '';
     yield* lines;
   }
@@ -81,13 +75,10 @@ export class LLMProvider {
   constructor(private readonly settings: LLMProviderOptions) {}
 
   /**
-   * Fires the streaming request and returns the response body.
-   *
-   * The timeout covers the wait for the response only, not the streaming of the
-   * answer that follows: hence a controller cleared once the response is there,
-   * not `AbortSignal.timeout`, which would also cut a long answer. The caller's
-   * signal covers both: the request, then the body read under the same `fetch`.
-   * @throws Error (plain) on timeout, HTTP error or missing body — `stream` wraps it
+   * Le timeout ne couvre que l'attente de la réponse, pas le streaming qui suit : d'où
+   * un contrôleur annulé à réception plutôt qu'`AbortSignal.timeout`, qui couperait une
+   * longue réponse. Le signal de l'appelant couvre les deux.
+   * @throws Error simple (timeout, erreur HTTP, corps absent) — `stream` l'enveloppe
    */
   private async openStream(messages: ChatMessage[], abortSignal?: AbortSignal): Promise<NonNullable<Response['body']>> {
     const { apiUrl, apiKey, model, temperature, timeoutMs } = this.settings;
@@ -114,11 +105,8 @@ export class LLMProvider {
   }
 
   /**
-   * Stream completions from the configured OpenAI-compatible API
-   * @param messages Chat messages (system + user)
-   * @param abortSignal once raised, the request is cut and the iterator ends without error
-   * @returns Async iterator for streaming tokens
-   * @throws RagError with stage='llm'
+   * @param abortSignal une fois levé, la requête est coupée et l'itérateur finit sans erreur
+   * @throws RagError d'étape `llm`
    */
   async *stream(messages: ChatMessage[], abortSignal?: AbortSignal): AsyncGenerator<string, void, unknown> {
     const startTime = Date.now();
@@ -127,8 +115,8 @@ export class LLMProvider {
 
     try {
       const body = await this.openStream(messages, abortSignal);
-      // Streaming decoder: a multi-byte character split across two network chunks
-      // (an accented letter, say) is decoded once both halves have arrived.
+      // Décodeur en flux : un caractère multi-octets coupé entre deux paquets (une
+      // lettre accentuée) n'est décodé qu'une fois entier.
       for await (const line of readLines(body.pipeThrough(new TextDecoderStream()))) {
         const token = extractToken(line);
         if (token) yield token;

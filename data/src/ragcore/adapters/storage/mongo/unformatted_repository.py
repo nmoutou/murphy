@@ -1,14 +1,7 @@
-"""Les relations non formatées (ADR-045) — accumulées de run en run, comme les pendantes.
+"""Les relations non formatées (ADR-045), accumulées de run en run comme les pendantes.
 
-Mêmes décisions que ``pending_repository`` :
-
-1. **Union idempotente.** ``$setOnInsert`` fige ``first_seen_run``, ``$set`` fait
-   avancer ``last_seen_run``. Revoir dix fois la même relation produit UNE entrée —
-   c'est l'index unique sur la clé à quatre champs qui le garantit.
-
-2. **Une compensation qui ne défait que son propre run.** Une ligne née d'un run
-   précédent n'appartient pas à la saga qui échoue : ``delete_first_seen`` filtre sur
-   ``first_seen_run``, jamais sur le seul ``source_id``.
+La compensation filtre sur ``first_seen_run``, jamais sur le seul ``source_id`` : une
+ligne née d'un run précédent n'appartient pas à la saga qui échoue.
 """
 
 from collections.abc import Sequence
@@ -22,15 +15,12 @@ from ragcore.core.models.unformatted_relation import UnformattedRelation
 __all__ = ["UNFORMATTED_RELATIONS_COLLECTION", "MongoUnformattedRelationRepository"]
 
 UNFORMATTED_RELATIONS_COLLECTION = "unformatted_relations"
-"""La collection des relations non formatées, dans la base de données (MURPHY_DATA)."""
+"""Dans la base de données, pas la méta."""
 
 
 def _key_filter(relation: UnformattedRelation) -> dict[str, object]:
-    """La clé à quatre champs — celle de l'index unique.
-
-    ``sens`` en fait partie : « je cite X » et « X me cite » sont deux faits, et le
-    ``$set`` écraserait sinon l'un par l'autre.
-    """
+    """Celle de l'index unique. ``sens`` en fait partie : « je cite X » et « X me cite »
+    sont deux faits."""
     return {
         "source_id": relation.source_identifier.serialize(),
         "target_text": relation.target_text,
@@ -49,8 +39,7 @@ def _upsert(relation: UnformattedRelation, run_id: RunId) -> UpdateOne:
                 "source": relation.source.value,
                 "last_seen_run": run_id,
             },
-            # first_seen_run est posé À LA CRÉATION uniquement : c'est ce qui
-            # l'empêche de reculer quand la relation est revue.
+            # Seulement à la création : first_seen_run ne doit pas reculer
             "$setOnInsert": {"first_seen_run": run_id},
         },
         upsert=True,
@@ -58,8 +47,6 @@ def _upsert(relation: UnformattedRelation, run_id: RunId) -> UpdateOne:
 
 
 class MongoUnformattedRelationRepository:
-    """Implémentation Mongo de ``UnformattedRelationRepository``."""
-
     def __init__(
         self,
         client: MongoClient,
@@ -71,8 +58,6 @@ class MongoUnformattedRelationRepository:
     async def upsert_many(
         self, relations: Sequence[UnformattedRelation], run_id: RunId
     ) -> None:
-        # Presque aucun document ne déclare de cible décrite : pas d'aller-retour Mongo
-        # pour une liste vide.
         if not relations:
             return
         operations = [_upsert(relation, run_id) for relation in relations]

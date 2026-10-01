@@ -1,17 +1,11 @@
-/**
- * Passages Tests
- * Code point offsets (the ingestion's unit) turned into UTF-16 highlights, and the
- * join of each chunk to its parent document
- */
-
 import type { RetrievedChunk, StoredDocument } from '../../types/rag';
 import { assemblePassages, toUtf16Range } from '../../services/passages';
 
-/** `𝔸` is outside the Basic Multilingual Plane: one code point, two UTF-16 units */
+/** `𝔸` est hors du plan multilingue de base : un point de code, deux unités UTF-16 */
 const ASTRAL_PREFIX = '𝔸 ';
 const PASSAGE = 'Les actions personnelles se prescrivent par cinq ans.';
 const CONTENT = `${ASTRAL_PREFIX}Article 2224. ${PASSAGE}`;
-/** Where `PASSAGE` starts, counted as Python counts it */
+/** Début de `PASSAGE`, compté comme en Python */
 const PASSAGE_CODE_POINT_START = [...`${ASTRAL_PREFIX}Article 2224. `].length;
 
 const DOCUMENT: StoredDocument = {

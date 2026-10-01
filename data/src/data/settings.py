@@ -1,23 +1,12 @@
-"""Project settings. There is no need to edit this file unless you want to change values
-from the Kedro defaults. For further information, including these default values, see
+"""Réglages du projet Kedro :
 https://docs.kedro.org/en/stable/kedro_project_setup/settings.html."""
 
 from ragcore.orchestration.kedro.hooks import TelemetryHooks
 
-# Pas de `load_dotenv` ici. L'appel qui s'y trouvait pointait sur `data/src/.env` — un
-# fichier qui n'a jamais existé : un no-op silencieux. Il servait le résolveur `oc.env`
-# d'OmegaConf, qu'aucun YAML de `conf/` n'utilise.
-#
-# La configuration est lue par `ragcore.adapters.config.settings`, qui va chercher le
-# fichier UNIQUE de la racine par chemin absolu. Deux endroits qui prétendent savoir « où
-# est le .env » sont précisément ce qui a produit le bug : il n'en reste qu'un.
-
+# Pas de `load_dotenv` : seul `ragcore.adapters.config.settings` lit l'environnement.
 HOOKS = (TelemetryHooks(),)
 
-# Installed plugins for which to disable hook auto-registration.
 DISABLE_HOOKS_FOR_PLUGINS = ("kedro-viz",)
 
-# REMPLACE les arguments par défaut de Kedro (`base_env: "base"`,
-# `default_run_env: "local"`) au lieu de les compléter : aucun environnement d'exécution
-# n'est donc superposé à `base` — il n'existe pas de `conf/local/`.
+# Remplace les défauts de Kedro au lieu de les compléter : pas de `conf/local/` superposé
 CONFIG_LOADER_ARGS = {"base_env": "base"}

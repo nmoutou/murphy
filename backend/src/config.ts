@@ -1,11 +1,8 @@
 /**
- * Runtime Configuration
- * Reads and validates the environment once, at boot: every other module reads
- * `config`, never `process.env`. The reader records which variables were missing
- * or fell back to their default, so `checkEnvironment` reports from what was
- * actually read instead of a hand-kept list.
+ * Seul lecteur de `process.env`, une fois au démarrage. Le lecteur note les variables
+ * absentes ou par défaut : `checkEnvironment` rend compte de ce qui a vraiment été lu.
  *
- * No internal import here: `utils/logger.ts` depends on this module.
+ * Aucun import interne ici : `utils/logger.ts` dépend de ce module.
  */
 
 type Environment = Readonly<Record<string, string | undefined>>;
@@ -36,9 +33,9 @@ export interface MongoConfig {
 
 export interface QdrantConfig {
   readonly url: string;
-  /** The fixed name the ingestion writes to: both read `QDRANT_COLLECTION` */
+  /** Nom fixe, partagé avec l'ingestion via `QDRANT_COLLECTION` */
   readonly collection: string;
-  /** Per request; the client's own default is 300 s */
+  /** Par requête ; le défaut du client est de 300 s */
   readonly timeoutMs: number;
 }
 
@@ -73,9 +70,9 @@ export interface AppConfig {
 }
 
 export interface EnvironmentReport {
-  /** Required variables left unset: the matching feature cannot work */
+  /** Variables obligatoires absentes : la fonctionnalité correspondante ne marche pas */
   readonly missingRequired: readonly string[];
-  /** Optional variables left unset: their default applies */
+  /** Variables facultatives absentes : leur défaut s'applique */
   readonly defaulted: readonly string[];
 }
 
@@ -112,13 +109,13 @@ const DEFAULT_SYSTEM_PROMPT =
   'Si la réponse ne se trouve pas dans les documents fournis, dites-le clairement.';
 
 interface EnvReader {
-  /** Unset → `undefined`, recorded as defaulted */
+  /** Absente → `undefined`, notée « par défaut » */
   readonly optional: (name: string) => string | undefined;
-  /** Unset → `''`, recorded as missing */
+  /** Absente → `''`, notée « manquante » */
   readonly required: (name: string) => string;
-  /** @throws Error when set to something that is not an integer */
+  /** @throws si la valeur n'est pas un entier */
   readonly integer: (name: string, fallback: number) => number;
-  /** @throws Error when set to something that is not a finite number */
+  /** @throws si la valeur n'est pas un nombre fini */
   readonly number: (name: string, fallback: number) => number;
   readonly report: () => EnvironmentReport;
 }
@@ -127,7 +124,7 @@ const createEnvReader = (env: Environment): EnvReader => {
   const missingRequired: string[] = [];
   const defaulted: string[] = [];
 
-  // Compose passes `VAR=` when the variable is absent from `.env.dev`: empty means unset
+  // Compose passe `VAR=` quand la variable manque à `.env.dev` : vide = absente
   const read = (name: string, unsetList: string[]): string | undefined => {
     const raw = env[name];
     if (raw !== undefined && raw !== '') return raw;
@@ -210,7 +207,7 @@ const readRetrievalConfig = (reader: EnvReader): RetrievalConfig => ({
 });
 
 /**
- * @throws Error naming the variable when a numeric variable does not parse
+ * @throws en nommant la variable quand une variable numérique est malformée
  */
 export const loadConfig = (env: Environment): LoadedConfig => {
   const reader = createEnvReader(env);

@@ -1,4 +1,4 @@
-"""Fabrique du driver Neo4j — une fonction, jamais un singleton (cf. mongo/client.py)."""
+"""Une fonction, jamais un singleton (cf. mongo/client.py)."""
 
 import neo4j
 

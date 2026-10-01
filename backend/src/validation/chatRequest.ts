@@ -1,9 +1,3 @@
-/**
- * Chat Request Validation
- * Checks the `{ messages }` payload at the system boundary; shared by the HTTP
- * routes (`routes/chat.ts`) and the WebSocket (`routes/chatWebSocket.ts`)
- */
-
 import { safeValidateUIMessages, TypeValidationError } from 'ai';
 import type { AppUIMessage } from '@murphy/contract/messages';
 import { appDataPartSchemas, appMessageMetadataSchema } from '@murphy/contract/messages';
@@ -25,7 +19,7 @@ interface SchemaIssue {
 const MESSAGES_FIELD = 'messages';
 const MISSING_MESSAGES = 'messages must be provided';
 
-// A user message carries no metadata: only the assistant's `ragTiming` is checked
+// Un message utilisateur n'a pas de métadonnée : seul le `ragTiming` de l'assistant est vérifié
 const MESSAGE_METADATA_SCHEMA = appMessageMetadataSchema.optional();
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -41,8 +35,8 @@ const fieldOf = (base: string, path: readonly unknown[]): string =>
   path.reduce<string>((field, key) => (typeof key === 'number' ? `${field}[${key}]` : `${field}.${String(key)}`), base);
 
 /**
- * The SDK's error message embeds the whole received value (`Value: {…}`), the
- * conversation included: only the fields and the schema's messages are kept
+ * Le message d'erreur du SDK embarque toute la valeur reçue, conversation comprise :
+ * on ne garde que les champs et les messages du schéma
  */
 const toValidationIssues = (error: Error): ValidationIssue[] => {
   if (!TypeValidationError.isInstance(error)) return [{ field: MESSAGES_FIELD, message: MISSING_MESSAGES }];
@@ -50,7 +44,7 @@ const toValidationIssues = (error: Error): ValidationIssue[] => {
   const base = error.context?.field ?? MESSAGES_FIELD;
   const issues = schemaIssuesOf(error.cause).map((issue) => ({ field: fieldOf(base, issue.path), message: issue.message }));
   if (issues.length > 0) return issues;
-  // A data part without schema: the cause is the SDK's own sentence
+  // Part de données sans schéma : la cause est la phrase du SDK
   return [{ field: base, message: typeof error.cause === 'string' ? error.cause : 'invalid value' }];
 };
 

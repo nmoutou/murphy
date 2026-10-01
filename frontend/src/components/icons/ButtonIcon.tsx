@@ -5,10 +5,10 @@ type ButtonIconVariant = 'primary' | 'secondary';
 
 interface ButtonIconProps {
   readonly icon: string;
-  /** The accessible name of the button: the icon itself is decorative */
+  /** Nom accessible du bouton : l'icône est décorative */
   readonly label: string;
   readonly size: number;
-  /** Optional for a submit button, which its form handles */
+  /** Facultatif pour un bouton submit, géré par son formulaire */
   readonly onClick?: () => void;
   readonly type?: 'button' | 'submit';
   readonly variant?: ButtonIconVariant;

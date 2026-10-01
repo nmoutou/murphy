@@ -1,9 +1,8 @@
-"""CLIQUET — les renommages de métadonnées (ADR-049).
+"""Cliquet : les renommages de métadonnées (ADR-049).
 
-Une collision de valeurs se voit au run : le bilan la compte (``unknowns.collisions``).
-Une collision de NOMS, elle, est une décision de la table, et rien ne la verrait
-au run : deux balises renommées pareil, un renommage commun redéfini en silence, une
-cible qui écrase un champ du contrat. Ce cliquet les interdit.
+Une collision de valeurs se voit au bilan ; une collision de noms est une décision de la
+table, invisible au run : deux balises renommées pareil, un renommage commun redéfini,
+une cible qui écrase un champ du contrat.
 """
 
 from __future__ import annotations
@@ -29,14 +28,14 @@ TABLES: dict[str, RoleTable] = {"LEGI": LEGI_ROLE_TABLE, **ROLE_TABLE_BY_ROOT}
 
 RESERVED_FIELDS = frozenset(
     {
-        # Le contrat de serving, posé dans le payload Qdrant (`QdrantVectorRepository`).
+        # Le contrat de service, dans le payload Qdrant
         "chunk_id",
         "identifier",
         "char_start",
         "char_end",
         "document_type",
         "nature",
-        # Les propriétés d'un nœud Neo4j, que `node_props` complète des métadonnées.
+        # Les propriétés d'un nœud Neo4j, que `node_props` complète des métadonnées
         "title",
         "source",
     }
@@ -59,8 +58,8 @@ def test_aucune_cible_n_est_un_champ_reserve(name: str) -> None:
 
 @pytest.mark.parametrize("name", TABLES)
 def test_une_cle_list_est_une_cible_de_renommage(name: str) -> None:
-    """Une clé non renommée devient une liste sans déclaration : la déclarer ne sert à
-    rien, et trahit une faute de frappe."""
+    """Une clé non renommée devient une liste sans déclaration : la déclarer trahit une
+    faute de frappe."""
     table = TABLES[name]
     orphans = table.list_keys - set(table.meta_renames.values())
     assert not orphans, f"{name} : clés list sans renommage {orphans}"
@@ -68,8 +67,8 @@ def test_une_cle_list_est_une_cible_de_renommage(name: str) -> None:
 
 @pytest.mark.parametrize("root", ROLE_TABLE_BY_ROOT)
 def test_aucune_table_juri_ne_redefinit_un_renommage_commun(root: str) -> None:
-    """``{**_COMMON_RENAMES, **renames}`` laisserait une table écraser un renommage
-    commun sans un mot. S'il doit différer, il sort de la liste commune."""
+    """Une table ne redéfinit pas un renommage commun en silence : s'il doit différer,
+    il sort de la liste commune."""
     renames = ROLE_TABLE_BY_ROOT[root].meta_renames
     redefined = {
         tag for tag, target in _COMMON_RENAMES.items() if renames[tag] != target
@@ -100,8 +99,8 @@ def _table_of(raw: RawDocument) -> RoleTable:
     ids=["legi", "juri"],
 )
 def test_aucune_fixture_n_est_refusee_pour_collision(connector: BaseConnector) -> None:
-    """Une clé renommée qui reçoit plusieurs valeurs sur un document connu doit être
-    déclarée ``list`` : sinon le document serait refusé au premier run."""
+    """Une clé renommée multivaluée sur un document connu doit être déclarée ``list``,
+    sinon le document serait refusé."""
     refused = {}
     for raw in _fixtures(connector):
         try:

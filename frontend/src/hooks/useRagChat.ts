@@ -8,10 +8,10 @@ export function useRagChat() {
   const { messages, sendMessage, stop, status, error, clearError, setMessages } =
     useChat<AppUIMessage>({
       transport: webSocketChatTransport,
-      // The transport checks the data parts; the metadata of the answer is checked here
+      // Le transport vérifie les parts de données ; les métadonnées le sont ici
       messageMetadataSchema: appMessageMetadataSchema,
       onError: (chatError) => console.error('Chat request failed:', chatError),
-      // A failed answer leaves no bubble behind: the question stays, the modal says why (ADR-041)
+      // Une réponse en échec ne laisse pas de bulle : la question reste, la modale dit pourquoi (ADR-041)
       onFinish: ({ isError, message }) => {
         if (!isError) return;
         setMessages((current) => current.filter((candidate) => candidate.id !== message.id));

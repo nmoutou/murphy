@@ -1,8 +1,5 @@
-"""Runtimes factices — une vraie boucle asyncio, mais une par worker et traçable.
-
-Le point du test n'est pas de simuler asyncio (on le laisse faire son travail) :
-c'est de pouvoir AFFIRMER que chaque worker a reçu SA boucle, et jamais celle du
-voisin. D'où le ``worker_id`` porté par le runtime.
+"""Une vraie boucle asyncio par worker, portant son ``worker_id`` pour vérifier que
+chaque worker a la sienne.
 """
 
 import asyncio

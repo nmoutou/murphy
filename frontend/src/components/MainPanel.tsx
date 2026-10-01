@@ -15,7 +15,7 @@ export default function MainPanel() {
     await sendMessage({ text: question });
   };
 
-  // Centred under the welcome, then docked under the conversation
+  // Centrée sous l'accueil, puis ancrée sous la conversation
   const chatBox = (
     <ChatBox onEnter={handleQuery} onCancel={stop} disabled={isLoading} isDocked={hasMessages} />
   );

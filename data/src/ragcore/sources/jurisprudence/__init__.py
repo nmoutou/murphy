@@ -1,13 +1,7 @@
-"""``sources/jurisprudence`` — cinq sources, **trois tables, un connecteur, zéro parser**.
+"""Le format XML de la jurisprudence : CAPP, CASS, INCA, JADE et CONSTIT.
 
-CAPP, CASS, INCA, JADE, CONSTIT : cinq bases DILA, un seul format XML. Le code est rangé
-par format, les données par base ; ``sources/registry.py`` fait le lien. Ce package ne
-contient aucune mécanique : le parser et le
-chunker sont ceux de ``sources/generic``, la mécanique des liens est celle de
-``core/links``. La juri n'apporte que du vocabulaire.
-
-C'est la vérification de §3 : *« une source nouvelle = une table, pas un second parser »*.
-Cinq sources sont arrivées ; aucun parser n'a été écrit.
+Trois tables, un connecteur, aucune mécanique : parser et chunker viennent de
+``sources/generic``, les liens de ``core/links``.
 """
 
 from .file_connector import JuriFileConnector

@@ -1,6 +1,6 @@
 /**
- * Chat WebSocket (`/api/v1/chat/ws`) — the transport the frontend uses
- * One `{ messages }` payload in, the AI SDK UI message parts out, then the socket closes
+ * WebSocket du chat, le transport du frontend : un `{ messages }` en entrée, les parts
+ * du message en sortie, puis la socket se ferme.
  */
 
 import type { IncomingMessage, Server } from 'http';
@@ -21,16 +21,15 @@ import { MAX_REQUEST_BODY_BYTES } from '../utils/requestLimits';
 const logger = rootLogger.child({ context: 'chatWebSocket' });
 
 export const CHAT_WEBSOCKET_PATH = '/api/v1/chat/ws';
-/** The frontend sends its question as soon as the socket opens */
+/** Le frontend envoie sa question dès l'ouverture */
 const FIRST_MESSAGE_TIMEOUT_MS = 10_000;
-/** RFC 6455 close code for a client breaking the server's policy */
+/** Code de fermeture RFC 6455 : violation de politique */
 const POLICY_VIOLATION_CLOSE_CODE = 1008;
 
 interface ChatWebSocketOptions {
   readonly server: Server;
-  /** `config.http.corsOrigins`: `false` refuses every browser */
+  /** `config.http.corsOrigins` : `false` refuse tout navigateur */
   readonly allowedOrigins: readonly string[] | false;
-  /** Past this delay without a message, the socket is closed */
   readonly firstMessageTimeoutMs?: number;
 }
 
@@ -86,7 +85,7 @@ const handleChatMessage = async (ws: WebSocket, raw: RawData, remoteAddress: str
     return;
   }
 
-  // The client leaving stops the pipeline, the LLM included (ADR-041)
+  // Le départ du client arrête le pipeline, LLM compris (ADR-041)
   const abortController = new AbortController();
   ws.on('close', () => abortController.abort());
   try {
@@ -97,7 +96,7 @@ const handleChatMessage = async (ws: WebSocket, raw: RawData, remoteAddress: str
   }
 };
 
-/** Only a browser sends `Origin`, and a cross-site page cannot forge it: the same list as the HTTP CORS */
+/** Seul un navigateur envoie `Origin`, infalsifiable par une page tierce : même liste que le CORS HTTP */
 const isOriginAllowed = (origin: string | undefined, allowedOrigins: readonly string[] | false): boolean => {
   if (origin === undefined) return true;
   return allowedOrigins !== false && allowedOrigins.includes(origin);
@@ -119,8 +118,8 @@ const handleConnection = (ws: WebSocket, request: IncomingMessage, firstMessageT
   const remoteAddress = request.socket.remoteAddress;
   logger.info('WebSocket client connected');
 
-  // Invalid frame or payload over `maxPayload`: ws already closes the socket, and an
-  // unheard `error` event would be thrown as an uncaught exception, stopping the server
+  // Trame invalide ou trop grosse : ws ferme déjà la socket, mais un `error` sans
+  // écouteur devient une exception non rattrapée qui arrête le serveur
   ws.on('error', (error: Error) => {
     logger.warn({ err: error, ip: remoteAddress }, 'WebSocket protocol error, socket closed');
   });

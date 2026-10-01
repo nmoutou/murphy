@@ -1,8 +1,5 @@
-"""RunStats — l'agrégat d'un run, MERGEABLE (monoïde de fusion, §11).
-
-Avec N workers il n'y a plus *un* agrégateur mais N. Le verrou disparaît parce
-que rien n'est partagé : chaque worker tient SON agrégat local, immuable, et le
-pipeline les RÉDUIT. La fusion est une fonction pure — zéro section critique.
+"""L'agrégat d'un run, fusionnable : chaque worker tient le sien, immuable, et le
+pipeline les réduit. Rien n'est partagé, donc aucun verrou.
 """
 
 from collections.abc import Iterable, Mapping
@@ -26,7 +23,6 @@ _TallyT = TypeVar("_TallyT", bound=_Tally)
 def _merge_tallies(
     left: Mapping[str, _TallyT], right: Mapping[str, _TallyT]
 ) -> dict[str, _TallyT]:
-    """Une clé vue des deux côtés fusionne ses comptes ; les autres passent telles quelles."""
     merged = dict(left)
     for key, tally in right.items():
         known = merged.get(key)
@@ -35,46 +31,29 @@ def _merge_tallies(
 
 
 class RunStats(BaseModel):
-    """Agrégat immuable et fusionnable des événements d'un run (ou d'un worker).
+    """Monoïde : neutre ``empty()``, opérateur ``merge`` associatif et commutatif.
 
-    Monoïde :
-      - élément neutre : ``RunStats.empty()``
-      - opérateur      : ``merge`` — associatif ET commutatif
-      - lois           : ``merge(x, empty()) == merge(empty(), x) == x``
-                         ``merge(merge(a, b), c) == merge(a, merge(b, c))``
-                         ``merge(a, b) == merge(b, a)``
-
-    La commutativité n'est pas un luxe, c'est une contrainte de correction : les
-    workers finissent dans un ordre non déterministe. Une fusion non commutative
-    ferait dépendre le RunSummary de l'ordonnancement — un non-déterminisme
-    silencieux. Elle interdit donc tout champ du genre « le premier échec ».
+    La commutativité est requise : les workers finissent dans un ordre non déterministe.
+    Elle interdit tout champ du genre « le premier échec ».
     """
 
     model_config = ConfigDict(frozen=True)
 
     counts: dict[str, int] = Field(default_factory=dict)
-    """event_type -> nombre d'occurrences. Fusion : somme."""
+    """event_type -> nombre d'occurrences."""
 
     unknowns: dict[str, dict[str, UnknownTally]] = Field(default_factory=dict)
-    """Catégorie -> mot que le run n'a pas su nommer -> combien de documents, et un exemple.
-
-    Un COMPTEUR par mot, en documents : chaque document ne déclare un mot qu'une fois.
-    Fusion : somme des comptes, plus petit exemple (``UnknownTally.merge``).
-    """
+    """Catégorie -> mot que le run n'a pas su nommer -> nombre de documents et exemple."""
 
     collisions: dict[str, CollisionTally] = Field(default_factory=dict)
-    """Clé de métadonnée qui a reçu plusieurs valeurs -> combien de documents, et les
-    fichiers de l'un d'eux (ADR-049). Ce n'est pas un inconnu : la table range la clé en
-    liste, ou refuse le document. Fusion : celle des inconnus (``CollisionTally.merge``).
-    """
+    """Clé de métadonnée qui a reçu plusieurs valeurs -> nombre de documents et
+    fichiers de l'un d'eux (ADR-049)."""
 
     @classmethod
     def empty(cls) -> "RunStats":
-        """L'élément neutre du monoïde."""
         return cls()
 
     def merge(self, other: "RunStats") -> "RunStats":
-        """Opérateur associatif et commutatif. Ne mute rien ; retourne un neuf."""
         counts = dict(self.counts)
         for event_type, n in other.counts.items():
             counts[event_type] = counts.get(event_type, 0) + n
@@ -91,7 +70,6 @@ class RunStats(BaseModel):
 
     @classmethod
     def reduce(cls, stats: Iterable["RunStats"]) -> "RunStats":
-        """Réduit N agrégats en un seul. ``reduce([])`` vaut ``empty()``."""
         result = cls.empty()
         for stat in stats:
             result = result.merge(stat)
@@ -103,11 +81,9 @@ class RunStats(BaseModel):
     def with_unknown(
         self, category: str, value: str, example: UnknownExample
     ) -> "RunStats":
-        """Un mot inconnu, vu dans un document de plus."""
         tally = UnknownTally.seen_in(example)
         return self.merge(RunStats(unknowns={category: {value: tally}}))
 
     def with_collision(self, key: str, source_files: tuple[str, ...]) -> "RunStats":
-        """Une clé en collision, vue dans un document de plus."""
         tally = CollisionTally.seen_in(source_files)
         return self.merge(RunStats(collisions={key: tally}))

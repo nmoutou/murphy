@@ -1,10 +1,5 @@
-"""Le multi-source — ce qui doit tenir, et ce qui doit CASSER.
-
-Ces tests portent sur la seule chose que le composite peut ruiner silencieusement :
-**router un document vers la mauvaise table de rôles**. Un document parsé avec la table
-d'une autre source ne lève pas — il produit un document plausible et faux. C'est
-précisément le mode de défaillance que le pipeline s'interdit, donc c'est ce qu'on teste
-en premier.
+"""Le multi-source : un document routé vers la mauvaise table de rôles ne lève pas, il
+devient plausible et faux. C'est ce qu'on teste d'abord.
 """
 
 from __future__ import annotations
@@ -33,7 +28,7 @@ def _raw(source: SourceName, doc_id: str) -> RawDocument:
 
 
 class _FakeConnector:
-    """Connecteur de test : émet N documents estampillés de SA source, comme les vrais."""
+    """Émet N documents estampillés de sa source, comme les vrais."""
 
     def __init__(
         self, source: SourceName, count: int, skipped: dict[str, int] | None = None
@@ -48,7 +43,7 @@ class _FakeConnector:
 
 
 class _FakeParser:
-    """Parser de test : rend sa propre source, pour qu'on voie QUI a parsé."""
+    """Rend sa propre source, pour voir qui a parsé."""
 
     def __init__(self, source: SourceName) -> None:
         self.source_name = source
@@ -63,7 +58,7 @@ class _FakeParser:
 
 
 async def test_composite_emits_every_source() -> None:
-    """Les documents des N sources sortent tous — aucune source n'est avalée."""
+    """Les documents de toutes les sources sortent."""
     composite = CompositeConnector(
         {
             SourceName.LEGI: _FakeConnector(SourceName.LEGI, 2),
@@ -79,10 +74,7 @@ async def test_composite_emits_every_source() -> None:
 
 
 async def test_composite_preserves_source_stamp() -> None:
-    """Chaque document garde la source de SON connecteur.
-
-    C'est l'invariant qui rend le routage possible. S'il tombe, tout le reste ment.
-    """
+    """Chaque document garde la source de son connecteur : l'invariant du routage."""
     composite = CompositeConnector(
         {
             SourceName.JADE: _FakeConnector(SourceName.JADE, 1),
@@ -100,12 +92,8 @@ async def test_composite_preserves_source_stamp() -> None:
 
 
 async def test_composite_merges_skipped_counters() -> None:
-    """Deux fichiers illisibles dans deux sources font DEUX exclusions, pas une.
-
-    Un compteur écrasé au lieu d'être sommé ferait disparaître un document écarté —
-    et un document qui disparaît sans être compté est exactement ce que le port
-    ``skipped`` existe pour empêcher.
-    """
+    """Deux illisibles dans deux sources font deux exclusions : les compteurs se
+    somment."""
     composite = CompositeConnector(
         {
             SourceName.CASS: _FakeConnector(
@@ -123,7 +111,7 @@ async def test_composite_merges_skipped_counters() -> None:
 
 
 async def test_composite_resets_skipped_between_runs() -> None:
-    """Deux itérations ne cumulent pas : le compteur est celui de CETTE lecture."""
+    """Deux itérations ne cumulent pas : le compteur est celui de cette lecture."""
     composite = CompositeConnector(
         {SourceName.CASS: _FakeConnector(SourceName.CASS, 1, skipped={"unreadable": 2})}
     )
@@ -135,7 +123,7 @@ async def test_composite_resets_skipped_between_runs() -> None:
 
 
 def test_composite_refuses_to_be_empty() -> None:
-    """Un composite sans source ingérerait zéro document en se déclarant « ok »."""
+    """Sans source, un run n'ingérerait rien en se déclarant « ok »."""
     with pytest.raises(ValueError, match="sans aucune source"):
         CompositeConnector({})
 
@@ -144,24 +132,20 @@ def test_composite_refuses_to_be_empty() -> None:
 
 
 def test_router_dispatches_on_document_source() -> None:
-    """LE test. Chaque document part chez le parser de SA source."""
+    """Chaque document part chez le parser de sa source."""
     legi, cass = _FakeParser(SourceName.LEGI), _FakeParser(SourceName.CASS)
     router = RoutingParser({SourceName.LEGI: legi, SourceName.CASS: cass})  # type: ignore[arg-type]
 
     assert router.parse(_raw(SourceName.LEGI, "a")) is SourceName.LEGI
     assert router.parse(_raw(SourceName.CASS, "b")) is SourceName.CASS
 
-    # Et surtout : aucun parser n'a vu le document de l'autre.
+    # Aucun parser n'a vu le document de l'autre
     assert legi.seen == ["a"]
     assert cass.seen == ["b"]
 
 
 def test_router_raises_on_unroutable_source() -> None:
-    """Une source sans parser LÈVE — elle ne tombe pas sur un défaut.
-
-    Router vers un défaut parserait le document avec la mauvaise table : il en sortirait
-    un document plausible et silencieusement faux. Mieux vaut un run qui s'arrête.
-    """
+    """Une source sans parser lève, jamais de parser par défaut."""
     router = RoutingParser({SourceName.LEGI: _FakeParser(SourceName.LEGI)})  # type: ignore[arg-type]
 
     with pytest.raises(ValueError, match="Aucun parser pour la source 'cass'"):

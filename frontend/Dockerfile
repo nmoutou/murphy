@@ -1,23 +1,22 @@
 ##########################
-# Development Stage
-# The build context is the repository root: frontend and the shared contract are npm
-# workspaces resolved by the root lockfile. docker-compose.dev.yml mounts frontend/src
-# and frontend/public only (hot-reload); dependencies, config and the contract live in
-# the image, so changing them means rebuilding it (`npm run serve:build`).
+# Développement
+# docker-compose.dev.yml ne monte que frontend/src et frontend/public : dépendances,
+# config et contrat vivent dans l'image, en changer impose de la reconstruire
+# (`npm run build`).
 ##########################
 FROM node:22 AS development
 WORKDIR /app
 
-# Install system dependencies (curl for healthchecks)
+# curl pour les healthchecks
 RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 
-# Every workspace manifest: `npm ci` checks the lockfile against all of them
+# Tous les manifestes : `npm ci` confronte le lockfile à chacun
 COPY package.json package-lock.json ./
 COPY backend/package.json backend/
 COPY frontend/package.json frontend/
 COPY packages/contract/package.json packages/contract/
 
-# Scripts are skipped: the root postinstall would build the contract before its sources are here
+# Sans scripts : le postinstall racine construirait le contrat avant l'arrivée de ses sources
 RUN npm ci -w frontend -w @murphy/contract --ignore-scripts
 
 COPY packages/contract/ packages/contract/
@@ -29,30 +28,27 @@ WORKDIR /app/frontend
 EXPOSE 3000
 ENV NODE_ENV=development
 
-# Default command (overridden by docker-compose)
+# Remplacée par docker-compose
 CMD ["npm", "run", "dev"]
 
 ##########################
-# Builder Stage
-# Builds Next.js application
+# Build
 ##########################
 FROM development AS builder
-# `next build` expects production: a development NODE_ENV would bundle React's dev build
+# Un NODE_ENV de développement embarquerait le build de dev de React
 ENV NODE_ENV=production
-# Next inlines NEXT_PUBLIC_* into the client bundle at build time: the image targets
-# one backend URL, and changing it means rebuilding (docker-compose.prod.yml passes it)
+# Inliné au build : l'image vise une seule URL de backend, en changer impose de reconstruire
 ARG NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 RUN npm run build
 
 ##########################
-# Production Stage
-# Optimized image with only built app and production dependencies
+# Production : app construite et dépendances de production seulement
 ##########################
 FROM node:22-slim AS production
 WORKDIR /app
 
-# Install system dependencies (curl for healthchecks)
+# curl pour les healthchecks
 RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 
 COPY package.json package-lock.json ./
@@ -60,12 +56,10 @@ COPY backend/package.json backend/
 COPY frontend/package.json frontend/
 COPY packages/contract/package.json packages/contract/
 
-# Install only production dependencies
 RUN npm ci --omit=dev -w frontend --ignore-scripts
 
-# Copy built app from builder
 COPY --from=builder /app/packages/contract/dist packages/contract/dist
-# Owned by `node`: `next start` writes its cache under .next/cache
+# Appartient à `node` : `next start` écrit son cache sous .next/cache
 COPY --from=builder --chown=node:node /app/frontend/.next frontend/.next
 COPY --from=builder /app/frontend/public frontend/public
 WORKDIR /app/frontend

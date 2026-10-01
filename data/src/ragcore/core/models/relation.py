@@ -12,17 +12,13 @@ class Relation(BaseModel):
 
     model_config = ConfigDict(frozen=True)
 
-    source_identifier: Identifier  # document source de la relation
-    target_identifier: Identifier  # document cible de la relation
+    source_identifier: Identifier
+    target_identifier: Identifier
 
     relation_type: ValidatedVerb
-    """Le verbe de l'arête — une chaîne validée, plus un membre d'enum.
-
-    Il **devient le type d'arête Neo4j** (``MERGE (a)-[r:$(verb)]->(b)``). Un verbe
-    canonique (``cites``) et un mot brut non traduit (``zorglub``) y cohabitent
-    légitimement : le second est un aveu, pas une erreur. Ce qui n'y entre jamais, c'est
-    une chaîne qui ne peut pas être un type d'arête — d'où la validation.
+    """Devient le type d'arête Neo4j. Un verbe canonique (``cites``) et un mot brut non
+    traduit y cohabitent ; la validation écarte ce qui ne peut pas être un type d'arête.
     """
 
-    source: SourceName  # source du document qui a déclaré cette relation
+    source: SourceName  # la source qui a déclaré la relation
     metadata: dict[str, Any] = Field(default_factory=dict)

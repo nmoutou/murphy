@@ -1,8 +1,5 @@
-"""La clôture d'un run : l'ORDRE (raccourcis → bilan).
-
-Chaque test vise une conséquence observable de cet ordre : ce qui atterrit dans le
-bilan persisté.
-"""
+"""La clôture d'un run : les chunks raccourcis sont déclarés avant le bilan, pour y
+figurer."""
 
 from collections.abc import Iterator
 from datetime import UTC, datetime

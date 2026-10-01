@@ -10,9 +10,7 @@ from ragcore.adapters.storage.mongo.unformatted_repository import (
 
 _DATA_INDEXES: dict[str, list[IndexModel]] = {
     "documents": [
-        # `identifier` est la chaîne sérialisée (cf. MongoDocumentRepository),
-        # pas un sous-document : indexer
-        # `identifier.raw` indexerait `null` pour tout le monde.
+        # `identifier` est la chaîne sérialisée, pas un sous-document
         IndexModel(
             [("identifier", ASCENDING)],
             unique=True,
@@ -22,9 +20,7 @@ _DATA_INDEXES: dict[str, list[IndexModel]] = {
     ],
     # Pas de TTL : une pendante attend, elle n'expire pas.
     PENDING_RELATIONS_COLLECTION: [
-        # L'index qui fait de `upsert_many` une UNION. Sans lui, revoir la même
-        # pendante à chaque run empilerait les doublons, et le backlog
-        # mesurerait le nombre de runs au lieu du nombre de trous.
+        # Fait de `upsert_many` une union : sans lui, les doublons s'empileraient
         IndexModel(
             [
                 ("source_id", ASCENDING),
@@ -34,14 +30,12 @@ _DATA_INDEXES: dict[str, list[IndexModel]] = {
             unique=True,
             name="uq_pending_source_target_type",
         ),
-        # Le rejeu ciblé interroge `target_id` : sans cet index, il ferait un
-        # COLLSCAN du backlog — exactement le coût que §13 refuse.
+        # Le rejeu ciblé interroge `target_id`
         IndexModel([("target_id", ASCENDING)], name="idx_pending_target"),
     ],
     # Pas de TTL non plus : une relation non formatée attend sa résolution.
     UNFORMATTED_RELATIONS_COLLECTION: [
-        # L'union de `upsert_many`, comme pour les pendantes. Son préfixe `source_id`
-        # sert aussi la compensation (`delete_first_seen`) : pas d'autre index.
+        # Son préfixe `source_id` sert aussi la compensation (`delete_first_seen`)
         IndexModel(
             [
                 ("source_id", ASCENDING),
@@ -54,7 +48,7 @@ _DATA_INDEXES: dict[str, list[IndexModel]] = {
         ),
     ],
 }
-"""Les index de la base de données (défaut : MURPHY_DATA), par collection."""
+"""Par collection, dans la base de données."""
 
 _META_INDEXES: dict[str, list[IndexModel]] = {
     "run_summaries": [
@@ -66,26 +60,21 @@ _META_INDEXES: dict[str, list[IndexModel]] = {
         IndexModel([("started_at", ASCENDING)], name="idx_run_summary_started_at"),
     ],
 }
-"""Les index de la base méta (défaut : MURPHY_META), par collection."""
+"""Par collection, dans la base méta."""
 
 
 async def ensure_data_indexes(db: MongoDatabase) -> None:
-    """Pose les index de la base de données (``_DATA_INDEXES``)."""
     await _create_indexes(db, _DATA_INDEXES)
 
 
 async def ensure_meta_indexes(db: MongoDatabase) -> None:
-    """Pose les index de la base méta (``_META_INDEXES``)."""
     await _create_indexes(db, _META_INDEXES)
 
 
 async def reset_data_collections(db: MongoDatabase) -> None:
-    """Droppe chaque collection de ``_DATA_INDEXES``, puis repose leurs index.
-
-    Dropper une collection détruit ses index avec elle : sans la seconde moitié, le run
-    réécrirait dans des collections nues, et ni l'unicité de `identifier` ni l'union des
-    pendantes ne protégeraient plus rien — en silence. Seules les collections déclarées
-    sont touchées : une base méta configurée sous le même nom resterait intacte.
+    """Droppe chaque collection de ``_DATA_INDEXES``, puis repose leurs index, que le
+    drop emporte. Seules les collections déclarées sont touchées : une base méta
+    configurée sous le même nom resterait intacte.
     """
     for collection in _DATA_INDEXES:
         await db.drop_collection(collection)

@@ -1,25 +1,8 @@
-"""Le multi-source — **composer, pas généraliser**.
+"""Le multi-source, par composition : chaque routeur respecte le port de ce qu'il
+compose, et les nœuds ne voient pas la différence avec un run mono-source.
 
-Un run peut ingérer plusieurs sources. Ce module rend cela possible sans qu'aucune
-brique existante n'ait à savoir qu'elle n'est plus seule : le connecteur, le parser et
-l'extracteur de LEGI ignorent toujours qu'il existe cinq bases de jurisprudence.
-
-**La composition passe par le port, pas par une exception au port.** ``CompositeConnector``
-*est* un ``BaseConnector`` ; ``RoutingParser`` expose la même surface qu'un ``GenericParser``.
-Les nœuds Kedro ne voient donc aucune différence entre un run mono-source et un run à six
-sources — c'est ce qui permet de changer le défaut sans toucher au DAG.
-
-**Ce qui rend le routage possible, et qui n'a rien coûté :** ``RawDocument`` porte
-**déjà** sa source, estampillée par le connecteur qui l'a émis. Un flux mêlant six
-sources n'est donc jamais ambigu — chaque document sait d'où il vient. Router, c'est
-lire ce champ ; il n'y a ni heuristique, ni devinette, ni ordre à préserver.
-
-**Pourquoi router plutôt que rendre le parser multi-tables.** Une ``RoleTable`` décrit
-*une* source, et six sources n'ont pas la même (LEGI, JURI_JUDI, JURI_ADMIN et
-JURI_CONSTIT en sont quatre distinctes). Faire tenir six tables au ``GenericParser``
-aurait dilué son contrat pour un besoin qui n'est pas le sien. Le routage vit donc
-**au-dessus**, dans des objets dont c'est le seul métier — le motif que
-``sources/registry.py`` a déjà institué contre les ``if source == …``.
+Le routage lit la source que chaque ``RawDocument`` porte déjà : un flux mêlé n'est
+jamais ambigu.
 """
 
 from __future__ import annotations
@@ -40,14 +23,8 @@ __all__ = ["CompositeConnector", "RoutingParser", "RoutingRelationExtractor"]
 def _unroutable(
     source: SourceName, known: Iterable[SourceName], role: str
 ) -> ValueError:
-    """L'erreur d'un document qu'on ne sait pas router.
-
-    Ce cas ne devrait pas exister : le composite ne produit que des documents des sources
-    qu'on lui a données. S'il survient, c'est qu'un connecteur a estampillé un document
-    d'une source qui n'est pas la sienne — et il faut le savoir *tout de suite*. Router au
-    hasard (ou vers un défaut) parserait le document avec la **mauvaise table de rôles** :
-    il en sortirait un document plausible et silencieusement faux, c'est-à-dire la seule
-    famille de bug que ce pipeline s'interdit.
+    """Un connecteur a estampillé un document d'une autre source. Jamais de routage par
+    défaut : la mauvaise table de rôles donnerait un document plausible et faux.
     """
     connues = ", ".join(sorted(s.value for s in known))
     return ValueError(
@@ -56,12 +33,8 @@ def _unroutable(
 
 
 class CompositeConnector:
-    """``BaseConnector`` qui enchaîne les connecteurs de plusieurs sources.
-
-    Séquentiel, et délibérément : le parallélisme du pipeline est **inter-document** (le
-    pool de workers de la phase 1), pas inter-source. Paralléliser ici ne gagnerait rien
-    — la lecture disque n'est pas le goulot — et ferait entrer une seconde forme de
-    concurrence dans un module qui n'a aucune raison d'en connaître une.
+    """Enchaîne les connecteurs, séquentiellement : la lecture disque n'est pas le
+    goulot, et le parallélisme est celui du pool de la phase 1.
     """
 
     def __init__(self, connectors: Mapping[SourceName, BaseConnector]) -> None:
@@ -73,41 +46,27 @@ class CompositeConnector:
             raise ValueError(msg)
         self._connectors = dict(connectors)
         self.skipped: dict[str, int] = {}
-        """Ce que les connecteurs ont écarté, **fusionné**.
-
-        Un fichier illisible dans CASS et un autre dans JADE font deux exclusions, pas
-        une. Le port expose ce compteur précisément pour qu'un document écarté soit
-        *compté* plutôt que de disparaître ; le composite ne peut pas être l'endroit où
-        cette garantie se perd.
-        """
+        """Ce que les connecteurs ont écarté, sommé par raison."""
 
     @property
     def sources(self) -> tuple[SourceName, ...]:
-        """Les sources composées, dans l'ordre d'itération."""
         return tuple(self._connectors)
 
     async def fetch_all(self) -> AsyncIterator[RawDocument]:
-        """Itère les documents de toutes les sources, source par source.
-
-        Générateur de bout en bout : le corpus complet n'est jamais en mémoire, pas plus
-        à six sources qu'à une.
-        """
+        """Générateur de bout en bout : le corpus n'est jamais entier en mémoire."""
         self.skipped = {}
 
         for connector in self._connectors.values():
             async for document in connector.fetch_all():
                 yield document
 
-            # Après épuisement, jamais avant : `skipped` se remplit au fil de la lecture.
-            # Le lire trop tôt rendrait zéro — et un compteur d'exclusions vide est
-            # indiscernable d'une absence d'exclusion. `skipped` fait partie du port
-            # (plus de `getattr` défensif) : tout connecteur l'expose.
+            # Après épuisement : `skipped` se remplit au fil de la lecture
             for reason, count in connector.skipped.items():
                 self.skipped[reason] = self.skipped.get(reason, 0) + count
 
 
 class RoutingParser:
-    """Le parser du run : délègue au ``GenericParser`` de la source de chaque document."""
+    """Délègue au ``GenericParser`` de la source de chaque document."""
 
     def __init__(self, parsers: Mapping[SourceName, GenericParser]) -> None:
         if not parsers:
@@ -123,7 +82,7 @@ class RoutingParser:
 
 
 class RoutingRelationExtractor:
-    """L'extracteur du run : délègue à l'extracteur de la source du document."""
+    """Délègue à l'extracteur de la source du document."""
 
     def __init__(
         self, extractors: Mapping[SourceName, GenericRelationExtractor]

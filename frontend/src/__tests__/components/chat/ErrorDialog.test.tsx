@@ -1,8 +1,3 @@
-/**
- * Error Dialog Tests
- * The modal that names the failed stage (ADR-041), closed by its button or by Escape
- */
-
 import { describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';

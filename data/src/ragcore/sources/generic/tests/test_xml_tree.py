@@ -1,10 +1,5 @@
-"""La transcription XML → arbre — le foyer unique de F17.
-
-Ce module a été extrait parce que la juri importait le ``_to_tree`` *privé* de legi et
-recopiait le reste. Les tests ci-dessous verrouillent les trois invariants qui rendaient
-cette duplication dangereuse : la transcription est SANS PERTE (frères homonymes),
-l'illisible rend ``None`` (à compter par l'appelant), et la racine peut ELLE-MÊME être un
-``<ID>``.
+"""La transcription XML → arbre : sans perte, ``None`` pour un illisible, et une racine
+qui peut être un ``<ID>``.
 """
 
 from pathlib import Path
@@ -15,7 +10,7 @@ from ragcore.sources.generic import locate_id, read_root, to_tree
 
 class TestLaTranscriptionEstSansPerte:
     def test_les_freres_homonymes_survivent(self) -> None:
-        # Le cœur de « sans perte » : un dict aurait écrasé les <LIEN> l'un sur l'autre.
+        # Un dict aurait écrasé les <LIEN> l'un sur l'autre
         root = ET.fromstring(
             "<LIENS><LIEN id='a'/><LIEN id='b'/><LIEN id='c'/></LIENS>"
         )
@@ -49,7 +44,7 @@ class TestLocaliserLId:
         assert locate_id(root) == "LEGI42"
 
     def test_la_racine_est_elle_meme_un_id(self) -> None:
-        # Le résidu d'export LEGI : un fichier d'une ligne réduit à <ID>…</ID>.
+        # Résidu d'export LEGI : un fichier réduit à <ID>…</ID>
         assert locate_id(ET.fromstring("<ID>NU_ID</ID>")) == "NU_ID"
 
     def test_pas_d_id_rend_none(self) -> None:

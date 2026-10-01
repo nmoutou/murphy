@@ -1,11 +1,5 @@
-"""``sources/generic`` — **un** parser, **un** chunker, pour six sources.
-
-La thèse de §3 : « un parser par source » est l'inverse du but. On factorise la
-mécanique ; les spécificités d'une source sont une **table déclarative** (``RoleTable``),
-pas une classe.
-
-De ``sources/legislatif/`` il ne reste qu'une table et un connecteur. La jurisprudence
-n'écrira pas une ligne de parser — elle écrira trois tables.
+"""Un parser, un chunker, pour toutes les sources : les spécificités d'une source sont
+une table déclarative (``RoleTable``), pas une classe.
 """
 
 from .chunking import StructuralChunker

@@ -1,8 +1,5 @@
-"""L'assemblage du run, sans base ni réseau.
-
-Motor et Neo4j ne se connectent pas à la construction ; le client Qdrant, lui, demande
-la version du serveur dès sa création : il est remplacé par un client hors ligne. La
-vérification du modèle servi est remplacée de même.
+"""L'assemblage du run, sans base ni réseau. Le client Qdrant interroge le serveur dès
+sa création : il est remplacé par un client hors ligne, comme la vérification du modèle.
 """
 
 import asyncio
@@ -95,7 +92,7 @@ def _embedding_settings() -> EmbeddingRuntimeSettings:
     return EmbeddingRuntimeSettings(model="un-modele", service_url="http://localhost:1")
 
 
-# ── Les clients : le code est partagé, pas les instances (§11) ─────────────────────
+# ── Les clients : le code est partagé, pas les instances ────────────────────────────
 
 
 def test_chaque_appel_ouvre_des_clients_NEUFS(settings: InfraSettings) -> None:

@@ -1,10 +1,5 @@
-"""La saga d'UN document — ce qu'elle écrit, et ce qu'elle défait quand ça casse.
-
-Deux propriétés que le code AFFIRME et que rien n'exécutait :
-
-1. la phase 1 n'écrit que le NŒUD — plus une seule arête (§11) ;
-2. ``document.persisted`` n'est émis qu'après succès TOTAL : un run à moitié fait ne
-   doit jamais laisser croire que le document est ingéré.
+"""La saga d'un document : la phase 1 n'écrit que le nœud, et ``document.persisted``
+n'est émis qu'après succès total.
 """
 
 from datetime import UTC, datetime
@@ -90,7 +85,7 @@ def context() -> PipelineContext:
 
 
 async def test_phase_one_writes_the_node_and_never_an_edge(stores, context) -> None:  # noqa: ANN001
-    """Le retrait qui définit le lot 2 : plus une seule arête dans cette saga."""
+    """Aucune arête dans cette saga."""
     use_case = _use_case(stores)
 
     await use_case.execute(_doc(), [], context)
@@ -102,9 +97,7 @@ async def test_phase_one_writes_the_node_and_never_an_edge(stores, context) -> N
 
 
 async def test_a_failed_saga_is_not_counted_persisted(stores, context) -> None:  # noqa: ANN001
-    """Un document à moitié écrit ne doit JAMAIS passer pour ingéré : le bilan
-    annoncerait un corpus complet sur un run qui a perdu un document.
-    """
+    """Un document à moitié écrit n'est pas compté persisté."""
 
     async def boom(*args, **kwargs):  # noqa: ANN002, ANN003, ANN202
         raise RuntimeError("qdrant est tombé")
@@ -119,7 +112,7 @@ async def test_a_failed_saga_is_not_counted_persisted(stores, context) -> None: 
 
 
 async def test_a_failed_saga_compensates_what_it_had_written(stores, context) -> None:  # noqa: ANN001
-    """Mongo a été écrit avant l'échec de Qdrant : la compensation doit le défaire."""
+    """Mongo, écrit avant l'échec de Qdrant, est défait."""
 
     async def boom(*args, **kwargs):  # noqa: ANN002, ANN003, ANN202
         raise RuntimeError("qdrant est tombé")
@@ -137,10 +130,8 @@ async def test_a_failed_saga_compensates_what_it_had_written(stores, context) ->
 async def test_a_failed_compensation_is_counted_and_told_truthfully(
     stores, context
 ) -> None:  # noqa: ANN001
-    """Le forward de Qdrant casse ⇒ compensation ; MAIS le rollback de Mongo casse
-    aussi. L'écrit partiel qui subsiste doit être COMPTÉ (SAGA_COMPENSATION_FAILED,
-    avec son `step`) et l'audit ne doit PAS prétendre à un rollback propre.
-    """
+    """La compensation de Mongo échoue aussi : l'écrit partiel est compté, et l'audit
+    ne prétend pas à un rollback propre."""
 
     async def boom(*args, **kwargs):  # noqa: ANN002, ANN003, ANN202
         raise RuntimeError("qdrant est tombé")
@@ -155,13 +146,13 @@ async def test_a_failed_compensation_is_counted_and_told_truthfully(
     with pytest.raises(RuntimeError, match="qdrant est tombé"):
         await use_case.execute(_doc(), [], context)
 
-    # La compensation ratée est comptée, ventilée par le store fautif.
+    # La compensation ratée est comptée, avec le store fautif
     failed = stores["telemetry"].events_of(SAGA_COMPENSATION_FAILED)
     assert len(failed) == 1
     assert failed[0].payload["step"] == "mongo_upsert"
     assert failed[0].success is False
 
-    # …et le bilan de compensation dit la vérité : rollback NON propre.
+    # …et le bilan dit que le rollback n'est pas propre
     completed = stores["telemetry"].events_of(SAGA_COMPENSATION_COMPLETED)
     assert len(completed) == 1
     assert completed[0].success is False
@@ -171,15 +162,8 @@ async def test_a_failed_compensation_is_counted_and_told_truthfully(
 async def test_a_rewrite_replaces_in_place_without_a_preceding_delete(
     stores, context
 ) -> None:  # noqa: ANN001
-    """F16 — le trou fermé : une réécriture ne pré-supprime plus l'ancienne version.
-
-    Avant, le forward Mongo faisait ``delete`` PUIS ``insert`` — une fenêtre où
-    l'identifiant n'existait plus, et un rollback qui la rendait durable. Le forward est
-    maintenant un ``upsert`` atomique (``replace_one``). L'observable : sur une
-    réécriture RÉUSSIE, aucun ``delete`` n'a été poussé sur le document (la liste ``deleted`` du fake
-    ne se remplit que par une compensation, qui n'a pas lieu ici). Le document neuf est
-    en place, seul sous son identifiant.
-    """
+    """Une réécriture réussie ne supprime jamais l'ancienne version : le remplacement
+    est atomique."""
     use_case = _use_case(stores)
 
     await use_case.execute(_doc(), [], context)
@@ -193,9 +177,7 @@ async def test_a_rewrite_replaces_in_place_without_a_preceding_delete(
 async def test_the_unformatted_relations_are_written_with_the_run_stamps(
     stores, context
 ) -> None:  # noqa: ANN001
-    """ADR-045 : les cibles décrites ne vivent plus sur le document, mais dans leur
-    collection, estampillées du run qui les a vues.
-    """
+    """ADR-045 : les cibles décrites vont dans leur collection, estampillées du run."""
     use_case = _use_case(stores)
     relation = _unformatted("Articles 1103 et 1229 du code civil.")
 
@@ -210,9 +192,7 @@ async def test_the_unformatted_relations_are_written_with_the_run_stamps(
 async def test_a_failed_saga_removes_the_unformatted_relations_born_in_its_run(
     stores, context
 ) -> None:  # noqa: ANN001
-    """Qdrant casse après l'écriture des relations non formatées : celles que ce run
-    a créées sont défaites avec le document.
-    """
+    """Qdrant casse : les relations non formatées nées dans ce run sont défaites."""
     stores["vector_repo"].upsert = _fail_qdrant
     use_case = _use_case(stores)
 
@@ -225,9 +205,7 @@ async def test_a_failed_saga_removes_the_unformatted_relations_born_in_its_run(
 async def test_a_failed_saga_keeps_the_unformatted_relations_of_earlier_runs(
     stores, context
 ) -> None:  # noqa: ANN001
-    """L'accumulation survit à la compensation : une relation vue par un run
-    précédent n'appartient pas à la saga qui échoue.
-    """
+    """Une relation vue par un run précédent survit à la compensation."""
     known = _unformatted("code civil")
     await _use_case(stores).execute(_doc(), [], context, [known])
 

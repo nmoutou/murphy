@@ -1,8 +1,5 @@
-"""`parameters.yml` illisible arrête le run — mais seule une panne du CATALOGUE.
-
-Le hook rattrapait tout ``Exception`` autour de ``catalog.load("parameters")`` et le
-traduisait en « Impossible de charger `parameters.yml` ». Un bug sans rapport s'y
-déguisait en config illisible. Seule la ``DatasetError`` de Kedro est traduite.
+"""Seule une ``DatasetError`` de Kedro devient « `parameters.yml` illisible » : un autre
+bug ne se déguise pas en config illisible.
 """
 
 from typing import Any

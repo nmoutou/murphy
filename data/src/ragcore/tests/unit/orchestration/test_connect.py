@@ -1,9 +1,5 @@
-"""Le node `connect` remonte au bilan ce que le connecteur a ÉCARTÉ.
-
-Le connecteur COMPTE ses écarts (`connector.skipped`), mais ce compte s'évaporait :
-aucun code ne le lisait. Le node l'émet désormais en un compteur par raison
-(`document.version_skipped`, `document.unreadable`), HORS `document.fetched` donc hors
-équation de complétude — la seule façon dont un fichier non-document apparaît au bilan.
+"""`connect` remonte au bilan ce que le connecteur a écarté : un compteur par raison,
+hors `document.fetched`, donc hors équation de complétude.
 """
 
 from collections.abc import AsyncIterator
@@ -28,7 +24,7 @@ from ragcore.tests.fakes.telemetry import RecordingTelemetry
 
 
 class _ConnectorWithSkips:
-    """Connecteur idiot : ne rend AUCUN document, mais déclare ses écarts."""
+    """Ne rend aucun document, mais déclare ses écarts."""
 
     def __init__(self, skipped: dict[str, int]) -> None:
         self.skipped = skipped
@@ -63,14 +59,13 @@ def test_chaque_raison_d_ecart_emet_son_propre_compteur() -> None:
 
 
 def test_une_raison_inconnue_leve() -> None:
-    """Un écart qu'on ne sait pas nommer ne se range pas dans un fourre-tout."""
+    """Un écart qu'on ne sait pas nommer lève, plutôt que de finir dans un fourre-tout."""
     with pytest.raises(KeyError):
         _run(_ConnectorWithSkips({"raison_inventee": 2}))
 
 
 def test_les_ecarts_ne_gonflent_pas_le_denominateur() -> None:
-    """`document.fetched` compte les documents RENDUS (ici 0), jamais les écarts :
-    un fichier écarté ne doit pas entrer dans `seen`, sinon l'équation ment."""
+    """`document.fetched` compte les documents rendus, jamais les écarts."""
     telemetry = _run(_ConnectorWithSkips({REASON_UNREADABLE: 5}))
 
     fetched = telemetry.events_of(DOCUMENT_FETCHED)

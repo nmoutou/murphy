@@ -1,33 +1,12 @@
-"""La jurisprudence — **trois tables, cinq sources, zéro parser**.
-
-C'est ici que §3 se vérifie ou se dément : *« une source nouvelle = une table, pas un
-second parser »*. Ce fichier ne contient **aucune logique** — pas une boucle, pas une
-condition. Le parser générique fait tout le travail ; la juri n'apporte que du vocabulaire.
-
-**Cinq sources, trois tables — et pas cinq.** Le corpus déclare trois racines seulement :
+"""Les tables de rôles de la jurisprudence : une par forme de document, pas par base.
 
     TEXTE_JURI_JUDI     CAPP, CASS, INCA   (judiciaire : cours d'appel, Cassation)
     TEXTE_JURI_ADMIN    JADE               (administratif : Conseil d'État, CAA, TA)
     TEXTE_JURI_CONSTIT  CONSTIT            (Conseil constitutionnel)
 
-CAPP, CASS et INCA **partagent la même table**, à l'identique. Ce n'est pas une
-simplification de notre part : c'est la structure que DILA publie. Une table par *forme
-de document*, pas une par *base* — la base n'est qu'un champ.
-
-**La structure est celle de LEGI.** ``META/META_COMMUN/{ID, ORIGINE, URL, NATURE}`` : les
-mêmes balises, au même endroit. ``TEXTE/BLOC_TEXTUEL/CONTENU`` pour le corps.
-``LIENS/LIEN`` avec ``@sens`` et ``@typelien``. Ce qui change tient dans ``META_SPEC`` —
-les métadonnées propres au juridictionnel (formation, avocats, solution…).
-
-**Ce que la juri n'a PAS, et qui se lit dans les tables :**
-
-- **aucun rôle ``VERSION``** — pas de ``date_debut``/``date_fin``/``etat``. Un arrêt est
-  rendu une fois ; il n'a pas de versions successives comme un article de code. Le rôle
-  existe (§3 : « version = stratégie optionnelle, no-op si absente »), aucune balise n'y
-  est mappée, le handler ne s'active pas. C'était prévu ; c'est vérifié.
-- **aucune structure** — pas de ``<CONTEXTE>``, pas de ``<STRUCTURE_TA>``. Un arrêt ne
-  contient pas d'autres arrêts. Là où LEGI déclare un arbre, la juri est plate.
-- **aucune cible de lien identifiée** — cf. ``vocabulary.py`` : c'est LA découverte du lot.
+La structure est celle de LEGI ; seul ``META_SPEC`` change. Pas de versions (un arrêt
+est rendu une fois), pas de structure (un arrêt ne contient pas d'arrêts), pas de cible
+de lien identifiée (cf. ``vocabulary.py``).
 """
 
 from dataclasses import replace
@@ -47,8 +26,7 @@ __all__ = [
 
 # ── Le socle commun aux trois racines ──────────────────────────────────────────
 #
-# Ce que TOUTE décision de justice porte, quelle que soit la juridiction. C'est très
-# exactement le `META_COMMUN` de LEGI : la structure DILA est unique.
+# Ce que toute décision porte : le `META_COMMUN` de LEGI.
 
 _COMMON_ROLES: dict[str, Role] = {
     # Structure documentaire
@@ -67,7 +45,7 @@ _COMMON_ROLES: dict[str, Role] = {
     "URL": Role.META,
     "NATURE": Role.META,
     "ECLI": Role.META,
-    # Ce que TOUTE décision porte
+    # Ce que toute décision porte
     "TITRE": Role.META,
     "DATE_DEC": Role.META,
     "JURIDICTION": Role.META,
@@ -79,8 +57,7 @@ _COMMON_ROLES: dict[str, Role] = {
 }
 
 _TRANSPARENT = {
-    # La juri n'utilise que deux balises de mise en forme (mesuré). Son corps est du texte
-    # brut avec des sauts — pas le HTML riche des articles de LEGI.
+    # Les deux seules balises de mise en forme du corpus juri
     "p": "\n\n",
     "br": "\n",
 }
@@ -100,13 +77,8 @@ _COMMON_RENAMES = {
 def _table(
     roles: dict[str, Role], renames: dict[str, str], root: str, prefix: str
 ) -> RoleTable:
-    """Assemble une table juri à partir du socle commun et de ses spécificités.
-
-    Une **fonction de composition**, pas de la logique : elle ne décide rien, elle
-    fusionne deux dictionnaires. Le parser générique ne l'appelle jamais — elle ne tourne
-    qu'à l'import, pour éviter de recopier trois fois vingt lignes identiques. Recopier
-    aurait laissé les trois tables diverger au premier correctif.
-    """
+    """Le socle commun plus les spécificités d'une racine, fusionnés à l'import pour que
+    les trois tables ne divergent pas."""
     return RoleTable(
         roots=(root,),
         roles={root: Role.META, **_COMMON_ROLES, **roles},
@@ -114,17 +86,14 @@ def _table(
         text_holders=("CONTENU",),
         title_tags=("TITRE",),
         identifier_tag="ID",
-        # Un seul type pour les trois ordres de juridiction : la source les distingue.
         document_types={prefix: DocumentType.DECISION},
         meta_containers=("META",),
         meta_renames={**_COMMON_RENAMES, **renames},
-        # AUCUNE balise de version : un arrêt est rendu une fois. Le rôle existe, il ne
-        # s'active pas — exactement le « no-op si absente » de §3.
+        # Un arrêt est rendu une fois
         version_tags=frozenset(),
         transparent=_TRANSPARENT,
         links=JURI_LINK_TABLE,
         link_tags=("LIEN",),
-        # Aucun lien structurel, aucun ancêtre : un arrêt ne contient pas d'arrêts.
         link_containers=(),
         structural_link_tags=(),
         ancestor_containers=(),
@@ -140,7 +109,6 @@ JURI_JUDI_ROLE_TABLE = replace(
         prefix="JURITEXT",
         roles={
             "META_JURI_JUDI": Role.META,
-            # La procédure : qui a jugé, qui plaidait, contre qui.
             "FORMATION": Role.META,
             "FORM_DEC_ATT": Role.META,
             "DATE_DEC_ATT": Role.META,
@@ -156,9 +124,8 @@ JURI_JUDI_ROLE_TABLE = replace(
             "NUMEROS_AFFAIRES": Role.META,
             "NUMERO_AFFAIRE": Role.META,
             "PUBLI_BULL": Role.META,
-            # Le sommaire : l'analyse doctrinale de l'arrêt. C'est du TEXTE, et du bon — mais
-            # il n'est PAS dans `content_blocks` : c'est un commentaire *sur* la décision, pas
-            # la décision. Le fondre dans le corps polluerait l'embedding avec de la glose.
+            # Hors `content_blocks` : le sommaire commente la décision, il polluerait
+            # l'embedding
             "SOMMAIRE": Role.BODY,
             "SCT": Role.BODY,
             "ANA": Role.BODY,
@@ -175,14 +142,10 @@ JURI_JUDI_ROLE_TABLE = replace(
             "SIEGE_APPEL": "siege_appel",
         },
     ),
-    # Mesuré : 4 décisions CASS portent plusieurs NUMERO_AFFAIRE distincts.
+    # Des décisions CASS portent plusieurs NUMERO_AFFAIRE distincts
     list_keys=frozenset({"numero_affaire"}),
 )
-"""Le judiciaire : cours d'appel (CAPP), Cour de cassation (CASS), inédits (INCA).
-
-**Trois bases, une table.** Elles publient exactement la même structure — c'est DILA qui
-en décide, pas nous. La base d'origine est un simple champ (``SourceName``), pas un type.
-"""
+"""Le judiciaire : cours d'appel (CAPP), Cour de cassation (CASS), inédits (INCA)."""
 
 
 # ── TEXTE_JURI_ADMIN — JADE ────────────────────────────────────────────────────
@@ -201,8 +164,7 @@ JURI_ADMIN_ROLE_TABLE = replace(
             "PRESIDENT": Role.META,
             "AVOCATS": Role.META,
             "RAPPORTEUR": Role.META,
-            # Le commissaire du gouvernement — devenu « rapporteur public » en 2009. Le nom de
-            # la balise, lui, n'a pas suivi : la source garde son vocabulaire d'origine.
+            # Devenu « rapporteur public » en 2009 ; la balise a gardé son nom
             "COMMISSAIRE_GVT": Role.META,
             "SOMMAIRE": Role.BODY,
             "SCT": Role.BODY,
@@ -219,7 +181,7 @@ JURI_ADMIN_ROLE_TABLE = replace(
             "COMMISSAIRE_GVT": "rapporteur_public",
         },
     ),
-    # JADE écrit `Texte` dans NATURE, pour toutes ses décisions (mesuré).
+    # JADE écrit `Texte` dans NATURE pour toutes ses décisions
     uninformative_natures=frozenset({"TEXTE"}),
 )
 """L'administratif : Conseil d'État, cours administratives d'appel, tribunaux (JADE)."""
@@ -236,15 +198,10 @@ JURI_CONSTIT_ROLE_TABLE = _table(
         "NATURE_QUALIFIEE": Role.META,
         "TITRE_JO": Role.META,
         "URL_CC": Role.META,
-        # La loi déférée au Conseil : ses attributs (@date, @nor, @num) la DÉCRIVENT, mais
-        # ce n'est pas une balise <LIEN> et elle n'a pas de `typelien`. La traiter comme un
-        # lien demanderait une règle rien que pour elle — on la range en métadonnée, et le
-        # jour où le graphe doit porter « cette décision contrôle cette loi », ce sera une
-        # décision prise, pas un effet de bord.
+        # La loi déférée : décrite par ses attributs, sans `<LIEN>` ni `typelien`. En
+        # faire une arête serait une décision à prendre, pas un effet de bord.
         "LOI_DEF": Role.META,
-        # Les saisines et observations : les mémoires des parties. Du texte, versé au
-        # corps — contrairement au sommaire du judiciaire, ce ne sont pas des commentaires
-        # a posteriori mais des pièces du dossier.
+        # Les mémoires des parties : des pièces du dossier, pas des commentaires
         "SAISINES": Role.BODY,
         "OBSERVATIONS": Role.BODY,
     },
@@ -263,9 +220,4 @@ ROLE_TABLE_BY_ROOT = {
     "TEXTE_JURI_ADMIN": JURI_ADMIN_ROLE_TABLE,
     "TEXTE_JURI_CONSTIT": JURI_CONSTIT_ROLE_TABLE,
 }
-"""**Le doc_type ne fait que choisir la table** (§3, littéralement).
-
-La racine XML sélectionne la table de rôles qui s'applique. Ce n'est pas du typage métier
-réintroduit par la bande : il n'y a ni classe ``Arrêt`` ni classe ``Décision`` — il y a
-trois données, et un dictionnaire pour les choisir.
-"""
+"""La racine XML choisit la table de rôles."""

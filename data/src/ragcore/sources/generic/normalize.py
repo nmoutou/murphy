@@ -1,26 +1,10 @@
-"""La normalisation typographique — **§4, qui n'existait pas**.
+"""La normalisation typographique : invisible à l'œil, visible au modèle d'embedding.
 
-**Ce qu'elle fait, et pourquoi elle compte pour un moteur de recherche.** Le même mot
-peut s'écrire de plusieurs façons qu'aucun humain ne distingue et qu'aucune machine ne
-confond :
+``é`` composé ou décomposé, espaces insécables ou fines, caractères de largeur nulle :
+autant de variantes qu'un tokenizer distingue. On normalise la typographie, jamais la
+langue : ni lemmatisation, ni minuscules, ni mots vides.
 
-- ``é`` peut être **un** caractère (U+00E9) ou **deux** (``e`` + accent combinant U+0301).
-  Les deux s'affichent identiquement. Pour un tokenizer, ce sont deux mots différents —
-  et une requête écrite d'une façon ne trouvera jamais un document écrit de l'autre.
-- Les espaces insécables (U+00A0) et fines (U+202F) abondent dans le XML juridique
-  (« article 3 », « 15 000 € »). Un tokenizer qui ne les reconnaît pas colle les mots.
-- Les caractères de largeur nulle sont invisibles à l'écran et bien réels pour le modèle.
-
-Rien de tout cela n'est visible à l'œil. Tout est visible au modèle d'embedding.
-
-**Ce qu'elle NE fait PAS, et c'est délibéré (§4).** Aucune lemmatisation, aucun retrait
-de mots vides, aucune mise en minuscules, aucune linéarisation. Ce qui sort d'ici est du
-français lisible — pas un sac de lemmes. On normalise la *typographie*, jamais la
-*langue* : la première est du bruit d'encodage, la seconde est du sens.
-
-**⚠️ La modifier invalide les vecteurs déjà écrits** : ceux d'avant et d'après ne sont
-pas comparables et ne doivent pas cohabiter dans la collection. Après un changement,
-tout le corpus se réingère.
+La modifier invalide les vecteurs déjà écrits : tout le corpus se réingère.
 """
 
 from __future__ import annotations
@@ -31,13 +15,10 @@ import unicodedata
 __all__ = ["normalize_text"]
 
 _TAGS = re.compile(r"<[^>]+>")
-"""Les balises résiduelles : du HTML échappé survit dans le TEXTE de certains nœuds, et
-ressortirait tel quel dans Mongo — donc à l'écran de l'utilisateur."""
+"""Du HTML échappé survit dans le texte de certains nœuds, et finirait à l'écran."""
 
-# Les caractères sont écrits en ÉCHAPPEMENTS, jamais en littéral. Un caractère invisible
-# collé dans le source est irrelisible, illisible en diff, et se perd au premier
-# copier-coller. Ce qui décide du découpage des mots ne doit pas être invisible dans le
-# fichier qui en décide.
+# En échappements, jamais en littéral : un caractère invisible est illisible en diff
+# (ruff PLE2515)
 _SPACES = re.compile(
     "[ \t"
     "\u00a0"  # insécable — omniprésente dans le XML juridique
@@ -47,16 +28,8 @@ _SPACES = re.compile(
     "\u3000"  # idéographique
     "]+"
 )
-"""Toutes les espaces horizontales, y compris insécables et fines.
-
-**Écrites en échappements Unicode, jamais en littéral.** Un caractère invisible collé dans
-le source est irrelisible, illisible en diff, et se perd au premier copier-coller. Ce qui
-décide du découpage des mots ne doit pas être invisible dans le fichier qui en décide —
-``ruff`` l'exige d'ailleurs (règle ``PLE2515``), et il avait raison contre moi.
-
-Les ramener à une espace ordinaire est ce qui permet au tokenizer de voir des mots là où il
-voyait un seul bloc — le gain le plus concret de ce module.
-"""
+"""Toutes les espaces horizontales, ramenées à une espace ordinaire pour que le
+tokenizer sépare les mots."""
 
 _ZERO_WIDTH = re.compile(
     "["
@@ -66,32 +39,20 @@ _ZERO_WIDTH = re.compile(
     "\u00ad"  # césure conditionnelle (soft hyphen)
     "]"
 )
-"""Largeur nulle et césures conditionnelles : invisibles, et pourtant tokenisés.
-
-Le ``\\u00ad`` (soft hyphen) est le pire : il coupe un mot en deux pour le modèle sans
-qu'on voie quoi que ce soit à l'écran.
-"""
+"""Invisibles, et pourtant tokenisés : le ``\\u00ad`` coupe un mot en deux pour le
+modèle."""
 
 _BLANK_LINES = re.compile(r"\n{3,}")
 
 
 def normalize_text(text: str) -> str:
-    """Normalise la typographie d'un texte. **Ne touche pas à la langue.**
-
-    L'ordre des opérations n'est pas indifférent :
-
-    1. **NFC d'abord** — recompose ``e`` + accent combinant en ``é``. Le faire après le
-       nettoyage des espaces laisserait des accents combinants orphelins aux coupures.
-    2. Retrait des balises résiduelles.
-    3. Retrait des caractères de largeur nulle, **avant** l'espacement : un ``\\u200b``
-       entre deux mots empêcherait sinon de les voir comme séparés.
-    4. Unification des espaces, puis des lignes vides.
+    """L'ordre compte : NFC d'abord, sinon des accents combinants restent orphelins ;
+    largeur nulle avant les espaces, sinon un ``\\u200b`` souderait deux mots.
     """
     if not text:
         return ""
 
-    # NFC : une seule représentation par caractère. Le choix de NFC (et non NFD) est celui
-    # de tout l'écosystème web et des modèles d'embedding entraînés dessus.
+    # NFC, comme le web et les modèles d'embedding entraînés dessus
     normalized = unicodedata.normalize("NFC", str(text))
 
     normalized = _TAGS.sub(" ", normalized)
@@ -99,6 +60,5 @@ def normalize_text(text: str) -> str:
     normalized = _SPACES.sub(" ", normalized)
     normalized = _BLANK_LINES.sub("\n\n", normalized)
 
-    # Chaque ligne perd ses espaces de bord : une indentation XML de huit espaces n'est pas
-    # du contenu, et elle traverserait sinon jusque dans l'embedding.
+    # L'indentation XML n'est pas du contenu
     return "\n".join(line.strip() for line in normalized.split("\n")).strip()

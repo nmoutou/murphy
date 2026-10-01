@@ -7,7 +7,7 @@ import { CONNECTION_ERROR_MESSAGE } from '@/lib/chatErrorStage';
 type SendMessagesOptions = Parameters<ChatTransport<AppUIMessage>['sendMessages']>[0];
 
 interface StreamState {
-  /** Set once the stream is closed, errored or cancelled: nothing more is written to it */
+  /** Vrai une fois le flux fermé, en erreur ou annulé : plus rien n'y est écrit */
   isSettled: boolean;
 }
 
@@ -18,7 +18,7 @@ interface SocketBinding {
   readonly options: SendMessagesOptions;
 }
 
-/** The backend closes the socket after these parts: any other close drops the answer */
+/** Le backend ferme après ces parts : toute autre fermeture abandonne la réponse */
 const FINAL_CHUNK_TYPES: ReadonlySet<string> = new Set(['finish', 'error']);
 const DATA_PART_PREFIX = 'data-';
 
@@ -31,8 +31,8 @@ const isDataPartName = (name: string): name is DataPartName =>
   Object.hasOwn(appDataPartSchemas, name);
 
 /**
- * `useChat` looks its `dataPartSchemas` up by part type (`data-document`) while they are
- * keyed by name (`document`): ai 6.0.x never applies them, so the contract is checked here
+ * `useChat` cherche ses `dataPartSchemas` par type (`data-document`), or ils sont rangés
+ * par nom (`document`) : ai 6.0.x ne les applique jamais, d'où la vérification ici
  */
 const breaksDataContract = (chunk: UIMessageChunk): boolean => {
   if (!chunk.type.startsWith(DATA_PART_PREFIX)) return false;
@@ -41,7 +41,7 @@ const breaksDataContract = (chunk: UIMessageChunk): boolean => {
   return !appDataPartSchemas[name].safeParse(chunk.data).success;
 };
 
-/** The socket is a system boundary: a part carries its type, and a data part its contract */
+/** La socket est une frontière : une part porte son type, une part de données son contrat */
 const parseChunk = (data: unknown): UIMessageChunk => {
   const value: unknown = typeof data === 'string' ? JSON.parse(data) : undefined;
   if (!isMessageChunk(value)) throw new Error('The chat socket sent a part without a type');
@@ -52,8 +52,8 @@ const parseChunk = (data: unknown): UIMessageChunk => {
 };
 
 /**
- * The backend is stateless and reads only the last question: past answers, which carry
- * whole documents, would only swell the request past its size limit
+ * Le backend ne lit que la dernière question : les réponses passées, qui portent des
+ * documents entiers, feraient dépasser la taille limite de la requête
  */
 const selectQuestion = (messages: readonly AppUIMessage[]): AppUIMessage[] => {
   const question = messages.findLast((message) => message.role === 'user');
@@ -61,8 +61,8 @@ const selectQuestion = (messages: readonly AppUIMessage[]): AppUIMessage[] => {
 };
 
 /**
- * Pipes the socket into the stream `useChat` reads. The stream settles once: closed after
- * the final part or an abort, errored when the socket fails or drops before the end.
+ * Le flux se termine une seule fois : fermé après la part finale ou un abandon, en erreur
+ * si la socket échoue ou tombe avant la fin.
  */
 const bindSocket = ({ socket, controller, state, options }: SocketBinding): void => {
   let hasFinalChunk = false;
@@ -95,14 +95,14 @@ const bindSocket = ({ socket, controller, state, options }: SocketBinding): void
   options.abortSignal?.addEventListener('abort', handleAbort, { once: true });
 };
 
-/** One WebSocket per question: the backend streams the answer, then closes it */
+/** Une WebSocket par question : le backend envoie la réponse puis la ferme */
 export const webSocketChatTransport: ChatTransport<AppUIMessage> = {
   sendMessages: async (options) => {
     const socket = new WebSocket(getChatSocketUrl());
     const state: StreamState = { isSettled: false };
     return new ReadableStream<UIMessageChunk>({
       start: (controller) => bindSocket({ socket, controller, state, options }),
-      // useChat stopped reading (abort, or an invalid part): closing the socket stops the backend
+      // useChat a cessé de lire (abandon ou part invalide) : fermer la socket arrête le backend
       cancel: () => {
         state.isSettled = true;
         socket.close();

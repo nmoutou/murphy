@@ -1,11 +1,5 @@
-"""Le pool sans verrou (§11) — les invariants, exécutés.
-
-``ingestion_runner.py`` AFFIRME trois choses dans ses docstrings. Une affirmation
-non exécutée n'est pas une garantie, c'est un vœu. Ce fichier les exécute :
-
-1. dispatch par clé document — un identifiant ne va jamais sur deux workers ;
-2. isolement — un worker = un runtime = une télémétrie, jamais partagés ;
-3. un document perdu n'arrête pas le corpus, et n'est pas perdu en silence.
+"""Le pool sans verrou : dispatch par clé document, isolement des workers, et un
+document perdu qui n'arrête pas le corpus mais reste compté.
 """
 
 import os
@@ -69,7 +63,7 @@ def _runner(workload=_workload, worker_count: int = 4) -> IngestionRunner:  # no
 
 
 class TestPartition:
-    """L'invariant 2, isolé : le dispatch par clé document."""
+    """Le dispatch par clé document."""
 
     def test_every_document_lands_in_exactly_one_shard(self) -> None:
         docs = [_doc(i) for i in range(50)]
@@ -81,9 +75,8 @@ class TestPartition:
         assert len(placed) == len(set(placed))  # aucun document dupliqué
 
     def test_the_same_identifier_always_lands_on_the_same_worker(self) -> None:
-        """La garantie qui remplace le mutex : deux sagas ne peuvent pas se croiser
-        sur un même chunk, parce que le parent ne va jamais sur deux workers.
-        """
+        """Un parent ne va jamais sur deux workers, donc deux sagas ne se croisent
+        jamais sur un chunk."""
         first = IngestionRunner.partition([_doc(7)], 4)
         second = IngestionRunner.partition([_doc(7)], 4)
 
@@ -92,12 +85,8 @@ class TestPartition:
         ]
 
     def test_the_dispatch_is_reproducible_across_processes(self) -> None:
-        """blake2b, et non ``hash()`` : ce dernier est randomisé par PYTHONHASHSEED.
-
-        Figer la forme de la partition ne prouverait rien — elle serait stable dans
-        CE processus même avec ``hash()``. Ce qu'il faut montrer, c'est qu'elle
-        survit à un changement de graine : on relance donc un interpréteur neuf.
-        """
+        """La partition survit à un changement de ``PYTHONHASHSEED`` : on relance un
+        interpréteur neuf."""
         script = (
             "from ragcore.application.ingestion_runner import _shard_of;"
             "print([_shard_of(f'LEGIARTI{i:012d}', 4) for i in range(20)])"
@@ -121,7 +110,7 @@ class TestPartition:
 
 
 class TestIsolation:
-    """L'invariant 1 : rien de mutable n'est partagé, donc rien n'est à protéger."""
+    """Rien de mutable n'est partagé entre workers."""
 
     def test_each_worker_gets_its_own_runtime_and_telemetry(
         self, context: PipelineContext
@@ -139,7 +128,7 @@ class TestIsolation:
 
         assert len(runtime_factory.built) == 3
         assert len(telemetry_factory.built) == 3
-        # Des INSTANCES distinctes — pas trois références au même objet.
+        # Des instances distinctes, pas trois références au même objet
         assert len({id(r) for r in runtime_factory.built}) == 3
         assert len({id(t) for t in telemetry_factory.built}) == 3
 
@@ -167,14 +156,14 @@ class TestOutcome:
 
         outcome = _runner().run(docs, context)
 
-        # 12 documents, 12 événements — quel que soit le nombre de workers.
+        # 12 documents, 12 événements, quel que soit le nombre de workers
         assert outcome.stats.counts[DOCUMENT_PERSISTED] == 12
         assert outcome.written_node_ids == {d.identifier.serialize() for d in docs}
 
     def test_relations_are_collected_not_written(
         self, context: PipelineContext
     ) -> None:
-        """La phase 1 EXTRAIT les relations ; elle ne les écrit pas (§11 : phase 2)."""
+        """La phase 1 remonte les relations sans les écrire."""
         sentinel = object()
 
         def workload(parsed, runtime, telemetry):  # noqa: ANN001, ANN202
@@ -188,7 +177,7 @@ class TestOutcome:
     def test_a_failed_document_does_not_stop_the_corpus(
         self, context: PipelineContext
     ) -> None:
-        """Un document perdu est une donnée, pas une interruption — ni un silence."""
+        """Un document perdu est compté, sans interrompre le run."""
 
         def workload(parsed, runtime, telemetry):  # noqa: ANN001, ANN202
             del runtime, telemetry
@@ -202,7 +191,7 @@ class TestOutcome:
         identifier, message = outcome.failures[0]
         assert identifier.endswith("003")
         assert "saga compensée" in message
-        # Le document échoué ne compte PAS comme écrit.
+        # Le document échoué ne compte pas comme écrit
         assert identifier not in outcome.written_node_ids
         assert len(outcome.written_node_ids) == 5
 
@@ -225,10 +214,7 @@ def test_worker_count_must_be_at_least_one() -> None:
 
 
 def test_the_doubles_are_substitutable_for_the_real_ports() -> None:
-    """Sans ce test, tout ce fichier prouverait des propriétés sur des objets que
-    la production n'utilise jamais. Le typage étant structurel (Protocol), c'est
-    ``isinstance`` qui rend la substituabilité exécutable — pas l'héritage.
-    """
+    """Les adaptateurs de production satisfont les ports utilisés ici."""
     assert isinstance(RecordingTelemetry(), WorkerTelemetry)
     assert isinstance(RecordingTelemetryFactory(), TelemetryFactory)
     assert isinstance(FakeRuntimeFactory(), AsyncRuntimeFactory)

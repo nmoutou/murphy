@@ -9,26 +9,22 @@ import healthRouter from './routes/health';
 import { HTTP_STATUS } from './utils/httpStatus';
 import { MAX_REQUEST_BODY_BYTES } from './utils/requestLimits';
 
-// No reverse proxy in front of the backend yet (not deployed): `req.ip`
-// is the socket address, so a forged `X-Forwarded-For` cannot dodge the rate
-// limits. Behind a proxy, set the number of proxy hops here.
+// Pas encore de reverse proxy : `req.ip` est l'adresse de la socket, un
+// `X-Forwarded-For` forgé ne contourne pas les limites. Derrière un proxy, mettre ici
+// le nombre de sauts.
 const TRUST_PROXY = false;
 
 const app: Application = express();
 app.set('trust proxy', TRUST_PROXY);
 
-// Request logging (before other middleware)
 app.use(requestLogger);
 
-// Security middleware
 app.use(helm);
 app.use(limiter);
 
-// Body parsing middleware
 app.use(originParser);
 app.use(express.json({ limit: MAX_REQUEST_BODY_BYTES }));
 
-// Routes
 app.get('/api/v1', (_req, res) => {
   res.json(buildApiResponse(HTTP_STATUS.OK, 'OK', {
     name: 'Murphy API',
@@ -37,13 +33,11 @@ app.get('/api/v1', (_req, res) => {
   }));
 });
 
-// Health check endpoint
 app.use('/api/v1/health', healthRouter);
 
-// Chat route for RAG-powered streaming
 app.use('/api/v1/chat', chatRouter);
 
-// Error handling (must be last)
+// Toujours en dernier
 app.use(notFoundHandler);
 app.use(errorHandler);
 

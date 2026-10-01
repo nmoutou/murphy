@@ -1,11 +1,7 @@
-"""La phase 2 — le comptage exact (§12) et le cache des pendantes (§13).
+"""La phase 2 : le comptage exact, et les pendantes.
 
-Le défaut que ces tests interdisent de revenir : ``RELATION_UPSERTED`` émettait
-``count=len(relations)`` — le nombre d'arêtes *tentées*. Une arête dont le
-``MATCH (b)`` ne trouvait rien n'était pas écrite, ne levait rien, et n'émettait
-rien. Elle disparaissait, et le compteur affirmait le contraire.
-
-Ici, l'invariant est exécuté : ``written + pending == entrée``. Rien ne s'évapore.
+Invariant exécuté : ``written + pending == entrée``. Une arête dont la cible manque est
+différée, jamais comptée comme écrite.
 """
 
 from datetime import UTC, datetime
@@ -97,13 +93,13 @@ async def test_a_resolvable_edge_is_written_and_counted(
     assert outcome.pending_count == 0
     events = telemetry.events_of(RELATION_UPSERTED)
     assert len(events) == 1
-    assert events[0].payload["count"] == 1  # les arêtes ÉCRITES, pas tentées
+    assert events[0].payload["count"] == 1  # les arêtes écrites, pas tentées
 
 
 async def test_an_unresolvable_edge_becomes_a_pending_not_a_silence(
     graph, pending, telemetry, context
 ) -> None:  # noqa: ANN001
-    """Le cœur du §12 : la cible n'existe pas, donc rien n'est écrit — et on le DIT."""
+    """La cible n'existe pas : rien n'est écrit, et la relation part en pendante."""
     service = ResolveRelationsService(graph, pending, telemetry)
     await graph.merge_document_node(_doc(A))  # la cible MISSING n'est pas là
 
@@ -112,15 +108,15 @@ async def test_an_unresolvable_edge_becomes_a_pending_not_a_silence(
     assert outcome.written_count == 0
     assert outcome.pending_count == 1
     assert graph.edges == []  # rien d'écrit dans le graphe
-    assert len(pending.pendings) == 1  # mais la relation existe toujours quelque part
+    assert len(pending.pendings) == 1  # mais la relation est gardée
     assert len(telemetry.events_of(RELATION_PENDING)) == 1
-    assert telemetry.events_of(RELATION_UPSERTED) == []  # aucun comptage mensonger
+    assert telemetry.events_of(RELATION_UPSERTED) == []
 
 
 async def test_nothing_is_lost_between_input_and_output(
     service, graph, context
 ) -> None:  # noqa: ANN001
-    """L'invariant du port : written + pending == entrée. Toujours."""
+    """``written + pending == entrée``."""
     await graph.merge_document_node(_doc(A))
     await graph.merge_document_node(_doc(B))
     relations = [_rel(A, B), _rel(A, MISSING), _rel(B, MISSING)]
@@ -133,13 +129,13 @@ async def test_nothing_is_lost_between_input_and_output(
 async def test_a_pending_is_promoted_when_its_target_finally_arrives(
     graph, pending, telemetry, context
 ) -> None:  # noqa: ANN001
-    """Le §13 : le corpus s'enrichit, le trou se referme — sans rejouer tout le backlog."""
+    """La cible arrive au run suivant : la pendante est promue."""
     service = ResolveRelationsService(graph, pending, telemetry)
     await graph.merge_document_node(_doc(A))
     await service.execute([_rel(A, B)], set(), context)  # B n'existe pas encore
     assert len(pending.pendings) == 1
 
-    # Run suivant : B arrive.
+    # Run suivant : B arrive
     await graph.merge_document_node(_doc(B))
     outcome = await service.execute([], {f"LEGIARTI{B}"}, context)
 
@@ -152,11 +148,7 @@ async def test_a_pending_is_promoted_when_its_target_finally_arrives(
 async def test_replay_is_bounded_by_the_delta_not_the_backlog(
     service, graph, pending, context
 ) -> None:  # noqa: ANN001
-    """Une pendante qui dort depuis 200 runs ne coûte rien : on ne la retente pas.
-
-    C'est ce qui rend le rejeu tenable à l'échelle du corpus — le coût suit le
-    nombre de nœuds ÉCRITS par ce run, jamais la taille du cache.
-    """
+    """Le rejeu ne vise que le delta du run, jamais tout le backlog."""
     await pending.upsert_many(
         [PendingRelation.from_relation(_rel(A, MISSING), context.run_id)]
     )
@@ -166,18 +158,15 @@ async def test_replay_is_bounded_by_the_delta_not_the_backlog(
 
     assert outcome.promoted_count == 0
     assert len(pending.pendings) == 1  # la vieille pendante reste, intacte
-    # Le repository n'a été interrogé QUE sur le delta de ce run.
+    # Le dépôt n'a été interrogé que sur le delta de ce run
     assert pending.promotable_calls[-1] == frozenset({f"LEGIARTI{B}"})
 
 
 async def test_a_pending_seen_again_keeps_its_birth_date(
     service, graph, pending, context
 ) -> None:  # noqa: ANN001
-    """``first_seen_run`` ne bouge jamais : c'est la date de naissance du trou.
-
-    Sans ça, une pendante rencontrée à chaque run paraîtrait éternellement neuve,
-    et « depuis quand ce lien manque-t-il ? » n'aurait pas de réponse.
-    """
+    """``first_seen_run`` ne bouge jamais : sinon « depuis quand ce lien manque-t-il ? »
+    n'aurait pas de réponse."""
     await graph.merge_document_node(_doc(A))
     first = PipelineContext.create(sources=(SourceName.LEGI,))
     second = PipelineContext.create(sources=(SourceName.LEGI,))

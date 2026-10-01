@@ -1,5 +1,4 @@
-# The build context is the repository root (npm workspaces, ADR-040):
-# secrets, installed dependencies, build outputs and the Python project stay out.
+# Le contexte de build est la racine du dépôt (ADR-040).
 .git
 .env*
 .claude

@@ -1,8 +1,5 @@
-"""La jurisprudence, éprouvée sur du VRAI XML — et la découverte qui a changé le lot.
-
-Les fixtures sont des extraits littéraux du corpus (``/mnt/data/Murphy/src``). Elles sont
-copiées ici **délibérément** : le corpus est une source de fixtures, jamais une dépendance
-de test. Le volume peut ne pas être monté ; ces tests, eux, doivent tourner partout.
+"""La jurisprudence, sur des extraits littéraux du corpus, copiés ici exprès : le
+corpus n'est jamais une dépendance de test.
 """
 
 from __future__ import annotations
@@ -53,21 +50,9 @@ def _parse(name: str, source: SourceName):
 def test_une_citation_decrite_devient_une_RELATION_NON_FORMATEE_jamais_une_arete() -> (
     None
 ):
-    """**LE test du lot.** Sans lui, les citations juri s'évaporeraient en silence.
-
-    Les 68 ``<LIEN>`` du corpus juri ont **tous leurs attributs vides** — ni ``id``, ni
-    ``cidtexte``, ni ``nortexte``. Ce qu'ils portent est du texte : « Articles 1103 et 1229
-    du code civil ». La cour *décrit* l'article qu'elle vise ; elle ne le référence pas.
-
-    ``core/links`` traitait un lien sans identifiant comme une **donnée absente** : les 68
-    citations se seraient évaporées exactement comme les 16 227 liens de LEGI en leur
-    temps, et rien ne l'aurait signalé.
-
-    Elles entrent désormais — mais **comme relations non formatées, pas comme arêtes**.
-    Une phrase n'est pas une entité du graphe : aucun run futur ne fera exister
-    « Articles 1103 et 1229 du code civil » comme document. La matérialiser en nœud
-    ``:Unknown`` peuplait le graphe d'un placeholder par formulation, jamais résolu.
-    """
+    """Les ``<LIEN>`` juri n'ont aucun attribut, seulement un texte (« Articles 1103 et
+    1229 du code civil ») : ils entrent comme relations non formatées, pas comme arêtes
+    ni comme nœuds."""
     document = _parse("cass_avec_liens.xml", SourceName.CASS)
 
     links = extract_links(
@@ -98,9 +83,7 @@ def test_une_citation_decrite_devient_une_RELATION_NON_FORMATEE_jamais_une_arete
 
 
 def test_un_arret_est_nomme_par_son_identifiant_brut() -> None:
-    """Un arrêt se distingue d'un texte de loi par les 8 lettres de son identifiant
-    (``JURITEXT``), pas par un marqueur ajouté à la sérialisation.
-    """
+    """Un arrêt se distingue par le préfixe de son identifiant (``JURITEXT``)."""
     document = _parse("cass_avec_liens.xml", SourceName.CASS)
 
     assert document.identifier.prefix == "JURITEXT"
@@ -108,16 +91,8 @@ def test_un_arret_est_nomme_par_son_identifiant_brut() -> None:
 
 
 def test_la_juri_n_a_AUCUNE_balise_sans_role() -> None:
-    """Le cliquet de §3, appliqué aux trois tables juri.
-
-    Une balise que la table ne connaît pas entre sans être comprise. Ce test l'interdit
-    sur les fixtures ; le ``RunSummary`` le signalera sur le corpus complet. Le cliquet
-    interdit la régression, l'instrument permet la saturation ; ni l'un ni l'autre seul ne
-    suffit.
-
-    Le signal ``unconfigured_tags`` est tenu par clé de métadonnée, et porte aussi les
-    balises connues SANS renommage (ADR-047, ADR-048) : le cliquet parcourt donc
-    lui-même l'arbre, et ne garde que les balises que la table ne connaît pas du tout.
+    """Cliquet : aucune balise sans rôle sur les fixtures des trois tables. Le cliquet
+    parcourt l'arbre lui-même : le signal du parse est tenu par clé, pas par balise.
     """
     orphelines: dict[str, set[str]] = {}
 
@@ -146,12 +121,8 @@ def test_la_juri_n_a_AUCUNE_balise_sans_role() -> None:
 
 
 def test_les_trois_racines_ont_leur_table() -> None:
-    """Cinq sources, **trois** tables — c'est DILA qui en décide, pas nous.
-
-    CAPP, CASS et INCA publient la même racine (``TEXTE_JURI_JUDI``) et partagent donc la
-    même table, à l'identique. Une table par *forme de document*, jamais une par *base* :
-    la base n'est qu'un champ (le principe directeur l'exige nommément).
-    """
+    """CAPP, CASS et INCA publient la même racine : une table par forme de document,
+    pas par base."""
     assert set(ROLE_TABLE_BY_ROOT) == {
         "TEXTE_JURI_JUDI",
         "TEXTE_JURI_ADMIN",
@@ -163,14 +134,7 @@ def test_les_trois_racines_ont_leur_table() -> None:
 
 
 def test_la_juri_n_a_AUCUN_role_version() -> None:
-    """« Version = stratégie optionnelle, no-op si absente » (§3) — **vérifié**.
-
-    Un arrêt est rendu une fois ; il n'a pas de versions successives comme un article de
-    code. Aucune balise n'est mappée sur ``VERSION`` : le handler ne s'active pas.
-
-    C'est le seul rôle des quatre que la juri n'exerce pas — et c'était prévu par le
-    cadrage, avant qu'on ait mesuré quoi que ce soit. Le vérifier ferme la boucle.
-    """
+    """Un arrêt est rendu une fois : aucune balise ``VERSION``."""
     for table in ROLE_TABLE_BY_ROOT.values():
         assert table.version_tags == frozenset(), (
             "la juri n'a pas d'axe temporel — aucune balise de datation de version"
@@ -178,12 +142,7 @@ def test_la_juri_n_a_AUCUN_role_version() -> None:
 
 
 def test_le_contenu_de_larret_est_ingere() -> None:
-    """La vérification élémentaire, qu'il serait absurde de ne pas faire.
-
-    Un test qui prouve les arêtes mais pas le texte laisserait passer un corpus ingéré
-    vide — et c'est précisément le bug qui a fait passer les 98 décrets de LEGI sans
-    contenu, sans qu'une exception soit levée.
-    """
+    """Le texte est bien là : des arêtes sans contenu passeraient sinon inaperçues."""
     document = _parse("cass_avec_liens.xml", SourceName.CASS)
 
     assert document.content.strip(), "l'arrêt DOIT avoir du texte"
@@ -195,7 +154,7 @@ def test_le_contenu_de_larret_est_ingere() -> None:
     ("fixture", "source", "nature"),
     [
         ("cass_avec_liens.xml", SourceName.CASS, "ARRET"),
-        # JADE écrit « Texte » pour toutes ses décisions : une nature qui ne dit rien.
+        # JADE écrit « Texte » pour toutes ses décisions
         ("jade.xml", SourceName.JADE, None),
         ("constit.xml", SourceName.CONSTIT, "QPC"),
     ],

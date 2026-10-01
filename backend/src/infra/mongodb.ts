@@ -1,8 +1,3 @@
-/**
- * MongoDB Client
- * Connected at creation (`MongoDbClient.connect`), closed at shutdown
- */
-
 import { MongoClient, Db, MongoClientOptions } from 'mongodb';
 import type { MongoConfig } from '../config';
 import type { RagFailure, StoredDocument } from '../types/rag';
@@ -12,7 +7,7 @@ import { contractViolation, toRagError } from '../types/rag';
 const logger = rootLogger.child({ context: 'mongodb' });
 
 const MONGO_MAX_POOL_SIZE = 10;
-/** Written by the ingestion, one whole document per `identifier` (ADR-039 §2) */
+/** Écrite par l'ingestion : un document entier par `identifier` (ADR-039) */
 const DOCUMENTS_COLLECTION = 'documents';
 const DOCUMENT_PROJECTION = { _id: 0, identifier: 1, title: 1, content: 1 };
 const DOCUMENT_FETCH_FAILURE: RagFailure = {
@@ -23,11 +18,11 @@ const DOCUMENT_FETCH_FAILURE: RagFailure = {
 
 const hideCredentials = (uri: string): string => uri.replace(/\/\/[^@]*@/, '//<credentials>@');
 
-/** A `documents` record as MongoDB returns it: external data, checked before use */
+/** Donnée externe, vérifiée avant usage */
 type DocumentRecord = Readonly<Record<string, unknown>>;
 
 /**
- * @throws RagError `CONTRACT_VIOLATION` when a field of the contract is not a string
+ * @throws RagError `CONTRACT_VIOLATION` si un champ du contrat n'est pas une chaîne
  */
 const toStoredDocument = (record: DocumentRecord): StoredDocument => {
   const { identifier, title, content } = record;
@@ -45,8 +40,8 @@ export class MongoDbClient {
   ) {}
 
   /**
-   * Connects, then pings the database so that a wrong URI fails at boot
-   * @throws the driver error when MongoDB cannot be reached
+   * Le ping fait échouer une URI fausse dès le démarrage
+   * @throws l'erreur du driver si MongoDB est injoignable
    */
   static async connect(settings: MongoConfig): Promise<MongoDbClient> {
     const startTime = Date.now();
@@ -85,10 +80,7 @@ export class MongoDbClient {
     }
   }
 
-  /**
-   * Reads the parent documents of the retrieved chunks, by their indexed key
-   * @throws RagError with stage='retrieval'
-   */
+  /** @throws RagError d'étape `retrieval` */
   async fetchParentDocuments(identifiers: readonly string[]): Promise<StoredDocument[]> {
     const startTime = Date.now();
     const distinct = [...new Set(identifiers)];

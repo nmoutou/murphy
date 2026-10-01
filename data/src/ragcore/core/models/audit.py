@@ -9,12 +9,11 @@ from .identifiers import DocumentId, RunId
 
 __all__ = ["AuditEvent", "build_event"]
 
-# Préfixes d'événements qui ne doivent pas porter de document_id
 _NO_DOCUMENT_ID_PREFIXES = ("pipeline.", "maintenance.")
 
 
 class AuditEvent(BaseModel):
-    """Événement immuable. Append-only dans Mongo."""
+    """Append-only dans Mongo."""
 
     model_config = ConfigDict(frozen=True)
 
@@ -33,7 +32,6 @@ class AuditEvent(BaseModel):
 
     @model_validator(mode="after")
     def _validate_document_id_coherence(self) -> "AuditEvent":
-        """Vérifie que les événements pipeline/maintenance ne portent pas de document_id."""
         if (
             self.event_type.startswith(_NO_DOCUMENT_ID_PREFIXES)
             and self.document_id is not None
@@ -44,7 +42,7 @@ class AuditEvent(BaseModel):
         return self
 
 
-def build_event(  # noqa: PLR0913 — façade : exposer tous les champs de l'événement EST le propos
+def build_event(  # noqa: PLR0913 — façade : exposer chaque champ de l'événement est son rôle
     event_type: str,
     run_id: RunId,
     *,
@@ -55,7 +53,6 @@ def build_event(  # noqa: PLR0913 — façade : exposer tous les champs de l'év
     success: bool = True,
     error_message: str | None = None,
 ) -> AuditEvent:
-    """Constructeur compact pour les sites d'émission (nodes / use cases)."""
     return AuditEvent(
         event_id=uuid4(),
         event_type=event_type,

@@ -2,7 +2,7 @@ import js from '@eslint/js';
 import { defineConfig } from 'eslint/config';
 import tseslint from 'typescript-eslint';
 
-// The size and shape limits of CLAUDE.md, checked instead of remembered
+// Les limites de taille du CLAUDE.md
 const MAX_FILE_LINES = 300;
 const MAX_FUNCTION_LINES = 30;
 const MAX_DEPTH = 3;
@@ -14,7 +14,7 @@ export default defineConfig(
     files: ['src/**/*.ts'],
     extends: [js.configs.recommended, tseslint.configs.recommended],
     rules: {
-      // Express reads a handler's arity: `_next` must stay declared even when unused.
+      // Express lit l'arité d'un handler : `_next` doit rester déclaré même inutilisé.
       '@typescript-eslint/no-unused-vars': [
         'error',
         { argsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_' },
@@ -34,7 +34,7 @@ export default defineConfig(
     },
   },
   {
-    // A `describe` block is a list of cases, and expected values read best in place
+    // Dans un test, la valeur attendue se lit mieux en place
     files: ['src/__tests__/**/*.ts', 'src/**/*.test.ts'],
     rules: {
       'max-lines-per-function': 'off',

@@ -5,7 +5,7 @@
   --font-mono: var(--font-geist-mono);
 }
 
-/* The dark theme as Tailwind colors: bg-secondary, text-tertiary… */
+/* Le thème sombre en couleurs Tailwind : bg-secondary, text-tertiary… */
 @theme {
   --color-primary: #0e0d11;
   --color-secondary: #2a292d;
@@ -18,7 +18,7 @@
   scrollbar-color: var(--color-tertiary) var(--color-secondary);
 }
 
-/* Chat layout utilities */
+/* Mise en page du chat */
 .chat-layout {
   @apply flex items-start gap-3;
 }
@@ -27,7 +27,7 @@
   @apply flex-1 break-words;
 }
 
-/* Add vertical spacing between rendered markdown blocks */
+/* Espace entre les blocs markdown rendus */
 .chat-content > :not(:first-child) {
   @apply my-4;
 }
@@ -36,7 +36,7 @@
   @apply rounded-[16px] px-4 py-2 max-w-[80%];
 }
 
-/* Variants */
+/* Variantes */
 .chat-bubble-user {
   @apply rounded-br-none bg-secondary text-tertiary;
 }
@@ -58,8 +58,8 @@
   @apply justify-start;
 }
 
-/* Source item */
-/* TO-DO: Simplifier */
+/* Source */
+/* TODO : simplifier */
 
 .source-item {
   @apply p-2 rounded text-xs opacity-80 border border-tertiary;

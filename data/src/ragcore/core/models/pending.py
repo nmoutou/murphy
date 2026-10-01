@@ -1,10 +1,7 @@
-"""PendingRelation — une arête différée est une DONNÉE, pas un vide (§13).
+"""Une arête différée : sa cible n'est pas (encore) dans le corpus.
 
-En phase 2, une relation dont le ``MATCH (b)`` échoue n'est pas perdue : sa cible
-n'est simplement pas (encore) dans le corpus. Elle est écrite ici et rejouée le
-jour où la cible arrive. Une pendante peut rester pendante indéfiniment — un
-arrêt qui cite une directive jamais ingérée produit un lien légitime vers
-l'extérieur, pas une erreur.
+Écrite en phase 2, rejouée le jour où la cible arrive. Elle peut rester pendante
+indéfiniment : un arrêt qui cite une directive jamais ingérée n'est pas une erreur.
 """
 
 from typing import Any
@@ -20,22 +17,18 @@ __all__ = ["PendingKey", "PendingRelation"]
 
 
 class PendingKey(BaseModel):
-    """Clé d'unicité d'une pendante : (source_id, target_id, relation_type)."""
+    """Clé d'unicité d'une pendante."""
 
     model_config = ConfigDict(frozen=True)
 
-    source_id: DocumentId  # identifiant sérialisé
-    target_id: DocumentId  # identifiant sérialisé
+    source_id: DocumentId
+    target_id: DocumentId
     relation_type: ValidatedVerb
 
     @classmethod
     def from_relation(cls, relation: Relation) -> "PendingKey":
-        """La clé d'une relation RÉSOLUE — la même identité qu'une pendante.
-
-        Une pendante et la relation qui la résout portent la MÊME clé : c'est ce qui
-        permet de dire « cette pendante vient d'être écrite ». Recomposer un tuple à la
-        main aux deux endroits (ce que faisait ``_key_tuple``) laissait les deux formes
-        diverger en silence — l'unicité est un fait du modèle, elle vit ici.
+        """La pendante et la relation qui la résout portent la même clé : c'est ce qui
+        permet de dire « cette pendante vient d'être écrite ».
         """
         return cls(
             source_id=relation.source_identifier.serialize(),
@@ -47,12 +40,8 @@ class PendingKey(BaseModel):
 class PendingRelation(BaseModel):
     """Relation dont la cible n'existait pas au moment de l'écriture.
 
-    Ni TTL, ni ``retry_count`` : avec un rejeu ciblé (on ne retente que les
-    pendantes dont la cible vient d'arriver), une pendante n'est jamais « essayée
-    puis échouée ». Elle est écrite une fois, puis promue une fois — ou jamais.
-    Un compteur de tentatives compterait un événement qui ne se produit pas ; les
-    deux estampilles de run, elles, disent quelque chose de réel sur la
-    persistance du lien dans le corpus.
+    Ni TTL ni ``retry_count`` : le rejeu ne vise que les pendantes dont la cible vient
+    d'arriver, donc une pendante n'est jamais « essayée puis échouée ».
     """
 
     model_config = ConfigDict(frozen=True)
@@ -87,7 +76,6 @@ class PendingRelation(BaseModel):
         )
 
     def to_relation(self) -> Relation:
-        """Reconstruit la relation d'origine pour la rejouer."""
         return Relation(
             source_identifier=Identifier(raw=self.source_id),
             target_identifier=Identifier(raw=self.target_id),

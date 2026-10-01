@@ -18,14 +18,12 @@ ENV/
 mlruns/
 .viz
 
-# Il n'y a PAS de .env ici : le fichier est UNIQUE et vit à la racine (`../.env.dev`).
-# Ces lignes sont un fil-piège — en créer un ici n'aurait aucun effet (settings.py lit
-# la racine par chemin absolu), mais autant qu'un fichier égaré ne soit jamais commité.
+# L'unique fichier d'env vit à la racine (`../.env.dev`) : un fichier égaré ici serait
+# sans effet, mais ne doit jamais être commité.
 .env
 .env.*
 
-# `package.json` n'est qu'un renvoi vers le compose du parent ; npm peut néanmoins
-# déposer ceci à côté.
+# npm peut déposer ceci à côté de `package.json`.
 node_modules/
 package-lock.json
 conf/local/**

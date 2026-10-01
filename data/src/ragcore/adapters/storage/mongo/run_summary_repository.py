@@ -1,11 +1,4 @@
-"""Persistance des bilans de run.
-
-``upsert`` sur ``run_id`` : un run n'a qu'un bilan. Rejouer un run doit remplacer
-son bilan, pas en empiler un second — sinon « combien de runs ont tourné ? »
-n'a plus de réponse.
-
-Un champ vide (``error_message`` d'un run qui n'a pas levé) n'est pas écrit.
-"""
+"""Les bilans de run, un par ``run_id``. Un champ vide n'est pas écrit."""
 
 from ragcore.adapters.storage.mongo.client import MongoClient
 from ragcore.core.models.identifiers import RunId
@@ -15,8 +8,6 @@ __all__ = ["MongoRunSummaryRepository"]
 
 
 class MongoRunSummaryRepository:
-    """Implémentation Mongo de ``RunSummaryRepository``."""
-
     def __init__(
         self,
         client: MongoClient,

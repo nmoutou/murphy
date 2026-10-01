@@ -1,30 +1,8 @@
-"""CLIQUET — **une balise sans rôle casse le build** (§3).
+"""Cliquet : une balise sans rôle casse le build.
 
-C'est le dispositif que la doctrine réclame nommément, et le jumeau exact du catalogue
-d'events (§12) : *rien n'entre en silence*.
-
-**Le danger qu'il garde.** LEGI publie un export ; une balise neuve apparaît. Sans ce
-cliquet, elle traverse le parser sans un mot : son texte n'est ni du corps, ni une
-métadonnée, ni un lien — il **disparaît**. Aucune exception, aucun log, un corpus
-silencieusement amputé. C'est précisément la forme du bug qui a fait s'évaporer 16 227
-liens pendant des mois.
-
-Avec lui, la balise ressort du parcours de l'arbre, ce test échoue, et
-quelqu'un doit **décider** de son rôle. La décision peut être « c'est du bruit, rôle
-META » — mais elle est prise, et écrite. Depuis la cascade des « trois portes »,
-la donnée de la balise n'attend plus la décision : elle entre en métadonnée (clé
-chemin-complet) ou en lien (heuristique DILA) — le signal, lui, réclame toujours la
-décision.
-
-**Le cliquet et l'instrument sont complémentaires**, et il faut les distinguer :
-
-- Le cliquet (ici) fige ce qu'on connaît : sur les fixtures, aucune balise sans rôle.
-- L'instrument (``tags``/``links`` → ``RunStats.unknowns`` → ``RunSummary``) découvre
-  ce qu'on ne connaît pas : sur un corpus neuf, la donnée de la balise remonte dans le
-  bilan du run, sous sa clé chemin-complet.
-
-Le premier interdit la régression ; le second permet la saturation. Ni l'un ni l'autre
-seul ne suffit.
+Sans lui, une balise neuve d'un export DILA entrerait sans que personne ne décide de
+son rôle. Il fige ce qu'on connaît ; l'instrument du bilan (``unknowns``) découvre, sur
+un corpus neuf, ce qu'on ne connaît pas.
 """
 
 from __future__ import annotations
@@ -43,9 +21,8 @@ from ragcore.sources.legislatif.table import LEGI_ROLE_TABLE
 
 FIXTURES = Path(__file__).parents[2] / "sources" / "legislatif" / "tests" / "fixtures"
 
-# La fixture `unknown_vocabulary.xml` porte DÉLIBÉRÉMENT du vocabulaire inconnu : une
-# balise <ZORG> et un typelien ZORGLUB. C'est l'instrument qu'elle teste, pas le cliquet
-# — et les mélanger rendrait le cliquet incapable d'échouer.
+# La fixture `unknown_vocabulary.xml` porte délibérément du vocabulaire inconnu : elle
+# teste l'instrument, pas le cliquet, qui ne pourrait sinon jamais échouer.
 _FIXTURE_PATHOLOGIQUE = "unknown_vocabulary.xml"
 
 
@@ -74,17 +51,11 @@ def _tags_without_role(raw: RawDocument) -> set[str]:
 
 
 def test_aucune_balise_du_corpus_ne_reste_sans_role() -> None:
-    """LE cliquet. Sur un corpus sain, rien de non-configuré — sans exception.
+    """Sur un corpus sain, aucune balise sans rôle.
 
-    Un échec ici ne dit pas « le code est cassé ». Il dit : *la source parle un mot que la
-    table ne connaît pas*. La réponse n'est jamais de contourner le test — c'est de lire
-    la balise, de décider de son rôle, et de l'écrire dans ``LEGI_ROLE_TABLE``.
-
-    Depuis la cascade des « trois portes », une balise non-configurée n'est plus un
-    ``unknown`` dans la donnée : elle est ROUTÉE (metadata ou lien) et SIGNALÉE dans le
-    ``ParseResult``, sous ses clés de métadonnée (ADR-048). Le signal ne nomme donc plus
-    la balise, et porte aussi celles qui ont un rôle sans renommage (ADR-047) : le
-    cliquet parcourt lui-même l'arbre et demande le rôle de chaque balise.
+    Un échec dit que la source parle un mot que la table ne connaît pas : décider de son
+    rôle et l'écrire dans ``LEGI_ROLE_TABLE``, jamais contourner le test. Le cliquet
+    parcourt l'arbre lui-même : le signal du parse est tenu par clé, pas par balise.
     """
     orphelines: dict[str, set[str]] = {}
     parser = GenericParser(LEGI_ROLE_TABLE, SourceName.LEGI)
@@ -105,14 +76,8 @@ def test_aucune_balise_du_corpus_ne_reste_sans_role() -> None:
 
 
 def test_le_cliquet_est_CAPABLE_d_echouer() -> None:
-    """Le contre-exemple, sans lequel le test précédent ne prouverait rien.
-
-    Un test qui n'échoue jamais est un test qui n'observe rien. Celui-ci prouve que
-    l'instrument fonctionne : sur la fixture qui porte une balise ``<ZORG>`` délibérément
-    absente de la table, le parcours la **trouve**, le ``ParseResult`` **signale** sa
-    valeur — et cette valeur, routée par la cascade, entre en métadonnée sous sa clé
-    chemin-complet au lieu de disparaître.
-    """
+    """Le contre-exemple : ``<ZORG>`` est trouvée par le parcours, signalée, et ingérée
+    sous sa clé chemin-complet."""
 
     async def run() -> RawDocument:
         async for raw in LegiFileConnector(FIXTURES).fetch_all():
@@ -136,25 +101,13 @@ def test_le_cliquet_est_CAPABLE_d_echouer() -> None:
 
 
 def test_chaque_balise_porte_UN_role_et_un_seul() -> None:
-    """La table est un dictionnaire : l'unicité est structurelle, pas conventionnelle.
-
-    On ne peut pas mapper ``BLOC_TEXTUEL`` à la fois sur ``BODY`` et sur ``META`` — Python
-    l'interdit. Ce test ne vérifie donc pas l'unicité (elle est acquise) mais que **chaque
-    valeur est bien un ``Role``** : une chaîne s'y glisserait sans bruit et le
-    ``role_of()`` du parser comparerait alors des pommes et des oranges.
-    """
+    """Chaque valeur est un ``Role`` : une chaîne s'y glisserait sans bruit."""
     for tag, role in LEGI_ROLE_TABLE.roles.items():
         assert isinstance(role, Role), f"{tag} porte {role!r}, qui n'est pas un Role"
 
 
 def test_les_quatre_roles_sont_TOUS_utilises_par_LEGI() -> None:
-    """LEGI exerce les quatre rôles — c'est ce qui en fait le cas d'épreuve du dispositif.
-
-    La jurisprudence, elle, n'aura **aucune** balise ``VERSION`` : son handler ne
-    s'activera pas, et c'est prévu (§3 : « version = stratégie optionnelle, no-op si
-    absente »). Mais si LEGI n'exerçait pas les quatre, on n'aurait jamais éprouvé le
-    routage complet avant d'y brancher cinq sources neuves.
-    """
+    """LEGI exerce les quatre rôles : le cas d'épreuve du routage complet."""
     exerces = set(LEGI_ROLE_TABLE.roles.values())
     assert exerces == set(Role), (
         f"Rôles jamais exercés par LEGI : {set(Role) - exerces}"
@@ -162,13 +115,8 @@ def test_les_quatre_roles_sont_TOUS_utilises_par_LEGI() -> None:
 
 
 def test_la_table_LEGI_ne_contient_AUCUNE_logique() -> None:
-    """La mesure du succès de §3 : *une source nouvelle = une table, pas un parser*.
-
-    ``sources/legislatif/`` ne doit plus contenir ni parser ni chunker. S'il en réapparaît un,
-    c'est que la mécanique générique était incomplète — et c'est **elle** qu'il faut
-    corriger, pas la source qu'il faut laisser diverger. C'est ainsi qu'on se retrouve
-    avec six parsers.
-    """
+    """``sources/legislatif/`` ne contient ni parser ni chunker : s'il en faut un, c'est
+    la mécanique générique qu'il faut compléter."""
     modules = {
         p.name
         for p in (Path(__file__).parents[2] / "sources" / "legislatif").glob("*.py")

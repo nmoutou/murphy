@@ -1,8 +1,3 @@
-/**
- * Chat Socket URL Tests
- * The WebSocket address derived from `NEXT_PUBLIC_API_URL`
- */
-
 import { describe, expect, it, vi } from 'vitest';
 import { getChatSocketUrl } from '@/lib/chatSocketUrl';
 

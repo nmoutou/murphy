@@ -1,8 +1,3 @@
-/**
- * Chat Request Validation Tests
- * `parseChatRequest`, the boundary check shared by the HTTP and WebSocket transports
- */
-
 import { parseChatRequest } from '../../validation/chatRequest';
 
 const QUESTION = 'Quel délai de prescription ?';

@@ -1,15 +1,8 @@
-"""ADR-045 contre un VRAI Mongo — l'accumulation n'est pas une intention.
+"""Les relations non formatées contre un vrai Mongo : l'unicité n'y tient qu'à l'index.
 
-Le fake tient un ``dict`` indexé par la clé : l'unicité y est donnée par la structure de
-données. En Mongo, elle n'est donnée que par l'index unique, déclaré sur des noms de
-champs écrits à la main. S'ils divergent de ceux qu'écrit l'adaptateur, ``upsert_many``
-empile des doublons et rien ne lève.
-
-Quatre affirmations que seule la vraie base peut trancher :
-  1. l'index unique existe et porte sur la clé à quatre champs ;
-  2. ``$setOnInsert`` fige vraiment ``first_seen_run`` ;
-  3. deux ``sens`` opposés font deux lignes ;
-  4. la compensation épargne ce qu'un run précédent a écrit.
+À trancher sur la vraie base : l'index porte sur la clé à quatre champs,
+``$setOnInsert`` fige ``first_seen_run``, deux ``sens`` opposés font deux lignes, et la
+compensation épargne ce qu'un run précédent a écrit.
 """
 
 import pytest
@@ -68,7 +61,7 @@ async def _stored(repo: MongoUnformattedRelationRepository) -> list[dict]:
 
 
 async def test_the_unique_index_covers_the_four_fields(repo) -> None:
-    """Sans cet index, ``upsert_many`` n'est plus une union — c'est un espoir."""
+    """Sans cet index, ``upsert_many`` n'est plus une union."""
     indexes = await repo._collection.index_information()  # noqa: SLF001
 
     unique = indexes["uq_unformatted_source_text_type_sens"]
@@ -82,7 +75,7 @@ async def test_the_unique_index_covers_the_four_fields(repo) -> None:
 
 
 async def test_the_written_row_has_the_agreed_schema(repo) -> None:
-    """Le schéma d'ADR-045, champ par champ : c'est lui que la résolution lira."""
+    """Le schéma d'ADR-045, champ par champ : celui que la résolution lira."""
     await repo.upsert_many(
         [_unformatted("Articles 1103 et 1229 du code civil.")], RUN_1
     )
@@ -101,7 +94,7 @@ async def test_the_written_row_has_the_agreed_schema(repo) -> None:
 
 
 async def test_first_seen_run_never_moves_but_last_seen_does(repo) -> None:
-    """L'accumulation : deux runs, une ligne, née au premier, revue au second."""
+    """Deux runs, une ligne, née au premier, revue au second."""
     await repo.upsert_many([_unformatted("code civil")], RUN_1)
     await repo.upsert_many([_unformatted("code civil")], RUN_2)
 
@@ -121,7 +114,7 @@ async def test_opposite_sens_are_two_facts(repo) -> None:
 
 
 async def test_a_duplicate_insert_is_actually_rejected_by_mongo(repo) -> None:
-    """La preuve que l'index MORD — le fake, lui, écraserait en silence."""
+    """L'index mord : une insertion nue du même enregistrement échoue."""
     await repo.upsert_many([_unformatted("code civil")], RUN_1)
     [row] = await _stored(repo)
 
@@ -146,7 +139,7 @@ async def test_the_compensation_spares_the_rows_of_earlier_runs(repo) -> None:
 async def test_the_nuke_empties_the_collection_and_restores_the_unique_index(
     repo,
 ) -> None:
-    """Un drop emporte les index : la remise à neuf doit les reposer."""
+    """La remise à neuf repose les index, que le drop emporte."""
     await repo.upsert_many([_unformatted("code civil")], RUN_1)
 
     await reset_data_collections(repo._collection.database)  # noqa: SLF001

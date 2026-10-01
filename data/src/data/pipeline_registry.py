@@ -1,4 +1,4 @@
-"""Project pipelines registry — délègue au registry ragcore."""
+"""Délègue au registre de ragcore."""
 
 from kedro.pipeline import Pipeline
 
@@ -8,5 +8,4 @@ from ragcore.orchestration.kedro.pipeline_registry import (
 
 
 def register_pipelines() -> dict[str, Pipeline]:
-    """Register the project's pipelines (délégué à ragcore)."""
     return _ragcore_register_pipelines()

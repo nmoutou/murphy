@@ -5,17 +5,12 @@ import type { ReactNode, SyntheticEvent } from 'react';
 
 interface ModalProps {
   readonly title: string;
-  /** Shown right of the title */
+  /** Affichée à droite du titre */
   readonly titleIcon?: ReactNode;
   readonly onClose: () => void;
   readonly children: ReactNode;
 }
 
-/**
- * A dialog over the page, whose background is greyed and inert (ADR-041). Mounted means
- * open: the parent decides when to show it, and hears Escape through `onClose`.
- */
-/** Opens the native dialog on mount, closes it on unmount, and routes Escape to `onClose` */
 function useModalDialog(onClose: () => void) {
   const dialogRef = useRef<HTMLDialogElement>(null);
 
@@ -33,6 +28,7 @@ function useModalDialog(onClose: () => void) {
   return { dialogRef, handleCancel };
 }
 
+/** Montée = ouverte : le parent décide quand l'afficher et reçoit Échap par `onClose` */
 export default function Modal({ title, titleIcon, onClose, children }: ModalProps) {
   const { dialogRef, handleCancel } = useModalDialog(onClose);
   const titleId = useId();

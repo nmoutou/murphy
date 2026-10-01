@@ -1,7 +1,7 @@
 import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vitest/config';
 
-// Tests run on Vite, outside Next: only the `@/*` alias of tsconfig is repeated here
+// Vitest tourne hors de Next : seul l'alias `@/*` du tsconfig est répété ici
 export default defineConfig({
   resolve: {
     alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },

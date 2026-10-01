@@ -1,10 +1,5 @@
-"""Agrégateur in-memory des AuditEvent — l'agrégat local d'UN worker.
-
-Le ``threading.Lock`` d'avant a disparu, et pas par négligence : il protégeait un
-``defaultdict`` mutable partagé. L'agrégat est désormais un ``RunStats`` immuable
-que chaque ``emit`` remplace — il n'y a plus d'état à corrompre, donc plus rien à
-verrouiller. C'est l'invariant 1 du pool (§11) appliqué ici : le verrou disparaît
-par construction, pas par discipline.
+"""L'agrégat local d'un worker : un ``RunStats`` immuable que chaque ``emit`` remplace,
+donc rien à verrouiller.
 """
 
 from __future__ import annotations
@@ -24,28 +19,14 @@ from ragcore.core.telemetry_events import COUNT_CARRYING_EVENTS, PAYLOAD_COUNT_K
 _EVERY_CATEGORY = RunStats(
     counts={}, unknowns={category: {} for category in UNKNOWN_CATEGORIES}
 )
-"""Neutre pour la fusion, sauf qu'il fait exister chaque catégorie : un bilan sans
-inconnu dit ``"roots": {}``, il ne perd pas la clé (ADR-048)."""
+"""Neutre pour la fusion, mais fait exister chaque catégorie : un bilan sans inconnu dit
+``"roots": {}`` plutôt que de perdre la clé (ADR-048)."""
 
 
 def _weight_of(event_type: str, payload: dict[str, Any]) -> int:
-    """Le POIDS d'un event : combien de choses il rapporte, pas combien de fois il tinte.
-
-    La plupart des events valent 1 — un document persisté, un document parsé. Seuls ceux
-    déclarés PORTEURS DE CARDINALITÉ (``COUNT_CARRYING_EVENTS``) sont émis **une fois pour
-    un lot** et portent leur compte en payload : ``document.fetched`` avec le nombre de
-    documents vus, ``relation.upserted`` avec le nombre d'arêtes écrites. Les compter pour
-    1 donnait un RunSummary qui annonçait ``document.fetched: 1`` sur un run de 1121
-    documents — et rendait le critère de fin (« ingérés + exclus + échoués = total vu »)
-    **invérifiable depuis le bilan**.
-
-    **Le contrat est explicite, pas déduit de la clé.** On ne lit ``payload[count]`` que
-    pour un event qui a DÉCLARÉ le porter (cf. ``telemetry_events.py``). Un ``count`` qui
-    traînerait dans le payload d'un event unitaire est ignoré ; et renommer la clé d'un
-    émetteur porteur casserait le golden du catalogue, pas le bilan en silence.
-
-    Défensif sur le type : un payload est une donnée de télémétrie, pas un contrat typé.
-    Un ``count`` non entier ne doit pas faire tomber le bilan du run.
+    """Combien de choses l'événement rapporte : 1, sauf pour ceux de
+    ``COUNT_CARRYING_EVENTS``. Un ``count`` non entier vaut 1 : un payload n'est pas un
+    contrat typé, et il ne doit pas faire tomber le bilan.
     """
     if event_type not in COUNT_CARRYING_EVENTS:
         return 1
@@ -54,11 +35,8 @@ def _weight_of(event_type: str, payload: dict[str, Any]) -> int:
 
 
 class RunStatsAggregator:
-    """Agrège les AuditEvent en un ``RunStats``. Satisfait ``WorkerTelemetry``.
-
-    ``snapshot()`` rend l'agrégat brut — c'est lui qu'on fusionne entre workers.
-    ``finalize()`` y attache l'identité du run pour produire le ``RunSummary`` ;
-    la persistance (Mongo) reste à l'orchestrateur.
+    """Satisfait ``WorkerTelemetry``. ``finalize()`` produit le ``RunSummary`` ; sa
+    persistance reste à l'orchestrateur.
     """
 
     def __init__(
@@ -78,9 +56,8 @@ class RunStatsAggregator:
 
     def emit(self, event: AuditEvent) -> None:
         weight = _weight_of(event.event_type, event.payload or {})
-        # ⚠️ DETTE : PAS de compteurs par source. Sur un run multi-source, le bilan dit
-        # « 3 compensations » sans dire *chez qui*. Compter par source demanderait un
-        # axe de plus sur `RunStats`, de même monoïde : ça se fait dans le modèle, pas ici.
+        # TODO : pas de compteurs par source, un run multi-source ne dit pas chez qui.
+        # Ce serait un axe de plus sur `RunStats`, pas ici.
         self._stats = self._stats.with_count(event.event_type, weight)
 
     def log(self, level: str, message: str, **context: Any) -> None:  # noqa: ARG002
@@ -89,39 +66,27 @@ class RunStatsAggregator:
     def record_unknown(
         self, category: str, value: str, example: UnknownExample
     ) -> None:
-        """Un vocabulaire non reconnu se DÉCLARE — il ne se jette pas en silence."""
         self._stats = self._stats.with_unknown(category, value, example)
 
     def record_collision(self, key: str, source_files: tuple[str, ...]) -> None:
-        """Une clé en collision se compte, qu'elle soit rangée en liste ou refusée."""
+        """Rangée en liste ou refusée, une clé en collision se compte."""
         self._stats = self._stats.with_collision(key, source_files)
 
     def snapshot(self) -> RunStats:
-        """L'agrégat local, à fusionner avec celui des autres workers."""
         return self._stats
 
     def absorb(self, stats: RunStats) -> None:
-        """Fusionne un agrégat venu d'AILLEURS — typiquement celui des workers.
-
-        Sans ceci, l'agrégateur du hook ne voit que les events du process principal.
-        Or les compensations de saga arrivent **dans les workers** : leur compteur
-        restait donc structurellement nul, et ``_status_from`` rendait *toujours*
-        ``ok``. Un statut dérivé d'un compteur jamais alimenté n'est pas un statut
-        dérivé — c'est un ``ok`` en dur avec plus d'étapes.
-
-        La fusion est sûre par construction : ``RunStats`` est un monoïde commutatif,
-        donc absorber dans n'importe quel ordre donne le même bilan (§11).
-        """
+        """Fusionne l'agrégat des workers : sans lui, l'agrégateur du hook ne verrait
+        pas les échecs survenus dans les workers. L'ordre est indifférent."""
         self._stats = self._stats.merge(stats)
 
     def close(self) -> None:
-        """Rien à fermer : l'agrégat vit en mémoire."""
+        """L'agrégat vit en mémoire."""
         return
 
     def finalize(
         self, status: RunStatus, error_message: str | None = None
     ) -> RunSummary:
-        """Projette l'agrégat en RunSummary — l'identité s'attache ici, une fois."""
         return RunSummary.of(
             self._stats.merge(_EVERY_CATEGORY),
             context_run_id=self._run_id,

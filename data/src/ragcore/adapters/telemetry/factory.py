@@ -1,13 +1,4 @@
-"""La fabrique de piles de télémétrie — une par worker (§11).
-
-C'est le dernier maillon. Avec un pool, il n'y a plus *un* agrégateur mais N : le
-hook ne peut plus construire une instance unique et la partager. Il construit une
-**fabrique**, et chaque worker appelle ``build()`` pour obtenir sa pile — son agrégat
-à lui.
-
-C'est cela qui fait DISPARAÎTRE le verrou au lieu de le déplacer : il n'y a plus
-d'objet partagé du tout.
-"""
+"""Une pile de télémétrie par worker : aucun objet partagé, donc aucun verrou."""
 
 from datetime import datetime
 
@@ -24,21 +15,14 @@ __all__ = ["WorkerTelemetryFactory", "assemble_telemetry"]
 
 
 def assemble_telemetry(aggregate: RunStatsAggregator) -> WorkerTelemetryStack:
-    """Le CÂBLAGE d'une pile de télémétrie : ses backends.
-
-    La console est toujours la même ; l'agrégat est propre à chaque pile. Ce montage
-    sert deux endroits — la fabrique par worker ci-dessous ET le hook, pour sa pile de
-    run-lifecycle. Le grouper ici fait qu'un backend ajouté ou réordonné se voit en UN
-    point, pas deux.
-    """
+    """Partagé par la fabrique et le hook : un backend ajouté se voit en un seul
+    point."""
     return WorkerTelemetryStack(
         WorkerBackends(log=ConsoleLogTelemetry(), aggregate=aggregate)
     )
 
 
 class WorkerTelemetryFactory:
-    """Implémentation de ``TelemetryFactory`` : une pile neuve par worker."""
-
     def __init__(
         self,
         run_id: RunId,

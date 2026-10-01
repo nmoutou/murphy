@@ -1,19 +1,9 @@
-"""Le workload — le dernier maillon d'``unknowns``, et la frontière phase-1/phase-2.
+"""Le workload : il déclare les inconnus d'extraction, et la phase 1 n'écrit aucune
+arête.
 
-Deux propriétés se prouvent ici, et aucune autre ne comptait autant dans les lots
-3-4 :
-
-1. **Un inconnu remonté dans la donnée est DÉCLARÉ.** Le parser et l'extracteur ne
-   voient jamais la télémétrie ; ils remontent leurs inconnus dans ``parsed.unknowns``
-   et ``extraction.unknowns``. Le workload, qui tient la ``WorkerTelemetry`` du worker,
-   les déclare. Sans cet appel, ``RunStats.unknowns`` resterait le tuyau vide qu'il
-   était — plombé de bout en bout, sans producteur.
-
-2. **La phase 1 n'écrit AUCUNE arête.** Le workload extrait les relations et les
-   remonte dans ``WorkloadResult`` ; il ne les passe pas au graphe. On le prouve
-   contre un vrai ``IngestDocumentUseCase`` posé sur un vrai graphe en mémoire : le
-   nœud est mergé, mais ``graph.edges`` reste vide. Les relations non formatées, elles,
-   sont écrites dès la phase 1 (ADR-045).
+Le second point se prouve contre un vrai ``IngestDocumentUseCase`` sur un graphe en
+mémoire : le nœud est écrit, ``graph.edges`` reste vide. Les relations non formatées,
+elles, sont écrites dès la phase 1 (ADR-045).
 """
 
 from __future__ import annotations
@@ -108,12 +98,8 @@ class _StubEmbedder:
 
 
 class _StubExtractor:
-    """Rend un résultat FIXE — le workload n'invente rien, il transmet.
-
-    Une relation (pour prouver qu'elle sort sans être écrite), une relation non formatée
-    (pour prouver qu'elle est écrite dès la phase 1), un inconnu (pour prouver qu'il
-    est déclaré) et, à la demande, des liens perdus (pour prouver qu'ils sont comptés).
-    """
+    """Un résultat fixe : une relation, une relation non formatée, un inconnu, et à la
+    demande des liens perdus."""
 
     def __init__(self, lost_links: int = 0) -> None:
         self.calls = 0
@@ -141,11 +127,7 @@ def _use_case_factory(
     vectors: InMemoryVectorRepository,
     unformatted: InMemoryUnformattedRepository,
 ):
-    """Fabrique un use case sur le graphe et le dépôt de vecteurs donnés — la télémétrie
-    du worker est celle que le workload passe. On construit les dépôts en mémoire une
-    fois et on les partage : le test ne parallélise pas, la contrainte de boucle ne s'y
-    applique pas.
-    """
+    """Les dépôts en mémoire sont partagés : le test ne parallélise pas."""
 
     def factory(telemetry) -> IngestDocumentUseCase:  # noqa: ANN001
         return IngestDocumentUseCase(
@@ -193,13 +175,8 @@ def _run(
 
 
 def test_les_inconnus_de_lextraction_sont_DECLARES() -> None:
-    """Les inconnus d'EXTRACTION rejoignent l'agrégat du worker.
-
-    ``extraction.unknowns`` vient de l'extracteur, qui ne tient pas la télémétrie.
-    C'est le workload qui les déclare — et ``snapshot()`` est la preuve que le tuyau
-    coule. Les signaux de PARSE (``tags``, liens heuristiques, ``roots``) sont déclarés
-    au site de parse (``parseDocuments``), jamais ici.
-    """
+    """Les inconnus d'extraction rejoignent l'agrégat du worker ; ceux du parse sont
+    déclarés ailleurs."""
     _result, _graph, _vectors, telemetry = _run(_doc())
 
     unknowns = telemetry.snapshot().unknowns
@@ -207,8 +184,7 @@ def test_les_inconnus_de_lextraction_sont_DECLARES() -> None:
 
 
 def test_les_liens_perdus_sont_COMPTES_en_relation_unknown() -> None:
-    """Un lien que l'extraction ne sait pas écrire ne disparaît pas en silence : le
-    workload émet ``relation.unknown``, porteur du nombre de liens perdus (ADR-048)."""
+    """Les liens perdus sont comptés en ``relation.unknown`` (ADR-048)."""
     _result, _graph, _vectors, telemetry = _run(
         _doc(), extractor=_StubExtractor(lost_links=2)
     )
@@ -224,25 +200,18 @@ def test_sans_lien_perdu_relation_unknown_n_est_PAS_emis() -> None:
 
 
 def test_la_phase_1_NECRIT_AUCUNE_arete() -> None:
-    """Le nœud est mergé, l'arête ne l'est pas : elle attend la phase 2 (§11).
-
-    Écrire l'arête ici la ferait dépendre de l'ordre d'ingestion : sa cible peut ne
-    pas encore être un nœud. On le prouve contre un vrai use case sur un vrai graphe
-    en mémoire — pas contre un espion complaisant.
-    """
+    """Le nœud est écrit, pas l'arête : sa cible n'est peut-être pas encore un nœud."""
     result, graph, _vectors, _telemetry = _run(_doc())
 
     assert graph.nodes == {SELF.serialize()}  # le nœud est écrit…
     assert graph.edges == []  # …mais aucune arête
-    # La relation ressort pour la phase 2, intacte.
+    # La relation ressort intacte pour la phase 2
     assert len(result.relations) == 1
     assert result.relations[0].relation_type == CITES
 
 
 def test_les_relations_non_formatees_sont_ECRITES_des_la_phase_1() -> None:
-    """ADR-045 : une cible décrite ne remonte pas vers la phase 2 — elle n'attend aucun
-    nœud. La saga du document l'écrit dans sa collection.
-    """
+    """ADR-045 : une cible décrite n'attend aucun nœud, la saga l'écrit."""
     unformatted = InMemoryUnformattedRepository()
 
     _run(_doc(), unformatted=unformatted)
@@ -251,7 +220,7 @@ def test_les_relations_non_formatees_sont_ECRITES_des_la_phase_1() -> None:
 
 
 def test_extract_est_appele_une_seule_fois_par_document() -> None:
-    """Le workload est le SEUL appelant de ``extract()`` — et il l'appelle une fois."""
+    """Le seul appelant d'``extract()``, une fois par document."""
     extractor = _StubExtractor()
 
     _run(_doc(), extractor=extractor)
@@ -260,35 +229,23 @@ def test_extract_est_appele_une_seule_fois_par_document() -> None:
 
 
 def test_aucun_inconnu_fantome_cote_parse() -> None:
-    """L'extracteur stub déclare toujours ``ZORGLUB`` ; ce qu'on vérifie ici, c'est
-    qu'aucun inconnu FANTÔME n'apparaît côté parse — le workload n'a plus rien à
-    déclarer pour le parsing, et ne déclare donc rien.
-    """
+    """Aucun inconnu fantôme côté parse : le workload ne déclare que ceux de
+    l'extraction."""
     _result, _graph, _vectors, telemetry = _run(_doc())
 
     assert telemetry.snapshot().unknowns == _zorglub_seen_once()
 
 
 def test_embedding_actif_ecrit_les_vecteurs() -> None:
-    """Garde-fou de non-régression : le chemin nominal embarque et écrit un vecteur.
-
-    C'est le pendant du test suivant — sans lui, « zéro vecteur quand coupé » pourrait
-    passer alors que le pipeline n'en écrit JAMAIS.
-    """
+    """Témoin du test suivant : le chemin nominal écrit bien un vecteur."""
     _result, _graph, vectors, _telemetry = _run(_doc(), embedding_enabled=True)
 
     assert len(vectors.chunks) == 1  # le chunk unique du stub, embarqué et upserté
 
 
 def test_embedding_coupe_nECRIT_AUCUN_vecteur_mais_merge_le_noeud() -> None:
-    """ADR-023 : ``embedding_enabled=False`` saute ``embed()`` — Qdrant reste vide.
-
-    Ce qu'on prouve : AUCUN ``EmbeddedChunk`` n'atteint le dépôt (pas même un vecteur
-    nul). Et pourtant le nœud
-    Neo4j est mergé et la relation ressort pour la phase 2 : couper l'embedding n'ampute
-    que la vectorisation, le reste du régime d'ingestion tourne à l'identique — c'est
-    l'état d'itération dev sur le modèle de données sans payer le GPU.
-    """
+    """ADR-023 : ``embedding_enabled=False`` n'écrit aucun vecteur, mais le nœud et la
+    relation suivent leur cours."""
     result, graph, vectors, _telemetry = _run(_doc(), embedding_enabled=False)
 
     assert vectors.chunks == []  # rien d'embarqué, rien d'upserté

@@ -1,8 +1,4 @@
-"""Les arbitrages du run : valeurs validées + ``ENVIRONMENT`` → réglages effectifs.
-
-Fonctions pures (sauf ``load_parameters``, qui lit le catalogue). La forme du YAML, elle,
-n'est connue que de ``parameters_model`` : les valeurs arrivent ici déjà validées.
-"""
+"""Valeurs validées + ``ENVIRONMENT`` → réglages effectifs du run."""
 
 from __future__ import annotations
 
@@ -25,7 +21,7 @@ __all__ = [
 ]
 
 DEV_ENVIRONMENT: Environment = "dev"
-"""La seule valeur d'``ENVIRONMENT`` qui applique ``parameters.yml``."""
+"""Seule valeur qui applique ``parameters.yml``."""
 
 SAFE_DEV_SETTINGS = DevParameters(
     nuke_all=False,
@@ -34,21 +30,12 @@ SAFE_DEV_SETTINGS = DevParameters(
     include_path=False,
     include_content_neo4j=False,
 )
-"""``parameters.yml`` tel qu'il s'applique hors ``dev`` : rien n'est effacé,
-l'embedding est calculé, les métadonnées non configurées sont retirées, aucun chemin de
-fichier n'est écrit et les nœuds restent maigres."""
+"""``parameters.yml`` tel qu'il s'applique hors ``dev``."""
 
 
 def load_parameters(catalog: DataCatalog) -> dict[str, Any]:
-    """Charge ``parameters.yml`` depuis le catalogue — ou ARRÊTE le run.
-
-    PAS de fallback silencieux vers ``{}`` : une config illisible n'est pas un run par
-    défaut, c'est un run qu'on ARRÊTE, avec une erreur claire (fail-fast, cf. doctrine
-    du projet).
-
-    Seule la ``DatasetError`` de Kedro (dont ``DatasetNotFoundError``) est traduite :
-    c'est ainsi que le catalogue signale un chargement raté. Toute autre exception est
-    un bug, et remonte telle quelle.
+    """Arrête le run si le fichier est illisible : pas de repli silencieux vers ``{}``.
+    Seule la ``DatasetError`` de Kedro est traduite ; toute autre exception remonte.
     """
     try:
         params: dict[str, Any] = catalog.load("parameters")
@@ -61,38 +48,18 @@ def load_parameters(catalog: DataCatalog) -> dict[str, Any]:
 
 
 def resolve_dev_settings(dev: DevParameters, environment: Environment) -> DevParameters:
-    """Les réglages de dev effectifs : le YAML en ``dev``, les valeurs sûres ailleurs.
-
-    L'environnement PRIME, et le défaut penche vers le refus : l'absence
-    d'``ENVIRONMENT`` vaut ``prod`` (voir ``InfraSettings.environment``). Chaque clé du
-    fichier est une commodité de développement : effacer toutes les bases, couper
-    l'embedding (ADR-023), ingérer les métadonnées des balises non configurées,
-    écrire les chemins des fichiers source ou hydrater les nœuds Neo4j (ADR-022). Un
-    ``parameters.yml`` traîné de dev en prod ne doit pouvoir ni effacer une base, ni
-    produire une collection vide, ni écrire dans Mongo ou sur chaque nœud les chemins
-    de fichiers du poste d'ingestion. Les signaux ``tags`` et ``links``, eux, sont émis
-    dans les deux régimes.
-    """
+    """Le YAML en ``dev``, les valeurs sûres ailleurs : un ``parameters.yml`` traîné en
+    prod ne doit jamais effacer une base ni couper l'embedding."""
     return dev if environment == DEV_ENVIRONMENT else SAFE_DEV_SETTINGS
 
 
 def resolve_sources(
     value: str | SourceName | Iterable[str] | None,
 ) -> tuple[SourceName, ...]:
-    """Les sources demandées, ou une erreur qui dit quoi faire.
+    """Accepte rien ou ``"all"`` (toutes), ``"cass"``, ``"cass,jade"`` ou une liste.
 
-    Accepte ce qu'un opérateur écrit réellement en ligne de commande :
-
-    - rien / ``"all"``       → **toutes** les sources ingérables (le défaut)
-    - ``"cass"``             → une seule
-    - ``"cass,jade"``        → plusieurs (Kedro passe les ``--params`` en chaîne)
-    - une liste YAML         → plusieurs, si le paramètre vient d'un fichier de conf
-
-    Un ``--params source=cas`` (faute de frappe) doit échouer **au démarrage**, en nommant
-    les sources valides. Sans ça, Kedro partirait sur une source inconnue et le run
-    n'ingérerait rien — un échec silencieux qui ressemble à un corpus vide. C'est la même
-    raison qui fait qu'on ne *filtre* pas les inconnues d'une liste : ``cass,jade`` avec
-    une coquille sur ``jade`` doit se plaindre, pas ingérer CASS en silence.
+    Une source inconnue lève au démarrage, même au milieu d'une liste : ignorée, elle
+    donnerait un run silencieusement incomplet.
     """
     if value is None:
         return all_sources()
@@ -101,9 +68,6 @@ def resolve_sources(
         return (value,)
 
     if isinstance(value, str):
-        # « all » est le nom explicite du défaut. Il existe pour qu'un `.env` ou un
-        # `--params` puisse *demander* le comportement par défaut, plutôt que de devoir
-        # énumérer six sources pour dire « toutes ».
         if value.strip().lower() in {"", "all", "*"}:
             return all_sources()
         names: list[str] = [part.strip() for part in value.split(",") if part.strip()]

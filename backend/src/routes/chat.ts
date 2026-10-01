@@ -1,7 +1,4 @@
-/**
- * Chat Routes
- * HTTP endpoints for RAG-powered chat (the frontend uses the WebSocket, `chatWebSocket.ts`)
- */
+/** Points d'entrée HTTP du chat ; le frontend, lui, passe par `chatWebSocket.ts` */
 
 import express, { Request, Response } from 'express';
 import type { InferUIMessageChunk } from 'ai';
@@ -34,7 +31,7 @@ const sendChatError = (res: Response, chatError: ChatError): void => {
     .json(buildApiResponse(HTTP_STATUS.INTERNAL_SERVER_ERROR, CHAT_STREAM_ERROR, chatError));
 };
 
-/** Raised when the client leaves: the pipeline stops, the LLM included (ADR-041) */
+/** Levé quand le client part : le pipeline s'arrête, LLM compris (ADR-041) */
 const abortOnClose = (res: Response): AbortSignal => {
   const abortController = new AbortController();
   res.on('close', () => abortController.abort());
@@ -43,7 +40,7 @@ const abortOnClose = (res: Response): AbortSignal => {
 
 interface DrainedAnswer {
   readonly text: string;
-  /** Set when the stream ended on an `error` part */
+  /** Présent si le flux a fini sur une part `error` */
   readonly chatError?: ChatError;
 }
 
@@ -59,13 +56,8 @@ const drainAnswer = async (stream: ReadableStream<InferUIMessageChunk<AppUIMessa
 };
 
 /**
- * POST /api/v1/chat/streams
- * Stream RAG-powered chat response via SSE
- *
- * Request body: { messages: AppUIMessage[] } — only the last `user` message is used
- *
- * Response: SSE stream of AI SDK UI message parts (start, data-document, text-delta,
- * finish, or error)
+ * POST /api/v1/chat/streams — la réponse en SSE, part par part. Seul le dernier
+ * message `user` de `{ messages }` compte.
  */
 router.post(
   '/streams',
@@ -90,10 +82,7 @@ router.post(
   })
 );
 
-/**
- * POST /api/v1/chat/completions
- * Same pipeline, drained into a single JSON response with the full answer text
- */
+/** POST /api/v1/chat/completions — le même pipeline, rendu en une seule réponse JSON */
 router.post(
   '/completions',
   streamRateLimiter,

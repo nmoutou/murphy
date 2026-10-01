@@ -16,9 +16,7 @@ from ragcore.core.telemetry_events import (
     DOCUMENT_VERSION_SKIPPED,
 )
 
-# La raison d'un écart, telle que le connecteur la nomme → le compteur qui la porte au
-# bilan. Une raison absente d'ici lève (`KeyError`) : un écart qu'on ne sait pas nommer
-# ne doit pas disparaître dans un compteur fourre-tout.
+# Une raison absente d'ici lève `KeyError` plutôt que de finir dans un fourre-tout
 _SKIP_EVENT_BY_REASON = {
     REASON_EXPORT_ARTIFACT: DOCUMENT_VERSION_SKIPPED,
     REASON_UNREADABLE: DOCUMENT_UNREADABLE,
@@ -32,24 +30,16 @@ def connect_node(
     pipeline_runtime: AsyncRuntime,
     nuke_done: dict[str, bool],
 ) -> list[RawDocument]:
-    """Fetch all raw documents from the source connector."""
-    del nuke_done  # signal-only input: ensures nukeAll runs before connect
+    del nuke_done  # simple signal : nukeAll tourne avant connect
 
     async def _fetch() -> list[RawDocument]:
         return [doc async for doc in connector.fetch_all()]
 
-    # Le pont sync→async passe par le runtime du hook (sa boucle), jamais une globale
-    # (§11 : ``_async_utils.run_async`` tenait une boucle unique, point de
-    # sérialisation que le port ``AsyncRuntime`` supprime par construction).
     documents = pipeline_runtime.run(_fetch())
 
     _emit(telemetry, pipeline_context, DOCUMENT_FETCHED, {"count": len(documents)})
 
-    # Ce que le connecteur a écarté (artefacts d'export, fichiers illisibles) n'entre
-    # PAS dans `document.fetched` — donc pas dans `seen`, donc invisible à l'équation
-    # de complétude. Sans cette boucle, le compte que le connecteur tient si
-    # soigneusement s'évaporait ici. Un compteur par raison, HORS équation : le bilan
-    # dit « X versions.xml, Y illisibles » sans fausser le dénominateur.
+    # Les écartés, hors `document.fetched` : un compteur par raison, hors équation
     for reason, count in connector.skipped.items():
         _emit(
             telemetry,

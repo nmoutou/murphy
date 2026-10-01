@@ -1,16 +1,8 @@
-"""Le §13 contre un VRAI Mongo — l'union idempotente n'est pas une intention.
+"""Le registre des pendantes contre un vrai Mongo : l'unicité n'y tient qu'à un index
+déclaré sur des noms de champs écrits à la main.
 
-Le fake tient un ``dict`` indexé par la clé : l'unicité y est *donnée par la
-structure de données*. En Mongo, elle n'est donnée par rien — sauf par un index
-unique que j'ai déclaré, sur des noms de champs que j'ai écrits à la main. Si ces
-noms divergent de ceux que sérialise ``PendingRelation``, l'index ne protège rien,
-``upsert_many`` empile des doublons, et le backlog se met à compter les runs au
-lieu des trous. Rien ne lèverait.
-
-Trois affirmations que seule la vraie base peut trancher :
-  1. l'index unique existe et porte sur le bon triplet ;
-  2. ``$setOnInsert`` fige vraiment ``first_seen_run`` ;
-  3. le rejeu ciblé filtre bien par ``target_id`` — donc par le DELTA.
+À trancher sur la vraie base : l'index unique porte sur le bon triplet,
+``$setOnInsert`` fige ``first_seen_run``, et le rejeu filtre par ``target_id``.
 """
 
 import pytest
@@ -63,7 +55,7 @@ async def repo(mongo_uri):
 
 
 async def test_the_unique_index_covers_the_triplet(repo) -> None:
-    """Sans cet index, ``upsert_many`` n'est plus une union — c'est un espoir."""
+    """Sans cet index, ``upsert_many`` n'est plus une union."""
     collection = repo._collection  # noqa: SLF001
     indexes = await collection.index_information()
 
@@ -77,7 +69,7 @@ async def test_the_unique_index_covers_the_triplet(repo) -> None:
 
 
 async def test_seeing_the_same_pending_twice_yields_one_entry(repo) -> None:
-    """L'union idempotente : dix runs, un seul trou."""
+    """Dix runs, une seule pendante."""
     await repo.upsert_many([_pending("A", "B", "run-1")])
     await repo.upsert_many([_pending("A", "B", "run-2")])
     await repo.upsert_many([_pending("A", "B", "run-3")])
@@ -86,11 +78,8 @@ async def test_seeing_the_same_pending_twice_yields_one_entry(repo) -> None:
 
 
 async def test_first_seen_run_never_moves_but_last_seen_does(repo) -> None:
-    """``$setOnInsert`` — la date de naissance du trou ne se réécrit pas.
-
-    Si ``first_seen_run`` avançait, on perdrait la seule information qui dise depuis
-    QUAND un lien manque : chaque run le ferait paraître neuf.
-    """
+    """``first_seen_run`` ne se réécrit pas : c'est la seule trace de depuis quand un
+    lien manque."""
     await repo.upsert_many([_pending("A", "B", "run-1")])
     await repo.upsert_many([_pending("A", "B", "run-2")])
 
@@ -102,10 +91,7 @@ async def test_first_seen_run_never_moves_but_last_seen_does(repo) -> None:
 
 
 async def test_a_duplicate_insert_is_actually_rejected_by_mongo(repo) -> None:
-    """La preuve que l'index MORD : une insertion nue du même triplet échoue.
-
-    Le fake ne peut pas prouver ça — son ``dict`` écraserait silencieusement.
-    """
+    """L'index mord : une insertion nue du même triplet échoue."""
     await repo.upsert_many([_pending("A", "B", "run-1")])
     document = _pending("A", "B", "run-9").model_dump(mode="json")
 
@@ -114,12 +100,7 @@ async def test_a_duplicate_insert_is_actually_rejected_by_mongo(repo) -> None:
 
 
 async def test_the_replay_is_bounded_by_the_delta_not_the_backlog(repo) -> None:
-    """§13 : on ne retente QUE les pendantes dont la cible vient d'arriver.
-
-    Trois trous en attente ; un seul document arrive. Deux pendantes restent, et
-    c'est correct : leur cible n'existe toujours pas, les retenter serait un coût
-    pur qui croîtrait avec l'historique.
-    """
+    """Seules les pendantes dont la cible vient d'arriver sont promues."""
     await repo.upsert_many(
         [
             _pending("A", "B", "run-1"),
@@ -145,20 +126,14 @@ async def test_a_promoted_pending_leaves_the_backlog(repo) -> None:
 
 
 async def test_an_empty_delta_promotes_nothing(repo) -> None:
-    """Un run qui n'écrit aucun nœud ne peut promouvoir aucune pendante — et ne doit
-    surtout pas relire le backlog pour s'en apercevoir.
-    """
+    """Un run sans nœud écrit ne promeut rien, et ne relit pas le backlog."""
     await repo.upsert_many([_pending("A", "B", "run-1")])
 
     assert await repo.promotable_for(set()) == []
 
 
 async def test_the_nuke_empties_the_backlog_and_restores_the_unique_index(repo) -> None:
-    """Le nuke efface les pendantes avec le corpus — sans laisser une collection nue.
-
-    Un drop emporte les index : si la remise à neuf ne les reposait pas, le run suivant
-    empilerait les doublons sans que rien ne lève.
-    """
+    """Le nuke efface les pendantes et repose les index, que le drop emporte."""
     await repo.upsert_many([_pending("A", "B", "run-1")])
 
     await reset_data_collections(repo._collection.database)  # noqa: SLF001

@@ -10,7 +10,7 @@ interface ChatBoxProps {
   readonly onEnter: (content: string) => void;
   readonly onCancel?: () => void;
   readonly disabled?: boolean;
-  /** Pinned to the bottom of the page, once the conversation has started */
+  /** Épinglée en bas de page une fois la conversation lancée */
   readonly isDocked: boolean;
 }
 
@@ -23,7 +23,7 @@ interface ChatBoxAttachProps {
   readonly isStreaming: boolean;
 }
 
-/** Attaching a document is not built yet; the button is inert while an answer streams */
+/** Joindre un document n'existe pas encore ; le bouton est inerte pendant une réponse */
 function ChatBoxAttach({ isStreaming }: ChatBoxAttachProps) {
   const pointerClasses = isStreaming ? 'pointer-events-none' : 'pointer-events-auto';
   return (
@@ -38,7 +38,7 @@ function ChatBoxAttach({ isStreaming }: ChatBoxAttachProps) {
   );
 }
 
-/** Stop while an answer streams, send otherwise */
+/** Arrêter pendant une réponse, envoyer sinon */
 function ChatBoxAction({ isStreaming, onCancel }: ChatBoxActionProps) {
   if (isStreaming) {
     return (

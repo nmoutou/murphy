@@ -1,9 +1,5 @@
-"""RunStats se DÉCLARE monoïde commutatif. On le vérifie.
-
-Ce n'est pas de la coquetterie algébrique. Les workers finissent dans un ordre non
-déterministe : si ``merge`` n'était pas commutatif, le RunSummary dépendrait de
-l'ordonnancement du pool — un non-déterminisme qu'aucun test ne rattraperait, parce
-qu'il ne se manifeste qu'en production, sous charge, une fois sur dix.
+"""``RunStats`` est un monoïde commutatif : les workers finissent dans un ordre non
+déterministe, et le bilan ne doit pas en dépendre.
 """
 
 from ragcore.core.models.collision_tally import CollisionTally
@@ -49,7 +45,7 @@ def test_merge_is_associative() -> None:
 
 
 def test_merge_is_commutative() -> None:
-    """La loi qui protège du non-déterminisme : l'ordre des workers n'importe pas."""
+    """L'ordre des workers n'importe pas."""
     assert A.merge(B) == B.merge(A)
 
 
@@ -60,7 +56,7 @@ def test_counts_are_summed() -> None:
 
 
 def test_unknowns_count_the_documents_of_every_worker() -> None:
-    """Un inconnu se compte en documents : deux workers qui le voient additionnent."""
+    """Un inconnu se compte en documents : deux workers additionnent."""
     merged = A.merge(B)
     assert merged.unknowns["field"]["NOTA"].count == 3
     assert merged.unknowns["field"]["CONTENU"].count == 1
@@ -68,8 +64,8 @@ def test_unknowns_count_the_documents_of_every_worker() -> None:
 
 
 def test_the_example_kept_is_the_smallest_whatever_the_order() -> None:
-    """« Le premier vu » dépendrait de l'ordre de fin des workers : on garde le plus
-    petit exemple, et la fusion reste commutative."""
+    """On garde le plus petit exemple, jamais « le premier vu » : la fusion reste
+    commutative."""
     assert A.merge(B).unknowns["field"]["NOTA"].example == DOC_1
     assert B.merge(A).unknowns["field"]["NOTA"].example == DOC_1
 
@@ -82,7 +78,7 @@ def test_with_unknown_counts_one_document() -> None:
 
 
 def test_merge_mutates_nothing() -> None:
-    """Les agrégats sont frozen : la fusion RETOURNE, elle n'écrit pas."""
+    """Les agrégats sont figés : la fusion rend un neuf."""
     before = A.model_copy(deep=True)
     A.merge(B)
     assert A == before

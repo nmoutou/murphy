@@ -1,9 +1,7 @@
-"""Ce que le run traite : la découpe, et le modèle d'embedding.
+"""La découpe et le modèle d'embedding du run.
 
-``ChunkingConfig`` est lu de l'environnement (``ChunkingSettings`` :
-``CHUNKING_MAX_CHARS``, ``CHUNKING_OVERLAP_CHARS``) en tête de run. Une variable absente
-ou invalide arrête le run : aucun défaut dans le code. Le modèle reste strict : la
-conversion des chaînes de l'environnement est faite par ``ChunkingSettings``, pas ici.
+``ChunkingConfig`` vient de l'environnement, sans défaut dans le code. Le modèle reste
+strict : la conversion des chaînes est faite par ``ChunkingSettings``.
 """
 
 from typing import Self
@@ -18,7 +16,7 @@ class _Frozen(BaseModel):
 
 
 class ChunkingConfig(_Frozen):
-    """La découpe : taille maximale d'un chunk et recouvrement, en caractères."""
+    """En caractères."""
 
     max_chars: int = Field(gt=0)
     overlap_chars: int = Field(ge=0)
@@ -35,11 +33,8 @@ class ChunkingConfig(_Frozen):
 
 
 class EmbeddingModel(_Frozen):
-    """Le modèle que sert TEI, et la dimension de ses vecteurs.
-
-    Ce n'est pas un réglage : le nom vient de ``EMBEDDING_MODEL``, la dimension est
-    mesurée auprès du service au démarrage. La collection Qdrant est créée à cette
-    dimension, et le backend interroge le même modèle.
+    """Le modèle que sert TEI : le nom vient de ``EMBEDDING_MODEL``, la dimension est
+    mesurée auprès du service au démarrage.
     """
 
     model_name: str = Field(min_length=1)

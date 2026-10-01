@@ -1,8 +1,3 @@
-/**
- * RAG Service Tests
- * Stage helpers of the pipeline: embedding, retrieval, passage fetch, context building
- */
-
 import type { Passage, RetrievedChunk, StoredDocument } from '../../types/rag';
 import {
   buildContextString,

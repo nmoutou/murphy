@@ -1,4 +1,4 @@
-"""Le chunker : des offsets qui ne mentent pas, et aucun chunk de néant."""
+"""Le chunker : des offsets exacts, et aucun chunk vide."""
 
 from datetime import UTC, datetime
 from pathlib import Path
@@ -14,16 +14,14 @@ from ragcore.sources.generic import GenericParser, StructuralChunker, to_tree
 from ragcore.sources.generic.chunking import _windows
 from ragcore.sources.legislatif.table import LEGI_ROLE_TABLE
 
-# Le chunker est GÉNÉRIQUE, mais il faut du VRAI XML pour l'éprouver — un arbre inventé ne
-# porterait ni les <p> imbriqués, ni les facettes fusionnées. `fixtures_dir` arrive par la
-# conftest locale ; ici on n'importe que les identifiants des fixtures.
+# Du vrai XML : un arbre inventé n'aurait ni <p> imbriqués ni facettes fusionnées
 from ragcore.sources.legislatif.tests.conftest import (
     ARTICLE_RICHE,
     ARTICLE_SIMPLE,
     SECTION_ARTICLES,
 )
 
-# Plus petits que ceux de conf/base/parameters.yml : les fixtures doivent être découpées.
+# Plus petits que la configuration réelle : les fixtures doivent être découpées
 CHUNK_SIZE = 128
 OVERLAP = 25
 
@@ -57,16 +55,8 @@ def test_le_chunker_satisfait_son_port() -> None:
 
 
 def test_aucun_chunk_ne_depasse_la_taille_maximale(fixtures_dir: Path) -> None:
-    """LE test du chunker.
-
-    L'ancienne version choisissait entre découpe structurelle *ou* taille fixe. Dès
-    qu'un bloc existait, elle le rendait ENTIER : un article de 2914 caractères donnait
-    un chunk de 2914 caractères, quand ``CHUNKING_MAX_CHARS`` en vaut 128.
-
-    L'embedder l'aurait tronqué en silence — la fenêtre d'``all-mpnet-base-v2`` est de
-    384 tokens — et les trois quarts du texte se seraient évaporés sans qu'aucune
-    exception ne soit levée. La structure borne le découpage ; elle ne le remplace pas.
-    """
+    """La structure borne le découpage sans le remplacer : un long article est découpé
+    à la taille, même dans un seul bloc."""
     document = _parse(fixtures_dir, f"{ARTICLE_RICHE}.xml")
     chunks = _chunker().chunk(document)
 
@@ -77,13 +67,8 @@ def test_aucun_chunk_ne_depasse_la_taille_maximale(fixtures_dir: Path) -> None:
 
 
 def test_les_offsets_designent_le_vrai_texte(fixtures_dir: Path) -> None:
-    """``content[char_start:char_end]`` DOIT rendre exactement ``chunk.text``.
-
-    L'ancienne version faisait ``content.find(text)`` et posait ``char_start = 0`` quand
-    elle ne trouvait pas. Un offset faux ne lève rien : il désigne le mauvais passage, et
-    personne ne s'en aperçoit — jusqu'à ce qu'un utilisateur reçoive une citation qui
-    n'est pas celle du document.
-    """
+    """``content[char_start:char_end]`` rend exactement ``chunk.text`` : un offset faux
+    citerait le mauvais passage sans rien lever."""
     document = _parse(fixtures_dir, f"{ARTICLE_RICHE}.xml")
 
     for chunk in _chunker().chunk(document):
@@ -91,9 +76,7 @@ def test_les_offsets_designent_le_vrai_texte(fixtures_dir: Path) -> None:
 
 
 def test_le_decoupage_couvre_tout_le_contenu(fixtures_dir: Path) -> None:
-    """Rien ne se perd entre le contenu et ses chunks : le dernier offset atteint la fin.
-    Une fenêtre manquante, c'est un passage du texte qui ne sera jamais retrouvable.
-    """
+    """Rien ne se perd : le dernier offset atteint la fin du contenu."""
     document = _parse(fixtures_dir, f"{ARTICLE_SIMPLE}.xml")
     chunks = _chunker().chunk(document)
 
@@ -102,13 +85,8 @@ def test_le_decoupage_couvre_tout_le_contenu(fixtures_dir: Path) -> None:
 
 
 def test_un_document_sans_contenu_ne_rend_AUCUN_chunk(fixtures_dir: Path) -> None:
-    """Mesuré : 0/287 ``SECTION_TA`` ont du texte. Une section est un nœud de structure,
-    pas un porteur de contenu.
-
-    Lui fabriquer un chunk vide reviendrait à embarquer du néant — un vecteur sans
-    signification, que la recherche sémantique pourrait remonter et proposer à un
-    utilisateur comme une source.
-    """
+    """Une section sans texte ne donne aucun chunk : un vecteur de néant pourrait être
+    proposé comme source."""
     document = _parse(fixtures_dir, f"{SECTION_ARTICLES}.xml")
 
     assert document.content == ""
@@ -116,9 +94,8 @@ def test_un_document_sans_contenu_ne_rend_AUCUN_chunk(fixtures_dir: Path) -> Non
 
 
 def test_les_chunks_sont_numerotes_sans_trou_ni_doublon(fixtures_dir: Path) -> None:
-    """Le ``chunk_id`` dérive de l'ordinal : deux chunks au même ordinal auraient le même
-    identifiant, et l'un écraserait l'autre dans Qdrant. Silencieusement.
-    """
+    """Des ordinaux distincts : un ``chunk_id`` en double écraserait l'autre dans
+    Qdrant."""
     document = _parse(fixtures_dir, f"{ARTICLE_RICHE}.xml")
     chunks = _chunker().chunk(document)
 
@@ -127,10 +104,7 @@ def test_les_chunks_sont_numerotes_sans_trou_ni_doublon(fixtures_dir: Path) -> N
 
 
 def test_le_chunk_id_derive_de_lidentifiant_du_parent(fixtures_dir: Path) -> None:
-    """C'est ce qui garantit (§11) que deux sagas sur des documents distincts ne peuvent
-    pas se marcher dessus sur un même chunk : la sûreté vient de la PARTITION, pas d'un
-    verrou.
-    """
+    """Deux workers sur des documents distincts ne touchent jamais le même chunk."""
     document = _parse(fixtures_dir, f"{ARTICLE_SIMPLE}.xml")
 
     for chunk in _chunker().chunk(document):
@@ -139,10 +113,7 @@ def test_le_chunk_id_derive_de_lidentifiant_du_parent(fixtures_dir: Path) -> Non
 
 
 def test_le_chemin_structurel_est_porte_par_le_chunk(fixtures_dir: Path) -> None:
-    """La structure n'a jamais tourné : ``structure["sections"]`` était lu par le chunker
-    et écrit par personne. Le repli à taille fixe s'appliquait TOUJOURS, et le chemin
-    était toujours vide.
-    """
+    """La découpe structurelle tourne, et le chemin est renseigné."""
     document = _parse(fixtures_dir, f"{ARTICLE_SIMPLE}.xml")
     chunks = _chunker().chunk(document)
 
@@ -150,9 +121,7 @@ def test_le_chemin_structurel_est_porte_par_le_chunk(fixtures_dir: Path) -> None
 
 
 def test_sans_section_declaree_le_document_entier_est_un_bloc() -> None:
-    """La découpe à taille fixe n'est pas un mode à part : c'est le cas particulier où la
-    structure est muette.
-    """
+    """Sans structure, le document entier est un bloc découpé à la taille."""
     document = _document(content="a" * 300, sections=[])
     chunks = _chunker().chunk(document)
 
@@ -162,13 +131,8 @@ def test_sans_section_declaree_le_document_entier_est_un_bloc() -> None:
 
 
 def test_aucune_fenetre_n_est_contenue_dans_une_autre() -> None:
-    """F18 : un fort chevauchement produisait des fenêtres de queue redondantes.
-
-    ``length=10, size=8, overlap=6`` (step=2) donnait ``(0,8),(2,10),(4,10),(6,10),
-    (8,10)`` : les trois dernières sont incluses dans ``(2,10)``. Autant de chunks
-    dupliqués dans l'index, du même texte compté plusieurs fois à la recherche. On
-    s'arrête dès qu'une fenêtre atteint la fin.
-    """
+    """Un fort chevauchement ne produit pas de fenêtres de queue incluses dans la
+    précédente."""
     fenetres = _windows(length=10, size=8, overlap=6)
 
     assert fenetres == [(0, 8), (2, 10)]
@@ -180,7 +144,7 @@ def test_aucune_fenetre_n_est_contenue_dans_une_autre() -> None:
 
 
 def test_les_fenetres_couvrent_toujours_tout() -> None:
-    """L'arrêt anticipé ne doit rien laisser de côté : la dernière fenêtre atteint la fin."""
+    """L'arrêt anticipé ne laisse rien de côté : la dernière fenêtre atteint la fin."""
     for length, size, overlap in [(10, 8, 6), (100, 10, 3), (7, 8, 2), (50, 20, 19)]:
         fenetres = _windows(length=length, size=size, overlap=overlap)
         assert fenetres[0][0] == 0

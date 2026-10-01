@@ -1,7 +1,5 @@
-"""Le payload Qdrant est un contrat : le serving y lit les champs d'ADR-039.
-
-Un faux client suffit ici : ce qui compte est ce que le dépôt CONSTRUIT, pas ce que
-Qdrant en fait (les filtres, eux, sont testés contre la vraie base en intégration).
+"""Le payload Qdrant, contrat du service (ADR-039). Un faux client suffit : on teste ce
+que le dépôt construit ; les filtres sont testés en intégration.
 """
 
 from typing import Any

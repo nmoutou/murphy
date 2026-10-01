@@ -2,7 +2,7 @@ import { defineConfig, globalIgnores } from "eslint/config";
 import nextVitals from "eslint-config-next/core-web-vitals";
 import nextTs from "eslint-config-next/typescript";
 
-// The size and shape limits of CLAUDE.md, checked instead of remembered
+// Les limites de taille du CLAUDE.md
 const MAX_FILE_LINES = 300;
 const MAX_COMPONENT_FILE_LINES = 200;
 const MAX_FUNCTION_LINES = 30;
@@ -37,7 +37,7 @@ export default defineConfig([
     },
   },
   {
-    // A `describe` block is a list of cases, and expected values read best in place
+    // Dans un test, la valeur attendue se lit mieux en place
     files: ["src/**/*.test.{ts,tsx}"],
     rules: {
       "max-lines-per-function": "off",

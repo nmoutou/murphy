@@ -58,7 +58,7 @@ def test_une_taille_nulle_est_refusee(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_un_recouvrement_qui_n_est_pas_inferieur_a_la_taille_est_refuse(
     monkeypatch: pytest.MonkeyPatch, overlap_chars: str
 ) -> None:
-    """Le curseur de la fenêtre glissante n'avancerait pas : boucle infinie."""
+    """Sinon le curseur de la fenêtre glissante n'avancerait pas."""
     monkeypatch.setenv(OVERLAP_VAR, overlap_chars)
 
     with pytest.raises(ValidationError, match="overlap_chars"):

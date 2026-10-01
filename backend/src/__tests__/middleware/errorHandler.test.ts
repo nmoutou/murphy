@@ -1,8 +1,3 @@
-/**
- * Error Handler Tests
- * `asyncHandler`, `errorHandler` and `notFoundHandler`, mounted on a real Express app
- */
-
 import express, { Express } from 'express';
 import request from 'supertest';
 import { asyncHandler, errorHandler, notFoundHandler } from '../../middleware/errorHandler';

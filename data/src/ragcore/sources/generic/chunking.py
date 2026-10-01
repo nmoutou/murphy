@@ -1,27 +1,8 @@
-"""Le chunker structurel — **générique**, et dont les offsets ne mentent plus.
+"""Le chunker structurel, commun à toutes les sources : il ne lit que
+``document.content`` et ``document.structure["sections"]``.
 
-**Il vivait dans ``sources/legislatif/`` et n'a pas changé d'une ligne en déménageant.** Ce
-n'est pas une coïncidence, c'est un diagnostic : il ne connaissait déjà aucun mot de
-LEGI. Il ne lit que ``document.content`` et ``document.structure["sections"]`` — le
-contrat que *tout* parser générique honore. Six sources partageront donc un chunker,
-sans qu'une ligne ait eu à être généralisée : il l'était.
-
-**Il n'était pas cassé : il était inerte.** Sa découpe structurelle lisait
-``document.structure["sections"]`` — un champ que le parser n'écrivait jamais. Elle
-rendait donc toujours une liste vide, et le chunker retombait *systématiquement* sur le
-découpage à taille fixe. La branche structurelle existait, elle n'a jamais tourné une
-seule fois.
-
-**Les offsets mentaient.** L'ancienne version faisait ``document.content.find(text)`` et
-posait ``char_start = 0`` quand elle ne trouvait pas — ce qui arrivait dès que le texte
-de la section n'était pas un morceau littéral du contenu. Un ``char_start`` faux ne lève
-rien : il désigne simplement le mauvais passage, et personne ne s'en aperçoit.
-
-Le parser garantit désormais l'invariant qui rend ce calcul honnête : **``_content`` et
-``_sections`` lisent les mêmes blocs, dans le même ordre**, donc chaque section EST un
-morceau littéral de ``content``. Le chunker peut chercher à partir du curseur précédent
-plutôt qu'en repartant de zéro — ce qui, en prime, cesse de faire pointer deux sections
-identiques au même endroit.
+Ses offsets reposent sur un invariant du parser : chaque section est un morceau
+littéral de ``content``, dans le même ordre.
 """
 
 from dataclasses import dataclass
@@ -34,8 +15,6 @@ __all__ = ["StructuralChunker"]
 
 @dataclass(frozen=True)
 class _Span:
-    """La place d'un chunk dans le document : son chemin, son texte, ses bornes."""
-
     path: list[str]
     text: str
     char_start: int
@@ -51,22 +30,11 @@ class StructuralChunker:
         self._overlap_chars = config.overlap_chars
 
     def chunk(self, document: ParsedDocument) -> list[Chunk]:
-        """Découpe le document : la structure dit OÙ couper, la taille dit JUSQU'OÙ aller.
+        """La structure dit où couper, la taille jusqu'où aller : on ne coupe jamais à
+        travers un bloc, et on ne dépasse jamais la taille dans un bloc.
 
-        **Ce ne sont pas deux stratégies concurrentes.** L'ancienne version choisissait
-        l'une *ou* l'autre — et donc, dès qu'un bloc structurel existait, elle le rendait
-        entier. Sur le corpus, un article fait couramment 3000 caractères là où
-        ``CHUNKING_MAX_CHARS`` en vaut 128 : l'embedder aurait tronqué en silence (la fenêtre
-        d'``all-mpnet-base-v2`` est de 384 tokens), et les trois quarts du texte se
-        seraient évaporés sans qu'aucune exception ne soit levée.
-
-        La structure borne donc le découpage, elle ne le remplace pas : on ne coupe
-        jamais À TRAVERS un bloc, et on ne dépasse jamais la taille dans un bloc.
-
-        **Un document sans contenu ne rend AUCUN chunk.** Les 287 ``SECTION_TA`` du
-        corpus n'ont pas de texte (mesuré : 0/287) : ce sont des nœuds de structure, pas
-        des porteurs de contenu. Leur fabriquer un chunk vide reviendrait à embarquer du
-        néant, puis à le proposer en réponse à un utilisateur.
+        Un document sans contenu (une ``SECTION_TA``, nœud de structure) ne rend aucun
+        chunk.
         """
         if not document.content.strip():
             return []
@@ -84,14 +52,11 @@ class StructuralChunker:
         return chunks
 
     def _blocks(self, document: ParsedDocument) -> list[tuple[list[str], str, int]]:
-        """Les blocs à découper : ``(chemin, texte, offset dans le contenu)``.
+        """``(chemin, texte, offset dans le contenu)``. Sans section, le document entier
+        est un bloc.
 
         Le curseur ne recule jamais : deux blocs au texte identique reçoivent des offsets
-        DIFFÉRENTS. Chercher depuis zéro à chaque fois les aurait fait pointer au même
-        endroit — une collision silencieuse dans les métadonnées de chunks distincts.
-
-        Sans section déclarée, le document entier est UN bloc : la découpe à taille fixe
-        n'est pas un mode à part, c'est le cas particulier où la structure est muette.
+        différents.
         """
         sections = document.structure.get("sections", [])
         if not sections:
@@ -107,9 +72,7 @@ class StructuralChunker:
 
             start = document.content.find(text, cursor)
             if start < 0:
-                # L'invariant du parser est rompu : la section n'est pas un morceau
-                # littéral du contenu. Poser un offset faux désignerait le mauvais
-                # passage sans que rien ne le signale — on préfère n'en poser aucun.
+                # Invariant du parser rompu : mieux vaut aucun offset qu'un faux
                 continue
 
             cursor = start + len(text)
@@ -119,10 +82,8 @@ class StructuralChunker:
 
     def _chunk(self, document: ParsedDocument, ordinal: int, span: _Span) -> Chunk:
         return Chunk(
-            # Le chunk_id DÉRIVE de l'identifiant du parent : c'est ce qui garantit que
-            # deux sagas travaillant sur des documents distincts ne peuvent pas se
-            # marcher dessus sur un même chunk (§11 — la garantie vient de la partition,
-            # pas d'un verrou).
+            # Dérivé de l'identifiant du parent : deux workers ne touchent jamais le
+            # même chunk
             chunk_id=f"{document.identifier.raw}_{ordinal:04d}",
             parent_identifier=document.identifier,
             document_type=document.document_type,
@@ -139,15 +100,8 @@ class StructuralChunker:
 def _windows(length: int, size: int, overlap: int) -> list[tuple[int, int]]:
     """Les fenêtres ``(début, fin)`` couvrant ``length``, avec chevauchement.
 
-    Un bloc plus court que ``size`` donne une fenêtre unique — pas de découpe inutile,
-    et surtout pas de fenêtre vide en fin de parcours.
-
-    **On S'ARRÊTE dès qu'une fenêtre atteint la fin.** Sans ça, avec un fort
-    chevauchement (``step`` petit devant ``size``), les derniers ``start`` produisaient
-    des fenêtres ENTIÈREMENT CONTENUES dans la précédente : ``length=10, size=8,
-    overlap=6`` donnait ``(0,8), (2,10), (4,10), (6,10), (8,10)`` — trois chunks
-    redondants indexés, du texte compté plusieurs fois à la recherche. Une fois la fin
-    couverte, il n'y a plus rien de neuf à fenêtrer.
+    Arrêt dès qu'une fenêtre atteint la fin : avec un fort chevauchement, les suivantes
+    seraient entièrement contenues dans la précédente.
     """
     if length <= size:
         return [(0, length)]

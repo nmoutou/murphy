@@ -11,8 +11,8 @@ services:
   backend:
     build:
       target: production
-    # The browser calls the backend directly: no reverse proxy until a deployment.
-    # CORS_ORIGIN must be the frontend's public origin.
+    # Pas de reverse proxy : le navigateur appelle le backend directement.
+    # CORS_ORIGIN doit être l'origine publique du frontend.
     ports:
       - "5000:5000"
     restart: on-failure
@@ -21,7 +21,7 @@ services:
   frontend:
     build:
       target: production
-      # Inlined into the client bundle by `next build`: the backend URL the browser uses
+      # Inliné par `next build` : l'URL du backend vue par le navigateur
       args:
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
     ports:

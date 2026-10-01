@@ -1,8 +1,3 @@
-/**
- * Embedding Client Tests
- * The TEI call and the reading of its response, over a mocked `fetch`
- */
-
 import { EmbeddingClient } from '../../infra/embedding';
 
 jest.mock('../../utils/logger', () => {

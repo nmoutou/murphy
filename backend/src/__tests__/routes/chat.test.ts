@@ -1,8 +1,3 @@
-/**
- * Chat Routes Tests
- * HTTP transports (SSE and drained JSON) over a mocked pipeline
- */
-
 import express, { Express } from 'express';
 import request from 'supertest';
 import type { InferUIMessageChunk } from 'ai';

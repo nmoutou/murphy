@@ -1,4 +1,4 @@
-"""Le contexte porte TOUTES les sources du run ; les événements, une seule ou aucune."""
+"""Le contexte porte toutes les sources du run ; un événement, une seule ou aucune."""
 
 from ragcore.application.run_context import PipelineContext
 from ragcore.core.models.enums import SourceName

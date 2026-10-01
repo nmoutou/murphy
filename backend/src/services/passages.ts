@@ -1,9 +1,7 @@
 /**
- * Passages
- * Joins each retrieved chunk to its parent document and cuts its text out (ADR-039 §1).
- * The ingestion counts offsets in Unicode code points (Python `str`); JavaScript strings
- * count UTF-16 units. The conversion happens here, once, so that nothing downstream,
- * the client included, has to know about the difference.
+ * L'ingestion compte les offsets en points de code (`str` Python), JavaScript en unités
+ * UTF-16. La conversion se fait ici, une seule fois : rien en aval, client compris, n'a
+ * à connaître la différence.
  */
 
 import type { Passage, RetrievedChunk, StoredDocument } from '../types/rag';
@@ -15,8 +13,7 @@ export interface Utf16Range {
 }
 
 /**
- * Converts code point offsets into UTF-16 offsets of the same string
- * @returns `undefined` unless `0 ≤ charStart < charEnd ≤ code point count`
+ * @returns `undefined` sauf si `0 ≤ charStart < charEnd ≤ nombre de points de code`
  */
 export const toUtf16Range = (content: string, charStart: number, charEnd: number): Utf16Range | undefined => {
   if (charStart < 0 || charStart >= charEnd) return undefined;
@@ -24,7 +21,7 @@ export const toUtf16Range = (content: string, charStart: number, charEnd: number
   let codePoints = 0;
   let units = 0;
   let start: number | undefined;
-  // `for…of` walks code points; `character.length` is 2 for a surrogate pair
+  // `for…of` parcourt les points de code ; `character.length` vaut 2 pour une paire de substitution
   for (const character of content) {
     if (codePoints === charStart) start = units;
     if (codePoints === charEnd) break;
@@ -53,9 +50,9 @@ const cutPassage = (chunk: RetrievedChunk, document: StoredDocument): Passage =>
 };
 
 /**
- * Keeps the ranking order of `chunks`
- * @throws RagError `CONTRACT_VIOLATION` naming the chunk when its parent document is
- * missing or its offsets fall outside the parent's content
+ * Garde l'ordre de classement de `chunks`
+ * @throws RagError `CONTRACT_VIOLATION` nommant le chunk si son parent manque ou si ses
+ * offsets sortent du contenu du parent
  */
 export const assemblePassages = (
   chunks: readonly RetrievedChunk[],

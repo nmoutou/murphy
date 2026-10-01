@@ -8,13 +8,13 @@ const logger = rootLogger.child({ context: 'errorHandler' });
 const INTERNAL_ERROR_CODE = 'INTERNAL_ERROR';
 const DEFAULT_BODY_ERROR_CODE = 'INVALID_REQUEST_BODY';
 
-/** body-parser error `type` → the code answered to the client */
+/** `type` d'erreur de body-parser → code renvoyé au client */
 const BODY_ERROR_CODES: Readonly<Record<string, string>> = {
   'entity.parse.failed': 'INVALID_JSON',
   'entity.too.large': 'PAYLOAD_TOO_LARGE',
 };
 
-/** An `http-errors` error meant for the client (body-parser's): a 4xx `status` and `expose` */
+/** Erreur `http-errors` destinée au client (celles de body-parser) */
 interface ClientRequestError extends Error {
   readonly status: number;
   readonly expose: true;
@@ -44,9 +44,6 @@ const sendClientRequestError = (error: ClientRequestError, req: Request, res: Re
   res.status(error.status).json(buildApiResponse(error.status, code));
 };
 
-/**
- * Async route wrapper to catch errors
- */
 export const asyncHandler = (
   fn: (req: Request, res: Response, next: NextFunction) => Promise<void>
 ) => {
@@ -56,9 +53,9 @@ export const asyncHandler = (
 };
 
 /**
- * Global error handler middleware. An error the client caused and `http-errors` marks
- * `expose` (the JSON body parser's: malformed, too large…) keeps its 4xx status and is a
- * warning; any other error is an unexpected 500. The raw message never reaches the client.
+ * Une erreur du client marquée `expose` (JSON malformé, trop gros…) garde son 4xx et
+ * n'est qu'un avertissement ; toute autre erreur est un 500. Le message brut n'atteint
+ * jamais le client.
  */
 export const errorHandler = (
   error: Error,
@@ -82,9 +79,6 @@ export const errorHandler = (
   res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(buildApiResponse(HTTP_STATUS.INTERNAL_SERVER_ERROR, INTERNAL_ERROR_CODE));
 };
 
-/**
- * 404 Not Found handler
- */
 export const notFoundHandler = (_req: Request, res: Response): void => {
   res.status(HTTP_STATUS.NOT_FOUND).json(buildApiResponse(HTTP_STATUS.NOT_FOUND, 'NOT_FOUND'));
 };

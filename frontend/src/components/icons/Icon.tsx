@@ -1,6 +1,6 @@
 import Image from 'next/image';
 
-/** Decorative: the element around the icon carries the accessible name */
+/** Décorative : l'élément englobant porte le nom accessible */
 interface IconProps {
   readonly icon: string;
   readonly size: number;
@@ -10,7 +10,7 @@ interface IconProps {
 
 export default function Icon({ icon, size, animated = false, negative = false }: IconProps) {
   const src = animated ? `/icons/animated/${icon}.gif` : `/icons/static/${icon}.png`;
-  // Black icons on a dark theme: inverted, unless drawn on a light background
+  // Icônes noires sur thème sombre : inversées, sauf sur fond clair
   const inversion = negative ? '' : 'invert';
 
   return (

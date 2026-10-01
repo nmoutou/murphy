@@ -1,13 +1,12 @@
 /**
- * The error contract between backend and frontend (ADR-041): a failed chat carries the
- * pipeline stage at fault and a code, never the raw message. The backend serializes it
- * into the `errorText` of the stream's `error` part; the frontend reads it back to name
- * the failed stage.
+ * Contrat d'erreur entre backend et frontend (ADR-041) : un échec porte l'étape fautive
+ * et un code, jamais le message brut. Il voyage sérialisé dans l'`errorText` de la part
+ * `error` du flux.
  */
 
 import { z } from 'zod';
 
-/** `request` = the payload itself (quota, validation, empty question) */
+/** `request` = la requête elle-même (quota, validation, question vide) */
 export const CHAT_ERROR_STAGES = ['request', 'embedding', 'retrieval', 'llm', 'internal'] as const;
 
 export const chatErrorSchema = z.object({
@@ -18,10 +17,10 @@ export const chatErrorSchema = z.object({
 export type ChatError = z.infer<typeof chatErrorSchema>;
 export type ChatErrorStage = ChatError['stage'];
 
-/** The `errorText` of an `error` part */
+/** L'`errorText` d'une part `error` */
 export const serializeChatError = (error: ChatError): string => JSON.stringify(error);
 
-/** `undefined` when the text is not a serialized `ChatError` */
+/** `undefined` si le texte n'est pas un `ChatError` sérialisé */
 export const parseChatError = (errorText: string): ChatError | undefined => {
   let candidate: unknown;
   try {

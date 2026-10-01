@@ -5,7 +5,7 @@ import UserMessage from '@/components/chat/UserMessage';
 import AIMessage from '@/components/chat/AIMessage';
 import type { AppUIMessage } from '@murphy/contract/messages';
 
-/** A question and its answer */
+/** Une question et sa réponse */
 const EXCHANGE_LENGTH = 2;
 
 interface ChatLayoutProps {
@@ -32,7 +32,7 @@ export default function ChatLayout({ messages }: ChatLayoutProps) {
         const isLastUser = message.role === 'user' && index === messages.length - 1;
         const ref = isLastUser ? lastUserRef : undefined;
 
-        // scroll-mt only acts on the scrollIntoView target: the last question
+        // scroll-mt n'agit que sur la cible de scrollIntoView : la dernière question
         return (
           <div key={message.id} ref={ref} className="scroll-mt-4">
             {message.role === 'user' ? (

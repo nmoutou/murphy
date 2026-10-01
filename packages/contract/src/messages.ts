@@ -1,36 +1,34 @@
 /**
- * The stream contract between backend and frontend: the AI SDK message, its custom
- * data parts and its metadata. The backend writes these parts (WebSocket and SSE), the
- * frontend validates them on arrival with the same schemas (`useChat`), and both
- * compile against the types inferred here: a change breaks both sides at once.
+ * Contrat du flux entre backend et frontend : le backend écrit ces parts, le frontend
+ * les valide avec ces mêmes schémas, et tous deux compilent contre ces types. Un
+ * changement casse les deux côtés à la fois.
  */
 
 import type { UIMessage } from 'ai';
 import { z } from 'zod';
 
-/** The form of a document, the same in every store of the ingestion (ADR-046) */
+/** La forme d'un document, identique dans tous les stores de l'ingestion (ADR-046) */
 export const documentTypeSchema = z.enum(['article', 'section', 'texte', 'decision']);
 
 /**
- * One retrieved passage (ADR-039 §5). `content.slice(highlightStart, highlightEnd)`
- * of its `ParentDocument`, found by `identifier`, gives the passage text.
- * `title`, `documentType` and `nature` repeat the parent's until the frontend reads
- * `ParentDocument`.
+ * Un passage retrouvé (ADR-039) : son texte est `content.slice(highlightStart,
+ * highlightEnd)` du `ParentDocument` de même `identifier`. `title`, `documentType` et
+ * `nature` répètent ceux du parent tant que le frontend ne lit pas `ParentDocument`.
  */
 export const documentChunkSchema = z.object({
   chunkId: z.string(),
   identifier: z.string(),
-  /** UTF-16 offsets into the parent's `content`, as JavaScript strings count */
+  /** Offsets UTF-16 dans le `content` du parent, comme les compte JavaScript */
   highlightStart: z.number().int().nonnegative(),
   highlightEnd: z.number().int().nonnegative(),
   score: z.number(),
   title: z.string().optional(),
   documentType: documentTypeSchema,
-  /** The legal nature (`LOI`, `ARRET`, `QPC`…), when the source gives a meaningful one */
+  /** La nature juridique (`LOI`, `ARRET`, `QPC`…), quand la source en donne une utile */
   nature: z.string().optional(),
 });
 
-/** The whole document a passage comes from, sent once per response, before its passages */
+/** Le document entier d'un passage, envoyé une fois par réponse, avant ses passages */
 export const parentDocumentSchema = z.object({
   identifier: z.string(),
   title: z.string(),
@@ -39,7 +37,7 @@ export const parentDocumentSchema = z.object({
   content: z.string(),
 });
 
-/** Per-stage latency of the pipeline, in milliseconds */
+/** Latence de chaque étape du pipeline, en millisecondes */
 export const ragTimingSchema = z.object({
   embeddingMs: z.number(),
   retrievalMs: z.number(),
@@ -52,7 +50,7 @@ export const appMessageMetadataSchema = z.object({
   ragTiming: ragTimingSchema.optional(),
 });
 
-/** Keyed by data part name: `document` travels as a `data-document` part */
+/** Clé = nom de la part : `document` voyage en part `data-document` */
 export const appDataPartSchemas = {
   document: documentChunkSchema,
   parentDocument: parentDocumentSchema,

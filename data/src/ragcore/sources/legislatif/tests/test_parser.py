@@ -1,4 +1,4 @@
-"""Le parser : ce qu'il interprète, et ce qu'il refuse d'inventer."""
+"""Le parser sur LEGI : ce qu'il interprète, et ce qu'il refuse d'inventer."""
 
 from datetime import UTC, datetime
 from pathlib import Path
@@ -25,7 +25,6 @@ from .conftest import (
 
 
 def _raw(fixtures_dir: Path, *names: str) -> RawDocument:
-    """Fabrique le RawDocument que le connecteur produirait pour ces fichiers."""
     return RawDocument(
         source=SourceName.LEGI,
         source_document_id=names[0],
@@ -44,17 +43,8 @@ def test_le_parser_satisfait_son_port() -> None:
 
 
 def test_le_contenu_reste_du_FRANCAIS(fixtures_dir: Path) -> None:
-    """LE test du parser. L'ancien ``_clean_text`` lemmatisait le contenu :
-
-        « Le directeur général est nommé par décret »  ->  « directeur général nommer décret »
-
-    Ce sac de lemmes partait dans Mongo — donc s'affichait à l'utilisateur comme
-    *source* — et était embarqué par un modèle de phrases entraîné sur du texte
-    naturel. L'original n'était stocké nulle part.
-
-    Les mots vides (« le », « est », « par », « une ») sont la preuve que le texte est
-    intact : ce sont exactement eux que la lemmatisation supprimait.
-    """
+    """Le contenu n'est pas lemmatisé : les mots vides (« le », « est », « par »)
+    prouvent que le texte est intact."""
     parsed = (
         GenericParser(LEGI_ROLE_TABLE, _SN.LEGI)
         .parse(_raw(fixtures_dir, f"{ARTICLE_SIMPLE}.xml"))
@@ -68,9 +58,7 @@ def test_le_contenu_reste_du_FRANCAIS(fixtures_dir: Path) -> None:
 def test_lidentifiant_vient_du_ID_car_il_nexiste_aucune_balise_ELI(
     fixtures_dir: Path,
 ) -> None:
-    """Vérifié sur les 2564 fichiers : ``<ELI>`` n'existe nulle part. La donnée est un
-    ``<ID>``.
-    """
+    """Le corpus n'a aucune balise ``<ELI>`` : l'identifiant est un ``<ID>``."""
     parsed = (
         GenericParser(LEGI_ROLE_TABLE, _SN.LEGI)
         .parse(_raw(fixtures_dir, f"{ARTICLE_SIMPLE}.xml"))
@@ -84,12 +72,8 @@ def test_lidentifiant_vient_du_ID_car_il_nexiste_aucune_balise_ELI(
 def test_les_deux_facettes_du_texte_donnent_UN_document_avec_son_titre(
     fixtures_dir: Path,
 ) -> None:
-    """La conséquence de la fusion, côté parser.
-
-    ``TEXTELR`` n'a AUCUN titre (0/98 mesuré) et ``TEXTE_VERSION`` aucune structure.
-    Lues séparément, l'une donnerait un document sans titre et l'autre un document sans
-    sections. Lues ensemble, elles donnent le document.
-    """
+    """``TEXTELR`` n'a pas de titre, ``TEXTE_VERSION`` pas de structure : lues
+    ensemble, elles donnent le document."""
     parsed = (
         GenericParser(LEGI_ROLE_TABLE, _SN.LEGI)
         .parse(
@@ -114,12 +98,8 @@ def test_les_deux_facettes_du_texte_donnent_UN_document_avec_son_titre(
 
 
 def test_le_texte_dun_decret_nest_PAS_dans_un_BLOC_TEXTUEL(fixtures_dir: Path) -> None:
-    """Mesuré : **aucun** ``TEXTE_VERSION`` n'a de ``<BLOC_TEXTUEL>`` (0/98). Son texte
-    vit sous ``<VISAS>`` (« Vu le code général… »), ``<SIGNATAIRES>`` et ``<TP>``.
-
-    Ne chercher que ``BLOC_TEXTUEL`` aurait ingéré les 98 décrets du corpus avec un
-    contenu VIDE — sans qu'une seule exception soit levée.
-    """
+    """Aucun ``TEXTE_VERSION`` n'a de ``<BLOC_TEXTUEL>`` : son texte vit sous
+    ``<VISAS>``, ``<SIGNATAIRES>`` et ``<TP>``."""
     parsed = (
         GenericParser(LEGI_ROLE_TABLE, _SN.LEGI)
         .parse(
@@ -137,12 +117,8 @@ def test_le_texte_dun_decret_nest_PAS_dans_un_BLOC_TEXTUEL(fixtures_dir: Path) -
 
 
 def test_chaque_section_est_un_morceau_LITTERAL_du_contenu(fixtures_dir: Path) -> None:
-    """``_content`` et ``_sections`` lisent les MÊMES blocs, dans le même ordre.
-
-    Les faire diverger, c'est garantir que le chunker calculera des ``char_start`` qui
-    ne pointent nulle part dans ``content`` — des offsets qui mentent, et que rien ne
-    signale.
-    """
+    """``_content`` et ``_sections`` lisent les mêmes blocs, dans le même ordre : sinon
+    les offsets des chunks pointeraient à côté."""
     parsed = (
         GenericParser(LEGI_ROLE_TABLE, _SN.LEGI)
         .parse(_raw(fixtures_dir, f"{ARTICLE_SIMPLE}.xml"))
@@ -157,10 +133,7 @@ def test_chaque_section_est_un_morceau_LITTERAL_du_contenu(fixtures_dir: Path) -
 def test_une_section_na_pas_de_contenu_et_ce_nest_pas_un_echec(
     fixtures_dir: Path,
 ) -> None:
-    """Mesuré : 0/287 ``SECTION_TA`` ont un bloc textuel. Une section est un nœud de
-    structure, pas un porteur de texte. Rendre la chaîne vide est la VÉRITÉ — et le
-    chunker n'en fera aucun chunk, plutôt qu'un chunk vide.
-    """
+    """Une ``SECTION_TA`` est un nœud de structure : contenu vide, donc aucun chunk."""
     parsed = (
         GenericParser(LEGI_ROLE_TABLE, _SN.LEGI)
         .parse(_raw(fixtures_dir, f"{SECTION_ARTICLES}.xml"))
@@ -174,11 +147,7 @@ def test_une_section_na_pas_de_contenu_et_ce_nest_pas_un_echec(
 
 
 def test_le_parser_rend_les_liens_BRUTS_sans_les_typer(fixtures_dir: Path) -> None:
-    """Le parser lit, il ne traduit pas : il rend le vocabulaire de LEGI tel quel
-    (``typelien``, ``sens``). Typer ici mettrait la table de traduction dans deux
-    modules à la fois — et le jour où l'un des deux dérive, les arêtes changent de sens
-    sans qu'on sache lequel a raison.
-    """
+    """Le parser rend le vocabulaire de LEGI tel quel : seul ``core/links`` traduit."""
     parsed = (
         GenericParser(LEGI_ROLE_TABLE, _SN.LEGI)
         .parse(_raw(fixtures_dir, f"{ARTICLE_SIMPLE}.xml"))
@@ -191,9 +160,7 @@ def test_le_parser_rend_les_liens_BRUTS_sans_les_typer(fixtures_dir: Path) -> No
 
 
 def test_le_contexte_porte_la_fermeture_des_ancetres(fixtures_dir: Path) -> None:
-    """``<CONTEXTE>`` déclare TOUS les ancêtres d'un coup — la fermeture transitive, pas
-    le seul parent. C'est ce qui rend la réduction nécessaire en aval.
-    """
+    """``<CONTEXTE>`` déclare tous les ancêtres d'un coup, d'où la réduction en aval."""
     parsed = (
         GenericParser(LEGI_ROLE_TABLE, _SN.LEGI)
         .parse(_raw(fixtures_dir, f"{ARTICLE_SIMPLE}.xml"))
@@ -207,23 +174,18 @@ def test_le_contexte_porte_la_fermeture_des_ancetres(fixtures_dir: Path) -> None
 
 
 def test_une_balise_non_configuree_est_ROUTEE_et_SIGNALEE(fixtures_dir: Path) -> None:
-    """La cascade des trois portes : plus d'« unknown ».
-
-    Le corpus réel n'a AUCUNE balise absente de la table — le vocabulaire est saturé,
-    et c'est le résultat attendu. C'est précisément pourquoi il ne peut pas prouver la
-    cascade. D'où cette fixture synthétique : ``<ZORG>`` doit être
-    **signalée** (``unconfigured_tags``, la vigie de dérive DILA) ET **ingérée** en
-    métadonnée sous sa clé chemin-complet — routée, pas jetée, pas « inconnue ».
+    """Le corpus réel n'a aucune balise absente de la table : la fixture synthétique
+    vérifie que ``<ZORG>`` est à la fois signalée et ingérée sous sa clé chemin-complet.
     """
     result = GenericParser(LEGI_ROLE_TABLE, _SN.LEGI).parse(
         _raw(fixtures_dir, "unknown_vocabulary.xml")
     )
     parsed = result.document
 
-    # La porte metadata : le texte ET l'attribut, sous des clés chemin-complet.
+    # Le texte et l'attribut, sous des clés chemin-complet
     assert parsed.metadata["article_zorg"] == "Une balise que le parser ne connaît pas."
     assert parsed.metadata["article_zorg_attribut_inconnu"] == "peu importe"
-    # Le signal, par clé, avec le fichier où le lire — et la poignée du curseur `skip`.
+    # Le signal, par clé, avec le fichier où le lire
     assert result.unconfigured_tags == {
         "article_zorg": "unknown_vocabulary.xml",
         "article_zorg_attribut_inconnu": "unknown_vocabulary.xml",
@@ -233,12 +195,8 @@ def test_une_balise_non_configuree_est_ROUTEE_et_SIGNALEE(fixtures_dir: Path) ->
 
 
 def test_une_balise_connue_SANS_RENOMMAGE_est_non_configuree() -> None:
-    """ADR-047 : seul le renommage configure une métadonnée.
-
-    ``MINISTERE`` a un rôle (``META``) mais pas d'entrée dans
-    ``meta_renames`` : elle entre sous sa clé chemin-complet, ET elle est signalée sous
-    cette clé — la poignée du curseur ``skip``. ``ORIGINE``, renommée, ne l'est pas.
-    """
+    """ADR-047 : ``MINISTERE``, rôle ``META`` sans renommage, entre sous sa clé
+    chemin-complet et est signalée. ``ORIGINE``, renommée, ne l'est pas."""
     tree = to_tree(
         ET.fromstring(
             "<ARTICLE><META>"
@@ -267,12 +225,8 @@ def test_une_balise_connue_SANS_RENOMMAGE_est_non_configuree() -> None:
 def test_une_valeur_au_format_DILA_devient_un_LIEN_pas_une_metadonnee(
     fixtures_dir: Path,
 ) -> None:
-    """Règle 4 de la cascade : une balise non-configurée dont la valeur a la forme d'un
-    identifiant DILA POINTE — elle passe la porte liens, pas la porte metadata.
-
-    Et la règle 3 (auto-id) la borne : la valeur du document lui-même reste une
-    métadonnée — un ``cid`` qui porte sa propre identité ne référence rien.
-    """
+    """Une valeur non configurée au format DILA pointe : elle devient un lien. Sauf
+    l'identifiant du document lui-même, qui reste une métadonnée."""
     tree = to_tree(
         ET.fromstring(
             "<ARTICLE>"
@@ -292,21 +246,20 @@ def test_une_valeur_au_format_DILA_devient_un_LIEN_pas_une_metadonnee(
     )
     parsed = result.document
 
-    # ZORG_REF pointe ailleurs → porte liens (référence heuristique), pas metadata.
+    # ZORG_REF pointe ailleurs : un lien heuristique
     heuristic = [r for r in parsed.structure["references"] if r["tag"] == "ZORG_REF"]
     assert [r["id"] for r in heuristic] == ["LEGIARTI000000424242"]
     assert "article_zorg_ref" not in parsed.metadata
-    # ZORG_SELF porte l'identité du document → auto-id, reste une métadonnée.
+    # ZORG_SELF porte l'identité du document : une métadonnée
     assert parsed.metadata["article_zorg_self"] == ARTICLE_INCONNU
-    # Les DEUX sont signalées, chacune sous sa porte : le routage ne fait pas taire la
-    # vigie.
+    # Les deux sont signalées, chacune sous sa porte
     assert result.unconfigured_links == {"article_zorg_ref": ""}
     assert result.unconfigured_tags == {"article_zorg_self": ""}
 
 
 def test_une_balise_non_configuree_VIDE_ne_laisse_aucune_trace() -> None:
-    """Sans texte ni attribut, une balise n'a rien à ingérer : ni métadonnée, ni signal.
-    Le signal naît des VALEURS, pas des balises (ADR-048)."""
+    """Sans texte ni attribut, ni métadonnée ni signal : le signal naît des valeurs
+    (ADR-048)."""
     tree = to_tree(
         ET.fromstring(
             "<ARTICLE>"
@@ -332,10 +285,8 @@ def test_une_balise_non_configuree_VIDE_ne_laisse_aucune_trace() -> None:
 def test_un_xml_illisible_leve_ParseError_pas_ValidationError(
     fixtures_dir: Path,
 ) -> None:
-    """La distinction dont la raison de rejet dépend : une panne de LECTURE n'est pas un refus
-    MÉTIER. Les confondre inscrirait un fichier corrompu sous la même raison qu'un
-    document sans identifiant — et on ne saurait plus lequel des deux réparer.
-    """
+    """Une panne de lecture n'est pas un refus métier : les confondre empêcherait de
+    savoir quoi réparer."""
     with pytest.raises(ET.ParseError):
         ET.parse(fixtures_dir / "malformed.xml")
 
@@ -366,10 +317,7 @@ def test_un_document_sans_identifiant_leve_ValidationError() -> None:
 
 
 def test_un_identifiant_mal_forme_leve_ValidationError() -> None:
-    """Sans le relais explicite, la ``pydantic.ValidationError`` échapperait au
-    ``except ValidationError`` des appelants et se ferait compter comme une erreur de
-    parsing — un refus métier maquillé en panne de lecture.
-    """
+    """Sans relais, l'erreur pydantic serait comptée en panne de lecture."""
     tree = to_tree(ET.fromstring("<ARTICLE><ID>PAS_UN_ELI</ID></ARTICLE>"))
 
     with pytest.raises(ValidationError, match="Identifiant invalide"):
@@ -386,7 +334,7 @@ def test_un_identifiant_mal_forme_leve_ValidationError() -> None:
 @pytest.mark.parametrize(
     ("files", "document_type", "nature"),
     [
-        # « Article » dans NATURE : son type le dit déjà, la nature n'apporte rien.
+        # « Article » : son type le dit déjà
         ((f"{ARTICLE_SIMPLE}.xml",), DocumentType.ARTICLE, None),
         ((f"{SECTION_MIXTE}.xml",), DocumentType.SECTION, None),
         (

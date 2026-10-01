@@ -40,7 +40,7 @@ def test_dev_et_prod_sont_acceptes(monkeypatch: pytest.MonkeyPatch, value: str) 
 def test_une_autre_valeur_arrete_le_run(
     monkeypatch: pytest.MonkeyPatch, value: str
 ) -> None:
-    """Une coquille valait prod en silence : `parameters.yml` était ignoré sans arrêt."""
+    """Une coquille n'est pas prise pour la prod : elle arrête le run."""
     monkeypatch.setenv(ENVIRONMENT_VAR, value)
 
     with pytest.raises(ValidationError, match="environment"):

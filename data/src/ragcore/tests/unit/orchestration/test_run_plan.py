@@ -17,7 +17,7 @@ from ragcore.orchestration.kedro.run_parameters import SAFE_DEV_SETTINGS
 from ragcore.orchestration.kedro.run_plan import plan_run
 
 CHUNKING = ChunkingConfig(max_chars=384, overlap_chars=25)
-"""La découpe, lue de l'environnement par ``ChunkingSettings``, hors de ces tests."""
+"""Lue de l'environnement par ``ChunkingSettings``, hors de ces tests."""
 
 PARAMS: dict[str, Any] = {
     "nuke_all": False,
@@ -35,7 +35,7 @@ BOOLEAN_PATHS = [
     "include_path",
     "include_content_neo4j",
 ]
-"""Les booléens du YAML : stricts, obligatoires, validés dans tous les environnements."""
+"""Stricts, obligatoires, validés dans tous les environnements."""
 
 RISKIEST_DEV: dict[str, Any] = {
     "nuke_all": True,
@@ -44,10 +44,10 @@ RISKIEST_DEV: dict[str, Any] = {
     "include_path": True,
     "include_content_neo4j": True,
 }
-"""`parameters.yml` réglé au plus risqué pour une prod."""
+"""Le `parameters.yml` le plus risqué pour une prod."""
 
 SHIPPED_PARAMETERS = Path(__file__).parents[5] / "conf/base/parameters.yml"
-"""Le `parameters.yml` livré, celui que lit `kedro run`."""
+"""Le `parameters.yml` livré."""
 
 
 def _settings(environment: Environment = "prod") -> InfraSettings:
@@ -113,7 +113,7 @@ def test_sans_booleen_le_run_s_arrete_meme_hors_dev(path: str) -> None:
 def test_un_booleen_mal_type_arrete_le_run_meme_hors_dev(
     path: str, value: object
 ) -> None:
-    """``"false"`` est une chaîne non vide : lue avec ``bool(...)``, elle vaudrait vrai."""
+    """``"false"`` est une chaîne non vide : ``bool(...)`` la lirait vraie."""
     with pytest.raises(ValueError, match=_path(path)):
         plan_run(_with(path, value), _settings("prod"), CHUNKING)
 
@@ -171,7 +171,7 @@ def test_en_dev_aucun_avertissement_de_fichier_ignore(
 
 @pytest.mark.parametrize("path", ["nlp", "include_pth", "nuke_al"])
 def test_une_cle_inconnue_arrete_le_run(path: str) -> None:
-    """Une clé morte ou mal orthographiée ne passe plus en silence, à aucun niveau."""
+    """Une clé morte ou mal orthographiée arrête le run, à tout niveau."""
     with pytest.raises(ValueError, match=_path(path)):
         plan_run(_with(path, True), _settings(), CHUNKING)
 
@@ -190,11 +190,8 @@ def test_une_cle_inconnue_arrete_le_run(path: str) -> None:
     ],
 )
 def test_l_ancienne_forme_est_refusee(block: str) -> None:
-    """Un `parameters.yml` resté à une ancienne forme arrête le run. Le bloc `embedding`
-    est parti dans l'environnement : `EMBEDDING_MODEL`, et une dimension mesurée ; le
-    bloc `chunking` aussi, à côté du modèle (`CHUNKING_*`) ; le bloc `node_labels` dans
-    le registre des sources. Le bloc `dev` est devenu le fichier entier, et
-    `node_hydration` s'est aplati en `include_path` et `include_content_neo4j`."""
+    """Un `parameters.yml` resté à une ancienne forme (blocs `embedding`, `chunking`,
+    `node_labels`, `dev`, `node_hydration`) arrête le run."""
     with pytest.raises(ValueError, match=_path(block)):
         plan_run(_with(block, {}), _settings(), CHUNKING)
 
@@ -219,8 +216,7 @@ def test_hors_dev_la_source_s_applique() -> None:
 
 
 def test_un_params_mal_orthographie_arrete_le_run() -> None:
-    """Kedro fusionne les `--params` dans les paramètres : `sorce=cass` est une clé
-    inconnue, pas un run sur toutes les sources."""
+    """`sorce=cass` est une clé inconnue, pas un run sur toutes les sources."""
     with pytest.raises(ValueError, match=_path("sorce")):
         plan_run(_with("sorce", "cass"), _settings(), CHUNKING)
 

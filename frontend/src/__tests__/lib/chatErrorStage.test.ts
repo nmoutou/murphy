@@ -1,8 +1,3 @@
-/**
- * Chat Error Stage Tests
- * `readErrorStage`: the failed stage the modal names, read from a chat error (ADR-041)
- */
-
 import { describe, expect, it } from 'vitest';
 import { CHAT_ERROR_STAGES, serializeChatError } from '@murphy/contract/errors';
 import { CONNECTION_ERROR_MESSAGE, readErrorStage } from '@/lib/chatErrorStage';

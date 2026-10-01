@@ -12,24 +12,17 @@ __all__ = ["inspect_served_model"]
 _INSPECTION_TIMEOUT_SECONDS = 10.0
 
 _PROBE_TEXT = "sonde de dimension"
-"""Le texte embarqué pour mesurer la dimension : seul compte la taille du vecteur."""
+"""Seule compte la taille du vecteur obtenu."""
 
 
 async def inspect_served_model(base_url: str, expected_model: str) -> EmbeddingModel:
     """Le modèle que sert TEI, vérifié contre ``EMBEDDING_MODEL``, et sa dimension mesurée.
 
-    TEI ignore le champ ``model`` de la requête : il ne sert que le modèle de son
-    ``--model-id``. Un conteneur démarré avant un changement d'``EMBEDDING_MODEL``, et pas
-    redémarré depuis, écrirait donc les vecteurs d'un autre modèle que celui que le
-    backend interroge, **sans rien lever**. ``GET /info`` est le seul endroit où le
-    service *dit* ce qu'il sert.
+    TEI ignore le champ ``model`` de la requête : seul ``GET /info`` dit ce qu'il sert.
+    La dimension n'est pas déclarée, une requête de sonde la mesure.
 
-    La dimension n'est pas déclarée : une requête de sonde la mesure. La collection
-    Qdrant est créée à cette taille.
-
-    Appelée **avant le pool** (depuis le hook), jamais depuis un worker — voir
-    ``EmbeddingModelMismatchError``. Un service injoignable est **fatal** lui aussi : tant
-    qu'on ne peut pas vérifier ce qu'il sert, on n'écrit pas.
+    À appeler avant le pool, jamais depuis un worker (cf.
+    ``EmbeddingModelMismatchError``). Un service injoignable est fatal aussi.
     """
     async with httpx.AsyncClient(timeout=_INSPECTION_TIMEOUT_SECONDS) as client:
         served = await _served_model_id(client, base_url)
@@ -47,9 +40,7 @@ async def inspect_served_model(base_url: str, expected_model: str) -> EmbeddingM
 
 
 async def _served_model_id(client: httpx.AsyncClient, base_url: str) -> object:
-    # `/info` est à la RACINE du service, pas sous le préfixe `/v1` de l'API compatible
-    # OpenAI. Interroger `{base_url}/info` donnerait un 404 — donc un garde-fou qui ne se
-    # déclencherait jamais, ce qui est pire que pas de garde-fou du tout.
+    # `/info` est à la racine du service, pas sous le préfixe `/v1` de `base_url`
     parts = urlsplit(base_url)
     info_url = urlunsplit((parts.scheme, parts.netloc, "/info", "", ""))
     try:

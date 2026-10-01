@@ -1,8 +1,3 @@
-/**
- * LLM Provider Tests
- * Parsing of the streamed OpenAI-compatible response, over a mocked `fetch`
- */
-
 import { LLMProvider } from '../../infra/llm';
 
 jest.mock('../../utils/logger', () => {
@@ -75,7 +70,7 @@ describe('LLMProvider.stream', () => {
 
   it('keeps a multi-byte character split across network chunks intact', async () => {
     const bytes = new TextEncoder().encode(sseLine('délai'));
-    // `é` is encoded on two bytes (0xC3 0xA9): cut right between them
+    // `é` tient sur deux octets (0xC3 0xA9) : coupure entre les deux
     const splitAt = bytes.indexOf(0xc3) + 1;
     jest.spyOn(global, 'fetch').mockResolvedValue(responseOf(bytes.slice(0, splitAt), bytes.slice(splitAt)));
 
@@ -101,7 +96,7 @@ describe('LLMProvider.stream', () => {
       const body = new ReadableStream<Uint8Array>({
         start(controller) {
           controller.enqueue(new TextEncoder().encode(sseLine('Cinq ')));
-          // Like a real fetch, the body fails once the request signal is raised
+          // Comme un vrai fetch, le corps échoue une fois le signal levé
           requestSignal?.addEventListener('abort', () => controller.error(requestSignal.reason));
         },
       });

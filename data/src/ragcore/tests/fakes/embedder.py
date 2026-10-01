@@ -1,8 +1,5 @@
-"""Un embedder sans service : des vecteurs nuls, de la bonne dimension.
-
-Il rend testable ce qui n'est PAS la vectorisation (la saga, le bilan de run) sans
-TEI. Il ment sur le contenu, jamais sur la forme : Qdrant rejette un vecteur d'une
-autre taille que sa collection.
+"""Des vecteurs nuls, de la bonne dimension : faux sur le contenu, jamais sur la forme,
+que Qdrant vérifie.
 """
 
 from ragcore.core.models.chunk import Chunk, EmbeddedChunk
@@ -13,8 +10,6 @@ _MODEL_NAME = "noop"
 
 
 class NoopEmbedder:
-    """Implémentation de ``BaseEmbedder`` produisant des vecteurs nuls."""
-
     def __init__(self, dimension: int) -> None:
         self._dimension = dimension
 

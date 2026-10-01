@@ -1,13 +1,10 @@
-# Des commodités de développement, et rien d'autre. IGNORÉ hors ENVIRONMENT=dev : tout le
-# fichier est alors remplacé par les valeurs sûres (rien n'est effacé, l'embedding est
-# calculé, les métadonnées non configurées sont retirées, aucun chemin de fichier n'est
-# écrit, les nœuds Neo4j restent maigres) et un avertissement le signale au log. Les clés restent obligatoires et
-# validées partout : une coquille arrête le run même en prod.
+# Commodités de développement, appliquées seulement si ENVIRONMENT=dev ; sinon le fichier
+# est remplacé par des valeurs sûres, avec un avertissement (ADR-043). Les clés restent
+# obligatoires et validées partout : une coquille arrête le run même en prod.
 #
-# La découpe n'est pas ici : elle vit dans `.env.dev` (CHUNKING_MAX_CHARS,
-# CHUNKING_OVERLAP_CHARS), à côté d'EMBEDDING_MODEL dont elle dépend.
+# La découpe vit dans `.env.dev`, à côté d'EMBEDDING_MODEL dont elle dépend.
 
-# Efface TOUTES les données de TOUTES les bases (sauf la base méta) en tête de run.
+# Efface toutes les données de toutes les bases, sauf la base méta, en tête de run.
 nuke_all: true
 
 # `false` : aucun vecteur calculé ni écrit (ADR-023) ; Mongo et Neo4j normaux. TEI
@@ -15,14 +12,14 @@ nuke_all: true
 embedding_enabled: false
 
 # `true` retire les métadonnées et les arêtes non configurées ; les signaux `tags` et
-# `links` sont émis dans les deux cas (ADR-022 §1, ADR-048).
+# `links` sont émis dans les deux cas (ADR-022, ADR-048).
 skip_unconfigured: true
 
-# Les chemins des fichiers XML source (`source_files`), dans le document Mongo et sur
-# le nœud Neo4j. Repasser à `false` sans `nuke_all` laisse ceux déjà écrits : un
-# document déjà ingéré n'est pas réécrit, et Neo4j n'efface aucune propriété.
+# Les chemins des fichiers XML source (`source_files`), dans Mongo et sur le nœud Neo4j.
+# Repasser à `false` sans `nuke_all` laisse ceux déjà écrits : un document déjà ingéré
+# n'est pas réécrit, et Neo4j n'efface aucune propriété.
 include_path: true
 
 # Le texte du document sur son nœud Neo4j (`_text_content`), en plus des métadonnées,
-# toujours présentes en dev (ADR-022 §2). Même remarque sans `nuke_all`.
+# toujours présentes en dev (ADR-022). Même remarque sans `nuke_all`.
 include_content_neo4j: true

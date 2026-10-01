@@ -1,10 +1,5 @@
-"""CLIQUET — le vocabulaire des événements.
-
-Ce n'est pas un test : c'est un verrou. EVENT_TYPES est le contrat entre les sites
-d'émission et le bilan du run. En figer le contenu ici oblige toute modification à
-passer par ce fichier, donc à se voir en revue.
-
-Ajouter un événement = ajouter sa ligne ci-dessous, sciemment.
+"""Cliquet : ``EVENT_TYPES``, le contrat entre les sites d'émission et le bilan. Ajouter
+un événement, c'est ajouter sa ligne ici, sciemment.
 """
 
 from ragcore.core.telemetry_events import COUNT_CARRYING_EVENTS, EVENT_TYPES
@@ -16,16 +11,14 @@ GOLDEN = {
     "document.version_skipped",
     "document.unreadable",
     "document.persisted",
-    # La FUITE : vu, jamais ingéré. Sans ce compteur, le run se déclare « ok » en
-    # perdant des documents.
+    # Vu, jamais ingéré : sans ce compteur, le run se déclarerait « ok »
     "document.failed",
-    # Pas une fuite (le document est ingéré) mais pas rien : la fin du chunk n'est pas
-    # indexée. Non nul = `CHUNKING_MAX_CHARS` incompatible avec la fenêtre du modèle.
+    # Non nul = `CHUNKING_MAX_CHARS` incompatible avec la fenêtre du modèle
     "chunk.truncated",
     "relation.upserted",
     "relation.pending",
     "relation.promoted",
-    # Un lien que la source a écrit et qu'on ne sait pas écrire (ADR-048).
+    # Un lien de la source qu'on ne sait pas écrire (ADR-048)
     "relation.unknown",
     "saga.compensation.triggered",
     "saga.compensation.completed",
@@ -40,10 +33,8 @@ def test_the_vocabulary_is_exactly_the_golden_set() -> None:
     )
 
 
-# Les events PORTEURS DE CARDINALITÉ — émis une fois pour un lot, leur poids d'agrégat
-# est ``payload["count"]``. Le figer ici verrouille le contrat de F15 : un émetteur qui
-# renomme son payload, ou qui prétend porter un compte sans figurer ici, casse ce cliquet
-# au lieu de fausser le bilan en silence.
+# Les événements porteurs de cardinalité : un émetteur qui renomme son payload casse ce
+# cliquet au lieu de fausser le bilan.
 GOLDEN_COUNT_CARRYING = {
     "document.fetched",  # nombre de documents vus
     "relation.upserted",  # nombre d'arêtes écrites

@@ -1,9 +1,5 @@
-"""L'embedder TEI, et la précondition du run : le modèle servi, et sa dimension.
-
-TEI ne sert qu'UN modèle et **ignore** le champ ``model`` de la requête. Le seul moyen de
-savoir ce qu'il sert vraiment est de le lui demander (``GET /info``). Sans cette
-vérification, un conteneur qui ne sert pas ``EMBEDDING_MODEL`` écrit les vecteurs d'un
-modèle dans la collection qu'on interroge avec un autre — sans lever, sans logguer.
+"""L'embedder TEI, et la précondition du run : le modèle servi et sa dimension. TEI
+ignore le champ ``model`` : seul ``GET /info`` dit ce qu'il sert.
 """
 
 import json
@@ -41,7 +37,7 @@ def _chunk(chunk_id: str, text: str) -> Chunk:
 
 
 class _ServiceFactice:
-    """Un TEI en carton qui enregistre ce qu'on lui a demandé."""
+    """Un faux TEI qui enregistre les requêtes reçues."""
 
     def __init__(
         self,
@@ -93,19 +89,14 @@ def _patch_client(monkeypatch: pytest.MonkeyPatch):
 async def test_un_service_qui_sert_un_autre_modele_fait_echouer_le_run(
     _patch_client,
 ) -> None:
-    """LE test qui justifie la feature : le run doit s'arrêter, pas produire des vecteurs.
-
-    Sans lui, on écrit les vecteurs de `gte-base` dans la collection que le
-    backend interroge avec `all-mpnet-base-v2`. Deux jeux incomparables dans un même index.
-    """
+    """Le run s'arrête plutôt que d'écrire les vecteurs d'un autre modèle."""
     service = _ServiceFactice(model_id="thenlper/gte-base")
     _patch_client(service)
 
     with pytest.raises(EmbeddingModelMismatchError) as erreur:
         await inspect_served_model(BASE_URL, ATTENDU)
 
-    # L'erreur doit NOMMER les deux modèles : un message qui dit « ça ne colle pas »
-    # sans dire quoi force à aller lire le code.
+    # L'erreur nomme les deux modèles
     assert "gte-base" in str(erreur.value)
     assert ATTENDU in str(erreur.value)
 
@@ -121,11 +112,8 @@ async def test_le_bon_modele_passe_et_sa_dimension_est_mesuree(_patch_client) ->
 async def test_info_est_interroge_a_l_ORIGINE_et_la_sonde_sous_le_prefixe(
     _patch_client,
 ) -> None:
-    """`/info` est à la racine du service, pas sous `/v1` ; `/embeddings` est sous `/v1`.
-
-    Se tromper pour `/info` donne un 404 — donc un garde-fou qui ne se déclenche JAMAIS,
-    ce qui est pire que pas de garde-fou : on croit être protégé.
-    """
+    """`/info` est à la racine du service, `/embeddings` sous `/v1` : un 404 sur
+    `/info` désarmerait le garde-fou."""
     service = _ServiceFactice()
     _patch_client(service)
 
@@ -135,7 +123,7 @@ async def test_info_est_interroge_a_l_ORIGINE_et_la_sonde_sous_le_prefixe(
 
 
 async def test_un_service_injoignable_ne_passe_pas_en_silence(_patch_client) -> None:
-    """Tant qu'on ne peut pas VÉRIFIER ce qu'il sert, on n'écrit pas."""
+    """Tant qu'on ne peut pas vérifier ce qu'il sert, on n'écrit pas."""
     _patch_client(_ServiceFactice(info_status=503))
 
     with pytest.raises(EmbeddingModelMismatchError):
@@ -168,12 +156,8 @@ async def test_le_timeout_du_transport_s_applique_au_client_http() -> None:
 
 
 class _ServiceAFenetre:
-    """Un TEI factice à fenêtre finie : il REJETTE (413) tout texte plus long que ``limite``.
-
-    C'est exactement le mur que ``_embed_oversized`` doit franchir : le service ne dit pas
-    QUEL texte déborde, seulement que le lot déborde. On peut donc rejouer la dichotomie
-    réelle, sans mock partiel de l'embedder.
-    """
+    """Un faux TEI à fenêtre finie : 413 au-delà de ``limite``, sans dire quel texte
+    déborde. De quoi rejouer la vraie dichotomie."""
 
     def __init__(self, limite: int) -> None:
         self._limite = limite
@@ -190,7 +174,7 @@ class _ServiceAFenetre:
             EmbeddingModel(model_name=ATTENDU, dimension=DIM),
             EmbeddingTransport(base_url=BASE_URL, timeout_ms=TIMEOUT_MS, batch_size=32),
         )
-        # On câble le transport factice dans le client que l'embedder construira.
+        # Le faux transport, dans le client que l'embedder construira
         vrai = httpx.AsyncClient
 
         def _fabrique(*a: object, **k: object) -> httpx.AsyncClient:
@@ -203,12 +187,7 @@ class _ServiceAFenetre:
 
 class TestLeCompteurDeTruncations:
     async def test_un_chunk_raccourci_TROIS_fois_compte_UN(self) -> None:
-        """Le cœur de F14 : on compte le CHUNK, pas les moitiés successives.
-
-        Le texte fait 8 caractères, la fenêtre 1 : la dichotomie va le raccourcir
-        8→4→2→1, soit trois raccourcissements du MÊME chunk. L'ancien compteur en
-        aurait dit 3. Il ne doit en dire qu'un.
-        """
+        """Un chunk raccourci trois fois (8→4→2→1) compte une fois."""
         service = _ServiceAFenetre(limite=1)
         embedder = service.embedder()
 

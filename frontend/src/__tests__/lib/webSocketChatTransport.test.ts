@@ -1,9 +1,3 @@
-/**
- * WebSocket Chat Transport Tests
- * The stream `useChat` reads, fed by a fake backend socket: it settles once, closed after
- * the final part or an abort, errored when the socket fails or drops before the end
- */
-
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { UIMessageChunk } from 'ai';
 import type { AppUIMessage } from '@murphy/contract/messages';
@@ -34,7 +28,7 @@ const ANSWER_PARTS: UIMessageChunk[] = [
   { type: 'text-end', id: ANSWER_ID },
 ];
 const FINISH: UIMessageChunk = { type: 'finish' };
-/** A past turn: its answer carries whole documents, which the backend never reads back */
+/** Un tour passé : sa réponse porte des documents entiers, que le backend ne relit jamais */
 const PREVIOUS_TURN: AppUIMessage[] = [
   { id: 'question-0', role: 'user', parts: [{ type: 'text', text: 'Qui juge ?' }] },
   {
@@ -60,7 +54,7 @@ interface StreamOutcome {
   readonly error?: unknown;
 }
 
-/** Reads the stream to its end: the parts it delivered, and its error if it failed */
+/** Lit le flux jusqu'au bout : les parts livrées, et son erreur s'il a échoué */
 const readStream = async (stream: ReadableStream<UIMessageChunk>): Promise<StreamOutcome> => {
   const parts: UIMessageChunk[] = [];
   const reader = stream.getReader();

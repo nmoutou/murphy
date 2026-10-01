@@ -1,9 +1,5 @@
-"""Les ports sont des Protocol @runtime_checkable : la conformité est
-structurelle, aucune implémentation n'hérite du port. Ces tests la vérifient
-donc à l'exécution — sinon rien ne la vérifierait du tout.
-
-Les ports ont été reconstruits d'après leurs appelants. Que les implémentations
-survivantes les satisfassent est la preuve que la reconstruction est fidèle.
+"""Les ports sont des Protocol ``@runtime_checkable`` : la conformité est structurelle,
+vérifiée ici à l'exécution.
 """
 
 import importlib
@@ -33,8 +29,7 @@ from ragcore.core.ports.telemetry import TelemetryPort
             TelemetryPort,
         ),
         ("ragcore.adapters.telemetry.noop", "NoopTelemetry", TelemetryPort),
-        # Le parser et le chunker sont GÉNÉRIQUES : un seul de chacun, pour six sources.
-        # `sources/legislatif/` n'apporte plus qu'une table et un extracteur-coquille.
+        # Parser et chunker génériques : un de chaque pour toutes les sources
         ("ragcore.sources.generic.parser", "GenericParser", BaseParser),
         ("ragcore.sources.generic.chunking", "StructuralChunker", BaseChunker),
         (
@@ -48,15 +43,12 @@ def test_implementation_satisfies_its_port(
     module_path: str, class_name: str, port: type
 ) -> None:
     cls = getattr(importlib.import_module(module_path), class_name)
-    # __new__ sans __init__ : on teste la forme de la classe, pas sa construction
-    # (plusieurs de ces adapters exigent une connexion en argument).
+    # __new__ sans __init__ : la forme de la classe, sans connexion à fournir
     assert isinstance(cls.__new__(cls), port)
 
 
 def test_a_class_missing_a_method_does_not_satisfy_the_port() -> None:
-    """Sans ce contre-exemple, les assertions ci-dessus pourraient toutes passer
-    parce que le Protocol ne vérifie rien.
-    """
+    """Le contre-exemple : sans lui, le Protocol pourrait ne rien vérifier."""
 
     class Impostor:
         def emit(self, event) -> None: ...

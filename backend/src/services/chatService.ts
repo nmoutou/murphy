@@ -37,10 +37,7 @@ const writeParentDocument = (writer: AppWriter, { document, chunk }: Passage): v
   });
 };
 
-/**
- * Writes the sources in ranking order: a parent document once, before its first
- * passage, then each passage with its highlight bounds (ADR-039 §5)
- */
+/** Dans l'ordre du classement, chaque document parent une fois, avant son premier passage */
 const writeSources = (writer: AppWriter, passages: readonly Passage[]): void => {
   const writtenDocuments = new Set<string>();
   for (const passage of passages) {
@@ -73,18 +70,17 @@ const buildLlmMessages = (question: string, passages: readonly Passage[]): ChatM
 
 const ABORTED_BY_CLIENT = 'Chat stream aborted by the client';
 
-/** Embeds the question, finds and reads its passages, then writes them as sources */
 const retrieveSources = async (writer: AppWriter, question: string) => {
   const { embedding, embeddingMs } = await embedQuestion(question);
   const { chunks, retrievalMs } = await retrieveChunks(embedding, config.retrieval.topK);
-  // The title and the text live in the parent documents: read them before the sources
+  // Titre et texte vivent dans les documents parents : les lire avant d'écrire les sources
   const { passages, docFetchMs } = await fetchPassages(chunks);
   writeSources(writer, passages);
   return { passages, timing: { embeddingMs, retrievalMs, docFetchMs } };
 };
 
 /**
- * @returns the LLM duration, or `undefined` once the failure is written as an `error` part
+ * @returns la durée du LLM, ou `undefined` une fois l'échec écrit en part `error`
  */
 const streamAnswer = async (
   writer: AppWriter,
@@ -113,16 +109,16 @@ const writeFinish = (writer: AppWriter, messageId: string, ragTiming: RagTiming)
   });
 };
 
-/** The client is gone: nothing more is written, and the next stages do not run */
+/** Client parti : plus rien n'est écrit et les étapes suivantes ne tournent pas */
 const isAbortedByClient = (abortSignal: AbortSignal): boolean => {
   if (abortSignal.aborted) logger.info(ABORTED_BY_CLIENT);
   return abortSignal.aborted;
 };
 
 /**
- * The RAG pipeline as a stream of UI message parts
- * @param abortSignal raised when the client leaves: the pipeline stops before or during the LLM
- * @throws RagError with stage='request' when the last user message has no text
+ * Le pipeline RAG, en flux de parts de message
+ * @param abortSignal levé au départ du client : le pipeline s'arrête avant ou pendant le LLM
+ * @throws RagError d'étape `request` si le dernier message utilisateur n'a pas de texte
  */
 export const createChatStream = async (
   uiMessages: AppUIMessage[],

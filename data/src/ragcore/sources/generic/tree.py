@@ -1,8 +1,4 @@
-"""La relecture de l'arbre transcrit : le connecteur transcrit (``xml_tree``), ces
-fonctions relisent.
-
-Un nœud est un dict ``{"tag", "attrib", "text", "tail", "children"}``, tel que
-``xml_tree.to_tree`` le produit. Rien ici ne connaît une source : la table de rôles dit
+"""La relecture de l'arbre produit par ``xml_tree.to_tree`` : la table de rôles dit
 quoi chercher, ces fonctions savent seulement où.
 """
 
@@ -39,13 +35,8 @@ def walk(tree: Node) -> Iterator[Node]:
 def walk_with_path(
     tree: Node, prefix: tuple[str, ...] = ()
 ) -> Iterator[tuple[Node, tuple[str, ...]]]:
-    """Comme ``walk``, mais chaque nœud arrive avec son CHEMIN depuis la racine.
-
-    C'est la pièce qui rend l'aplatissement par chemin complet possible (ADR-022 §3) :
-    ``walk`` yield des nœuds nus, et une clé construite sur le seul tag produit la
-    collision « premier arrivé gagne » — deux ``<NUM>`` à deux endroits de l'arbre
-    s'écrasent. Le chemin rend la clé injective par construction.
-    """
+    """Comme ``walk``, avec le chemin depuis la racine : de quoi construire des clés par
+    chemin complet (ADR-022)."""
     path = (*prefix, tree["tag"])
     yield tree, path
     for child in tree["children"]:
@@ -53,12 +44,7 @@ def walk_with_path(
 
 
 def path_key(path: tuple[str, ...]) -> str:
-    """Un chemin de balises → la clé plate canonique (snake_case, jointure ``_``).
-
-    ``("ARTICLE", "META", …, "NUM")`` → ``article_meta_…_num``. La convention de l'ancien
-    ``title_mapping.sources`` de ``parameters.yml`` (supprimé depuis) : le parser l'a
-    reprise.
-    """
+    """``("ARTICLE", "META", …, "NUM")`` → ``article_meta_…_num``."""
     return "_".join(tag.lower() for tag in path)
 
 
@@ -77,10 +63,7 @@ def first(tree: Node, tag: str) -> Node | None:
 def nested(
     tree: Node, containers: Sequence[str], tags: Sequence[str]
 ) -> Iterator[tuple[str, Node]]:
-    """Les balises ``tags`` cherchées UNIQUEMENT sous leurs ``containers`` déclarés.
-
-    Rend ``(tag, nœud)`` : la balise trouvée, et le nœud qui la porte.
-    """
+    """Les ``tags`` cherchées seulement sous leurs ``containers``, en ``(tag, nœud)``."""
     for container in containers:
         for parent in find_all(tree, container):
             for tag in tags:
@@ -88,7 +71,6 @@ def nested(
 
 
 def first_attr(node: Node, names: Sequence[str]) -> str:
-    """Le premier attribut présent, dans l'ordre de préférence donné."""
     for name in names:
         value = node["attrib"].get(name)
         if value:
@@ -97,10 +79,8 @@ def first_attr(node: Node, names: Sequence[str]) -> str:
 
 
 def holders(block: Node, table: RoleTable) -> list[Node]:
-    """Les porteurs de texte d'un bloc — ou le bloc lui-même s'il n'en a pas.
-
-    ``<BLOC_TEXTUEL>`` enveloppe son texte dans ``<CONTENU>`` ; ``<VISAS>`` le porte
-    directement. On descend s'il y a un porteur, sinon on lit le bloc.
+    """``<BLOC_TEXTUEL>`` enveloppe son texte dans ``<CONTENU>`` ; ``<VISAS>`` le porte
+    directement : sans porteur, on lit le bloc lui-même.
     """
     for holder_tag in table.text_holders:
         found = find_all(block, holder_tag)
@@ -110,11 +90,8 @@ def holders(block: Node, table: RoleTable) -> list[Node]:
 
 
 def text_of(node: Node, table: RoleTable) -> str:
-    """Le texte d'un nœud, en traversant les balises de mise en forme.
-
-    On ne descend **PAS** dans les balises non transparentes : leur texte est un autre
-    champ, pas une continuation de celui-ci. Descendre partout ferait entrer les titres
-    et les libellés de liens dans le corps du document.
+    """Ne traverse que les balises transparentes : descendre partout ferait entrer
+    titres et libellés de liens dans le corps.
     """
     parts: list[str] = []
 

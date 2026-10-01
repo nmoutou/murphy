@@ -65,5 +65,5 @@ def test_avec_include_path_les_chemins_sont_ecrits() -> None:
 
 @pytest.mark.parametrize("include_path", [True, False])
 def test_la_structure_n_est_jamais_ecrite(include_path: bool) -> None:
-    """ADR-022 §4 : ``structure`` est redondante avec Neo4j et les chunks."""
+    """ADR-022 : ``structure`` est redondante avec Neo4j et les chunks."""
     assert "structure" not in _write(include_path)

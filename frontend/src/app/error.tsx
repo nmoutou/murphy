@@ -7,7 +7,7 @@ interface ErrorPageProps {
   readonly reset: () => void;
 }
 
-/** The page's Error Boundary: a rendering failure shows this instead of a blank page */
+/** Error Boundary de la page : un échec de rendu affiche ceci plutôt qu'une page blanche */
 export default function ErrorPage({ error, reset }: ErrorPageProps) {
   useEffect(() => {
     console.error('Page rendering failed:', error);

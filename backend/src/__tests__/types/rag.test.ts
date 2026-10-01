@@ -1,14 +1,9 @@
-/**
- * RAG Error Tests
- * `toRagError`, the one translation of an infrastructure failure
- */
-
 import type { RagFailure } from '../../types/rag';
 import { RagError, toChatError, toRagError } from '../../types/rag';
 
 const SEARCH_FAILURE: RagFailure = { stage: 'retrieval', code: 'SEARCH_FAILED', operation: 'search Qdrant' };
 
-/** An error of the given type, as a client library would throw it */
+/** Une erreur du type donné, telle que la lèverait une bibliothèque cliente */
 const errorNamed = (name: string, message: string): Error => Object.assign(new Error(message), { name });
 
 describe('toRagError', () => {

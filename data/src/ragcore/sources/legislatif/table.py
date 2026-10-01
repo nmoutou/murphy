@@ -1,24 +1,14 @@
-"""LEGI — **une table, et rien d'autre**.
+"""La table de rôles de LEGI. Aucune logique ici : s'il en faut, c'est le parser
+générique qui est incomplet.
 
-Tout ce que ``sources/legislatif/parser.py`` savait de LEGI est ici, sous forme de données.
-Le parser générique lit cette table ; il ne connaît pas le mot ``BLOC_TEXTUEL``.
-
-C'est la mesure du succès de §3 : *une source nouvelle = une table, pas un second
-parser*. Ce fichier ne contient **aucune logique** — pas une boucle, pas une condition.
-S'il finit par en contenir, c'est que la mécanique du parser générique était incomplète,
-et c'est elle qu'il faudra corriger.
-
-**Les familles LEGI**, mesurées sur les 867 fichiers réels — chacune avec sa source de
-titre :
+Les familles LEGI, avec leur titre :
 
     ARTICLE        NUM       + BLOC_TEXTUEL + LIENS + CONTEXTE
     SECTION_TA     TITRE_TA  + STRUCTURE_TA + CONTEXTE          (aucun contenu)
     TEXTE_VERSION  TITRE     + CONTENU + LIENS
     TEXTELR        —         + STRUCT                            (aucun titre)
 
-``TEXTELR`` n'a AUCUN titre (0/98) et ``TEXTE_VERSION`` aucune structure : ce sont les
-deux facettes du même document, et le connecteur les livre ensemble. Le parser les lit
-donc comme un tout — c'est ce qui empêche les 98 textes du corpus de finir sans titre.
+``TEXTE_VERSION`` et ``TEXTELR`` sont les deux facettes d'un même texte, lues ensemble.
 """
 
 from ragcore.core.models.enums import DocumentType
@@ -30,33 +20,25 @@ __all__ = ["LEGI_ROLE_TABLE"]
 
 
 _ROOTS = ("TEXTE_VERSION", "TEXTELR", "ARTICLE", "SECTION_TA")
-"""Les racines, dans l'ordre de fusion des facettes : ``TEXTE_VERSION`` porte le texte et
-son titre, elle passe avant ``TEXTELR`` (ADR-049)."""
+"""Dans l'ordre de fusion des facettes : ``TEXTE_VERSION``, qui porte le titre, passe
+avant ``TEXTELR`` (ADR-049)."""
 
 _CONTENT_BLOCKS = ("BLOC_TEXTUEL", "VISAS", "SIGNATAIRES", "TP")
-"""Les blocs qui portent le TEXTE.
+"""Un ``TEXTE_VERSION`` n'a pas de ``<BLOC_TEXTUEL>`` : son texte vit sous ``<VISAS>``,
+``<SIGNATAIRES>`` et ``<TP>``.
 
-Un ``ARTICLE`` range le sien sous ``<BLOC_TEXTUEL>`` ; un ``TEXTE_VERSION`` n'a **PAS** de
-bloc textuel (mesuré : 0/98) — son texte vit sous ``<VISAS>`` (« Vu le code général… »),
-``<SIGNATAIRES>`` et ``<TP>``. Ne chercher que ``BLOC_TEXTUEL`` aurait ingéré les 98
-décrets du corpus avec un contenu VIDE, sans qu'une seule exception soit levée.
-
-``<NOTA>`` en est exclu délibérément : une note de bas de page n'est pas le texte du
-document, et la fondre dedans polluerait l'embedding avec du hors-sujet.
+``<NOTA>`` est exclu : une note de bas de page polluerait l'embedding.
 """
 
 _TITLE_TAGS = ("TITRE", "TITRE_TA", "NUM")
-"""Où chaque famille range son titre. **L'ordre compte** : à la fusion, ``TEXTE_VERSION``
-(``TITRE``) l'emporte sur ``TEXTELR``, qui n'en a aucun."""
+"""L'ordre compte : à la fusion, ``TITRE`` l'emporte."""
 
 
-# ── Le rôle de chaque balise. C'est LA table. ──────────────────────────────────
+# ── Le rôle de chaque balise ───────────────────────────────────────────────────
 #
-# Les 70 balises mesurées sur le corpus. Une balise absente d'ici ressort en
-# `unknowns["balise"]` et fait échouer le golden : rien n'entre en silence.
+# Une balise absente d'ici ressort au bilan et fait échouer le golden.
 
 _ROLES: dict[str, Role] = {
-    # Les racines : elles ne portent rien elles-mêmes, elles contiennent.
     **dict.fromkeys(_ROOTS, Role.META),
     # ── BODY : le texte du document ────────────────────────────────────────────
     "BLOC_TEXTUEL": Role.BODY,
@@ -65,7 +47,7 @@ _ROLES: dict[str, Role] = {
     "SIGNATAIRES": Role.BODY,
     "TP": Role.BODY,
     "TEXTE": Role.BODY,
-    "NOTA": Role.BODY,  # lu, mais HORS des content_blocks : cf. ci-dessus
+    "NOTA": Role.BODY,  # hors des content_blocks : cf. ci-dessus
     # ── LINK : les arêtes ──────────────────────────────────────────────────────
     "LIENS": Role.LINK,
     "LIEN": Role.LINK,
@@ -78,7 +60,7 @@ _ROLES: dict[str, Role] = {
     "TM": Role.LINK,
     "STRUCT": Role.LINK,
     "STRUCTURE_TA": Role.LINK,
-    # ── VERSION : l'axe temporel. ABSENT de la jurisprudence. ──────────────────
+    # ── VERSION : l'axe temporel ───────────────────────────────────────────────
     "DATE_DEBUT": Role.VERSION,
     "DATE_FIN": Role.VERSION,
     "ETAT": Role.VERSION,
@@ -88,7 +70,7 @@ _ROLES: dict[str, Role] = {
     "VERSIONS_A_VENIR": Role.VERSION,
     "ABRO": Role.VERSION,
     "RECT": Role.VERSION,
-    # ── META : tout le reste — le fourre-tout LÉGITIME ─────────────────────────
+    # ── META : tout le reste ───────────────────────────────────────────────────
     "META": Role.META,
     "META_ARTICLE": Role.META,
     "META_COMMUN": Role.META,
@@ -121,9 +103,6 @@ _ROLES: dict[str, Role] = {
 
 
 _TRANSPARENT = {
-    # Elles portent du texte mais aucune sémantique : leur contenu remonte dans le parent.
-    # Ne pas les traverser ferait disparaître le texte qu'elles enveloppent — c'est le cas
-    # de TOUT le corps des articles, entièrement contenu dans des <p>.
     "p": "\n\n",
     "br": "\n",
     "blockquote": "\n\n",
@@ -132,8 +111,7 @@ _TRANSPARENT = {
     "font": "",
     "span": "",
     "sup": "",
-    # Un tableau lu à plat : chaque cellule est un fragment, chaque ligne un saut. On ne
-    # prétend pas restituer la grille — on refuse simplement de perdre son contenu.
+    # Un tableau lu à plat : on ne restitue pas la grille, on garde son contenu
     "table": "\n",
     "tbody": "",
     "thead": "",
@@ -144,9 +122,6 @@ _TRANSPARENT = {
 
 
 _META_RENAMES = {
-    # La canonicalisation par type : quelle balise brute devient quel champ du domaine.
-    # Une balise absente d'ici n'est PAS perdue — elle entre sous son nom brut, en
-    # minuscules. Le renommage est une promotion, pas un péage.
     "ANCIEN_ID": "ancien_id",
     "CID": "chronicle_cid",
     "DATE_DEBUT": "date_debut",
@@ -170,9 +145,8 @@ _META_RENAMES = {
 }
 
 _LIST_KEYS = frozenset({"url", "versions_a_venir"})
-"""Les clés à plusieurs valeurs (ADR-049). ``url`` : chaque facette d'un texte donne le
-chemin de son propre fichier (98/98 différentes). ``versions_a_venir`` : plusieurs dates
-dans une même facette."""
+"""ADR-049. ``url`` : chaque facette d'un texte donne le chemin de son propre fichier.
+``versions_a_venir`` : plusieurs dates dans une même facette."""
 
 
 LEGI_ROLE_TABLE = RoleTable(
@@ -187,7 +161,7 @@ LEGI_ROLE_TABLE = RoleTable(
         "LEGITEXT": DocumentType.TEXTE,
         "LEGISCTA": DocumentType.SECTION,
     },
-    # La nature d'un article est « Article » : son type le dit déjà.
+    # Son type le dit déjà
     uninformative_natures=frozenset({"ARTICLE"}),
     meta_containers=("META",),
     meta_renames=_META_RENAMES,
@@ -196,18 +170,13 @@ LEGI_ROLE_TABLE = RoleTable(
     transparent=_TRANSPARENT,
     links=LEGI_LINK_TABLE,
     link_tags=("LIEN",),
-    # Les liens structurels sont cherchés UNIQUEMENT ici — et JAMAIS sous <VERSIONS>, où
-    # LIEN_ART désigne les autres versions temporelles du MÊME article. Ce n'est pas une
-    # contenance : les émettre créerait des cycles et de faux parents.
+    # Jamais sous <VERSIONS>, où LIEN_ART désigne une autre version du même article
     link_containers=("STRUCTURE_TA", "STRUCT"),
     structural_link_tags=("LIEN_ART", "LIEN_SECTION_TA"),
-    # …mais ce ne sont pas des scories pour autant : les LIEN_ART sous <VERSIONS> sont
-    # l'axe temporel de l'article. Ils sortent sous VERSION_KIND et deviennent la CHAÎNE
-    # `succeeded_by` (tri par debut, auto-référence = ancre, mort-nées en latéral).
+    # Ceux-là deviennent la chaîne `succeeded_by`
     version_link_containers=("VERSIONS",),
     version_link_tags=("LIEN_ART",),
     ancestor_containers=("CONTEXTE",),
     ancestor_tags=("TITRE_TXT", "TITRE_TM"),
     ancestor_id_attrs=("id_txt", "id"),
 )
-"""LEGI, en une donnée. Le parser générique fait le reste."""

@@ -1,20 +1,7 @@
-"""Le cache des relations pendantes (§13) — rien n'est jamais jeté.
+"""Le registre des relations pendantes.
 
-Trois décisions du cadrage se jouent ici, et chacune est une ligne de Mongo :
-
-1. **Union idempotente.** ``$setOnInsert`` fige ``first_seen_run`` : c'est la date
-   de naissance du trou, elle ne bouge jamais. ``$set`` fait avancer
-   ``last_seen_run``. Revoir dix fois la même pendante produit UNE entrée — c'est
-   l'index unique sur le triplet qui le garantit, pas notre bonne volonté.
-
-2. **Rejeu ciblé.** ``promotable_for`` filtre sur ``target_id ∈ written_node_ids``
-   — le delta de LA run. On ne relit jamais le backlog entier : une pendante dont
-   la cible n'est pas arrivée cette fois-ci ne peut pas se résoudre, et la
-   retenter serait un coût pur qui croît avec l'historique.
-
-3. **Ni TTL, ni ``retry_count``.** Une pendante n'est pas « ratée » : elle attend.
-   Un arrêt qui cite une directive jamais ingérée est un lien légitime vers
-   l'extérieur du corpus — pas une erreur à faire expirer.
+L'union est idempotente grâce à l'index unique sur le triplet : ``$setOnInsert`` fige
+``first_seen_run``, ``$set`` fait avancer ``last_seen_run``.
 """
 
 from pymongo import UpdateOne
@@ -25,11 +12,11 @@ from ragcore.core.models.pending import PendingKey, PendingRelation
 __all__ = ["PENDING_RELATIONS_COLLECTION", "MongoPendingRelationRepository"]
 
 PENDING_RELATIONS_COLLECTION = "pending_relations"
-"""La collection des pendantes, dans la base de données (défaut : MURPHY_DATA)."""
+"""Dans la base de données, pas la méta."""
 
 
 def _key_filter(key: PendingKey) -> dict[str, object]:
-    """Le triplet — celui de l'index unique."""
+    """Celui de l'index unique."""
     return {
         "source_id": key.source_id,
         "target_id": key.target_id,
@@ -38,8 +25,6 @@ def _key_filter(key: PendingKey) -> dict[str, object]:
 
 
 class MongoPendingRelationRepository:
-    """Implémentation Mongo de ``PendingRelationRepository``."""
-
     def __init__(
         self,
         client: MongoClient,
@@ -55,8 +40,7 @@ class MongoPendingRelationRepository:
         operations = []
         for pending in pendings:
             document = pending.model_dump(mode="json")
-            # first_seen_run est posé À LA CRÉATION uniquement : le retirer du $set
-            # est ce qui l'empêche de reculer quand la pendante est revue.
+            # Hors du $set : first_seen_run ne doit pas reculer quand la pendante est revue
             first_seen_run = document.pop("first_seen_run")
             operations.append(
                 UpdateOne(

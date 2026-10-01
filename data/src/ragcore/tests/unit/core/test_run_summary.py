@@ -1,8 +1,5 @@
-"""RunSummary est la PROJECTION identifiée d'un RunStats.
-
-Ce que ces tests verrouillent : l'identité du run ne participe JAMAIS à
-l'agrégation. Elle s'attache une fois, après la réduction. C'est ce qui rend la
-fusion des N agrégats de workers commutative — donc le RunSummary déterministe.
+"""L'identité du run ne participe jamais à l'agrégation : elle s'attache une fois,
+après la réduction.
 """
 
 import json
@@ -66,8 +63,8 @@ def test_counts_reach_the_stats(aggregator: RunStatsAggregator) -> None:
 def test_skipped_files_are_counted_outside_the_equation(
     aggregator: RunStatsAggregator,
 ) -> None:
-    """Un compteur par raison, porteur de son `count` : le bilan compte les fichiers
-    écartés, sans toucher l'équation de complétude."""
+    """Un compteur par raison : le bilan compte les fichiers écartés, hors équation de
+    complétude."""
     aggregator.emit(build_event(DOCUMENT_FETCHED, RUN, payload={"count": 1}))
     aggregator.emit(build_event(DOCUMENT_PERSISTED, RUN))
     for event_type, count in ((DOCUMENT_VERSION_SKIPPED, 3), (DOCUMENT_UNREADABLE, 1)):
@@ -83,7 +80,7 @@ def test_skipped_files_are_counted_outside_the_equation(
 def test_status_accepts_the_literals_the_hooks_pass(
     aggregator: RunStatsAggregator,
 ) -> None:
-    """Les hooks passent "ok"/"failed" en chaînes brutes, pas en RunStatus."""
+    """Les hooks passent "ok"/"failed" en chaînes brutes."""
     assert aggregator.finalize("ok").status is RunStatus.OK
     assert aggregator.finalize("failed", "boom").status is RunStatus.FAILED
 
@@ -133,8 +130,7 @@ def test_the_stored_summary_is_flat() -> None:
 
 
 def test_an_empty_error_is_not_stored(aggregator: RunStatsAggregator) -> None:
-    """``status`` dit déjà que le run n'a pas levé : un ``error_message: null`` ne dirait
-    rien de plus."""
+    """Pas de ``error_message: null`` : ``status`` dit déjà que le run n'a pas levé."""
     assert "error_message" not in _stored(aggregator.finalize(RunStatus.OK))
     assert _stored(aggregator.finalize(RunStatus.FAILED, "boom"))["error_message"] == (
         "boom"
@@ -150,8 +146,8 @@ def test_sources_list_every_ingested_source() -> None:
 
 
 def test_unknowns_defaults_to_empty_not_none() -> None:
-    """Un run qui a tout compris déclare un vide, pas une absence — catégorie par
-    catégorie : le schéma du bilan ne varie pas d'un run à l'autre (ADR-048)."""
+    """Chaque catégorie est présente, même vide : le schéma du bilan est stable
+    (ADR-048)."""
     summary = RunStatsAggregator(RUN, (), datetime.now(UTC)).finalize(RunStatus.OK)
     assert summary.unknowns == {"tags": {}, "roots": {}, "links": {}}
     assert summary.collisions == {}
@@ -160,7 +156,7 @@ def test_unknowns_defaults_to_empty_not_none() -> None:
 def test_aggregator_declares_what_it_could_not_name(
     aggregator: RunStatsAggregator,
 ) -> None:
-    """Le vocabulaire inconnu remonte jusqu'au sommaire : rien n'est jeté en silence."""
+    """Le vocabulaire inconnu remonte jusqu'au bilan."""
     aggregator.record_unknown("relation_type", "titre_tm", DOC_2)
     aggregator.record_unknown("relation_type", "titre_tm", DOC_1)  # deux documents
 
@@ -174,7 +170,7 @@ def test_aggregator_declares_what_it_could_not_name(
 def test_aggregator_counts_collisions_apart_from_unknowns(
     aggregator: RunStatsAggregator,
 ) -> None:
-    """Une collision n'est pas un inconnu : elle a son champ, au premier niveau."""
+    """Une collision a son propre champ, au premier niveau."""
     aggregator.record_collision("url", FACETS)
     aggregator.record_collision("url", FACETS)
 
@@ -185,11 +181,7 @@ def test_aggregator_counts_collisions_apart_from_unknowns(
 
 
 def test_the_summary_projects_the_reduction_of_n_workers() -> None:
-    """Le cas réel du pool : N agrégats fusionnent, PUIS l'identité s'attache.
-
-    C'est ici que se joue la séparation : ``RunStats`` fusionne parce qu'il n'a
-    pas d'identité ; ``RunSummary`` en a une, donc il ne fusionne pas.
-    """
+    """N agrégats fusionnent, puis l'identité s'attache."""
     workers = [
         RunStats(
             counts={DOCUMENT_PERSISTED: 3},

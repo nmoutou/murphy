@@ -6,7 +6,7 @@ import { initInfraClients, closeInfraClients } from './infra/clients';
 import { attachChatWebSocket } from './routes/chatWebSocket';
 import { checkEnvironment } from './utils/configWarnings';
 
-/** Past this delay, a shutdown still waiting on open connections is forced */
+/** Passé ce délai, un arrêt qui attend encore des connexions est forcé */
 const FORCED_SHUTDOWN_DELAY_MS = 10_000;
 
 const server = http.createServer(app);
@@ -17,8 +17,6 @@ const start = async () => {
   checkEnvironment(environmentReport);
   logger.info(`Environment: ${config.server.nodeEnv}`);
 
-  // Peut refuser le démarrage : Mongo injoignable, ou collection Qdrant
-  // absente. Mieux vaut le découvrir ici qu'à la première question d'un utilisateur.
   await initInfraClients(config);
   logger.info('All infrastructure initialized successfully');
 
@@ -31,9 +29,6 @@ start().catch((error) => {
   process.exit(1);
 });
 
-/**
- * Graceful shutdown handler
- */
 const gracefulShutdown = async (signal: string) => {
   logger.info(`${signal} signal received: closing HTTP server`);
 
@@ -57,11 +52,9 @@ const gracefulShutdown = async (signal: string) => {
   }, FORCED_SHUTDOWN_DELAY_MS);
 };
 
-// Handle shutdown signals
 process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
-// Handle uncaught errors
 process.on('uncaughtException', (error: Error) => {
   logger.error({ err: error }, 'Uncaught exception');
   gracefulShutdown('UNCAUGHT_EXCEPTION');

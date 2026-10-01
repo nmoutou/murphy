@@ -6,11 +6,7 @@ from ragcore.core.models.audit import AuditEvent
 
 
 class NoopTelemetry:
-    """Backend inerte : satisfait TelemetryPort sans effet de bord.
-
-    Utile en test, et pour désactiver un backend sans rendre les sites
-    d'émission conditionnels.
-    """
+    """Désactive un backend sans rendre les sites d'émission conditionnels."""
 
     def emit(self, event: AuditEvent) -> None:
         return

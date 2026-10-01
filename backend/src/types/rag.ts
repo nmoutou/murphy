@@ -1,17 +1,9 @@
-/**
- * RAG Pipeline Types
- * Shared types for embedding, retrieval, and LLM operations
- */
-
 import type { ChatError, ChatErrorStage } from '@murphy/contract/errors';
 import type { DocumentType } from '@murphy/contract/messages';
 
-/** `request` = extracting the question, the first step of the pipeline */
+/** `request` = l'extraction de la question, première étape du pipeline */
 export type RagStage = Exclude<ChatErrorStage, 'internal'>;
 
-/**
- * RAG Error with stage information
- */
 export class RagError extends Error {
   constructor(
     public readonly stage: RagStage,
@@ -24,11 +16,11 @@ export class RagError extends Error {
   }
 }
 
-/** How one infrastructure call fails, when the cause is not a timeout */
+/** Comment échoue un appel d'infrastructure, hors timeout */
 export interface RagFailure {
   readonly stage: RagStage;
   readonly code: string;
-  /** Completes "Failed to …", e.g. `generate embeddings` */
+  /** Complète « Failed to … », par ex. `generate embeddings` */
   readonly operation: string;
 }
 
@@ -40,9 +32,8 @@ const TIMEOUT_CODE = 'TIMEOUT';
 const TIMEOUT_ERROR_NAME_SUFFIX = 'TimeoutError';
 
 /**
- * Reads `name` or `message` on any thrown object. Duck-typed rather than
- * `instanceof Error`: a `DOMException` from another realm (Jest's sandbox, say)
- * carries both without passing that test.
+ * Pas d'`instanceof Error` : une `DOMException` d'un autre realm (le bac à sable de
+ * Jest) porte ces champs sans passer ce test.
  */
 const readErrorField = (error: unknown, field: 'name' | 'message'): string | undefined => {
   if (typeof error !== 'object' || error === null) return undefined;
@@ -50,10 +41,7 @@ const readErrorField = (error: unknown, field: 'name' | 'message'): string | und
   return typeof value === 'string' ? value : undefined;
 };
 
-/**
- * Wraps a failed infrastructure call into a `RagError`. The code is `TIMEOUT`
- * when the error type says so, the failure's own code otherwise.
- */
+/** Code `TIMEOUT` si le type de l'erreur l'indique, sinon celui de `failure` */
 export const toRagError = (failure: RagFailure, error: unknown): RagError => {
   const isTimeout = readErrorField(error, 'name')?.endsWith(TIMEOUT_ERROR_NAME_SUFFIX) ?? false;
   const cause = readErrorField(error, 'message') ?? String(error);
@@ -63,8 +51,8 @@ export const toRagError = (failure: RagFailure, error: unknown): RagError => {
 const INTERNAL_CHAT_ERROR: ChatError = { stage: 'internal', code: 'INTERNAL' };
 
 /**
- * What the client is told of a failure (ADR-041): the stage and the code of a
- * `RagError`, nothing of any other error. The message stays in the logs.
+ * Ce que le client apprend d'un échec (ADR-041) : étape et code d'une `RagError`, rien
+ * d'une autre erreur. Le message reste dans les logs.
  */
 export const toChatError = (error: unknown): ChatError =>
   error instanceof RagError ? { stage: error.stage, code: error.code } : INTERNAL_CHAT_ERROR;
@@ -72,46 +60,39 @@ export const toChatError = (error: unknown): ChatError =>
 const CONTRACT_VIOLATION_CODE = 'CONTRACT_VIOLATION';
 
 /**
- * The databases do not hold what the serving contract (ADR-039) says. Never skipped
- * silently: a wrong passage in the LLM context is worse than a visible error.
+ * Les bases ne respectent pas le contrat de service (ADR-039). Jamais ignoré en silence :
+ * un mauvais passage dans le contexte du LLM est pire qu'une erreur visible.
  */
 export const contractViolation = (message: string): RagError =>
   new RagError('retrieval', CONTRACT_VIOLATION_CODE, `Serving contract violated (ADR-039): ${message}`);
 
-/**
- * A Qdrant hit, its payload checked against the serving contract (ADR-039 §2).
- * `charStart`/`charEnd` count Unicode code points in the parent's `content`.
- */
+/** `charStart`/`charEnd` comptent des points de code Unicode dans le `content` du parent */
 export interface RetrievedChunk {
   readonly chunkId: string;
-  /** The key of the parent document in MongoDB `documents` */
+  /** Clé du document parent dans `documents` (MongoDB) */
   readonly identifier: string;
   readonly charStart: number;
   readonly charEnd: number;
   readonly score: number;
   readonly documentType: DocumentType;
-  /** The legal nature (`LOI`, `ARRET`…), when the source gives a meaningful one */
+  /** La nature juridique (`LOI`, `ARRET`…), quand la source en donne une utile */
   readonly nature?: string;
 }
 
-/** A parent document as the ingestion stored it in MongoDB `documents` */
 export interface StoredDocument {
   readonly identifier: string;
   readonly title: string;
   readonly content: string;
 }
 
-/** A retrieved chunk joined to its parent document, with its text cut out */
 export interface Passage {
   readonly chunk: RetrievedChunk;
   readonly document: StoredDocument;
   readonly text: string;
-  /** UTF-16 offsets of `text` in `document.content` */
+  /** Offsets UTF-16 de `text` dans `document.content` */
   readonly highlightStart: number;
   readonly highlightEnd: number;
 }
 
-/**
- * Embedding vector from the TEI service; its length depends on the configured model
- */
+/** Sa longueur dépend du modèle configuré */
 export type EmbeddingVector = number[];

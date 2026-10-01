@@ -39,7 +39,7 @@ services:
       dockerfile: backend/Dockerfile
     networks:
       - backend
-    # NODE_ENV comes from the build target (development / production), not from .env.dev
+    # NODE_ENV vient de la cible de build, pas de .env.dev
     environment:
       - PORT=${PORT}
       - NODE_LOG_LEVEL=${NODE_LOG_LEVEL}

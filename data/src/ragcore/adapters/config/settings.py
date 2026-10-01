@@ -1,25 +1,14 @@
-"""``InfraSettings`` — lue de l'environnement, jamais du dépôt.
+"""La configuration d'infrastructure, lue de l'environnement, jamais du dépôt : bases,
+secrets, chemins, modèle d'embedding et découpe.
 
-Les bases, les secrets, les chemins : le *où* du pipeline. S'y ajoutent le modèle
-d'embedding et la découpe, qui changent ensemble : ``max_chars`` est mesuré pour la
-fenêtre du modèle. ``conf/base/parameters.yml`` ne garde que les réglages de dev.
+Les secrets sont des ``SecretStr`` : un ``str`` finirait dans un log le jour où
+quelqu'un journalise l'objet entier.
 
-La forme de ces modèles est **dictée par ses appelants**. ``orchestration/kedro/stores.py`` appelle
-``.get_secret_value()`` sur le mot de passe Neo4j et la clé Qdrant : ce sont donc des
-``SecretStr``, et le typage l'impose au lieu de l'espérer. Un secret qui traîne en
-``str`` finit dans un log le jour où quelqu'un journalise l'objet entier.
+Deux bases Mongo : les données d'un côté, la méta (audit, bilans, pendantes) de
+l'autre, qu'un ``drop`` des données n'emporte jamais.
 
-Deux bases Mongo, et la distinction est structurelle : les *données* (les documents)
-vivent dans l'une, la *méta* (audit, bilans de run, pendantes) dans l'autre. Un ``drop``
-de la base de données ne doit jamais emporter la mémoire de ce qu'on a fait.
-
-**Le fichier lu est celui de la RACINE** (``ROOT_ENV_FILE``), pas un ``.env`` local — il
-n'y en a pas dans ``data/``, et en créer un n'aurait aucun effet. Le pipeline tourne sur
-l'*hôte* tandis que les bases tournent en *conteneur* : le fichier porte donc les URLs
-côté hôte (``localhost``), et c'est ``docker-compose`` qui surcharge les services
-conteneurisés avec leurs noms de service. Une variable ne peut pas valoir ``localhost``
-et ``mongo`` à la fois ; l'hôte est celui qu'on ne peut pas surcharger, donc c'est lui
-qui parle dans le fichier.
+Le pipeline tourne sur l'hôte, les bases en conteneur : le fichier porte les URLs côté
+hôte (``localhost``), et docker-compose les surcharge pour les services conteneurisés.
 """
 
 from functools import lru_cache
@@ -46,26 +35,19 @@ __all__ = [
 
 
 ROOT_ENV_FILE = Path(__file__).resolve().parents[5] / ".env.dev"
-"""Le **seul** fichier d'environnement du projet : celui de la racine, pas d'ici.
+"""Le seul fichier d'environnement du projet, à la racine du dépôt.
 
-``data/`` est un sous-module ; la racine est son parent (d'où ``parents[5]``). Le chemin
-est calculé depuis ``__file__``, **jamais depuis le CWD** — un ``env_file=".env"`` relatif
-se résout contre le répertoire courant, donc un ``kedro run`` lancé d'ailleurs que de
-``data/`` ne lirait *aucun* fichier et prendrait silencieusement les défauts des autres
-variables.
-
-Un seul fichier, trois consommateurs : TEI (``--model-id``), le backend et l'ingestion
-lisent le même ``EMBEDDING_MODEL``. Le modèle servi et celui que le pipeline croit
-embarquer ne peuvent plus diverger, **parce qu'ils ne sont plus deux variables**.
+Calculé depuis ``__file__``, jamais depuis le CWD : un ``kedro run`` lancé d'ailleurs ne
+lirait sinon aucun fichier, en silence.
 """
 
 Environment = Literal["dev", "prod"]
-"""Les deux valeurs d'``ENVIRONMENT``. Tout ce qui n'est pas un poste de dev est ``prod``."""
+"""Tout ce qui n'est pas un poste de dev est ``prod``."""
 
 DEFAULT_ENVIRONMENT: Environment = "prod"
 
 LogLevel = Literal["debug", "info", "warning", "error", "critical"]
-"""Les valeurs de ``KEDRO_LOG_LEVEL``, les niveaux de ``logging`` en minuscules."""
+"""Les niveaux de ``logging``, en minuscules."""
 
 DEFAULT_LOG_LEVEL: LogLevel = "info"
 
@@ -74,15 +56,8 @@ DEFAULT_EMBEDDING_INGESTION_TIMEOUT_MS = 120_000
 
 
 def _require_env_file() -> Path:
-    """Exige le fichier — à l'**instanciation**, jamais à l'import.
-
-    Le vérifier au niveau module ferait échouer ``import ragcore`` sur une machine sans
-    ``.env.dev`` : les tests unitaires, qui ne touchent aucune base et n'ont aucun besoin
-    de configuration, ne s'importeraient plus. Le garde doit protéger ceux qui *lisent* la
-    config, pas ceux qui importent le module qui la déclare.
-
-    Son absence est **fatale** : la rattraper par les défauts est exactement la
-    dégradation silencieuse que la doctrine proscrit.
+    """Vérifié à la lecture, jamais à l'import : les tests unitaires tournent sans
+    ``.env.dev``. Son absence est fatale, jamais rattrapée par les défauts.
     """
     if not ROOT_ENV_FILE.exists():
         raise FileNotFoundError(
@@ -95,26 +70,12 @@ def _require_env_file() -> Path:
 
 
 class InfraSettings(BaseSettings):
-    """Les bases, les chemins. Le *où*, jamais le *quoi*."""
-
     model_config = SettingsConfigDict(env_file=ROOT_ENV_FILE, extra="ignore")
 
     environment: Environment = DEFAULT_ENVIRONMENT
-    """L'environnement d'exécution, `dev` ou `prod`. **Le défaut est `prod`, et c'est
-    délibéré.**
-
-    Il ne sert qu'à *une* chose : appliquer `parameters.yml` (voir
-    `run_parameters.resolve_dev_settings`), dont `nuke_all`, qui efface TOUTES les
-    données de TOUTES les bases. Hors `dev`, le fichier est ignoré.
-
-    Le défaut penche vers le refus, pas vers l'autorisation : un `.env` sans
-    `ENVIRONMENT` est traité comme de la prod, donc protégé. Un garde-fou dont le
-    défaut *ouvre* la trappe ne protège rien — il suffirait d'oublier une variable
-    pour vider une prod. On rend l'effacement accidentel impossible, pas déconseillé.
-
-    Toute autre valeur (`Dev`, `development`…) arrête le run au chargement de la
-    configuration, avant tout nœud : une coquille valait prod en silence, et
-    `parameters.yml` était ignoré sans que rien ne s'arrête. Vide, la variable vaut absente."""
+    """Seul `dev` applique `parameters.yml`, dont `nuke_all` qui efface toutes les bases.
+    Le défaut est donc `prod` : oublier la variable ne doit jamais vider une prod. Toute
+    autre valeur arrête le run ; vide, la variable vaut absente."""
 
     mongodb_uri: str = "mongodb://localhost:27017"
     mongodb_data_db_name: str = "MURPHY_DATA"
@@ -127,65 +88,36 @@ class InfraSettings(BaseSettings):
     qdrant_url: str = "http://localhost:6333"
     qdrant_api_key: SecretStr | None = None
     qdrant_collection: str
-    """Le nom de la collection Qdrant : fixe, et **sans défaut**.
-
-    Le backend lit la même variable (``QDRANT_COLLECTION``) dans le même fichier :
-    l'ingestion écrit la collection qu'il interroge. Absente, le run s'arrête au
-    chargement de la configuration."""
+    """Sans défaut. Le backend lit la même variable : l'ingestion écrit la collection
+    qu'il interroge."""
 
     xml_source_path: Path = Path("/mnt/data/Murphy/src")
-    """La RACINE du corpus — un chemin **absolu**, hors du dépôt.
-
-    Le sous-répertoire de chaque source (`LEGI`, `CASS`…) est un fait sur la source, pas
-    de la config : il vit dans `sources/registry.py`.
-
-    Le défaut était `data/01_raw`, un chemin **relatif au CWD qui ne pointait sur rien** —
-    et son mode de défaillance est muet : un répertoire absent ne lève pas, il donne zéro
-    document. Un corpus vide et un run « réussi » sont indiscernables. Absolu, donc, parce
-    que le corpus ne vit dans aucun des deux dépôts."""
+    """La racine du corpus, en chemin absolu hors du dépôt. Le sous-répertoire de chaque
+    source vit dans `sources/registry.py`."""
 
     source: str = "all"
-    """Les sources ingérées par défaut. **`all` = toutes les sources ingérables.**
-
-    Surchargeable : `kedro run --params source=cass`, ou `source=cass,jade` pour un
-    sous-ensemble.
-
-    **Pourquoi « toutes » est le bon défaut.** Le défaut d'un pipeline d'ingestion doit
-    être *ingérer le corpus*, pas *ingérer un sixième du corpus*. `legi` en défaut était
-    un vestige de l'époque où LEGI était la seule source écrite : il faisait qu'un
-    `kedro run` nu laissait cinq bases sur six intactes — sans le dire, et en se
-    terminant « ok ». Un run qui n'ingère pas ce qu'on croit qu'il ingère est exactement
-    la famille d'échec silencieux que ce pipeline s'interdit.
-
-    Toutes les sources partagent la même collection Qdrant : même normalisation, même
-    chunking, même modèle."""
+    """`all` = toutes les sources ingérables. Surchargeable : `kedro run --params
+    source=cass,jade`."""
 
     @field_validator("environment", mode="before")
     @classmethod
     def _environnement_vide_vaut_absent(cls, value: object) -> object:
-        """``ENVIRONMENT=`` produit ``''`` : l'absence, donc le défaut, pas une coquille."""
+        """``ENVIRONMENT=`` produit ``''`` : l'absence, pas une coquille."""
         return DEFAULT_ENVIRONMENT if value == "" else value
 
     @field_validator("qdrant_api_key", mode="after")
     @classmethod
     def _secret_vide_vaut_absent(cls, value: SecretStr | None) -> SecretStr | None:
-        """``QDRANT_API_KEY=`` produit ``SecretStr('')``, **pas** ``None``.
-
-        Le type optionnel dit « une clé, ou aucune », et la chaîne vide n'est ni l'un ni l'autre. Le client
-        Qdrant recevrait une clé d'API *vide* au lieu de n'en recevoir aucune — un refus
-        d'authentification là où on voulait ne pas s'authentifier du tout.
-        """
+        """``QDRANT_API_KEY=`` produit ``SecretStr('')``, pas ``None`` : le client
+        enverrait une clé vide et serait refusé."""
         if value is not None and not value.get_secret_value():
             return None
         return value
 
 
 class EmbeddingRuntimeSettings(BaseSettings):
-    """Le service TEI : le modèle qu'il doit servir, et comment le joindre.
-
-    Il n'y a qu'un embedder, TEI : pas de fournisseur à choisir. La dimension n'est pas
-    déclarée, elle est mesurée auprès du service au démarrage
-    (``served_model.inspect_served_model``).
+    """Le service TEI : le modèle qu'il doit servir, et comment le joindre. La dimension
+    est mesurée au démarrage (``served_model.inspect_served_model``).
     """
 
     model_config = SettingsConfigDict(
@@ -193,26 +125,19 @@ class EmbeddingRuntimeSettings(BaseSettings):
     )
 
     model: str = Field(min_length=1)
-    """Le modèle attendu (``EMBEDDING_MODEL``), celui que TEI charge et que le backend
-    interroge. Obligatoire : en changer invalide les vecteurs écrits."""
+    """Celui que TEI charge et que le backend interroge."""
     service_url: str = Field(min_length=1)
-    """L'URL de l'API compatible OpenAI de TEI (``EMBEDDING_SERVICE_URL``), p. ex.
-    ``http://localhost:5001/v1``. Obligatoire : aucun défaut ne doit désigner un service."""
+    """L'API compatible OpenAI de TEI, p. ex. ``http://localhost:5001/v1``. Aucun défaut
+    ne doit désigner un service."""
     batch_size: int = 32
     ingestion_timeout: int = Field(default=DEFAULT_EMBEDDING_INGESTION_TIMEOUT_MS, gt=0)
-    """Le timeout d'une requête au service, en millisecondes comme côté backend.
-
-    Distinct d'``EMBEDDING_SERVICE_TIMEOUT``, celui du backend (10 s) : le backend
-    embarque une question, l'ingestion des lots de chunks envoyés en parallèle."""
+    """En millisecondes. Plus long que celui du backend : l'ingestion envoie des lots en
+    parallèle."""
 
 
 class ChunkingSettings(BaseSettings):
-    """La découpe (``CHUNKING_MAX_CHARS``, ``CHUNKING_OVERLAP_CHARS``), en caractères.
-
-    À côté d'``EMBEDDING_MODEL`` parce qu'elle en dépend : ``max_chars`` est le plus grand
-    qui tienne dans la fenêtre du modèle, à remesurer quand il change. Obligatoires et
-    sans défaut : en changer invalide les vecteurs écrits. L'environnement ne donne que
-    des chaînes : elles sont converties ici, puis validées par ``ChunkingConfig``.
+    """La découpe, en caractères, sans défaut : en changer invalide les vecteurs écrits.
+    Les chaînes de l'environnement sont converties ici, validées par ``ChunkingConfig``.
     """
 
     model_config = SettingsConfigDict(
@@ -223,19 +148,16 @@ class ChunkingSettings(BaseSettings):
     overlap_chars: int
 
     def to_config(self) -> ChunkingConfig:
-        """La découpe du run, bornée : ``0 ≤ overlap_chars < max_chars``."""
+        """Bornée : ``0 ≤ overlap_chars < max_chars``."""
         return ChunkingConfig(
             max_chars=self.max_chars, overlap_chars=self.overlap_chars
         )
 
 
 class LoggingSettings(BaseSettings):
-    """Le niveau des logs de l'ingestion (``KEDRO_LOG_LEVEL``).
-
-    Distinct de ``NODE_LOG_LEVEL``, celui du backend : régler l'un ne touche pas l'autre.
-    Il vaut pour les loggers ``kedro``, ``data`` et ``ragcore`` ; les bibliothèques
-    tierces restent en ``WARNING``. Toute autre valeur (``INFO``, ``warn``…) arrête le
-    run au chargement de la configuration. Vide, la variable vaut absente.
+    """Le niveau des loggers ``kedro``, ``data`` et ``ragcore`` ; les bibliothèques
+    tierces restent en ``WARNING``. Une valeur inconnue arrête le run ; vide, la variable
+    vaut absente.
     """
 
     model_config = SettingsConfigDict(
@@ -247,7 +169,7 @@ class LoggingSettings(BaseSettings):
     @field_validator("log_level", mode="before")
     @classmethod
     def _niveau_vide_vaut_absent(cls, value: object) -> object:
-        """``KEDRO_LOG_LEVEL=`` produit ``''`` : l'absence, donc le défaut."""
+        """``KEDRO_LOG_LEVEL=`` produit ``''`` : l'absence."""
         return DEFAULT_LOG_LEVEL if value == "" else value
 
 

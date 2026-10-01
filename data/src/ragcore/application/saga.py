@@ -66,7 +66,7 @@ class SagaExecutor:
     async def _compensate_all(
         self, completed: list[SagaStep], context: PipelineContext, failed_name: str
     ) -> list[str]:
-        """Compense les steps réussis, du dernier au premier. Rend ceux qui ont raté."""
+        """Du dernier au premier. Rend les compensations ratées."""
         failed_compensations: list[str] = []
         for step in reversed(completed):
             if not await self._compensate_one(step, context, failed_name):
@@ -79,10 +79,7 @@ class SagaExecutor:
         try:
             await step.compensate()
         except Exception as comp_exc:  # noqa: BLE001 — une compensation ratée ne doit pas interrompre les suivantes ; l'échec est émis et compté
-            # Une compensation qui rate laisse un écrit partiel derrière elle.
-            # Le `logger.error` seul le rendait invisible au bilan : on émet
-            # donc un événement COMPTÉ (le `step` en cause dans son payload), pour que
-            # l'état corrompu apparaisse dans le RunSummary — pas de perte sans compteur.
+            # Écrit partiel laissé derrière : émis et compté, pour qu'il se voie au bilan
             logger.error(
                 "compensation.failed step=%s error=%s",
                 step.name,
@@ -119,9 +116,7 @@ class SagaExecutor:
                     "compensated_steps": [s.name for s in completed],
                     "failed_compensations": failed_compensations,
                 },
-                # `success` dit la VÉRITÉ : une seule compensation ratée et le
-                # rollback n'est pas propre. L'affirmer `True` inconditionnellement
-                # faisait mentir l'audit sur l'intégrité de l'état.
+                # Une seule compensation ratée suffit : le rollback n'est pas propre
                 success=not failed_compensations,
             )
         )

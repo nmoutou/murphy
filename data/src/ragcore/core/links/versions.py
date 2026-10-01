@@ -1,9 +1,7 @@
-"""La CHAÎNE temporelle des versions d'un document — l'axe du temps du graphe.
+"""La chaîne temporelle des versions d'un document.
 
-Les liens de version se traitent EN GROUPE : la chaîne est une propriété de la liste
-(l'ordre), pas de chaque lien pris isolément. Les traduire un à un — c'est ce que faisait
-`has_version` — produit le produit cartésien : 2 760 arêtes « dans tous les sens » là où
-~350 suffisent à porter le même fait.
+Les liens de version se traitent en groupe : traduits un à un, ils donneraient le
+produit cartésien des versions au lieu de leur chaîne.
 """
 
 from __future__ import annotations
@@ -20,52 +18,35 @@ __all__ = ["STILLBORN_SUFFIX", "VERSION_KIND", "VersionEntry", "version_chain"]
 
 
 VERSION_KIND = "version:lien"
-"""Le ``kind`` des liens de VERSION — l'axe temporel d'un document.
-
-Chaque ``<LIEN_ART>`` d'un bloc ``<VERSIONS>`` désigne une version datée du MÊME
-article — JAMAIS une contenance (le bloc était exclu de ``link_containers`` à raison :
-le traduire ainsi créerait cycles et faux parents). Ces références ne deviennent pas des
-arêtes une à une : elles sont traitées **en groupe** par ``version_chain``, qui trie la
-liste par ``debut`` et n'émet que les arêtes de la CHAÎNE touchant le document courant.
-L'auto-référence n'est plus jetée : elle est l'**ancre** qui localise le document dans
-sa propre liste.
+"""Chaque ``<LIEN_ART>`` d'un bloc ``<VERSIONS>`` désigne une version datée du même
+article, jamais une contenance : en faire une créerait cycles et faux parents.
 """
 
 STILLBORN_SUFFIX = "_MORT_NE"
-"""Le marqueur DILA d'une version JAMAIS entrée en vigueur (``MODIFIE_MORT_NE``…).
+"""Le marqueur DILA d'une version jamais entrée en vigueur (``MODIFIE_MORT_NE``…).
 
-Un texte A modifie un article avec effet différé ; un texte B révoque la disposition
-avant l'échéance : la version qu'A aurait produite est *mort-née* — son ``fin`` est
-souvent antérieur à son ``debut``. Le suffixe est le critère fiable, PAS les dates :
-mesuré sur le corpus, 12 liens mort-nés sur 57 ont des dates d'apparence normale.
-Poids juridique nul (personne n'a jamais été régi par elle) : elle est HORS de la
-chaîne, accrochée en branche latérale — l'``etat`` voyage sur l'arête pour la filtrer.
+Le critère fiable est ce suffixe, pas les dates : 12 liens mort-nés sur 57 ont des
+dates d'apparence normale.
 """
 
 VersionEntry = tuple[Mapping[str, Any], Identifier]
-"""Une version identifiée : sa référence brute (datation, ``etat``) et son identifiant."""
+"""La référence brute (datation, ``etat``) et l'identifiant d'une version."""
 
 
 def version_chain(
     entries: Sequence[VersionEntry], subject: LinkSubject
 ) -> list[Relation]:
-    """La CHAÎNE temporelle : chaque version pointe sa suivante, dans le sens du temps.
+    """Chaque version pointe sa suivante, dans le sens du temps.
 
-    Le document courant n'émet que les arêtes **qui le touchent** — sortante ET
-    entrante : « ma version précédente → moi » et « moi → ma version suivante ». Chaque
-    arête est ainsi émise par ses deux bouts, et le ``MERGE`` dédoublonne : la chaîne
-    survit à un maillon absent du corpus sans qu'aucun document n'ait à coordonner quoi
-    que ce soit avec un autre.
+    Le document courant n'émet que les arêtes qui le touchent, entrante et sortante :
+    chaque arête est émise par ses deux bouts et le ``MERGE`` dédoublonne, donc la
+    chaîne survit à un maillon absent du corpus.
 
-    L'**auto-référence** — le bloc ``<VERSIONS>`` liste toujours l'article lui-même —
-    n'est plus jetée : elle est l'ancre qui localise le document dans sa propre liste
-    triée. Sans elle, il n'y a rien à émettre (le document ne sait pas où il est).
+    L'auto-référence (le bloc ``<VERSIONS>`` liste l'article lui-même) est l'ancre qui
+    localise le document dans la liste triée ; sans elle, rien à émettre.
 
-    Les **mort-nées** sont hors chaîne : jamais entrées en vigueur, elles n'ont aucune
-    date où elles furent le droit applicable — les chaîner affirmerait le contraire.
-    Elles s'accrochent en branche latérale à la version en vigueur au moment de
-    l'avortement (la dernière vivante avant leur ``debut`` théorique), l'``etat`` sur
-    l'arête disant ce qu'elles sont.
+    Les mort-nées sont hors chaîne, jamais applicables : elles s'accrochent en branche
+    latérale à la version en vigueur au moment de l'avortement.
     """
     if not entries:
         return []
@@ -82,7 +63,6 @@ def version_chain(
 
 
 def _living_sorted(entries: Sequence[VersionEntry]) -> list[VersionEntry]:
-    """Les versions entrées en vigueur, dans l'ordre du temps (``debut``, puis ``fin``)."""
     return sorted(
         (e for e in entries if not _is_stillborn(e[0])),
         key=lambda e: (str(e[0].get("debut", "")), str(e[0].get("fin", ""))),
@@ -92,7 +72,6 @@ def _living_sorted(entries: Sequence[VersionEntry]) -> list[VersionEntry]:
 def _neighbour_edges(
     living: Sequence[VersionEntry], position: int, subject: LinkSubject
 ) -> list[Relation]:
-    """« Ma version précédente → moi » et « moi → ma version suivante »."""
     relations: list[Relation] = []
     if position > 0:
         _, prev_id = living[position - 1]
@@ -113,8 +92,8 @@ def _stillborn_branches(
     living: Sequence[VersionEntry],
     subject: LinkSubject,
 ) -> list[Relation]:
-    """Les mort-nées dont JE suis la version en vigueur au moment de l'avortement : ma
-    branche latérale sortante."""
+    """Les mort-nées dont le document courant était la version en vigueur à
+    l'avortement."""
     me = subject.current.serialize()
     relations: list[Relation] = []
     for reference, identified in entries:
@@ -135,9 +114,8 @@ def _edge_if_stillborn(
     living: Sequence[VersionEntry],
     subject: LinkSubject,
 ) -> list[Relation]:
-    """JE suis peut-être une mort-née : mon arête entrante vient de la version vivante
-    en vigueur au moment de l'avortement. Pas d'arête sortante — une version jamais née
-    n'a pas de suite."""
+    """Si le document courant est mort-né, son arête entrante vient de la version en
+    vigueur à l'avortement ; aucune sortante, une version jamais née n'a pas de suite."""
     me = subject.current.serialize()
     mine = next(
         (r for r, ident in entries if ident.serialize() == me and _is_stillborn(r)),
@@ -152,24 +130,15 @@ def _edge_if_stillborn(
 
 
 def _anchor(living: Sequence[VersionEntry], debut: str) -> VersionEntry | None:
-    """La version en vigueur au moment de l'avortement d'une mort-née.
-
-    C'est la dernière vivante dont le ``debut`` est STRICTEMENT antérieur au ``debut``
-    théorique de la mort-née — laquelle partage précisément ce ``debut`` avec la version
-    réelle qui l'a remplacée (mesuré : les 45 doublons de ``debut`` du corpus sont tous
-    ce cas). Un tri qui les confondrait est exactement ce que la branche latérale évite.
+    """La dernière version vivante dont le ``debut`` est strictement antérieur à celui
+    de la mort-née : elle partage souvent ce ``debut`` avec la version qui l'a remplacée.
     """
     candidates = [e for e in living if str(e[0].get("debut", "")) < debut]
     return candidates[-1] if candidates else None
 
 
 def _dating(reference: Mapping[str, Any]) -> dict[str, Any]:
-    """La datation d'une version, extraite de sa référence — elle finit sur l'arête.
-
-    C'est elle qui rend la ligne de vie lisible dans le graphe (``debut``/``fin``/
-    ``etat``/``num``), et c'est l'``etat`` qui permet d'écarter les mort-nées d'une
-    requête sans casser la chaîne.
-    """
+    """Finit sur l'arête : son ``etat`` permet d'écarter les mort-nées d'une requête."""
     return {k: v for k, v in reference.items() if k not in ("kind", "id")}
 
 

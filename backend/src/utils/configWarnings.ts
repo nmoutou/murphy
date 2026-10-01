@@ -2,8 +2,8 @@ import type { EnvironmentReport } from '../config';
 import { logger } from './logger';
 
 /**
- * Logs what `loadConfig` found at boot. A missing required variable is logged
- * as an error but does not stop the boot: the feature that needs it fails on use.
+ * Une variable obligatoire absente est journalisée en erreur sans arrêter le
+ * démarrage : la fonctionnalité qui en dépend échoue à l'usage.
  */
 export const checkEnvironment = (report: EnvironmentReport): void => {
   if (report.missingRequired.length > 0) {

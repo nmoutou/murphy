@@ -1,8 +1,3 @@
-/**
- * Health Check Routes
- * Verifies availability of core services: TEI, Qdrant, MongoDB
- */
-
 import express, { Request, Response } from 'express';
 import { logger as rootLogger } from '../utils/logger';
 import { getInfraClients } from '../infra/clients';
@@ -14,9 +9,6 @@ import { HTTP_STATUS } from '../utils/httpStatus';
 const logger = rootLogger.child({ context: 'healthRoutes' });
 const router = express.Router();
 
-/**
- * Service health status
- */
 interface ServiceHealth {
   status: 'ok' | 'down';
   message?: string;
@@ -33,9 +25,6 @@ interface GlobalHealth {
 const HEALTH_CHECK_TIMEOUT_MS = 3000;
 const MIN_DOWN_FOR_GLOBAL_DOWN = 2;
 
-/**
- * Generic HTTP service health check
- */
 const checkHttpService = async (name: string, url: string): Promise<ServiceHealth> => {
   try {
     const response = await fetch(url, { method: 'GET', signal: AbortSignal.timeout(HEALTH_CHECK_TIMEOUT_MS) });
@@ -60,9 +49,6 @@ const checkTei = () =>
 const checkQdrant = () =>
   checkHttpService('qdrant', `${config.qdrant.url}/healthz`);
 
-/**
- * Pings MongoDB, giving up after `HEALTH_CHECK_TIMEOUT_MS`
- */
 const pingMongoDB = async (): Promise<void> => {
   const mongoDb = getInfraClients().mongo.getDb();
   let timeoutId: NodeJS.Timeout | undefined;
@@ -104,8 +90,7 @@ const resolveGlobalHealth = (services: ServiceHealth[]): GlobalHealth => {
 };
 
 /**
- * GET /api/v1/health (and its alias /api/v1/health/services)
- * Per-service status and latency. "ok" = all up, "degraded" = 1 down, "down" = 2+ down
+ * GET /api/v1/health (alias /api/v1/health/services) — état et latence de chaque service
  */
 router.get(
   ['/', '/services'],

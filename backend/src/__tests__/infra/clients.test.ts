@@ -1,8 +1,3 @@
-/**
- * Infrastructure Clients Tests
- * Creation at boot, access, and shutdown of the shared clients
- */
-
 import { closeInfraClients, getInfraClients, initInfraClients } from '../../infra/clients';
 import { loadConfig } from '../../config';
 
@@ -10,7 +5,7 @@ const mockMongo = { close: jest.fn() };
 const mockCollectionExists = jest.fn();
 
 jest.mock('../../infra/mongodb', () => ({ MongoDbClient: { connect: async () => mockMongo } }));
-// A class, not a `jest.fn`: `restoreMocks` would reset its implementation between tests
+// Une classe, pas un `jest.fn` : `restoreMocks` réinitialiserait son implémentation entre les tests
 jest.mock('@qdrant/qdrant-js', () => ({
   QdrantClient: class {
     collectionExists = mockCollectionExists;
