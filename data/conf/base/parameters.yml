@@ -12,11 +12,11 @@ nuke_all: true
 
 # `false` : aucun vecteur calculé ni écrit (ADR-023) ; Mongo et Neo4j normaux. TEI
 # doit quand même tourner : le modèle servi est vérifié au démarrage.
-embedding_enabled: true
+embedding_enabled: false
 
 # `true` retire du document les métadonnées des balises non configurées ; le signal
 # `tag.unconfigured` est émis dans les deux cas (ADR-022 §1).
-skip_unconfigured: false
+skip_unconfigured: true
 
 # Les chemins des fichiers XML source (`source_files`), dans le document Mongo et sur
 # le nœud Neo4j. Repasser à `false` sans `nuke_all` laisse ceux déjà écrits : un

@@ -157,6 +157,7 @@ _META_RENAMES = {
     "ORIGINE": "origine",
     "TITREFULL": "titre_full",
     "URL": "url",
+    "TYPE": "type",
 }
 
 
