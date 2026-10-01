@@ -31,15 +31,13 @@ Both ESLint configs enforce size limits: 300 lines per file (200 per frontend `.
 The root scripts wrap Docker Compose and need `.env.dev` at the root (gitignored). It is the **only** env file of the system: Compose feeds it to the stack, and `data/` reads it by absolute path.
 
 ```bash
-npm run serve:up | serve:watch | serve:build | serve:down | serve:logs   # DBs + TEI + backend + frontend (aliases: up, watch, build)
-npm run ingest:up | ingest:watch | ingest:down | ingest:logs | ingest:status   # DBs + TEI, for data/'s kedro run
-npm run down | restart | logs | status   # both profiles
+npm run up | watch | build | down | restart | logs | status | config
 ```
 
-- Always stop with `npm run down`: a raw `docker compose down` without `--profile` reports success and leaves profiled services running.
-- `mongo`, `qdrant` and `neo4j` have no profile; `backend`/`frontend` are `serve` only; `embedding-service` (TEI, needs an NVIDIA GPU) is in both.
+- No profiles: every script acts on the whole stack — `mongo`, `qdrant`, `neo4j`, `embedding-service` (TEI, needs an NVIDIA GPU), `backend` and `frontend`. `data/`'s `kedro run` needs the databases and TEI, so `npm run up` covers it too.
+- `npm run up` recreates the containers whose configuration changed: run it after editing `.env.dev`, a plain `restart` keeps the old environment.
 - Dev ports: frontend `3000`, backend `5000`, Qdrant `6333`, Mongo `27017`, Neo4j `7474`/`7687`, TEI `5001`.
-- Dev mounts only the sources (`backend/src`, `frontend/src`, `frontend/public`) with hot reload. Dependencies, app configs and the built contract live in the images: run `npm run serve:build` after changing `packages/contract`, a `package.json` or an app config.
+- Dev mounts only the sources (`backend/src`, `frontend/src`, `frontend/public`) with hot reload. Dependencies, app configs and the built contract live in the images: run `npm run build` then `npm run up` after changing `packages/contract`, a `package.json` or an app config.
 - Production (`docker-compose.prod.yml`, no npm script) is not deployed yet: no reverse proxy, so the backend publishes `5000` and `CORS_ORIGIN` must be the frontend's public origin. `NEXT_PUBLIC_API_URL` is a build argument there (inlined by `next build`: changing it means rebuilding the image). Images run as `node`; `NODE_ENV` comes from the build target, never from `.env.dev`. TEI takes ~4 min and over 4 GB of RAM to start: no `mem_limit` below that.
 - The build context is the repo root (`backend/Dockerfile`, `frontend/Dockerfile`); the root `.dockerignore` keeps `.env*`, `node_modules`, `data/` and `docs/` out.
 - A CSS change that does not show in dev: Turbopack's cache is stale, even across restarts. `docker exec frontend rm -rf /app/frontend/.next/dev && docker restart frontend`.
