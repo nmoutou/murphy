@@ -20,6 +20,7 @@ from enum import StrEnum
 from pydantic import BaseModel, ConfigDict
 
 from ragcore.core.telemetry_events import (
+    COLLISION_UNRECORDED,
     DOCUMENT_FAILED,
     DOCUMENT_FETCHED,
     DOCUMENT_INVALIDATED,
@@ -112,7 +113,7 @@ class RunSummary(BaseModel):
 def _status_from(stats: RunStats) -> RunStatus:
     """``OK`` seulement si TOUT ce qui a été vu a été ingéré — ou écarté sciemment.
 
-    Deux propriétés distinctes, qu'il ne faut pas confondre, et qui mènent toutes deux à
+    Trois propriétés distinctes, qu'il ne faut pas confondre, et qui mènent toutes à
     ``DEGRADED`` :
 
     1. **Le run a-t-il tout ingéré ?**  ``échoués == 0``.
@@ -123,8 +124,12 @@ def _status_from(stats: RunStats) -> RunStatus:
        C'est l'équation de complétude. Si elle ne tombe pas juste, des documents ont
        disparu **sans que rien ne les compte** — le pire cas, car il est invisible.
 
+    3. **Le bilan est-il vérifiable ?**  ``collision.unrecorded == 0``.
+       Sinon, il compte des collisions que ``MURPHY_META.collisions`` ne montre pas
+       (ADR-049).
+
     ``DEGRADED`` = « le run est allé au bout, mais on ne peut pas le déclarer complet ».
-    Les deux situations le méritent ; seule la seconde est un bug du pipeline lui-même.
+    Les trois situations le méritent ; seule la deuxième est un bug du pipeline lui-même.
 
     **Pourquoi ce n'est plus « aucune compensation ».** L'ancienne version ne regardait
     que ``SAGA_COMPENSATION_STARTED`` — elle ratait donc toute fuite survenue AVANT la
@@ -154,6 +159,6 @@ def _status_from(stats: RunStats) -> RunStatus:
 
     # `!=` et non `<` : un excédent est une anomalie aussi (double comptage) et doit se
     # voir, plutôt que de passer pour un succès.
-    if failed or accounted != seen:
+    if failed or accounted != seen or stats.counts.get(COLLISION_UNRECORDED, 0):
         return RunStatus.DEGRADED
     return RunStatus.OK

@@ -8,6 +8,9 @@ d'écrire les chaînes. Une raison qui n'est pas ici n'existe pas.
 # irrecevable, p. ex. identifiant absent ou mal formé (`validation_error`).
 REASON_PARSE_ERROR = "parse_error"
 REASON_VALIDATION_ERROR = "validation_error"
+# Une clé renommée, non déclarée `list`, a reçu plusieurs valeurs distinctes : la table ne
+# dit pas laquelle garder (ADR-049). Un refus métier, nommé à part pour se lire au bilan.
+REASON_COLLISION = "collision"
 
 # Artefact d'export : un fichier que la source livre mais qui n'est pas un document
 # (LEGI : les 1637 `versions.xml`, qui ne contiennent qu'un ID nu). Le connecteur les

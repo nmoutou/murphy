@@ -27,13 +27,13 @@ n'en sort en silence.
 | `relation.pending` | Cible absente → cache des pendantes |
 | `relation.promoted` | Pendante d'un run passé enfin résolue |
 | `relation.unknown` | Liens qu'on ne sait pas écrire (`sens` inconnu, `@id` illisible, `typelien` qui ne peut pas être un verbe) : 1 événement par document, `count` = liens perdus. L'arête n'existe pas ; un lien retiré par `skip_unconfigured` n'est pas compté. Ne change pas le statut du run (ADR-048). |
-| `collision.unrecorded` | Collisions que `parseDocuments` n'a pas pu écrire dans `MURPHY_META.collisions` (1 événement, `count`). Le bilan et la collection ne concordent plus : le run passe en `degraded` (ADR-049). |
+| `collision.unrecorded` | Collisions que `parseDocuments` n'a pas pu écrire dans `MURPHY_META.collisions` (1 événement par écriture ratée, `payload.collisions` = leur nombre). Le bilan et la collection ne concordent plus : le run passe en `degraded` (ADR-049). |
 | `saga.compensation.triggered` / `.completed` / `.failed` | Rollback d'une saga (`.failed` = un écrit partiel subsiste ; `success` du `.completed` dit la vérité : une seule compensation ratée et le rollback n'est pas propre) |
 
-**Contrat de cardinalité** : la plupart des événements pèsent 1. Sept — et eux
+**Contrat de cardinalité** : la plupart des événements pèsent 1. Six — et eux
 exactement (`COUNT_CARRYING_EVENTS`) — portent leur poids dans `payload["count"]` :
 `document.fetched`, `document.version_skipped`, `document.unreadable`,
-`relation.upserted`, `relation.unknown`, `chunk.truncated`, `collision.unrecorded`.
+`relation.upserted`, `relation.unknown`, `chunk.truncated`.
 L'ensemble est nommé et verrouillé par golden : un émetteur qui prétend porter une cardinalité sans y figurer est
 un bug visible, pas une dérive muette.
 

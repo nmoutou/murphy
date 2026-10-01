@@ -4,6 +4,7 @@ from .models.collision import Collision
 
 __all__ = [
     "CollisionError",
+    "CollisionRecordingError",
     "EmbeddingModelMismatchError",
     "ParseError",
     "RagCoreError",
@@ -49,6 +50,12 @@ class CollisionError(ValidationError):
     def __init__(self, message: str, collisions: tuple[Collision, ...]) -> None:
         super().__init__(message)
         self.collisions = collisions
+
+
+class CollisionRecordingError(RagCoreError):
+    """Les collisions du run n'ont pas pu être écrites dans ``MURPHY_META.collisions`` :
+    le bilan en compte que la collection ne montre pas. Le run passe en ``degraded``,
+    il ne s'arrête pas (ADR-049)."""
 
 
 class ParseError(RagCoreError):

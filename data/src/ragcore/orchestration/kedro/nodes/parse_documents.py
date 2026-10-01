@@ -4,30 +4,50 @@ Un document qui parse part à l'ingestion, qu'il soit déjà en base ou non : la
 réécrit en place (``replace_one`` Mongo, delete-puis-insert Qdrant, ``MERGE`` Neo4j). Un
 document qui NE parse pas est rejeté (``document.invalidated``, dans l'audit) : il est
 compté, pas silencieusement ignoré. Il n'y a pas de troisième voie « SKIP ».
+
+Les collisions de métadonnées (ADR-049), celles d'un document parsé comme d'un document
+refusé, sont comptées au bilan (``unknowns.collisions``) et réécrites, en fin de parse,
+dans ``MURPHY_META.collisions`` : un compte par (document, clé), un enregistrement par
+(document, clé), les deux concordent.
 """
 
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass
+from collections.abc import Sequence
+from dataclasses import dataclass, field
 
 from ragcore.application.run_context import PipelineContext
-from ragcore.core.exceptions import ParseError, ValidationError
+from ragcore.core.exceptions import (
+    CollisionError,
+    CollisionRecordingError,
+    ParseError,
+    ValidationError,
+)
 from ragcore.core.models.audit import build_event
+from ragcore.core.models.collision import Collision
 from ragcore.core.models.document import ParsedDocument, RawDocument
 from ragcore.core.models.unknown_tally import UnknownExample
+from ragcore.core.ports.collision_repository import CollisionRepository
 from ragcore.core.ports.parser import BaseParser, ParseResult
+from ragcore.core.ports.runtime import AsyncRuntime
 from ragcore.core.ports.telemetry import WorkerTelemetry
 from ragcore.core.services.exclusion_reasons import (
+    REASON_COLLISION,
     REASON_PARSE_ERROR,
     REASON_VALIDATION_ERROR,
 )
 from ragcore.core.services.unknown_categories import (
+    CATEGORY_COLLISION,
     CATEGORY_LINK,
     CATEGORY_ROOT,
     CATEGORY_TAG,
 )
-from ragcore.core.telemetry_events import DOCUMENT_INVALIDATED, DOCUMENT_PARSED
+from ragcore.core.telemetry_events import (
+    COLLISION_UNRECORDED,
+    DOCUMENT_INVALIDATED,
+    DOCUMENT_PARSED,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -44,6 +64,9 @@ _VALIDATION_REJECTION = _Rejection(
     REASON_VALIDATION_ERROR, "Document invalidé %s — rejeté"
 )
 _PARSE_REJECTION = _Rejection(REASON_PARSE_ERROR, "Erreur parsing document %s — rejeté")
+_COLLISION_REJECTION = _Rejection(
+    REASON_COLLISION, "Collision non configurée dans le document %s — rejeté"
+)
 
 
 def parse_documents_node(
@@ -54,6 +77,8 @@ def parse_documents_node(
     # n'émet pas seulement. Le stack du hook (WorkerTelemetryStack) le fournit.
     telemetry: WorkerTelemetry,
     skip_unconfigured: bool,
+    collision_repo: CollisionRepository,
+    pipeline_runtime: AsyncRuntime,
 ) -> tuple[list[ParsedDocument], list[str]]:
     """Parse les documents : ceux qui parsent partent à l'ingestion, les autres sont rejetés.
 
@@ -68,32 +93,46 @@ def parse_documents_node(
     juste avant qu'il parte vers l'ingestion (ses liens non-configurés, eux, sont retirés
     à l'extraction). Compter d'abord, filtrer ensuite : le signal précède le filtre.
     Le curseur arrive déjà validé et arbitré par le plan du run (``run_plan.plan_run``).
+
+    En fin de boucle, les collisions du run remplacent celles de ``collision_repo``.
     """
     site = _ParseSite(pipeline_context, telemetry)
     to_process: list[ParsedDocument] = []
     to_skip: list[str] = []
 
     for raw in raw_documents:
-        try:
-            result = parser.parse(raw)
-        except ValidationError as exc:
-            site.exclude(raw, exc, _VALIDATION_REJECTION)
+        result = _parse(raw, parser, site)
+        if result is None:
             to_skip.append(raw.source_document_id)
             continue
-        except ParseError as exc:
-            # Document illisible. Toute autre exception sort du contrat de BaseParser :
-            # c'est un bug du run (un document qu'aucun parser ne sait router), pas un
-            # document à exclure — elle remonte et arrête le run.
-            site.exclude(raw, exc, _PARSE_REJECTION)
-            to_skip.append(raw.source_document_id)
-            continue
-
         site.declare_signals(result)
+        site.declare_collisions(result.collisions)
         parsed = _apply_cursor(result, skip_unconfigured)
         site.declare_parsed(raw, parsed)
         to_process.append(parsed)
 
+    site.record_collisions(collision_repo, pipeline_runtime)
     return to_process, to_skip
+
+
+def _parse(
+    raw: RawDocument, parser: BaseParser, site: _ParseSite
+) -> ParseResult | None:
+    """Le résultat du parse, ou ``None`` pour un document rejeté — déjà tracé."""
+    try:
+        return parser.parse(raw)
+    except CollisionError as exc:
+        # Refusé, mais ses collisions sont le propos même du refus : elles comptent.
+        site.declare_collisions(exc.collisions)
+        site.exclude(raw, exc, _COLLISION_REJECTION)
+    except ValidationError as exc:
+        site.exclude(raw, exc, _VALIDATION_REJECTION)
+    except ParseError as exc:
+        # Document illisible. Toute autre exception sort du contrat de BaseParser :
+        # c'est un bug du run (un document qu'aucun parser ne sait router), pas un
+        # document à exclure — elle remonte et arrête le run.
+        site.exclude(raw, exc, _PARSE_REJECTION)
+    return None
 
 
 def _apply_cursor(result: ParseResult, skip_unconfigured: bool) -> ParsedDocument:
@@ -125,6 +164,8 @@ class _ParseSite:
 
     context: PipelineContext
     telemetry: WorkerTelemetry
+    collisions: list[Collision] = field(default_factory=list)
+    """Les collisions du run, dans l'ordre des documents : ce que la collection reçoit."""
 
     def exclude(self, raw: RawDocument, exc: Exception, rejection: _Rejection) -> None:
         """Un document écarté est COMPTÉ (``document.invalidated``), jamais ignoré."""
@@ -169,3 +210,38 @@ class _ParseSite:
                 document_id=parsed.identifier.serialize(),
             )
         )
+
+    def declare_collisions(self, collisions: Sequence[Collision]) -> None:
+        """Une collision par (document, clé) : un compte au bilan, un enregistrement
+        dans la collection. Les deux viennent d'ici, c'est ce qui les fait concorder."""
+        for collision in collisions:
+            example = UnknownExample(
+                identifier=collision.identifier,
+                source_file=collision.values[0].source_file,
+            )
+            self.telemetry.record_unknown(CATEGORY_COLLISION, collision.key, example)
+            self.collisions.append(collision)
+
+    def record_collisions(
+        self, repository: CollisionRepository, runtime: AsyncRuntime
+    ) -> None:
+        """Remplace les collisions de la collection par celles du run.
+
+        Un échec n'arrête pas le run : le corpus est ingérable, seule l'analyse manque.
+        Mais le bilan compte alors ce que la collection ne montre pas — le run passe en
+        ``degraded`` (``collision.unrecorded``).
+        """
+        try:
+            runtime.run(repository.replace(self.context.run_id, self.collisions))
+        except CollisionRecordingError as exc:
+            logger.error("%s", exc)
+            self.telemetry.emit(
+                build_event(
+                    event_type=COLLISION_UNRECORDED,
+                    run_id=self.context.run_id,
+                    source=self.context.source,
+                    payload={"collisions": len(self.collisions)},
+                    success=False,
+                    error_message=str(exc),
+                )
+            )

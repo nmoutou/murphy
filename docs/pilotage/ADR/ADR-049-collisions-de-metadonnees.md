@@ -56,7 +56,7 @@ qui reçoit deux valeurs distinctes fait refuser le document avec la raison `col
   échafaudage d'analyse : `parseDocuments` la vide entièrement puis la réécrit à chaque
   run, sans lien avec `nuke_all`. Un manifest la remplacera.
 - Le bilan et la collection concordent. Si l'écriture de la collection échoue, le run
-  émet `collision.unrecorded` (porteur de `count`) et passe en `degraded`.
+  émet `collision.unrecorded` (un événement par écriture ratée) et passe en `degraded`.
 
 **Une cible de renommage n'apparaît qu'une fois par table.** Le renommage reste
 injectif ; le cliquet `tests/golden/test_meta_renames.py` le vérifie, avec l'absence de

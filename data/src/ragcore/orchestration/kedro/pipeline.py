@@ -89,6 +89,9 @@ def _parse_documents() -> Node:
             # Le curseur `dev.skip_unconfigured`, arbitré par le plan du run :
             # appliqué au site de parse, juste avant que le document parte à l'ingestion.
             "skip_unconfigured",
+            # Les collisions du run, réécrites en fin de parse (ADR-049).
+            "collision_repo",
+            "pipeline_runtime",
         ],
         outputs=["to_process", "to_skip"],
         name="parseDocuments",

@@ -18,6 +18,7 @@ from ragcore.core.models.run_stats import RunStats
 from ragcore.core.models.run_summary import RunStatus, RunSummary
 from ragcore.core.models.unknown_tally import UnknownExample, UnknownTally
 from ragcore.core.telemetry_events import (
+    COLLISION_UNRECORDED,
     DOCUMENT_FETCHED,
     DOCUMENT_INVALIDATED,
     DOCUMENT_PERSISTED,
@@ -142,11 +143,25 @@ def test_sources_list_every_ingested_source() -> None:
     assert summary.sources == sources
 
 
+def test_unrecorded_collisions_degrade_a_complete_run(
+    aggregator: RunStatsAggregator,
+) -> None:
+    """Tout est ingéré, mais le bilan compte des collisions que la collection ne montre
+    pas : le run ne peut pas se déclarer complet (ADR-049)."""
+    aggregator.emit(build_event(DOCUMENT_FETCHED, RUN, payload={"count": 1}))
+    aggregator.emit(build_event(DOCUMENT_PERSISTED, RUN))
+    aggregator.emit(build_event(COLLISION_UNRECORDED, RUN, success=False))
+
+    summary = aggregator.finalize(RunStatus.OK)
+
+    assert summary.status is RunStatus.DEGRADED
+
+
 def test_unknowns_defaults_to_empty_not_none() -> None:
     """Un run qui a tout compris déclare un vide, pas une absence — catégorie par
     catégorie : le schéma du bilan ne varie pas d'un run à l'autre (ADR-048)."""
     summary = RunStatsAggregator(RUN, (), datetime.now(UTC)).finalize(RunStatus.OK)
-    assert summary.unknowns == {"tags": {}, "roots": {}, "links": {}}
+    assert summary.unknowns == {"tags": {}, "roots": {}, "links": {}, "collisions": {}}
 
 
 def test_aggregator_declares_what_it_could_not_name(
