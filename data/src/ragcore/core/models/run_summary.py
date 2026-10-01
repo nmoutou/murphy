@@ -6,7 +6,7 @@ Deux modèles, deux natures, et la frontière n'est pas cosmétique :
   en existe N par run — un par worker.
 - ``RunSummary`` est *déclaré*. Il porte l'identité du run (run_id, sources, dates,
   statut) et il en existe exactement UN. Il ne fusionne pas. Il recopie à plat les
-  compteurs et les inconnus de l'agrégat : c'est le document de ``meta_run_summaries``.
+  compteurs et les inconnus de l'agrégat : c'est le document de ``run_summaries``.
 
 Confondre les deux obligerait à répondre à « quel ``run_id`` gagne quand on fusionne
 deux sommaires ? » — question sans réponse commutative, donc source de

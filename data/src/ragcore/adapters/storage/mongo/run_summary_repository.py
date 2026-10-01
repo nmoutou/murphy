@@ -21,7 +21,7 @@ class MongoRunSummaryRepository:
         self,
         client: MongoClient,
         db_name: str,
-        collection: str = "meta_run_summaries",
+        collection: str = "run_summaries",
     ) -> None:
         self._collection = client[db_name][collection]
 

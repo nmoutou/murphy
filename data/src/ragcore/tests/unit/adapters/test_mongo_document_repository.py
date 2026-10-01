@@ -12,7 +12,7 @@ from ragcore.core.models.document import ParsedDocument
 from ragcore.core.models.enums import SourceName
 from ragcore.core.models.identifiers import Identifier
 
-DB_NAME = "LEGIFRANCE"
+DB_NAME = "MURPHY_DATA"
 COLLECTION = "documents"
 SOURCE_FILES = ("/corpus/LEGI/article.xml",)
 

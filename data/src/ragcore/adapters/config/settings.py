@@ -109,7 +109,7 @@ class InfraSettings(BaseSettings):
     `parameters.yml` était ignoré sans que rien ne s'arrête. Vide, la variable vaut absente."""
 
     mongodb_uri: str = "mongodb://localhost:27017"
-    mongodb_data_db_name: str = "LEGIFRANCE"
+    mongodb_data_db_name: str = "MURPHY_DATA"
     mongodb_meta_db_name: str = "MURPHY_META"
 
     neo4j_uri: str = "bolt://localhost:7687"

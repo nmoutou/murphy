@@ -36,10 +36,10 @@ _DATA_INDEXES: dict[str, list[IndexModel]] = {
         IndexModel([("target_id", ASCENDING)], name="idx_pending_target"),
     ],
 }
-"""Les index de la base de données (défaut : LEGIFRANCE), par collection."""
+"""Les index de la base de données (défaut : MURPHY_DATA), par collection."""
 
 _META_INDEXES: dict[str, list[IndexModel]] = {
-    "meta_run_summaries": [
+    "run_summaries": [
         IndexModel(
             [("run_id", ASCENDING)],
             unique=True,

@@ -30,7 +30,7 @@ jest.mock('../../utils/logger', () => {
 
 const SETTINGS: MongoConfig = {
   uri: 'mongodb://mongo.test:27017',
-  database: 'LEGIFRANCE',
+  database: 'MURPHY_DATA',
   timeoutMs: 1000,
 };
 const RECORD = { identifier: 'LEGIARTI1', title: 'L2122-22', content: 'Le maire peut…' };

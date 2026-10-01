@@ -25,7 +25,7 @@ from ragcore.core.models.pending import PendingKey, PendingRelation
 __all__ = ["PENDING_RELATIONS_COLLECTION", "MongoPendingRelationRepository"]
 
 PENDING_RELATIONS_COLLECTION = "pending_relations"
-"""La collection des pendantes, dans la base de données (défaut : LEGIFRANCE)."""
+"""La collection des pendantes, dans la base de données (défaut : MURPHY_DATA)."""
 
 
 def _key_filter(key: PendingKey) -> dict[str, object]:

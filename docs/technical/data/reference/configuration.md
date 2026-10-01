@@ -67,7 +67,7 @@ service.
 |---|---|---|
 | `ENVIRONMENT` | `prod` | `dev` ou `prod` (ADR-043). **Le défaut penche vers le refus** : seul `dev` applique `parameters.yml` (`nuke_all`, interrupteur d'embedding, balises non configurées, chemins des fichiers source, hydratation Neo4j). Absente ou vide, la variable vaut `prod` : un `.env` incomplet est traité comme protégé. Toute autre valeur (`Dev`, `development`…) arrête le run au chargement de la configuration, avant tout nœud. |
 | `MONGODB_URI` | `mongodb://localhost:27017` | |
-| `MONGODB_DATA_DB_NAME` | `LEGIFRANCE` | Données : `documents`, `pending_relations`. |
+| `MONGODB_DATA_DB_NAME` | `MURPHY_DATA` | Données : `documents`, `pending_relations`. |
 | `MONGODB_META_DB_NAME` | `MURPHY_META` | Méta : bilans de run. |
 | `NEO4J_URI` / `NEO4J_USERNAME` / `NEO4J_PASSWORD` | `bolt://localhost:7687` / `neo4j` / `neo4j` | Mot de passe en `SecretStr`. |
 | `QDRANT_URL` / `QDRANT_API_KEY` | `http://localhost:6333` / — | Clé vide = absente (validator). |

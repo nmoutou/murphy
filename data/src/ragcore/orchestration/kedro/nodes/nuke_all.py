@@ -26,7 +26,7 @@ def nuke_all_node(
 
     Ce que le nuke efface — et ce qu'il PRÉSERVE :
     - Mongo *données* : les collections `documents` et `pending_relations` (base
-      `LEGIFRANCE`). Une pendante pointe vers des nœuds que le nuke efface : la
+      `MURPHY_DATA`). Une pendante pointe vers des nœuds que le nuke efface : la
       garder ferait rejouer un backlog sans sources ; le run suivant la retrouve.
     - Neo4j : le graphe entier.
     - Qdrant : **toutes** les collections du store, pas seulement celle du run —

@@ -73,7 +73,7 @@ Déroulé détaillé nœud par nœud : [reference/pipeline.md](reference/pipelin
   Neo4j).
 - **Phase 2 — relations** (`resolveRelations`) : après la barrière, un service unique
   écrit les arêtes en batch, met en attente celles dont la cible n'est pas dans le corpus
-  (`LEGIFRANCE.pending_relations`) et **promeut** les pendantes de runs passés dont la cible
+  (`MURPHY_DATA.pending_relations`) et **promeut** les pendantes de runs passés dont la cible
   vient d'arriver.
 
 ## Les principes qui structurent tout le reste
@@ -109,7 +109,7 @@ Déroulé détaillé nœud par nœud : [reference/pipeline.md](reference/pipelin
 
 | Contrat | Écrit par l'ingestion | Lu par le backend |
 |---|---|---|
-| Contenu | Mongo `LEGIFRANCE.documents` | documents parents par `identifier`, passage = `content[char_start:char_end]` |
+| Contenu | Mongo `MURPHY_DATA.documents` | documents parents par `identifier`, passage = `content[char_start:char_end]` |
 | Vecteurs | Qdrant, collection `QDRANT_COLLECTION` (nom fixe, ADR-042) | la même variable ; refus de démarrer si la collection n'existe pas |
 | Graphe | Neo4j (nœuds + arêtes typées par verbe) | pas encore câblé côté serving |
 

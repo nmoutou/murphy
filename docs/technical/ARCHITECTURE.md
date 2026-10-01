@@ -22,7 +22,7 @@ flowchart TB
     end
 
     subgraph stores ["Les bases partagées"]
-        Mongo[(MongoDB<br>LEGIFRANCE + MURPHY_META)]
+        Mongo[(MongoDB<br>MURPHY_DATA + MURPHY_META)]
         Qdrant[(Qdrant<br>une collection, nom fixe)]
         Neo4j[(Neo4j<br>graphe documentaire)]
     end
@@ -54,7 +54,7 @@ C'est la seule zone où une modification d'un côté casse l'autre. Quatre contr
 |---|---|---|
 | **Nom de collection** | `QDRANT_COLLECTION` (`.env.dev`), un nom **fixe** : la collection est réécrite en place à chaque run | La même variable. Au boot (`backend/src/infra/clients.ts`), refus de démarrer si la collection n'existe pas (ADR-042). |
 | **Vecteurs** | Payload `chunk_id`, `identifier`, `char_start`, `char_end` (ADR-039) | Recherche cosine top-K dans cette collection |
-| **Contenu** | Mongo `LEGIFRANCE.documents` : un document entier par `identifier` | Lecture des documents parents ; le texte d'un passage est `content[char_start:char_end]` (points de code). Le passage va au LLM, le document entier au client (`data-parentDocument`) |
+| **Contenu** | Mongo `MURPHY_DATA.documents` : un document entier par `identifier` | Lecture des documents parents ; le texte d'un passage est `content[char_start:char_end]` (points de code). Le passage va au LLM, le document entier au client (`data-parentDocument`) |
 | **Modèle d'embedding** | `all-mpnet-base-v2`, 768 dim, Cosine — vérifié contre TEI au démarrage du run | Le même modèle via le même conteneur TEI |
 
 Le modèle d'embedding est le contrat le plus fragile : question et corpus doivent être

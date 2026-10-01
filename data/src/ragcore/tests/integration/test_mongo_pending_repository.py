@@ -32,7 +32,7 @@ from ragcore.core.models.pending import PendingRelation
 
 pytestmark = pytest.mark.integration
 
-DB = "LEGIFRANCE_TEST"
+DB = "MURPHY_DATA_TEST"
 
 
 def _pending(source: str, target: str, run_id: str) -> PendingRelation:

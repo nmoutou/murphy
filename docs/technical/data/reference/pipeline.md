@@ -41,7 +41,7 @@ Le hook est le **point d'assemblage** du run. Dans l'ordre :
    une requête de sonde mesure la dimension des vecteurs : c'est elle qui dimensionne la
    collection Qdrant. Échec = run arrêté avant tout nœud ;
 5. **Clients, index et dépôts du hook** (`stores.open_clients`, `ensure_indexes`,
-   `open_document_stores`, `open_meta_stores`) : `ensure_data_indexes` (LEGIFRANCE :
+   `open_document_stores`, `open_meta_stores`) : `ensure_data_indexes` (MURPHY_DATA :
    documents, pendantes) et `ensure_meta_indexes` (MURPHY_META : bilans).
 6. **La session du run** (`run_session.RunSession`) : le `PipelineContext` (run_id
    uuid4-hex, `sources` résolues par le plan, started_at ; sa propriété `source` vaut la
@@ -72,7 +72,7 @@ Entrées : les quatre dépôts du hook, `nuke_all` (du plan du run).
 - `nuke_all: true` → le garde-fou a déjà joué en amont : hors `ENVIRONMENT=dev`, `plan_run`
   ignore `parameters.yml` et `nuke_all` arrive ici à `false` (l'absence de la variable vaut
   `prod`). Le nœud n'efface donc qu'en dev :
-  - Mongo `LEGIFRANCE` : les collections `documents` et `pending_relations`
+  - Mongo `MURPHY_DATA` : les collections `documents` et `pending_relations`
     (`schemas.reset_data_collections`, qui **repose les index** qu'un drop détruit avec
     la collection) ;
   - Neo4j : le graphe entier ;
@@ -189,7 +189,7 @@ Non parallélisé : un batch, sur la boucle du hook. Quatre temps
    sans emporter les arêtes d'autres runs. `relation.upserted` porte le compte des arêtes
    **réussies** (pas « tentées »).
 2. **Les trous vont au cache** : chaque relation dont la cible manque devient une
-   `PendingRelation` (`LEGIFRANCE.pending_relations`, upsert-union sur la clé
+   `PendingRelation` (`MURPHY_DATA.pending_relations`, upsert-union sur la clé
    source/target/type) + événement `relation.pending`. Une pendante peut rester
    pendante indéfiniment — un arrêt qui cite une directive jamais ingérée est un lien
    légitime vers l'extérieur, pas une erreur.
@@ -230,7 +230,7 @@ nominal (`after_pipeline_run`), dans l'ordre — et l'ordre est l'enjeu :
 2. **Persistance du bilan** (statut demandé : `ok`) : le statut annoncé est
    **re-dérivé des compteurs** (`RunSummary.of` → `_status_from`) — voir
    [telemetrie.md](telemetrie.md#le-statut-dun-run). Upsert Mongo
-   (`meta_run_summaries`).
+   (`run_summaries`).
 3. Le hook ferme son runtime.
 
 Chemin d'erreur (`on_pipeline_error`) : la **même clôture** (les troncatures valent aussi sur un run cassé), bilan persisté en

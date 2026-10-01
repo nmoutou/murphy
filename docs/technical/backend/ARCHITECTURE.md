@@ -81,7 +81,7 @@ Ce que le backend lit :
 | Où | Quoi |
 |---|---|
 | Payload Qdrant | `chunk_id`, `identifier`, `char_start`, `char_end`, `type_document` (facultatif) — validé à la lecture (`infra/qdrant.ts`) |
-| Mongo `LEGIFRANCE.documents` | `identifier`, `title`, `content` — un document **entier** par `identifier` (`infra/mongodb.ts`) |
+| Mongo `MURPHY_DATA.documents` | `identifier`, `title`, `content` — un document **entier** par `identifier` (`infra/mongodb.ts`) |
 
 - **Offsets** : `char_start`/`char_end` comptent des **points de code** (le `str` Python).
   `services/passages.ts` les convertit une fois en unités UTF-16 : `highlightStart` /

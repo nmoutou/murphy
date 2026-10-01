@@ -100,7 +100,7 @@ saga et a laissé passer « ok » un run qui avait perdu 98 documents à l'embed
 toute saga. L'équation attrape toutes les causes, y compris celles qu'on n'a pas encore
 rencontrées.
 
-Persistance du bilan : upsert Mongo (`meta_run_summaries`, unique par run_id). Le
+Persistance du bilan : upsert Mongo (`run_summaries`, unique par run_id). Le
 document est plat :
 
 ```json

@@ -70,7 +70,7 @@ variables manquantes et celles qui ont pris leur valeur par défaut.
 
 Critiques (erreur logguée si absentes, sans bloquer) : `LLM_API_ENDPOINT`, `LLM_API_KEY`, `LLM_MODEL`,
 `MONGODB_URI`, `QDRANT_COLLECTION` (le nom fixe de la collection, partagé avec l'ingestion).
-Principales optionnelles : `PORT` (5000), `MONGODB_DATABASE` (LEGIFRANCE),
+Principales optionnelles : `PORT` (5000), `MONGODB_DATABASE` (MURPHY_DATA),
 `QDRANT_URL`, `QDRANT_TIMEOUT` (10000 ms),
 `EMBEDDING_SERVICE_URL`, `EMBEDDING_MODEL_NAME`, `RETRIEVAL_TOP_K` (5), `RETRIEVAL_MIN_SCORE` (0.5),
 `LLM_TEMPERATURE`/`TIMEOUT`, `SYSTEM_PROMPT`, les rate limits et

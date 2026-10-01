@@ -41,7 +41,7 @@ RawDocument ──parse──▶ ParsedDocument ──chunk──▶ Chunk ─�
 - `Citation` : `text` (brut, intégral — la seule donnée non reconstructible), `verb`,
   `sens` (conservé pour orienter l'arête d'une future résolution).
 
-## MongoDB — base de données `LEGIFRANCE`
+## MongoDB — base de données `MURPHY_DATA`
 
 ### `documents`
 
@@ -83,7 +83,7 @@ données.
 
 | Collection | Contenu | Index |
 |---|---|---|
-| `meta_run_summaries` | Un `RunSummary` par run, à plat : run_id, `sources` (liste), dates, `status` (`ok`/`degraded`/`failed`), `counts`, `unknowns`, et `error_message` sur un run `failed` seulement. | unique (run_id), (started_at) |
+| `run_summaries` | Un `RunSummary` par run, à plat : run_id, `sources` (liste), dates, `status` (`ok`/`degraded`/`failed`), `counts`, `unknowns`, et `error_message` sur un run `failed` seulement. | unique (run_id), (started_at) |
 
 ## Qdrant
 
