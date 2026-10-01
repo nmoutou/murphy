@@ -18,8 +18,8 @@ Les 8 lettres de tête (`Identifier.prefix`) disent le fonds et la nature du doc
 | `JURITEXT` / `CETATEXT` / `CONSTEXT` | les 5 juri | décision judiciaire, administrative, constitutionnelle |
 | `JORFTEXT` / `JORFARTI` | — | cible de liens LEGI uniquement (pas de connecteur JORF) |
 
-Pas de hash de contenu nulle part : l'idempotence se joue sur la **présence de
-l'identifiant** dans le manifest.
+Pas de hash de contenu nulle part : chaque run **réécrit en place** le document sous son
+identifiant (voir [idempotence.md](idempotence.md)).
 
 ## Les modèles en mémoire (cycle de vie d'un document)
 
@@ -62,20 +62,6 @@ Contenu : le dump JSON du `ParsedDocument`, **sauf** :
 
 Donc : `identifier` (sérialisé), `source`, `title`, `content`, `metadata`,
 `citations`.
-
-### `manifest`
-
-Le registre **append-only** des tentatives de traitement (`ManifestEntry`) — jamais de
-mise à jour, une entrée par tentative. Deux formes :
-
-- **valide** : `identifier_serialized` rempli, `operation` ∈ {`insert`, `update`},
-  `targets_written = ["mongo", "qdrant", "neo4j:node"]` (le nœud, pas ses arêtes — dire
-  « neo4j » affirmerait une complétude que la phase 1 ne livre pas), `processed_at` ;
-- **rejet** : `identifier=None`, `operation=excluded`, `source_path` + `reason`
-  obligatoires (invariant validé par le modèle).
-
-Index de lookup (pas uniques — plusieurs entrées par document, une par run) :
-`identifier_serialized` sparse, `source_path`.
 
 ## MongoDB — base méta `MURPHY_META`
 

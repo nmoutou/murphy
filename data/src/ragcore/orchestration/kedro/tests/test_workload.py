@@ -25,7 +25,7 @@ from ragcore.application.run_context import PipelineContext
 from ragcore.core.links import CITES
 from ragcore.core.models.chunk import Chunk, EmbeddedChunk
 from ragcore.core.models.document import ParsedDocument
-from ragcore.core.models.enums import Operation, SourceName
+from ragcore.core.models.enums import SourceName
 from ragcore.core.models.identifiers import Identifier
 from ragcore.core.models.relation import Relation
 from ragcore.core.ports.relation_extractor import ExtractionResult
@@ -34,7 +34,6 @@ from ragcore.tests.fakes import (
     FakeRuntime,
     InMemoryDocumentRepository,
     InMemoryGraphRepository,
-    InMemoryManifestRepository,
     InMemoryVectorRepository,
     RecordingTelemetry,
 )
@@ -123,7 +122,6 @@ def _use_case_factory(
         return IngestDocumentUseCase(
             IngestionStores(
                 documents=InMemoryDocumentRepository(),
-                manifest=InMemoryManifestRepository(),
                 graph=graph,
                 vectors=vectors,
             ),
@@ -154,7 +152,7 @@ def _run(
     runtime = FakeRuntime(worker_id=0)
     telemetry = RecordingTelemetry()
     try:
-        result = workload(document, Operation.INSERT, runtime, telemetry)
+        result = workload(document, runtime, telemetry)
     finally:
         runtime.close()
     return result, graph, vectors, telemetry
@@ -167,7 +165,7 @@ def test_les_inconnus_de_lextraction_sont_DECLARES() -> None:
     C'est le workload qui les déclare — et ``snapshot()`` est la preuve que le tuyau
     coule. Les inconnus de PARSE n'existent plus : les balises
     non-configurées sont routées par la cascade et signalées au site de parse
-    (``computeIdempotence``, ``tag.unconfigured``), jamais ici.
+    (``parseDocuments``, ``tag.unconfigured``), jamais ici.
     """
     _result, _graph, _vectors, telemetry = _run(_doc())
 

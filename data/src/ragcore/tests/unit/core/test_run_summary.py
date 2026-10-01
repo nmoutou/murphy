@@ -36,9 +36,7 @@ def test_aggregator_produces_a_valid_summary(aggregator: RunStatsAggregator) -> 
 
 
 def test_counts_and_breakdown_reach_the_stats(aggregator: RunStatsAggregator) -> None:
-    aggregator.emit(
-        build_event(DOCUMENT_PERSISTED, RUN, payload={"operation": "insert"})
-    )
+    aggregator.emit(build_event(DOCUMENT_PERSISTED, RUN))
     aggregator.emit(
         build_event(
             DOCUMENT_INVALIDATED,

@@ -95,7 +95,7 @@ class TelemetryHooks:
         """Ouvre les dépôts et la session du run, et rend les entrées du catalogue.
 
         Les dépôts du HOOK — posés sur SA boucle (self._runtime) — servent les nœuds de
-        maintenance (nukeAll, connect, computeIdempotence) et la phase 2, qui ne sont pas
+        maintenance (nukeAll, connect, parseDocuments) et la phase 2, qui ne sont pas
         parallélisés. Les WORKERS de la phase 1 fabriquent LES LEURS (``build_runner``) :
         un dépôt Mongo est lié à la boucle qui l'a touché en premier, donc partager
         ceux-ci avec les workers ferait revenir la globale ``_LOOP`` sous un autre nom
@@ -110,7 +110,6 @@ class TelemetryHooks:
         return {
             "connector": stack.connector,
             "parser": stack.parser,
-            "manifest_repo": stores.manifest,
             "doc_repo": stores.documents,
             "graph_repo": stores.graph,
             "vector_repo": stores.vectors,

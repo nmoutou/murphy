@@ -8,7 +8,6 @@ from .embedder import NoopEmbedder
 from .repositories import (
     InMemoryDocumentRepository,
     InMemoryGraphRepository,
-    InMemoryManifestRepository,
     InMemoryPendingRepository,
     InMemoryVectorRepository,
 )
@@ -20,7 +19,6 @@ __all__ = [
     "FakeRuntimeFactory",
     "InMemoryDocumentRepository",
     "InMemoryGraphRepository",
-    "InMemoryManifestRepository",
     "InMemoryPendingRepository",
     "InMemoryVectorRepository",
     "NoopEmbedder",

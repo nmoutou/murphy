@@ -135,7 +135,7 @@ def _status_from(stats: RunStats) -> RunStatus:
     attrape toutes, y compris celles qu'on n'a pas encore rencontrées.
 
     Le référentiel est ``document.fetched``, jamais ``document.parsed`` : un document
-    invalidé n'est *pas* parsé (``compute_idempotence`` émet ``INVALIDATED`` **à la place**
+    invalidé n'est *pas* parsé (``parse_documents`` émet ``INVALIDATED`` **à la place**
     de ``PARSED``, puis ``continue``). Prendre ``parsed`` pour total exclurait les
     invalides du dénominateur — l'équation tomberait juste en oubliant précisément ceux
     qu'elle doit compter.

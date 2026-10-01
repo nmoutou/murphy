@@ -22,7 +22,7 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from hashlib import blake2b
 
-from ragcore.core.models import Operation, ParsedDocument, Relation, RunStats
+from ragcore.core.models import ParsedDocument, Relation, RunStats
 from ragcore.core.models.audit import build_event
 from ragcore.core.ports.runtime import AsyncRuntime, AsyncRuntimeFactory
 from ragcore.core.ports.telemetry import TelemetryFactory, WorkerTelemetry
@@ -44,7 +44,7 @@ class WorkloadResult:
 # Le travail sur un document, injecté : le runner ne sait ni chunker, ni embedder,
 # ni persister. Il reçoit une fonction, et il la parallélise.
 DocumentWorkload = Callable[
-    [ParsedDocument, Operation, AsyncRuntime, WorkerTelemetry],
+    [ParsedDocument, AsyncRuntime, WorkerTelemetry],
     WorkloadResult,
 ]
 
@@ -98,7 +98,7 @@ class IngestionRunner:
 
     def run(
         self,
-        to_process: list[tuple[ParsedDocument, Operation]],
+        to_process: list[ParsedDocument],
         context: PipelineContext,
     ) -> IngestionOutcome:
         """Synchrone : c'est le pont entre Kedro (sync) et les dépôts (async)."""
@@ -124,7 +124,7 @@ class IngestionRunner:
     def _run_shard(
         self,
         worker_id: int,
-        shard: list[tuple[ParsedDocument, Operation]],
+        shard: list[ParsedDocument],
         context: PipelineContext,
     ) -> _ShardResult:
         """Le travail d'UN worker : sa boucle, ses backends, son agrégat."""
@@ -139,16 +139,16 @@ class IngestionRunner:
 
     def _process(
         self,
-        shard: list[tuple[ParsedDocument, Operation]],
+        shard: list[ParsedDocument],
         runtime: AsyncRuntime,
         telemetry: WorkerTelemetry,
         context: PipelineContext,
     ) -> _ShardResult:
         result = _ShardResult()
-        for parsed, operation in shard:
+        for parsed in shard:
             identifier = parsed.identifier.serialize()
             try:
-                outcome = self._workload(parsed, operation, runtime, telemetry)
+                outcome = self._workload(parsed, runtime, telemetry)
             except Exception as exc:  # noqa: BLE001 — le document est perdu, pas le run : l'échec est compté par document
                 _declare_failure(telemetry, parsed, exc, context)
                 result.failures.append((identifier, str(exc)))
@@ -159,8 +159,8 @@ class IngestionRunner:
 
     @staticmethod
     def partition(
-        to_process: list[tuple[ParsedDocument, Operation]], worker_count: int
-    ) -> list[list[tuple[ParsedDocument, Operation]]]:
+        to_process: list[ParsedDocument], worker_count: int
+    ) -> list[list[ParsedDocument]]:
         """Dispatch par clé document — l'invariant 2, isolé et testable seul.
 
         Le hachage est explicite (blake2b) et non le ``hash()`` natif : celui-ci est
@@ -168,12 +168,10 @@ class IngestionRunner:
         rendrait la partition non reproductible — et le test « le dispatch par clé
         tient-il ? » impossible à écrire.
         """
-        shards: list[list[tuple[ParsedDocument, Operation]]] = [
-            [] for _ in range(worker_count)
-        ]
-        for parsed, operation in to_process:
+        shards: list[list[ParsedDocument]] = [[] for _ in range(worker_count)]
+        for parsed in to_process:
             shards[_shard_of(parsed.identifier.serialize(), worker_count)].append(
-                (parsed, operation)
+                parsed
             )
         return shards
 

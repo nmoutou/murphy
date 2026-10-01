@@ -1,6 +1,6 @@
 # INDEX — Registre des décisions (ADR)
 
-> Un fichier par ADR (format Nygard). **Prochain numéro : ADR-044.**
+> Un fichier par ADR (format Nygard). **Prochain numéro : ADR-045.**
 
 ## Registre
 
@@ -16,7 +16,7 @@
 | [ADR-018](ADR-018-identite-ecli-primaire.md) | Identité : ECLI primaire | Rétro-documenté |
 | [ADR-019](ADR-019-rejet-akoma-ntoso.md) | Rejet d'Akoma Ntoso comme format de travail | Rétro-documenté |
 | [ADR-020](ADR-020-tri-base-stateless-failfast.md) | Architecture tri-base + serving stateless/fail-fast | Rétro-documenté |
-| [ADR-022](ADR-022-regimes-ingestion-dev-prod.md) | Régimes d'ingestion dev/prod : exhaustif vs sélectif | Acté — §5 amendé par ADR-023 et ADR-043, §2, §4 et §6 par ADR-043, §7 par ADR-024 |
+| [ADR-022](ADR-022-regimes-ingestion-dev-prod.md) | Régimes d'ingestion dev/prod : exhaustif vs sélectif | Acté — §5 amendé par ADR-023, ADR-043 et ADR-044, §2 et §6 par ADR-043, §4 par ADR-043 et ADR-044, §7 par ADR-024 |
 | [ADR-023](ADR-023-interrupteur-embedding-dev.md) | Un interrupteur d'embedding, pas trois interrupteurs de store | Acté — amende ADR-022 §5, amendé par ADR-043 |
 | [ADR-024](ADR-024-retrait-echantillonnage-corpus.md) | Retrait de l'échantillonnage de corpus | Acté — amende ADR-022 §7 |
 | [ADR-026](ADR-026-restructuration-configuration.md) | Restructuration de la configuration en partition workflow / ingestion | ❌ Remplacé par ADR-042 |
@@ -24,7 +24,8 @@
 | [ADR-040](ADR-040-depot-unique.md) | Un seul dépôt : fin des sous-modules, contrat du flux dans un paquet partagé | ✅ Accepté (25 septembre 2026) |
 | [ADR-041](ADR-041-erreurs-du-chat-en-modale.md) | Erreurs du chat : une modale, l'étape en cause, un arrêt propagé au backend | ✅ Accepté (26 septembre 2026) — étend le contrat d'ADR-040 (`@murphy/contract/errors`) |
 | [ADR-042](ADR-042-collection-qdrant-nom-fixe.md) | Une collection Qdrant au nom fixe : fin de l'empreinte, du pointeur et du tracking | ✅ Accepté (30 septembre 2026) — remplace ADR-026, amende ADR-039 §3, §3 amendé par ADR-043 |
-| [ADR-043](ADR-043-configuration-ingestion-environment.md) | Configuration de l'ingestion : un fichier, un bloc `dev`, `ENVIRONMENT` seul arbitre | ✅ Accepté (30 septembre 2026) — amende ADR-022 §5-§6, ADR-023, ADR-042 §3 ; §3 et §4 amendés (labels Neo4j déclarés par les sources ; découpe dans l'environnement ; bloc `dev` aplati) |
+| [ADR-043](ADR-043-configuration-ingestion-environment.md) | Configuration de l'ingestion : un fichier, un bloc `dev`, `ENVIRONMENT` seul arbitre | ✅ Accepté (30 septembre 2026) — amende ADR-022 §5-§6, ADR-023, ADR-042 §3 ; §3 et §4 amendés (labels Neo4j déclarés par les sources ; découpe dans l'environnement ; bloc `dev` aplati), §4 par ADR-044 |
+| [ADR-044](ADR-044-suppression-du-manifest.md) | Suppression du manifest d'ingestion | ✅ Accepté (1er octobre 2026) — amende ADR-022 §4-§5 et ADR-043 §2 et §4 |
 
 ## Points ouverts rattachés
 

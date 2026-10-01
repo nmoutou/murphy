@@ -14,15 +14,6 @@ class SourceName(StrEnum):
     CONSTIT = "constit"  # Conseil constitutionnel
 
 
-class Operation(StrEnum):
-    """Opération effectuée sur un document lors du manifest."""
-
-    INSERT = "insert"  # première ingestion (identifier inconnu du manifest)
-    UPDATE = "update"  # ré-ingestion (identifier déjà connu)
-    DELETE = "delete"  # suppression
-    EXCLUDED = "excluded"  # rejet de validation, jamais ingéré
-
-
 class TargetStore(StrEnum):
     MONGO = "mongo"
     NEO4J = "neo4j"

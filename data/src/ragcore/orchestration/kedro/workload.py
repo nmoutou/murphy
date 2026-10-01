@@ -9,7 +9,7 @@ qu'en creux avant ce module, et il les rend concrètes toutes les trois :
    worker qui réduit ``RunStats``. Le workload, LUI, tient une ``WorkerTelemetry`` :
    c'est donc lui qui les *déclare* (``record_unknown``). Les inconnus de PARSE
    n'existent plus : les balises non-configurées sont routées par la
-   cascade et signalées au site de parse (``computeIdempotence``).
+   cascade et signalées au site de parse (``parseDocuments``).
 
 2. **Le seul appelant de ``extract()`` hors tests.** L'extraction descend dans le
    worker (doctrine §9). ``nodes/persist.py`` était l'ancien appelant ; il est
@@ -31,7 +31,6 @@ from ragcore.application.ingest_document import IngestDocumentUseCase
 from ragcore.application.ingestion_runner import DocumentWorkload, WorkloadResult
 from ragcore.application.run_context import PipelineContext
 from ragcore.core.models.document import ParsedDocument
-from ragcore.core.models.enums import Operation
 from ragcore.core.ports.chunker import BaseChunker
 from ragcore.core.ports.embedder import BaseEmbedder
 from ragcore.core.ports.relation_extractor import (
@@ -72,7 +71,7 @@ def build_document_workload(
     """Fabrique le ``DocumentWorkload`` que le runner injecte à chaque worker.
 
     Le runner ne connaît ni chunker, ni embedder, ni extracteur : il reçoit une
-    fonction ``(parsed, operation, runtime, telemetry) -> WorkloadResult`` et la
+    fonction ``(parsed, runtime, telemetry) -> WorkloadResult`` et la
     parallélise. ``runtime`` et ``telemetry`` sont ceux du worker courant, fournis par
     le runner — ils ne sont donc PAS capturés ici.
 
@@ -91,13 +90,12 @@ def build_document_workload(
 
     def workload(
         parsed: ParsedDocument,
-        operation: Operation,
         runtime: AsyncRuntime,
         telemetry: WorkerTelemetry,
     ) -> WorkloadResult:
         # Plus d'inconnus de PARSE ici : les balises non-configurées sont ROUTÉES par la
         # cascade du parser (metadata ou lien) et SIGNALÉES au site de parse
-        # (computeIdempotence, `tag.unconfigured`). Ne restent que les
+        # (parseDocuments, `tag.unconfigured`). Ne restent que les
         # inconnus d'EXTRACTION (typelien/sens/identifiant), déclarés par `_extract`.
         parsed, extraction = _extract(steps.extractor, parsed, telemetry)
 
@@ -117,7 +115,7 @@ def build_document_workload(
         # La saga n'écrit qu'un NŒUD (mongo → qdrant → neo4j:node) : les relations ne
         # passent pas par le use case.
         use_case = use_cases.for_worker(telemetry)
-        runtime.run(use_case.execute(parsed, embedded, operation, context))
+        runtime.run(use_case.execute(parsed, embedded, context))
 
         # Les relations ne sont PAS écrites ici : elles remontent vers la phase 2.
         return WorkloadResult(relations=extraction.relations)

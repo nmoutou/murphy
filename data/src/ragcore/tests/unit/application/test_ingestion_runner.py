@@ -19,7 +19,7 @@ from ragcore.application.ingestion_runner import IngestionRunner, WorkloadResult
 from ragcore.application.run_context import PipelineContext
 from ragcore.core.models.audit import build_event
 from ragcore.core.models.document import ParsedDocument
-from ragcore.core.models.enums import Operation, SourceName
+from ragcore.core.models.enums import SourceName
 from ragcore.core.models.identifiers import Identifier
 from ragcore.core.ports.runtime import AsyncRuntimeFactory
 from ragcore.core.ports.telemetry import TelemetryFactory, WorkerTelemetry
@@ -43,14 +43,11 @@ def _doc(n: int) -> ParsedDocument:
     )
 
 
-def _workload(parsed, operation, runtime, telemetry) -> WorkloadResult:  # noqa: ANN001
-    del operation, runtime
+def _workload(parsed, runtime, telemetry) -> WorkloadResult:  # noqa: ANN001
+    del runtime
     telemetry.emit(
         build_event(
-            DOCUMENT_PERSISTED,
-            "run-1",
-            document_id=parsed.identifier.serialize(),
-            payload={"operation": "insert"},
+            DOCUMENT_PERSISTED, "run-1", document_id=parsed.identifier.serialize()
         )
     )
     return WorkloadResult(relations=[])
@@ -74,22 +71,20 @@ class TestPartition:
     """L'invariant 2, isolé : le dispatch par clé document."""
 
     def test_every_document_lands_in_exactly_one_shard(self) -> None:
-        docs = [(_doc(i), Operation.INSERT) for i in range(50)]
+        docs = [_doc(i) for i in range(50)]
 
         shards = IngestionRunner.partition(docs, worker_count=4)
 
-        placed = [d.identifier.serialize() for shard in shards for d, _ in shard]
-        assert sorted(placed) == sorted(d.identifier.serialize() for d, _ in docs)
+        placed = [d.identifier.serialize() for shard in shards for d in shard]
+        assert sorted(placed) == sorted(d.identifier.serialize() for d in docs)
         assert len(placed) == len(set(placed))  # aucun document dupliqué
 
     def test_the_same_identifier_always_lands_on_the_same_worker(self) -> None:
         """La garantie qui remplace le mutex : deux sagas ne peuvent pas se croiser
         sur un même chunk, parce que le parent ne va jamais sur deux workers.
         """
-        doc = _doc(7)
-
-        first = IngestionRunner.partition([(doc, Operation.INSERT)], 4)
-        second = IngestionRunner.partition([(doc, Operation.UPDATE)], 4)
+        first = IngestionRunner.partition([_doc(7)], 4)
+        second = IngestionRunner.partition([_doc(7)], 4)
 
         assert [i for i, s in enumerate(first) if s] == [
             i for i, s in enumerate(second) if s
@@ -120,7 +115,7 @@ class TestPartition:
         assert runs[0] == runs[1] == runs[2]
 
     def test_a_single_worker_gets_everything(self) -> None:
-        docs = [(_doc(i), Operation.INSERT) for i in range(10)]
+        docs = [_doc(i) for i in range(10)]
         assert [len(s) for s in IngestionRunner.partition(docs, 1)] == [10]
 
 
@@ -139,7 +134,7 @@ class TestIsolation:
             worker_count=3,
         )
 
-        runner.run([(_doc(i), Operation.INSERT) for i in range(9)], context)
+        runner.run([_doc(i) for i in range(9)], context)
 
         assert len(runtime_factory.built) == 3
         assert len(telemetry_factory.built) == 3
@@ -157,7 +152,7 @@ class TestIsolation:
             worker_count=2,
         )
 
-        runner.run([(_doc(i), Operation.INSERT) for i in range(6)], context)
+        runner.run([_doc(i) for i in range(6)], context)
 
         assert all(r.closed for r in runtime_factory.built)
         assert all(t.closed for t in telemetry_factory.built)
@@ -167,13 +162,13 @@ class TestOutcome:
     def test_stats_are_the_reduction_of_the_workers(
         self, context: PipelineContext
     ) -> None:
-        docs = [(_doc(i), Operation.INSERT) for i in range(12)]
+        docs = [_doc(i) for i in range(12)]
 
         outcome = _runner().run(docs, context)
 
         # 12 documents, 12 événements — quel que soit le nombre de workers.
         assert outcome.stats.counts[DOCUMENT_PERSISTED] == 12
-        assert outcome.written_node_ids == {d.identifier.serialize() for d, _ in docs}
+        assert outcome.written_node_ids == {d.identifier.serialize() for d in docs}
 
     def test_relations_are_collected_not_written(
         self, context: PipelineContext
@@ -181,13 +176,11 @@ class TestOutcome:
         """La phase 1 EXTRAIT les relations ; elle ne les écrit pas (§11 : phase 2)."""
         sentinel = object()
 
-        def workload(parsed, operation, runtime, telemetry):  # noqa: ANN001, ANN202
-            del parsed, operation, runtime, telemetry
+        def workload(parsed, runtime, telemetry):  # noqa: ANN001, ANN202
+            del parsed, runtime, telemetry
             return WorkloadResult(relations=[sentinel])  # type: ignore[list-item]
 
-        outcome = _runner(workload).run(
-            [(_doc(i), Operation.INSERT) for i in range(5)], context
-        )
+        outcome = _runner(workload).run([_doc(i) for i in range(5)], context)
 
         assert outcome.relations == [sentinel] * 5
 
@@ -196,15 +189,13 @@ class TestOutcome:
     ) -> None:
         """Un document perdu est une donnée, pas une interruption — ni un silence."""
 
-        def workload(parsed, operation, runtime, telemetry):  # noqa: ANN001, ANN202
-            del operation, runtime, telemetry
+        def workload(parsed, runtime, telemetry):  # noqa: ANN001, ANN202
+            del runtime, telemetry
             if parsed.identifier.raw.endswith("003"):
                 raise RuntimeError("saga compensée")
             return WorkloadResult()
 
-        outcome = _runner(workload).run(
-            [(_doc(i), Operation.INSERT) for i in range(6)], context
-        )
+        outcome = _runner(workload).run([_doc(i) for i in range(6)], context)
 
         assert len(outcome.failures) == 1
         identifier, message = outcome.failures[0]

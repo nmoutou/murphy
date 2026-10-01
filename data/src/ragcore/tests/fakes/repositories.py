@@ -3,7 +3,6 @@
 from ragcore.core.models.chunk import EmbeddedChunk
 from ragcore.core.models.document import ParsedDocument
 from ragcore.core.models.identifiers import Identifier, RunId
-from ragcore.core.models.manifest import ManifestEntry
 from ragcore.core.models.pending import PendingKey, PendingRelation
 from ragcore.core.models.relation import Relation
 from ragcore.core.ports.graph_repository import RelationWriteResult
@@ -36,31 +35,6 @@ class InMemoryVectorRepository:
         self.deleted.append(key)
         self.chunks = [
             c for c in self.chunks if c.chunk.parent_identifier.serialize() != key
-        ]
-
-
-class InMemoryManifestRepository:
-    def __init__(self) -> None:
-        self.entries: list[ManifestEntry] = []
-
-    async def append(self, entry: ManifestEntry) -> None:
-        self.entries.append(entry)
-
-    async def last_for_identifier(self, identifier: Identifier) -> ManifestEntry | None:
-        matches = [
-            e
-            for e in self.entries
-            if e.identifier is not None
-            and e.identifier.serialize() == identifier.serialize()
-        ]
-        return matches[-1] if matches else None
-
-    async def delete(self, identifier: Identifier) -> None:
-        key = identifier.serialize()
-        self.entries = [
-            e
-            for e in self.entries
-            if not (e.identifier is not None and e.identifier.serialize() == key)
         ]
 
 

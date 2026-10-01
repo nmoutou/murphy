@@ -112,7 +112,7 @@ Une balise absente de la table est **routée**, pas jetée :
 - sinon → **métadonnée**, sous sa clé chemin-complet.
 
 Dans les deux cas, le signal `tag.unconfigured` est déclaré au site de parse
-(`computeIdempotence`), et le curseur `skip_unconfigured` (booléen, validé en
+(`parseDocuments`), et le curseur `skip_unconfigured` (booléen, validé en
 tête de run, sans effet hors `ENVIRONMENT=dev` où la métadonnée est toujours retirée)
 décide ensuite du sort de la métadonnée — le signal survit toujours au filtre.
 
@@ -122,7 +122,8 @@ décide ensuite du sort de la métadonnée — le signal survit toujours au filt
   aval, sous sa valeur brute (`LEGIARTI000006419264`, `JURITEXT000019333891`). Il est
   validé à la construction (8 majuscules + 12 chiffres), pour toutes les sources ; ses
   8 lettres distinguent un article d'une décision. Identifiant absent ou mal formé =
-  `ValidationError` = rejet métier (manifest `EXCLUDED`), distinct d'une panne de lecture
+  `ValidationError` = rejet métier (`document.invalidated`, `reason=validation_error`),
+  distinct d'une panne de lecture
   (`ParseError`).
 - **`content` et `structure["sections"]` sortent de la même lecture, dans le même
   ordre** : chaque section est un morceau **littéral** de `content`, et

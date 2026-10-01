@@ -11,19 +11,11 @@ n'est pas un ``join()`` caché dans du code applicatif : c'est une arête du DAG
 """
 
 from dataclasses import dataclass
-from datetime import UTC, datetime
 
-from ragcore.core.models import (
-    EmbeddedChunk,
-    Identifier,
-    ManifestEntry,
-    Operation,
-    ParsedDocument,
-)
+from ragcore.core.models import EmbeddedChunk, Identifier, ParsedDocument
 from ragcore.core.models.audit import build_event
 from ragcore.core.ports.document_repository import DocumentRepository
 from ragcore.core.ports.graph_repository import GraphRepository
-from ragcore.core.ports.manifest_repository import ManifestRepository
 from ragcore.core.ports.telemetry import TelemetryPort
 from ragcore.core.ports.vector_repository import VectorRepository
 from ragcore.core.telemetry_events import DOCUMENT_PERSISTED
@@ -31,21 +23,16 @@ from ragcore.core.telemetry_events import DOCUMENT_PERSISTED
 from .run_context import PipelineContext
 from .saga import SagaExecutor, SagaStep
 
-# Le nœud Neo4j existe, mais pas ses arêtes : le dire « neo4j » tout court serait
-# affirmer une complétude que la phase 1 ne livre pas.
-TARGETS_WRITTEN = ["mongo", "qdrant", "neo4j:node"]
-
 
 @dataclass(frozen=True)
 class IngestionStores:
-    """Les quatre dépôts qu'écrit l'ingestion d'un document — typés par leurs ports.
+    """Les trois dépôts qu'écrit l'ingestion d'un document — typés par leurs ports.
 
     Le hook en ouvre un jeu (maintenance, phase 2) et chaque worker de la phase 1 le sien
     (§11) : ``orchestration/kedro/stores.open_document_stores`` les fabrique.
     """
 
     documents: DocumentRepository
-    manifest: ManifestRepository
     graph: GraphRepository
     vectors: VectorRepository
 
@@ -55,38 +42,36 @@ class IngestDocumentUseCase:
         self._document_repo = stores.documents
         self._graph_repo = stores.graph
         self._vector_repo = stores.vectors
-        self._manifest_repo = stores.manifest
         self._telemetry = telemetry
 
     async def execute(
         self,
         parsed: ParsedDocument,
         embedded_chunks: list[EmbeddedChunk],
-        operation: Operation,
         context: PipelineContext,
     ) -> None:
-        # La saga peut lever — le manifest n'est alors PAS écrit.
+        # La saga peut lever — le document n'est alors PAS déclaré persisté.
         await SagaExecutor(self._telemetry).execute(
             self._saga_steps(parsed, embedded_chunks), context
         )
-        await self._record(parsed, operation, context)
+        self._emit_persisted(parsed, context)
 
     def _saga_steps(
         self, parsed: ParsedDocument, embedded_chunks: list[EmbeddedChunk]
     ) -> list[SagaStep]:
         """Mongo → Qdrant → nœud Neo4j, chacun avec sa compensation.
 
-        Compensation Mongo et le « trou » de l'UPDATE — la vérité, écrite ici.
+        Compensation Mongo et le « trou » de la réécriture — la vérité, écrite ici.
         Le forward Mongo (`document_repo.upsert`) remplace en place ATOMIQUEMENT
         (`replace_one upsert=True`) : il ne détruit plus rien de lui-même, donc il n'y a
         plus de fenêtre à vide créée par notre propre code. La compensation
-        `document_repo.delete` est le rollback JUSTE d'un INSERT (rien avant → supprimer).
-        Sur un UPDATE, elle supprime au lieu de restaurer l'ancien — mais ce chemin n'est
-        atteint que si un step ULTÉRIEUR (Qdrant, Neo4j) échoue, et il ne survient jamais
-        après un `nuke_all` (manifest effacé → tout est INSERT). Ce résiduel n'existe donc
-        que sur le run INCRÉMENTAL — un chemin v1 — et retombe sur l'at-least-once (§13) :
-        le run suivant re-traite le document (le manifest ne l'a pas enregistré). Le vrai
-        rollback versionné (snapshoter l'ancien pour le réinsérer) est un choix EXPLICITE
+        `document_repo.delete` est le rollback JUSTE d'une première écriture (rien avant
+        → supprimer). Sur un document déjà en base, elle supprime au lieu de restaurer
+        l'ancien — mais ce chemin n'est atteint que si un step ULTÉRIEUR (Qdrant, Neo4j)
+        échoue, et il ne survient jamais après un `nuke_all` (bases vides). Ce résiduel
+        n'existe donc que sur le run INCRÉMENTAL — un chemin v1 — et retombe sur
+        l'at-least-once (§13) : le run suivant relit la source et réécrit le document.
+        Le vrai rollback versionné (snapshoter l'ancien pour le réinsérer) est un choix EXPLICITE
         de v1 : il paie un store de versions et une compensation qui peut elle-même
         échouer, pour fermer un trou qu'aucun run v0 n'emprunte.
 
@@ -122,28 +107,15 @@ class IngestDocumentUseCase:
             ),
         ]
 
-    async def _record(
-        self, parsed: ParsedDocument, operation: Operation, context: PipelineContext
-    ) -> None:
-        """Manifest uniquement après succès total. Append-only : on ajoute, jamais on
-        ne met à jour."""
-        await self._manifest_repo.append(
-            ManifestEntry(
-                identifier=parsed.identifier,
-                source=parsed.source,
-                operation=operation,
-                reason=None,
-                targets_written=list(TARGETS_WRITTEN),
-                processed_at=datetime.now(UTC),
-            )
-        )
+    def _emit_persisted(self, parsed: ParsedDocument, context: PipelineContext) -> None:
+        """Uniquement après succès total : un document à moitié écrit n'est pas compté
+        persisté."""
         self._telemetry.emit(
             build_event(
                 event_type=DOCUMENT_PERSISTED,
                 run_id=context.run_id,
                 source=parsed.source,
                 document_id=parsed.identifier.serialize(),
-                payload={"operation": operation.value},
             )
         )
 
@@ -156,7 +128,7 @@ class IngestDocumentUseCase:
 
         **Le ``delete`` n'est PAS une scorie ici — ne pas le retirer.** Contrairement à
         Mongo (un document = un enregistrement, remplaçable atomiquement par ``replace_one``),
-        un document tient dans Qdrant en N points, un par chunk. Sur un UPDATE dont la
+        un document tient dans Qdrant en N points, un par chunk. Sur une réécriture dont la
         nouvelle version a MOINS de chunks que l'ancienne, un simple ``upsert`` écrase les
         points communs mais laisse les surnuméraires de l'ancienne version orphelins dans
         l'index — du contenu périmé qui remonterait aux recherches. Le ``delete_by_document``
@@ -165,8 +137,8 @@ class IngestDocumentUseCase:
 
         Il subsiste donc, sur ce store et sur ce seul chemin, une fenêtre intra-step où les
         vecteurs du document sont absents. Comme le résiduel de la saga (cf. la docstring de
-        classe), elle ne concerne QUE le run incrémental (après un ``nuke_all`` le manifest
-        est vide, tout est INSERT, ``delete_by_document`` ne trouve rien) et retombe sur
+        classe), elle ne concerne QUE le run incrémental (après un ``nuke_all`` la
+        collection est vide, ``delete_by_document`` ne trouve rien) et retombe sur
         l'at-least-once : le run suivant ré-écrit le document. Aucune donnée d'autorité
         n'est perdue — la source XML reste la vérité.
         """

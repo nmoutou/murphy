@@ -1,6 +1,6 @@
 # ADR-043 — Configuration de l'ingestion : un fichier, un bloc `dev`, `ENVIRONMENT` seul arbitre
 
-**Statut** : ✅ Accepté (30 septembre 2026) — amende ADR-022 §5-§6, ADR-023 et ADR-042 §3 · **§3 et §4 amendés le 30 septembre 2026** (labels Neo4j déclarés par les sources ; découpe dans l'environnement ; bloc `dev` aplati)
+**Statut** : ✅ Accepté (30 septembre 2026) — amende ADR-022 §5-§6, ADR-023 et ADR-042 §3 · **§3 et §4 amendés le 30 septembre 2026** (labels Neo4j déclarés par les sources ; découpe dans l'environnement ; bloc `dev` aplati) · **§4 amendé par [ADR-044](ADR-044-suppression-du-manifest.md)** (suppression du manifest)
 
 ## Contexte
 
@@ -100,8 +100,10 @@ environnements : une coquille arrête le run même en prod.
 - §2 et §4 (30 septembre 2026) : en dev, `include_path` écrit les chemins des fichiers
   XML source (`source_files`) dans le document Mongo comme sur le nœud Neo4j. L'épuration
   de Mongo tient en prod, où `include_path` vaut toujours `false` ; en dev, ces chemins
-  servent l'inspection dans les deux bases. Repasser à `false` sans `nuke_all` les
-  laisse en place : un document déjà au manifest n'est pas réécrit.
+  servent l'inspection dans les deux bases. Repasser à `false` sans `nuke_all` : Mongo
+  les perd au run suivant (`replace_one` remplace le document entier), Neo4j les garde
+  (`SET +=` n'efface aucune propriété). Corrigé par ADR-044 : la version précédente
+  prêtait au manifest un saut de réécriture qu'il n'a jamais fait.
 
 **ADR-023.**
 

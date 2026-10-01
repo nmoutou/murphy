@@ -22,7 +22,6 @@ from ragcore.core.telemetry_events import (
     COUNT_CARRYING_EVENTS,
     DOCUMENT_FAILED,
     DOCUMENT_INVALIDATED,
-    DOCUMENT_PERSISTED,
     DOCUMENT_SKIPPED,
     PAYLOAD_COUNT_KEY,
     SAGA_COMPENSATION_FAILED,
@@ -31,7 +30,6 @@ from ragcore.core.telemetry_events import (
 # Events dont on veut un breakdown par clé de payload.
 _BREAKDOWN_KEY: dict[str, str] = {
     DOCUMENT_INVALIDATED: "reason",  # breakdown par raison de rejet
-    DOCUMENT_PERSISTED: "operation",  # breakdown par opération (INSERT/UPDATE)
     DOCUMENT_FAILED: "reason",  # breakdown par CAUSE de la fuite
     DOCUMENT_SKIPPED: "reason",  # breakdown par raison d'écart (artefact / illisible)
     AUDIT_WRITE_FAILED: "backend",  # breakdown par backend défaillant (mongo, drain…)
@@ -104,9 +102,9 @@ class RunStatsAggregator:
         # run vaut `None`).
         #
         # Ce qui manque n'est pas une ligne ici, c'est un CHAMP : `breakdowns` est
-        # `event_type -> {clé -> compte}` et ses deux places sont prises (`reason`,
-        # `operation`). Ventiler par source demande un axe de plus — un `by_source` sur
-        # `RunStats`, de même forme et de même monoïde. Le bricoler ici (clé composite
+        # `event_type -> {clé -> compte}` et sa place est prise (`reason`, `step`…).
+        # Ventiler par source demande un axe de plus — un `by_source` sur `RunStats`, de
+        # même forme et de même monoïde. Le bricoler ici (clé composite
         # `"legi:document.persisted"`) donnerait un bilan qu'il faudrait re-parser pour
         # lire. C'est du §12, et ça se fait dans le modèle, pas dans l'adaptateur.
 

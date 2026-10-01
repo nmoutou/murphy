@@ -17,7 +17,6 @@ from ragcore.adapters.config.settings import InfraSettings
 from ragcore.adapters.storage.mongo.audit_repository import MongoAuditRepository
 from ragcore.adapters.storage.mongo.client import MongoClient, create_mongo_client
 from ragcore.adapters.storage.mongo.document_repository import MongoDocumentRepository
-from ragcore.adapters.storage.mongo.manifest_repository import MongoManifestRepository
 from ragcore.adapters.storage.mongo.pending_repository import (
     MongoPendingRelationRepository,
 )
@@ -99,7 +98,6 @@ def open_document_stores(
         documents=MongoDocumentRepository(
             clients.mongo, data_db, include_path=plan.include_path
         ),
-        manifest=MongoManifestRepository(clients.mongo, data_db),
         graph=Neo4jGraphRepository(
             clients.neo4j, plan.node_labels, plan.node_hydration
         ),

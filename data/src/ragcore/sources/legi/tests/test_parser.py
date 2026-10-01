@@ -268,7 +268,7 @@ def test_une_valeur_au_format_DILA_devient_un_LIEN_pas_une_metadonnee(
 def test_un_xml_illisible_leve_ParseError_pas_ValidationError(
     fixtures_dir: Path,
 ) -> None:
-    """La distinction dont le manifest dépend : une panne de LECTURE n'est pas un refus
+    """La distinction dont la raison de rejet dépend : une panne de LECTURE n'est pas un refus
     MÉTIER. Les confondre inscrirait un fichier corrompu sous la même raison qu'un
     document sans identifiant — et on ne saurait plus lequel des deux réparer.
     """

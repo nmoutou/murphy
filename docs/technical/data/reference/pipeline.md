@@ -73,7 +73,7 @@ Entrées : les quatre dépôts du hook, `nuke_all` (du plan du run).
 - `nuke_all: true` → le garde-fou a déjà joué en amont : hors `ENVIRONMENT=dev`, `plan_run`
   ignore `parameters.yml` et `nuke_all` arrive ici à `false` (l'absence de la variable vaut
   `prod`). Le nœud n'efface donc qu'en dev :
-  - Mongo `LEGIFRANCE` : collections `documents` + `manifest` (et **repose les index**,
+  - Mongo `LEGIFRANCE` : la collection `documents` (et **repose les index**,
     qu'un drop détruit avec la collection) ;
   - Neo4j : le graphe entier ;
   - Qdrant : **toutes** les collections du store (c'est là que dorment les collections
@@ -97,20 +97,20 @@ Entrées : `connector`, le contexte, la télémétrie, le runtime du hook, `nuke
 
 Sortie : `raw_documents`.
 
-## 3. `computeIdempotence`
+## 3. `parseDocuments`
 
-Entrées : `raw_documents`, `parser`, `manifest_repo`, contexte, télémétrie (de type
-`WorkerTelemetry` : ce nœud *déclare* des inconnus), runtime, `skip_unconfigured` (du plan du run).
+Entrées : `raw_documents`, `parser`, contexte, télémétrie (de type `WorkerTelemetry` : ce
+nœud *déclare* des inconnus), `skip_unconfigured` (du plan du run).
 
 Pour chaque `RawDocument` :
 
 1. **Parse** (`parser.parse(raw)` → `ParseResult`). Deux familles d'échec, distinguées :
    - `ValidationError` (lisible mais irrecevable : identifiant absent/mal formé) → événement
-     `document.invalidated` (`reason=validation_error`) + entrée manifest `EXCLUDED`
-     (identifier `None`, `source_path` + `reason` obligatoires) ;
-   - toute autre exception (illisible) → idem avec `reason=parse_error`.
-   Dans les deux cas le document part dans `to_skip`. Il n'y a **pas** de troisième voie :
-   un document parse (INSERT/UPDATE) ou il est EXCLUDED — jamais ignoré.
+     `document.invalidated` (`reason=validation_error`, `uid` = chemin source, `error`) ;
+   - `ParseError` (illisible) → idem avec `reason=parse_error`.
+   Dans les deux cas le document part dans `to_skip`. Toute autre exception sort du
+   contrat du parser : c'est un bug du run, elle remonte et l'arrête. Il n'y a **pas** de
+   troisième voie : un document parse ou il est rejeté — jamais ignoré.
 2. **Signal des balises non-configurées** — TOUJOURS, avant le curseur :
    `record_unknown("tag.unconfigured", …)` et `record_unknown("root", …)` pour ce que la
    cascade du parser a rangé sans que la table le lui apprenne. C'est la vigie de dérive
@@ -119,15 +119,13 @@ Pour chaque `RawDocument` :
    run, avant tout nœud) : à `true`, les métadonnées non-configurées sont
    retirées du document juste avant l'ingestion. Hors `ENVIRONMENT=dev`, le plan impose
    `true`. On compte d'abord, on filtre ensuite.
-4. **Idempotence** : `manifest_repo.last_for_identifier(identifier)` →
-   `determine_operation` : identifiant inconnu du manifest = `INSERT`, connu = `UPDATE`.
-   Pas de hash de contenu : la présence de l'identifiant décide, et elle seule.
-5. Émet `document.parsed` (avec l'opération en payload).
+4. Émet `document.parsed`. Le document part à l'ingestion, qu'il soit déjà en base ou
+   non : la saga le réécrit en place (voir [idempotence.md](idempotence.md)).
 
-La source de chaque événement/entrée manifest est `raw.source` (la vraie origine du
+La source de chaque événement est `raw.source` (la vraie origine du
 fichier), jamais `context.source` — qui vaut `None` en run multi-source.
 
-Sorties : `to_process` (`list[(ParsedDocument, Operation)]`) et `to_skip` (`list[str]`).
+Sorties : `to_process` (`list[ParsedDocument]`) et `to_skip` (`list[str]`).
 
 ## 4. `ingest` — la phase 1
 

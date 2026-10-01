@@ -9,15 +9,10 @@ from typing import Any
 from ragcore.core.models.audit import AuditEvent
 from ragcore.core.models.run_stats import RunStats
 from ragcore.core.ports.runtime import AsyncRuntime
-from ragcore.core.telemetry_events import (
-    AUDIT_WRITE_FAILED,
-    DOCUMENT_INVALIDATED,
-    DOCUMENT_PERSISTED,
-)
+from ragcore.core.telemetry_events import AUDIT_WRITE_FAILED, DOCUMENT_INVALIDATED
 
 _BREAKDOWN_KEY: dict[str, str] = {
     DOCUMENT_INVALIDATED: "reason",
-    DOCUMENT_PERSISTED: "operation",
 }
 
 

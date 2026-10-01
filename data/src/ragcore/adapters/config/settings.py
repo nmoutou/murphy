@@ -9,10 +9,9 @@ La forme de ces modèles est **dictée par ses appelants**. ``orchestration/kedr
 ``SecretStr``, et le typage l'impose au lieu de l'espérer. Un secret qui traîne en
 ``str`` finit dans un log le jour où quelqu'un journalise l'objet entier.
 
-Deux bases Mongo, et la distinction est structurelle : les *données* (documents,
-chunks, manifest) vivent dans l'une, la *méta* (audit, bilans de run, pendantes) dans
-l'autre. Un ``drop`` de la base de données ne doit jamais emporter la mémoire de ce
-qu'on a fait.
+Deux bases Mongo, et la distinction est structurelle : les *données* (les documents)
+vivent dans l'une, la *méta* (audit, bilans de run, pendantes) dans l'autre. Un ``drop``
+de la base de données ne doit jamais emporter la mémoire de ce qu'on a fait.
 
 **Le fichier lu est celui de la RACINE** (``ROOT_ENV_FILE``), pas un ``.env`` local — il
 n'y en a pas dans ``data/``, et en créer un n'aurait aucun effet. Le pipeline tourne sur

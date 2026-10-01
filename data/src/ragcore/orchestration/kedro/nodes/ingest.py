@@ -13,13 +13,12 @@ from __future__ import annotations
 from ragcore.application.ingestion_runner import IngestionOutcome, IngestionRunner
 from ragcore.application.run_context import PipelineContext
 from ragcore.core.models.document import ParsedDocument
-from ragcore.core.models.enums import Operation
 
 __all__ = ["ingest_node"]
 
 
 def ingest_node(
-    to_process: list[tuple[ParsedDocument, Operation]],
+    to_process: list[ParsedDocument],
     runner: IngestionRunner,
     pipeline_context: PipelineContext,
 ) -> IngestionOutcome:

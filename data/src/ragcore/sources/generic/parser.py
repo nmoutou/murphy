@@ -83,7 +83,8 @@ class GenericParser:
         Lève ``ValidationError`` si le document est lisible mais irrecevable (pas
         d'identifiant, identifiant mal formé), ``ParseError`` s'il est illisible. Les
         appelants comptent sur cette distinction : l'une est un refus métier, l'autre une
-        panne de lecture, et le manifest ne les inscrit pas sous la même raison.
+        panne de lecture, et ``document.invalidated`` ne les compte pas sous la même
+        raison.
 
         Rend un ``ParseResult`` : le document, plus ce que la cascade a rangé sans que
         la table le lui apprenne (balises non-configurées → metadata ou lien) et les

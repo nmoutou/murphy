@@ -16,10 +16,6 @@ parser:
   copy_mode: assign
 
 # --- Dépôts du hook (maintenance + phase 2 ; les workers fabriquent les leurs) ---
-manifest_repo:
-  type: MemoryDataset
-  copy_mode: assign
-
 doc_repo:
   type: MemoryDataset
   copy_mode: assign

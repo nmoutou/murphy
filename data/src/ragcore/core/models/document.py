@@ -23,16 +23,16 @@ class ParsedDocument(BaseModel):
     """Document après parsing : structuré, prêt pour le chunking.
 
     Un seul ``identifier`` nomme le document, quelle que soit sa source : c'est lui, et lui seul, qui sert de clé partout en aval
-    (Mongo, Qdrant, nœud Neo4j). Pas de hash de contenu : l'idempotence se joue sur la
-    présence de l'identifiant, pas sur une comparaison d'octets.
+    (Mongo, Qdrant, nœud Neo4j). Pas de hash de contenu : chaque run réécrit le document
+    en place sous cet identifiant, sans comparer d'octets.
 
     **Plus de champ ``unknowns``** (ADR-022 §1, modèle « trois portes ») : une balise
     non-configurée n'est pas un aveu qui voyage dans la donnée — c'est une MÉTADONNÉE
     (clé chemin-complet), ou un LIEN si sa valeur référence un document. Le signal
     ``tag.unconfigured``, lui, part en télémétrie au site de parse, jamais en base.
 
-    **Plus de ``parsed_at``** : doublon du ``processed_at`` du manifest — deux
-    horodatages pour un même fait finissent par diverger.
+    **Plus de ``parsed_at``** : doublon de l'horodatage de ``document.persisted`` dans
+    l'audit — deux horodatages pour un même fait finissent par diverger.
     """
 
     model_config = ConfigDict(frozen=True)

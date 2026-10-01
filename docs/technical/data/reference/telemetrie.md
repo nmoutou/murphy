@@ -20,9 +20,9 @@ sort en silence.
 | `pipeline.run.started` / `.completed` / `.failed` | Cycle de vie du run | ✓ | ✓ | ✓ |
 | `document.fetched` | Documents vus par le connecteur (1 événement, `count` = lot). **Le dénominateur** de l'équation. | ✓ | — | ✓ |
 | `document.skipped` | Écartés par le connecteur (artefacts d'export, illisibles), par raison. **Hors équation** : un fichier écarté n'est pas un document vu. | ✓ | — | — |
-| `document.parsed` | Parse réussi (opération en payload) | ✓ | — | ✓ |
-| `document.invalidated` | Rejet au parse (validation ou lecture) → manifest EXCLUDED | ✓ | ✓ | ✓ |
-| `document.persisted` | Saga complète + manifest écrit | ✓ | ✓ | ✓ |
+| `document.parsed` | Parse réussi | ✓ | — | ✓ |
+| `document.invalidated` | Rejet au parse (validation ou lecture) : `reason`, `uid` (chemin source), `error` | ✓ | ✓ | ✓ |
+| `document.persisted` | Saga complète | ✓ | ✓ | ✓ |
 | `document.failed` | **La fuite** : vu, jamais ingéré (saga échouée/compensée). `reason` = type d'exception. | ✓ | ✓ | ✓ |
 | `chunk.truncated` | Chunks raccourcis par l'embedder pour tenir dans la fenêtre du modèle (1 événement en fin de run, `count`). Pas une fuite — mais la fin de ces chunks n'est pas indexée : `CHUNKING_MAX_CHARS` à corriger. | ✓ | ✓ | ✓ |
 | `relation.upserted` | Arêtes **réussies** d'un batch (`count`) | ✓ | — | ✓ |
@@ -65,7 +65,7 @@ commutative ferait dépendre le bilan de l'ordonnancement). Trois champs :
 
 - `counts` : event_type → occurrences (fusion : somme) ;
 - `breakdowns` : event_type → {clé de payload → compte} (ventilation par `reason`,
-  `operation`, `step`… — ⚠️ dette ouverte : pas encore par **source**, un run
+  `step`, `backend` — ⚠️ dette ouverte : pas encore par **source**, un run
   multi-sources rend un bilan agrégé où l'échec est anonyme quant à sa provenance) ;
 - `unknowns` : catégorie → vocabulaire que le run n'a pas su nommer (ensemble dédupliqué,
   pas un compteur : « la balise foo est inconnue » est vraie une fois pour toutes).

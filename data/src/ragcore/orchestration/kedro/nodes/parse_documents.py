@@ -1,32 +1,26 @@
-"""Nœud Kedro : parse les documents et décide de l'opération (INSERT vs UPDATE).
+"""Nœud Kedro : parse les documents et sépare ceux à ingérer de ceux rejetés.
 
-Deux issues seulement pour un document qui parse : INSERT ou UPDATE — l'idempotence se lit
-sur la présence de l'identifiant dans le manifest, jamais sur un hash de contenu. Un
-document qui NE parse pas est rejeté (entrée EXCLUDED au manifest) : il est compté, pas
-silencieusement ignoré. Il n'y a pas de troisième voie « SKIP ».
+Un document qui parse part à l'ingestion, qu'il soit déjà en base ou non : la saga
+réécrit en place (``replace_one`` Mongo, delete-puis-insert Qdrant, ``MERGE`` Neo4j). Un
+document qui NE parse pas est rejeté (``document.invalidated``, dans l'audit) : il est
+compté, pas silencieusement ignoré. Il n'y a pas de troisième voie « SKIP ».
 """
 
 from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from datetime import UTC, datetime
 
 from ragcore.application.run_context import PipelineContext
 from ragcore.core.exceptions import ParseError, ValidationError
 from ragcore.core.models.audit import build_event
 from ragcore.core.models.document import ParsedDocument, RawDocument
-from ragcore.core.models.enums import Operation
-from ragcore.core.models.manifest import ManifestEntry
-from ragcore.core.ports.manifest_repository import ManifestRepository
 from ragcore.core.ports.parser import BaseParser, ParseResult
-from ragcore.core.ports.runtime import AsyncRuntime
 from ragcore.core.ports.telemetry import WorkerTelemetry
 from ragcore.core.services.exclusion_reasons import (
     REASON_PARSE_ERROR,
     REASON_VALIDATION_ERROR,
 )
-from ragcore.core.services.idempotence import determine_operation
 from ragcore.core.services.unknown_categories import (
     CATEGORY_ROOT,
     CATEGORY_UNCONFIGURED_TAG,
@@ -38,37 +32,31 @@ logger = logging.getLogger(__name__)
 
 @dataclass(frozen=True)
 class _Rejection:
-    """Comment un document écarté au parse est tracé : raison, log, manifeste."""
+    """Comment un document écarté au parse est tracé : raison et log."""
 
     reason: str
     log_message: str
-    prefixes_manifest_reason: bool
-    """La raison du manifeste préfixe-t-elle le message d'erreur de ``reason`` ?"""
 
 
 _VALIDATION_REJECTION = _Rejection(
-    REASON_VALIDATION_ERROR, "Document invalidé %s — rejeté", False
+    REASON_VALIDATION_ERROR, "Document invalidé %s — rejeté"
 )
-_PARSE_REJECTION = _Rejection(
-    REASON_PARSE_ERROR, "Erreur parsing document %s — rejeté", True
-)
+_PARSE_REJECTION = _Rejection(REASON_PARSE_ERROR, "Erreur parsing document %s — rejeté")
 
 
-def compute_idempotence_node(
+def parse_documents_node(
     raw_documents: list[RawDocument],
     parser: BaseParser,
-    manifest_repo: ManifestRepository,
     pipeline_context: PipelineContext,
     # WorkerTelemetry, pas TelemetryPort : ce nœud DÉCLARE (`record_unknown`), il
     # n'émet pas seulement. Le stack du hook (RegistryAwareTelemetry) le fournit.
     telemetry: WorkerTelemetry,
-    pipeline_runtime: AsyncRuntime,
     skip_unconfigured: bool,
-) -> tuple[list[tuple[ParsedDocument, Operation]], list[str]]:
-    """Parse documents and determine which need processing (INSERT vs UPDATE).
+) -> tuple[list[ParsedDocument], list[str]]:
+    """Parse les documents : ceux qui parsent partent à l'ingestion, les autres sont rejetés.
 
-    Les documents rejetés (ValidationError) sont tracés dans le manifest avec
-    l'opération EXCLUDED et un message de raison.
+    Un rejet (``ValidationError`` ou ``ParseError``) émet ``document.invalidated`` avec
+    sa raison, son chemin source et le message d'erreur.
 
     C'est aussi le SITE DE PARSE — donc le site du signal et du curseur : le
     parser est pur et rend ses constats dans ``ParseResult`` ; ce nœud,
@@ -78,8 +66,8 @@ def compute_idempotence_node(
     l'ingestion. Compter d'abord, filtrer ensuite : le signal précède le filtre.
     Le curseur arrive déjà validé et arbitré par le plan du run (``run_plan.plan_run``).
     """
-    site = _ParseSite(manifest_repo, pipeline_context, telemetry, pipeline_runtime)
-    to_process: list[tuple[ParsedDocument, Operation]] = []
+    site = _ParseSite(pipeline_context, telemetry)
+    to_process: list[ParsedDocument] = []
     to_skip: list[str] = []
 
     for raw in raw_documents:
@@ -99,7 +87,8 @@ def compute_idempotence_node(
 
         site.declare_signals(result)
         parsed = _apply_cursor(result, skip_unconfigured)
-        to_process.append((parsed, site.decide_operation(raw, parsed)))
+        site.declare_parsed(raw, parsed)
+        to_process.append(parsed)
 
     return to_process, to_skip
 
@@ -124,33 +113,20 @@ def _apply_cursor(result: ParseResult, skip_unconfigured: bool) -> ParsedDocumen
 
 @dataclass(frozen=True)
 class _ParseSite:
-    """Le site de parse : ce qui trace un rejet, un signal ou une décision.
+    """Le site de parse : ce qui trace un rejet, un signal ou un document parsé.
 
     La source n'est PAS lue du contexte : en run multi-source, `context.source` vaut
-    None et effacerait l'attribution de source sur CHAQUE événement et entrée de
-    manifeste. Chaque `raw` porte sa vraie origine (`raw.source`), même quand le parsing
-    échoue — c'est elle qui doit être tracée.
+    None et effacerait l'attribution de source sur CHAQUE événement. Chaque `raw` porte
+    sa vraie origine (`raw.source`), même quand le parsing échoue — c'est elle qui doit
+    être tracée.
     """
 
-    manifest_repo: ManifestRepository
     context: PipelineContext
     telemetry: WorkerTelemetry
-    runtime: AsyncRuntime
 
     def exclude(self, raw: RawDocument, exc: Exception, rejection: _Rejection) -> None:
-        """Un document écarté est COMPTÉ et inscrit au manifeste (``EXCLUDED``)."""
+        """Un document écarté est COMPTÉ (``document.invalidated``), jamais ignoré."""
         logger.warning(rejection.log_message, raw.source_document_id)
-        self._emit_invalidated(raw, exc, rejection)
-        reason = (
-            f"{rejection.reason}: {exc}"
-            if rejection.prefixes_manifest_reason
-            else str(exc)
-        )
-        self._record_excluded(raw, reason)
-
-    def _emit_invalidated(
-        self, raw: RawDocument, exc: Exception, rejection: _Rejection
-    ) -> None:
         self.telemetry.emit(
             build_event(
                 event_type=DOCUMENT_INVALIDATED,
@@ -166,20 +142,6 @@ class _ParseSite:
             )
         )
 
-    def _record_excluded(self, raw: RawDocument, reason: str) -> None:
-        self.runtime.run(
-            self.manifest_repo.append(
-                ManifestEntry(
-                    identifier=None,
-                    source_path=raw.source_document_id,
-                    source=raw.source,
-                    operation=Operation.EXCLUDED,
-                    reason=reason,
-                    processed_at=datetime.now(UTC),
-                )
-            )
-        )
-
     def declare_signals(self, result: ParseResult) -> None:
         """Le SIGNAL — toujours, et AVANT le curseur : la vigie de dérive DILA compte
         chaque balise/racine non-configurée au bilan de run, que la donnée soit ensuite
@@ -189,19 +151,13 @@ class _ParseSite:
         for root in result.unknown_roots:
             self.telemetry.record_unknown(CATEGORY_ROOT, root)
 
-    def decide_operation(self, raw: RawDocument, parsed: ParsedDocument) -> Operation:
-        """Document valide — l'opération (INSERT ou UPDATE) se lit au manifeste."""
-        manifest_entry = self.runtime.run(
-            self.manifest_repo.last_for_identifier(parsed.identifier)
-        )
-        operation = determine_operation(manifest_entry)
+    def declare_parsed(self, raw: RawDocument, parsed: ParsedDocument) -> None:
+        """Document valide — compté parsé, en route vers l'ingestion."""
         self.telemetry.emit(
             build_event(
                 event_type=DOCUMENT_PARSED,
                 run_id=self.context.run_id,
                 source=raw.source,
                 document_id=parsed.identifier.serialize(),
-                payload={"operation": operation.value},
             )
         )
-        return operation

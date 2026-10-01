@@ -1,14 +1,14 @@
 """CLIQUET — la normalisation.
 
 Ces valeurs sont écrites en base : un identifiant sérialisé, un nom de source,
-une opération de manifest. Les changer, c'est rendre illisible ce qui est déjà
+une raison d'exclusion. Les changer, c'est rendre illisible ce qui est déjà
 stocké. Le cliquet oblige à le faire sciemment.
 """
 
 import pytest
 
 from ragcore.core.links import CANONICAL_VERBS, translate, verb
-from ragcore.core.models.enums import Operation, SourceName, TargetStore
+from ragcore.core.models.enums import SourceName, TargetStore
 from ragcore.core.models.identifiers import Identifier
 from ragcore.core.models.relation import Relation
 from ragcore.core.services.exclusion_reasons import (
@@ -34,7 +34,6 @@ SOURCE_NAMES = {
     "jade",
     "constit",  # les cinq juri
 }
-OPERATIONS = {"insert", "update", "delete", "excluded"}
 TARGET_STORES = {"mongo", "neo4j", "qdrant"}
 EXCLUSION_REASONS = {
     "parse_error",
@@ -59,10 +58,6 @@ def test_identifiers_serialize_as_their_raw_value() -> None:
 
 def test_source_names_are_frozen() -> None:
     assert {s.value for s in SourceName} == SOURCE_NAMES
-
-
-def test_operations_are_frozen() -> None:
-    assert {o.value for o in Operation} == OPERATIONS
 
 
 def test_target_stores_are_frozen() -> None:

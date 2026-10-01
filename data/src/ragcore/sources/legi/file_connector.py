@@ -17,9 +17,9 @@ Il prend malgré tout deux décisions. Aucune ne regarde le contenu :
 **1. Il écarte les artefacts d'export.** 1637 des 2564 fichiers du corpus sont des
 ``versions.xml`` : une ligne, un ID nu, ni contenu ni relation. Ce ne sont pas des
 documents — ce sont des résidus de l'export. Les passer au parser produirait 1637
-rejets qui noieraient les vrais sous 64 % de bruit connu. Le manifest est un registre
-de *tentatives de traitement d'un document* : y inscrire un ``versions.xml`` en
-EXCLUDED, ce serait mentir sur ce qu'il est.
+rejets qui noieraient les vrais sous 64 % de bruit connu. ``document.invalidated``
+compte des *documents* refusés : y compter un ``versions.xml``, ce serait mentir sur ce
+qu'il est.
 
 Ce n'est pas un skip silencieux : le connecteur COMPTE ce qu'il écarte
 (``self.skipped``). Et il n'écarte jamais sur le seul nom de fichier — il vérifie que

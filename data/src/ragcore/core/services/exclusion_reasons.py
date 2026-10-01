@@ -1,4 +1,4 @@
-"""Vocabulaire des raisons d'exclusion du manifest.
+"""Vocabulaire des raisons d'exclusion (``reason`` des événements de rejet).
 
 Source de vérité : les sites d'émission importent ces constantes plutôt que
 d'écrire les chaînes. Une raison qui n'est pas ici n'existe pas.

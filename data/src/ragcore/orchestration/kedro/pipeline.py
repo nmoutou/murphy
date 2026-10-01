@@ -22,10 +22,10 @@ from __future__ import annotations
 
 from kedro.pipeline import Node, Pipeline, node, pipeline
 
-from .nodes.compute_idempotence import compute_idempotence_node
 from .nodes.connect import connect_node
 from .nodes.ingest import ingest_node
 from .nodes.nuke_all import nuke_all_node
+from .nodes.parse_documents import parse_documents_node
 from .nodes.report import report_node
 from .nodes.resolve_relations import resolve_relations_node
 
@@ -33,12 +33,12 @@ __all__ = ["create_ingestion_pipeline"]
 
 
 def create_ingestion_pipeline() -> Pipeline:
-    """nukeAll → connect → computeIdempotence → ingest → resolve → report."""
+    """nukeAll → connect → parseDocuments → ingest → resolve → report."""
     return pipeline(
         [
             _nuke_all(),
             _connect(),
-            _compute_idempotence(),
+            _parse_documents(),
             _ingest(),
             _resolve_relations(),
             _report(),
@@ -51,7 +51,6 @@ def _nuke_all() -> Node:
         func=nuke_all_node,
         inputs=[
             "doc_repo",
-            "manifest_repo",
             "graph_repo",
             "vector_repo",
             # Déjà arbitré par le plan du run : refusé hors dev avant tout nœud.
@@ -81,22 +80,20 @@ def _connect() -> Node:
     )
 
 
-def _compute_idempotence() -> Node:
+def _parse_documents() -> Node:
     return node(
-        func=compute_idempotence_node,
+        func=parse_documents_node,
         inputs=[
             "raw_documents",
             "parser",
-            "manifest_repo",
             "pipeline_context",
             "telemetry",
-            "pipeline_runtime",
             # Le curseur `dev.skip_unconfigured`, arbitré par le plan du run :
             # appliqué au site de parse, juste avant que le document parte à l'ingestion.
             "skip_unconfigured",
         ],
         outputs=["to_process", "to_skip"],
-        name="computeIdempotence",
+        name="parseDocuments",
     )
 
 

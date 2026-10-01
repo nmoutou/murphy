@@ -38,9 +38,9 @@ pipelines). L'ordre est exprimé par les **dépendances de données**, jamais pa
 ```mermaid
 flowchart LR
     nukeAll -- nuke_done --> connect
-    connect -- raw_documents --> computeIdempotence
-    computeIdempotence -- to_process --> ingest
-    computeIdempotence -- to_skip --> report
+    connect -- raw_documents --> parseDocuments
+    parseDocuments -- to_process --> ingest
+    parseDocuments -- to_skip --> report
     ingest -- ingestion_outcome --> resolveRelations
     ingest -- ingestion_outcome --> report
     resolveRelations -- resolution_outcome --> report
@@ -67,7 +67,7 @@ Déroulé détaillé nœud par nœud : [reference/pipeline.md](reference/pipelin
   Neo4j / Qdrant, sa télémétrie et son agrégat local : rien de mutable n'est partagé, donc
   aucun verrou. Le travail d'un document (le *workload*) : extraction des
   relations/citations → chunking → embedding → saga d'écriture (Mongo → Qdrant → nœud
-  Neo4j) → manifest.
+  Neo4j).
 - **Phase 2 — relations** (`resolveRelations`) : après la barrière, un service unique
   écrit les arêtes en batch, met en attente celles dont la cible n'est pas dans le corpus
   (`meta_pending_relations`) et **promeut** les pendantes de runs passés dont la cible
@@ -106,7 +106,7 @@ Déroulé détaillé nœud par nœud : [reference/pipeline.md](reference/pipelin
 
 | Contrat | Écrit par l'ingestion | Lu par le backend |
 |---|---|---|
-| Contenu | Mongo `LEGIFRANCE.documents` (+ `manifest`) | documents parents par `identifier`, passage = `content[char_start:char_end]` |
+| Contenu | Mongo `LEGIFRANCE.documents` | documents parents par `identifier`, passage = `content[char_start:char_end]` |
 | Vecteurs | Qdrant, collection `QDRANT_COLLECTION` (nom fixe, ADR-042) | la même variable ; refus de démarrer si la collection n'existe pas |
 | Graphe | Neo4j (nœuds + arêtes typées par verbe) | pas encore câblé côté serving |
 

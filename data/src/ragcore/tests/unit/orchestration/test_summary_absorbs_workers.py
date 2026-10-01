@@ -209,7 +209,6 @@ def test_an_event_without_count_still_weighs_one() -> None:
             run_id=RunId("r1"),
             source=None,
             document_id="x",
-            payload={"operation": "INSERT"},
         )
     )
 
@@ -252,7 +251,7 @@ def test_a_stray_count_on_a_unitary_event_is_IGNORED() -> None:
             run_id=RunId("r1"),
             source=None,
             document_id="x",
-            payload={"operation": "INSERT", "count": 40},
+            payload={"count": 40},
         )
     )
 

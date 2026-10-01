@@ -48,7 +48,7 @@ def test_les_six_noeuds_sont_la() -> None:
     assert names == {
         "nukeAll",
         "connect",
-        "computeIdempotence",
+        "parseDocuments",
         "ingest",
         "resolveRelations",
         "report",

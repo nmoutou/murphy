@@ -25,7 +25,6 @@ from ragcore.adapters.embedding import EmbeddingTransport, TeiEmbedder
 from ragcore.adapters.runtime import AsyncioRuntime, AsyncioRuntimeFactory
 from ragcore.adapters.storage.mongo.audit_repository import MongoAuditRepository
 from ragcore.adapters.storage.mongo.document_repository import MongoDocumentRepository
-from ragcore.adapters.storage.mongo.manifest_repository import MongoManifestRepository
 from ragcore.adapters.storage.mongo.pending_repository import (
     MongoPendingRelationRepository,
 )
@@ -50,7 +49,6 @@ from ragcore.core.ports.audit_repository import AuditRepository
 from ragcore.core.ports.document_repository import DocumentRepository
 from ragcore.core.ports.embedder import BaseEmbedder
 from ragcore.core.ports.graph_repository import GraphRepository
-from ragcore.core.ports.manifest_repository import ManifestRepository
 from ragcore.core.ports.pending_repository import PendingRelationRepository
 from ragcore.core.ports.run_summary_repository import RunSummaryRepository
 from ragcore.core.ports.runtime import AsyncRuntime, AsyncRuntimeFactory
@@ -86,10 +84,6 @@ class TestStorageAdapters:
     def test_mongo_document_repository(self) -> None:
         repo = MongoDocumentRepository.__new__(MongoDocumentRepository)
         assert isinstance(repo, DocumentRepository)
-
-    def test_mongo_manifest_repository(self) -> None:
-        repo = MongoManifestRepository.__new__(MongoManifestRepository)
-        assert isinstance(repo, ManifestRepository)
 
     def test_mongo_audit_repository(self) -> None:
         repo = MongoAuditRepository.__new__(MongoAuditRepository)

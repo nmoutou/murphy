@@ -77,7 +77,7 @@ def _run() -> dict:
             # Côté parse, l'inconnu n'existe plus : la balise
             # non-configurée est ROUTÉE (metadata/lien) et SIGNALÉE. Le cliquet agrège
             # le signal sous sa catégorie de bilan, `tag.unconfigured` — la même que
-            # celle que computeIdempotence déclare en télémétrie.
+            # celle que parseDocuments déclare en télémétrie.
             if result.unconfigured_tags:
                 unknowns["tag.unconfigured"].update(result.unconfigured_tags)
             if result.unknown_roots:

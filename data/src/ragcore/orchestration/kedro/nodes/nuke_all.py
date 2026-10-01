@@ -3,7 +3,6 @@ from __future__ import annotations
 import logging
 
 from ragcore.adapters.storage.mongo.document_repository import MongoDocumentRepository
-from ragcore.adapters.storage.mongo.manifest_repository import MongoManifestRepository
 from ragcore.adapters.storage.mongo.schemas import ensure_data_indexes
 from ragcore.adapters.storage.neo4j.graph_repository import Neo4jGraphRepository
 from ragcore.adapters.storage.qdrant.vector_repository import QdrantVectorRepository
@@ -18,7 +17,6 @@ logger = logging.getLogger(__name__)
 
 def nuke_all_node(
     doc_repo: MongoDocumentRepository,
-    manifest_repo: MongoManifestRepository,
     graph_repo: Neo4jGraphRepository,
     vector_repo: QdrantVectorRepository,
     nuke_all: bool,
@@ -33,7 +31,7 @@ def nuke_all_node(
     récupérer la place que prenaient les collections Qdrant d'anciennes stratégies.
 
     Ce que le nuke efface — et ce qu'il PRÉSERVE :
-    - Mongo *données* : collections `documents` + `manifest` (base `LEGIFRANCE`).
+    - Mongo *données* : la collection `documents` (base `LEGIFRANCE`).
     - Neo4j : le graphe entier.
     - Qdrant : **toutes** les collections du store, pas seulement celle du run —
       c'est là que se cache la place perdue.
@@ -56,7 +54,7 @@ def nuke_all_node(
     logger.warning(
         "nuke_all activé (ENVIRONMENT=dev) : effacement de TOUTES les données de TOUTES les bases"
     )
-    _drop_mongo(doc_repo, manifest_repo, pipeline_runtime)
+    _drop_mongo(doc_repo, pipeline_runtime)
 
     logger.warning("nuke_all Neo4j : suppression complète du graphe")
     pipeline_runtime.run(graph_repo.drop_all())
@@ -88,13 +86,10 @@ def _emit_nuked(
 
 
 def _drop_mongo(
-    doc_repo: MongoDocumentRepository,
-    manifest_repo: MongoManifestRepository,
-    pipeline_runtime: AsyncRuntime,
+    doc_repo: MongoDocumentRepository, pipeline_runtime: AsyncRuntime
 ) -> None:
-    logger.warning("nuke_all Mongo : suppression des collections documents + manifest")
+    logger.warning("nuke_all Mongo : suppression de la collection documents")
     pipeline_runtime.run(doc_repo.drop_collection())
-    pipeline_runtime.run(manifest_repo.drop_collection())
     # Dropper une collection détruit ses index avec elle. Ceux que le hook a posés en
     # `before_pipeline_run` viennent de disparaître : sans ce rappel, tout le run
     # réécrit dans des collections nues, et l'unicité de `identifier` ne protège plus

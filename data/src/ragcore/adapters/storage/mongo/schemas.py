@@ -14,21 +14,6 @@ _DATA_INDEXES: dict[str, list[IndexModel]] = {
         ),
         IndexModel([("source", ASCENDING)], name="idx_source"),
     ],
-    "manifest": [
-        # Le manifest est append-only : plusieurs entrées par document, une
-        # par run (`last_for_identifier` trie par processed_at DESC). Un index
-        # unique le casserait au deuxième run. C'est un index de lookup.
-        # Le champ écrit s'appelle `identifier_serialized` (cf.
-        # MongoManifestRepository), et il est absent des entrées de rejet.
-        IndexModel(
-            [("identifier_serialized", ASCENDING)],
-            name="idx_manifest_identifier",
-            sparse=True,
-        ),
-        # Les rejets n'ont pas d'identifier : ils ne sont retrouvables que
-        # par leur chemin source.
-        IndexModel([("source_path", ASCENDING)], name="idx_manifest_source_path"),
-    ],
 }
 """Les index de la base de données (défaut : LEGIFRANCE), par collection."""
 
