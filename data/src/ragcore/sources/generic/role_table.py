@@ -22,6 +22,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 
 from ragcore.core.links import LinkTable
+from ragcore.core.models.enums import DocumentType
 
 from .roles import Role
 
@@ -83,6 +84,26 @@ class RoleTable:
     occurrence sur 2564 fichiers. La donnée est un ID.
     """
 
+    document_types: Mapping[str, DocumentType] = field(default_factory=dict)
+    """Le type de document, d'après le préfixe de l'identifiant (``LEGIARTI`` → article).
+
+    Un préfixe absent de cette table n'est pas typé par défaut : le document est refusé
+    (``ValidationError``), et le run le compte.
+    """
+
+    nature_tag: str = "NATURE"
+    """La balise qui porte la nature juridique (``LOI``, ``ARRET``…).
+
+    Elle a son champ dédié (``ParsedDocument.nature``) et n'entre pas en métadonnée.
+    """
+
+    uninformative_natures: frozenset[str] = frozenset()
+    """Les natures, en majuscules, qui n'apportent rien et deviennent ``None``.
+
+    Mesuré sur le corpus : JADE écrit toujours ``Texte`` ; un article LEGI écrit
+    ``Article``, ce que son type dit déjà.
+    """
+
     meta_containers: Sequence[str] = ()
     """Les balises sous lesquelles chercher les métadonnées (``<META>``).
 
@@ -91,7 +112,7 @@ class RoleTable:
     """
 
     meta_renames: Mapping[str, str] = field(default_factory=dict)
-    """Balise brute → nom du champ dans le domaine (``NATURE`` → ``type_document``).
+    """Balise brute → nom du champ dans le domaine (``DATE_PUBLI`` → ``date_publication``).
 
     C'est le 4ᵉ axe non-standard : la **canonicalisation par type**. Une balise absente
     de ce renommage n'est pas perdue — elle atterrit en métadonnée sous son nom brut

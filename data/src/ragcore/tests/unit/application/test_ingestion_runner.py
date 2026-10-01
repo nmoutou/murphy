@@ -19,7 +19,7 @@ from ragcore.application.ingestion_runner import IngestionRunner, WorkloadResult
 from ragcore.application.run_context import PipelineContext
 from ragcore.core.models.audit import build_event
 from ragcore.core.models.document import ParsedDocument
-from ragcore.core.models.enums import SourceName
+from ragcore.core.models.enums import DocumentType, SourceName
 from ragcore.core.models.identifiers import Identifier
 from ragcore.core.ports.runtime import AsyncRuntimeFactory
 from ragcore.core.ports.telemetry import TelemetryFactory, WorkerTelemetry
@@ -35,6 +35,7 @@ def _doc(n: int) -> ParsedDocument:
     return ParsedDocument(
         identifier=Identifier(raw=f"LEGIARTI{n:012d}"),
         source=SourceName.LEGI,
+        document_type=DocumentType.ARTICLE,
         title=f"Article {n}",
         content=f"contenu {n}",
         structure={},

@@ -38,6 +38,7 @@ from ragcore.core.models import ParsedDocument, RawDocument, SourceName
 from ragcore.core.models.identifiers import Identifier
 from ragcore.core.ports.parser import ParseResult
 
+from .classification import document_type_of, nature_of
 from .normalize import normalize_text
 from .role_table import RoleTable
 from .roles import Role
@@ -118,6 +119,8 @@ class GenericParser:
         return ParsedDocument(
             identifier=routing.identifier,
             source=self._source,
+            document_type=document_type_of(routing.identifier, self._table),
+            nature=nature_of(facets, self._table),
             title=self._title(facets),
             content=self._content(facets),
             structure={
@@ -213,8 +216,9 @@ class GenericParser:
         sans elle, on rangeait par position dans l'arbre, ce qui est un pari sur la forme
         du XML plutôt qu'une lecture de son sens.
 
-        **Sauf l'identifiant.** Il a son champ dédié (``ParsedDocument.identifier``) : le
-        recopier ici en ferait, là encore, une seconde vérité.
+        **Sauf l'identifiant et la nature.** Ils ont leur champ dédié
+        (``ParsedDocument.identifier``, ``ParsedDocument.nature``) : les recopier ici en
+        ferait, là encore, une seconde vérité.
 
         **La clé est le CHEMIN COMPLET, plus le nom de balise nu** (ADR-022 §3). L'ancien
         ``node["tag"].lower()`` faisait s'écraser deux balises homonymes à deux endroits
@@ -242,11 +246,12 @@ class GenericParser:
                 )
 
     def _is_collectable(self, node: Node) -> bool:
-        """Une feuille non vide, de rôle collectable, qui n'est pas l'identifiant."""
+        """Une feuille non vide, de rôle collectable, qui n'a pas son champ dédié
+        (l'identifiant, la nature)."""
         return (
             not node["children"]
             and bool(node["text"].strip())
-            and node["tag"] != self._table.identifier_tag
+            and node["tag"] not in (self._table.identifier_tag, self._table.nature_tag)
             and self._table.role_of(node["tag"]) in _COLLECTABLE_ROLES
         )
 

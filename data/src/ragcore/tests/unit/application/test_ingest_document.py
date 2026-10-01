@@ -14,7 +14,7 @@ import pytest
 from ragcore.application.ingest_document import IngestDocumentUseCase, IngestionStores
 from ragcore.application.run_context import PipelineContext
 from ragcore.core.models.document import ParsedDocument
-from ragcore.core.models.enums import SourceName
+from ragcore.core.models.enums import DocumentType, SourceName
 from ragcore.core.models.identifiers import Identifier
 from ragcore.core.models.unformatted_relation import UnformattedRelation
 from ragcore.core.telemetry_events import (
@@ -37,6 +37,7 @@ def _doc() -> ParsedDocument:
     return ParsedDocument(
         identifier=Identifier(raw="LEGIARTI000000000001"),
         source=SourceName.LEGI,
+        document_type=DocumentType.ARTICLE,
         title="Article 1",
         content="contenu",
         structure={},

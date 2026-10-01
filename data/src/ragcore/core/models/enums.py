@@ -14,6 +14,19 @@ class SourceName(StrEnum):
     CONSTIT = "constit"  # Conseil constitutionnel
 
 
+class DocumentType(StrEnum):
+    """La forme d'un document, déduite du préfixe de son identifiant.
+
+    Un ensemble FERMÉ, écrit à l'identique dans Mongo, Qdrant et Neo4j. La nature
+    juridique (``LOI``, ``ARRET``, ``QPC``…) n'en est pas : c'est ``ParsedDocument.nature``.
+    """
+
+    ARTICLE = "article"
+    SECTION = "section"
+    TEXTE = "texte"
+    DECISION = "decision"
+
+
 class TargetStore(StrEnum):
     MONGO = "mongo"
     NEO4J = "neo4j"

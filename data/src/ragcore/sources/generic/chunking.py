@@ -125,6 +125,8 @@ class StructuralChunker:
             # pas d'un verrou).
             chunk_id=f"{document.identifier.raw}_{ordinal:04d}",
             parent_identifier=document.identifier,
+            document_type=document.document_type,
+            nature=document.nature,
             ordinal=ordinal,
             text=span.text,
             tag_path=span.path,

@@ -23,6 +23,7 @@ donc comme un tout — c'est ce qui empêche les 98 textes du corpus de finir sa
 
 from collections.abc import Mapping
 
+from ragcore.core.models.enums import DocumentType
 from ragcore.sources.generic import Role, RoleTable
 
 from .vocabulary import LEGI_LINK_TABLE
@@ -153,7 +154,6 @@ _META_RENAMES = {
     "DATE_PUBLI": "date_publication",
     "DATE_TEXTE": "date_texte",
     "ETAT": "statut",
-    "NATURE": "type_document",
     "NOR": "nor",
     "NUM": "num",
     "ORIGINE": "origine",
@@ -169,6 +169,13 @@ LEGI_ROLE_TABLE = RoleTable(
     text_holders=("CONTENU",),
     title_tags=_TITLE_TAGS,
     identifier_tag="ID",
+    document_types={
+        "LEGIARTI": DocumentType.ARTICLE,
+        "LEGITEXT": DocumentType.TEXTE,
+        "LEGISCTA": DocumentType.SECTION,
+    },
+    # La nature d'un article est « Article » : son type le dit déjà.
+    uninformative_natures=frozenset({"ARTICLE"}),
     meta_containers=("META",),
     meta_renames=_META_RENAMES,
     version_tags=frozenset({"DATE_DEBUT", "DATE_FIN", "ETAT"}),

@@ -16,6 +16,7 @@ from testcontainers.qdrant import QdrantContainer
 from ragcore.adapters.storage.qdrant.client import create_qdrant_client
 from ragcore.adapters.storage.qdrant.vector_repository import QdrantVectorRepository
 from ragcore.core.models.chunk import Chunk, EmbeddedChunk
+from ragcore.core.models.enums import DocumentType
 from ragcore.core.models.identifiers import Identifier
 
 pytestmark = pytest.mark.integration
@@ -30,6 +31,7 @@ def _embedded(document: str, ordinal: int) -> EmbeddedChunk:
         chunk=Chunk(
             chunk_id=f"{document}#{ordinal}",
             parent_identifier=identifier,
+            document_type=DocumentType.ARTICLE,
             ordinal=ordinal,
             text=f"texte {ordinal}",
             tag_path=[],

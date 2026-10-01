@@ -26,7 +26,7 @@ from ragcore.application.run_context import PipelineContext
 from ragcore.core.links import CITES
 from ragcore.core.models.chunk import Chunk, EmbeddedChunk
 from ragcore.core.models.document import ParsedDocument
-from ragcore.core.models.enums import SourceName
+from ragcore.core.models.enums import DocumentType, SourceName
 from ragcore.core.models.identifiers import Identifier
 from ragcore.core.models.relation import Relation
 from ragcore.core.models.unformatted_relation import UnformattedRelation
@@ -57,6 +57,7 @@ def _doc() -> ParsedDocument:
     return ParsedDocument(
         identifier=SELF,
         source=SourceName.LEGI,
+        document_type=DocumentType.ARTICLE,
         title="Article",
         content="Le contenu réel de l'article, en français.",
         structure={},
@@ -70,6 +71,7 @@ class _StubChunker:
             Chunk(
                 chunk_id=f"{document.identifier.raw}_0000",
                 parent_identifier=document.identifier,
+                document_type=DocumentType.ARTICLE,
                 ordinal=0,
                 text=document.content,
                 tag_path=[],

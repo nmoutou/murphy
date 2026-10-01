@@ -16,7 +16,7 @@ from ragcore.application.resolve_relations import ResolveRelationsService
 from ragcore.application.run_context import PipelineContext
 from ragcore.core.links import CITES
 from ragcore.core.models.document import ParsedDocument
-from ragcore.core.models.enums import SourceName
+from ragcore.core.models.enums import DocumentType, SourceName
 from ragcore.core.models.identifiers import Identifier
 from ragcore.core.models.pending import PendingRelation
 from ragcore.core.models.relation import Relation
@@ -42,6 +42,7 @@ def _doc(suffix: str) -> ParsedDocument:
     return ParsedDocument(
         identifier=_identifier(suffix),
         source=SourceName.LEGI,
+        document_type=DocumentType.ARTICLE,
         title="t",
         content="c",
         structure={},

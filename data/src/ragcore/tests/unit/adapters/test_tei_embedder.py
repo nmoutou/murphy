@@ -15,6 +15,7 @@ from ragcore.adapters.embedding.served_model import inspect_served_model
 from ragcore.adapters.embedding.tei_embedder import EmbeddingTransport, TeiEmbedder
 from ragcore.core.exceptions import EmbeddingModelMismatchError
 from ragcore.core.models.chunk import Chunk
+from ragcore.core.models.enums import DocumentType
 from ragcore.core.models.identifiers import Identifier
 from ragcore.core.models.processing import EmbeddingModel
 
@@ -29,6 +30,7 @@ def _chunk(chunk_id: str, text: str) -> Chunk:
     return Chunk(
         chunk_id=chunk_id,
         parent_identifier=Identifier(raw="LEGIARTI000006419264"),
+        document_type=DocumentType.ARTICLE,
         ordinal=0,
         text=text,
         tag_path=[],

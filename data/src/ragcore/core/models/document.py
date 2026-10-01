@@ -3,7 +3,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict
 
-from .enums import SourceName
+from .enums import DocumentType, SourceName
 from .identifiers import Identifier
 
 
@@ -42,6 +42,10 @@ class ParsedDocument(BaseModel):
 
     identifier: Identifier
     source: SourceName
+    document_type: DocumentType
+    nature: str | None = None
+    """La nature juridique (``LOI``, ``ARRET``, ``QPC``…), en majuscules. ``None`` si la
+    source ne la donne pas ou si elle n'apporte rien (``Texte`` dans JADE)."""
 
     title: str
     content: str

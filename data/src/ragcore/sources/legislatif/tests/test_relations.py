@@ -19,7 +19,7 @@ from ragcore.core.links import (
     VERSION_KIND,
 )
 from ragcore.core.models.document import ParsedDocument, RawDocument
-from ragcore.core.models.enums import SourceName
+from ragcore.core.models.enums import DocumentType, SourceName
 from ragcore.core.models.enums import SourceName as _SN
 from ragcore.core.models.identifiers import Identifier
 from ragcore.core.ports.relation_extractor import BaseRelationExtractor
@@ -437,6 +437,7 @@ def _document_with_references(references: list[dict[str, Any]]) -> ParsedDocumen
     return ParsedDocument(
         identifier=Identifier(raw="LEGIARTI000000000001"),
         source=SourceName.LEGI,
+        document_type=DocumentType.ARTICLE,
         title="t",
         content="c",
         structure={"references": references, "context": [], "sections": []},

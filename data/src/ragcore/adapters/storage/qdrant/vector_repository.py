@@ -85,6 +85,8 @@ class QdrantVectorRepository:
             "identifier": chunk.parent_identifier.serialize(),
             "char_start": chunk.char_start,
             "char_end": chunk.char_end,
+            "document_type": chunk.document_type.value,
+            "nature": chunk.nature,
         }
 
     @staticmethod

@@ -9,7 +9,7 @@ import pytest
 from ragcore.adapters.storage.mongo.client import MongoClient
 from ragcore.adapters.storage.mongo.document_repository import MongoDocumentRepository
 from ragcore.core.models.document import ParsedDocument
-from ragcore.core.models.enums import SourceName
+from ragcore.core.models.enums import DocumentType, SourceName
 from ragcore.core.models.identifiers import Identifier
 
 DB_NAME = "MURPHY_DATA"
@@ -33,6 +33,7 @@ def _document() -> ParsedDocument:
     return ParsedDocument(
         identifier=Identifier(raw="LEGIARTI000000000001"),
         source=SourceName.LEGI,
+        document_type=DocumentType.ARTICLE,
         title="Article 1",
         content="contenu",
         structure={"sections": []},

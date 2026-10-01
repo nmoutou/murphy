@@ -25,7 +25,7 @@ from ragcore.adapters.storage.neo4j.graph_repository import (
 )
 from ragcore.core.links import CITES
 from ragcore.core.models.document import ParsedDocument
-from ragcore.core.models.enums import SourceName
+from ragcore.core.models.enums import DocumentType, SourceName
 from ragcore.core.models.identifiers import Identifier, RunId
 from ragcore.core.models.relation import Relation
 
@@ -38,6 +38,7 @@ def _doc(n: int) -> ParsedDocument:
     return ParsedDocument(
         identifier=Identifier(raw=f"LEGIARTI{n:012d}"),
         source=SourceName.LEGI,
+        document_type=DocumentType.ARTICLE,
         title=f"Article {n}",
         content=f"contenu {n}",
         structure={},

@@ -9,7 +9,7 @@ import pytest
 
 from ragcore.core.exceptions import ParseError, ValidationError
 from ragcore.core.models.document import RawDocument
-from ragcore.core.models.enums import SourceName
+from ragcore.core.models.enums import DocumentType, SourceName
 from ragcore.core.models.enums import SourceName as _SN
 from ragcore.core.ports.parser import BaseParser
 from ragcore.sources.generic import GenericParser, to_tree
@@ -19,6 +19,7 @@ from .conftest import (
     ARTICLE_INCONNU,
     ARTICLE_SIMPLE,
     SECTION_ARTICLES,
+    SECTION_MIXTE,
     TEXTE_DEUX_FACETTES,
 )
 
@@ -309,6 +310,56 @@ def test_un_identifiant_mal_forme_leve_ValidationError() -> None:
     tree = to_tree(ET.fromstring("<ARTICLE><ID>PAS_UN_ELI</ID></ARTICLE>"))
 
     with pytest.raises(ValidationError, match="Identifiant invalide"):
+        GenericParser(LEGI_ROLE_TABLE, _SN.LEGI).parse(
+            RawDocument(
+                source=SourceName.LEGI,
+                source_document_id="x",
+                payload={"content": [tree]},
+                fetched_at=datetime.now(UTC),
+            )
+        )
+
+
+@pytest.mark.parametrize(
+    ("files", "document_type", "nature"),
+    [
+        # « Article » dans NATURE : son type le dit déjà, la nature n'apporte rien.
+        ((f"{ARTICLE_SIMPLE}.xml",), DocumentType.ARTICLE, None),
+        ((f"{SECTION_MIXTE}.xml",), DocumentType.SECTION, None),
+        (
+            (
+                f"{TEXTE_DEUX_FACETTES}-version.xml",
+                f"{TEXTE_DEUX_FACETTES}-struct.xml",
+            ),
+            DocumentType.TEXTE,
+            "DECRET",
+        ),
+    ],
+)
+def test_le_type_vient_du_prefixe_et_la_nature_de_NATURE(
+    fixtures_dir: Path,
+    files: tuple[str, ...],
+    document_type: DocumentType,
+    nature: str | None,
+) -> None:
+    parsed = (
+        GenericParser(LEGI_ROLE_TABLE, _SN.LEGI)
+        .parse(_raw(fixtures_dir, *files))
+        .document
+    )
+
+    assert parsed.document_type == document_type
+    assert parsed.nature == nature
+    assert not {"nature", "type_document"} & parsed.metadata.keys(), (
+        "la nature a son champ dédié : la recopier en métadonnée ferait deux vérités"
+    )
+
+
+def test_un_prefixe_sans_type_declare_leve_ValidationError() -> None:
+    """Aucun document n'entre sans type : un préfixe que la table ignore est refusé."""
+    tree = to_tree(ET.fromstring("<ARTICLE><ID>JORFARTI000000000001</ID></ARTICLE>"))
+
+    with pytest.raises(ValidationError, match="sans type de document"):
         GenericParser(LEGI_ROLE_TABLE, _SN.LEGI).parse(
             RawDocument(
                 source=SourceName.LEGI,

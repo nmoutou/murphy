@@ -30,6 +30,9 @@ les métadonnées propres au juridictionnel (formation, avocats, solution…).
 - **aucune cible de lien identifiée** — cf. ``vocabulary.py`` : c'est LA découverte du lot.
 """
 
+from dataclasses import replace
+
+from ragcore.core.models.enums import DocumentType
 from ragcore.sources.generic import Role, RoleTable
 
 from .vocabulary import JURI_LINK_TABLE
@@ -84,7 +87,6 @@ _TRANSPARENT = {
 
 _COMMON_RENAMES = {
     "ANCIEN_ID": "ancien_id",
-    "NATURE": "type_document",
     "ORIGINE": "origine",
     "URL": "url",
     "DATE_DEC": "date_decision",
@@ -95,7 +97,9 @@ _COMMON_RENAMES = {
 }
 
 
-def _table(roles: dict[str, Role], renames: dict[str, str], root: str) -> RoleTable:
+def _table(
+    roles: dict[str, Role], renames: dict[str, str], root: str, prefix: str
+) -> RoleTable:
     """Assemble une table juri à partir du socle commun et de ses spécificités.
 
     Une **fonction de composition**, pas de la logique : elle ne décide rien, elle
@@ -110,6 +114,8 @@ def _table(roles: dict[str, Role], renames: dict[str, str], root: str) -> RoleTa
         text_holders=("CONTENU",),
         title_tags=("TITRE",),
         identifier_tag="ID",
+        # Un seul type pour les trois ordres de juridiction : la source les distingue.
+        document_types={prefix: DocumentType.DECISION},
         meta_containers=("META",),
         meta_renames={**_COMMON_RENAMES, **renames},
         # AUCUNE balise de version : un arrêt est rendu une fois. Le rôle existe, il ne
@@ -130,6 +136,7 @@ def _table(roles: dict[str, Role], renames: dict[str, str], root: str) -> RoleTa
 
 JURI_JUDI_ROLE_TABLE = _table(
     root="TEXTE_JURI_JUDI",
+    prefix="JURITEXT",
     roles={
         "META_JURI_JUDI": Role.META,
         # La procédure : qui a jugé, qui plaidait, contre qui.
@@ -176,35 +183,40 @@ en décide, pas nous. La base d'origine est un simple champ (``SourceName``), pa
 
 # ── TEXTE_JURI_ADMIN — JADE ────────────────────────────────────────────────────
 
-JURI_ADMIN_ROLE_TABLE = _table(
-    root="TEXTE_JURI_ADMIN",
-    roles={
-        "META_JURI_ADMIN": Role.META,
-        "FORMATION": Role.META,
-        "TYPE_REC": Role.META,
-        "PUBLI_RECUEIL": Role.META,
-        "DEMANDEUR": Role.META,
-        "DEFENDEUR": Role.META,
-        "PRESIDENT": Role.META,
-        "AVOCATS": Role.META,
-        "RAPPORTEUR": Role.META,
-        # Le commissaire du gouvernement — devenu « rapporteur public » en 2009. Le nom de
-        # la balise, lui, n'a pas suivi : la source garde son vocabulaire d'origine.
-        "COMMISSAIRE_GVT": Role.META,
-        "SOMMAIRE": Role.BODY,
-        "SCT": Role.BODY,
-        "ANA": Role.BODY,
-        "CITATION_JP": Role.BODY,
-    },
-    renames={
-        "FORMATION": "formation",
-        "PRESIDENT": "president",
-        "AVOCATS": "avocats",
-        "RAPPORTEUR": "rapporteur",
-        "TYPE_REC": "type_recours",
-        "PUBLI_RECUEIL": "publication_recueil",
-        "COMMISSAIRE_GVT": "rapporteur_public",
-    },
+JURI_ADMIN_ROLE_TABLE = replace(
+    _table(
+        root="TEXTE_JURI_ADMIN",
+        prefix="CETATEXT",
+        roles={
+            "META_JURI_ADMIN": Role.META,
+            "FORMATION": Role.META,
+            "TYPE_REC": Role.META,
+            "PUBLI_RECUEIL": Role.META,
+            "DEMANDEUR": Role.META,
+            "DEFENDEUR": Role.META,
+            "PRESIDENT": Role.META,
+            "AVOCATS": Role.META,
+            "RAPPORTEUR": Role.META,
+            # Le commissaire du gouvernement — devenu « rapporteur public » en 2009. Le nom de
+            # la balise, lui, n'a pas suivi : la source garde son vocabulaire d'origine.
+            "COMMISSAIRE_GVT": Role.META,
+            "SOMMAIRE": Role.BODY,
+            "SCT": Role.BODY,
+            "ANA": Role.BODY,
+            "CITATION_JP": Role.BODY,
+        },
+        renames={
+            "FORMATION": "formation",
+            "PRESIDENT": "president",
+            "AVOCATS": "avocats",
+            "RAPPORTEUR": "rapporteur",
+            "TYPE_REC": "type_recours",
+            "PUBLI_RECUEIL": "publication_recueil",
+            "COMMISSAIRE_GVT": "rapporteur_public",
+        },
+    ),
+    # JADE écrit `Texte` dans NATURE, pour toutes ses décisions (mesuré).
+    uninformative_natures=frozenset({"TEXTE"}),
 )
 """L'administratif : Conseil d'État, cours administratives d'appel, tribunaux (JADE)."""
 
@@ -213,6 +225,7 @@ JURI_ADMIN_ROLE_TABLE = _table(
 
 JURI_CONSTIT_ROLE_TABLE = _table(
     root="TEXTE_JURI_CONSTIT",
+    prefix="CONSTEXT",
     roles={
         "META_JURI_CONSTIT": Role.META,
         "NOR": Role.META,

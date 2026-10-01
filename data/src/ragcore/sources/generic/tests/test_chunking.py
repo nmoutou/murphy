@@ -6,7 +6,7 @@ from typing import Any
 from xml.etree import ElementTree as ET
 
 from ragcore.core.models.document import ParsedDocument, RawDocument
-from ragcore.core.models.enums import SourceName
+from ragcore.core.models.enums import DocumentType, SourceName
 from ragcore.core.models.identifiers import Identifier
 from ragcore.core.models.processing import ChunkingConfig
 from ragcore.core.ports.chunker import BaseChunker
@@ -191,6 +191,7 @@ def _document(content: str, sections: list[dict[str, Any]]) -> ParsedDocument:
     return ParsedDocument(
         identifier=Identifier(raw="LEGIARTI000000000001"),
         source=SourceName.LEGI,
+        document_type=DocumentType.ARTICLE,
         title="t",
         content=content,
         structure={"sections": sections, "references": [], "context": []},

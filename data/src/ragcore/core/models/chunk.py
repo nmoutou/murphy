@@ -2,6 +2,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from .enums import DocumentType
 from .identifiers import Identifier
 
 
@@ -12,6 +13,8 @@ class Chunk(BaseModel):
 
     chunk_id: str
     parent_identifier: Identifier  # lien au document parent
+    document_type: DocumentType  # celui du parent
+    nature: str | None = None  # celle du parent
 
     ordinal: int
     text: str

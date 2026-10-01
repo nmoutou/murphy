@@ -13,7 +13,7 @@ from pathlib import Path
 import pytest
 
 from ragcore.core.links import CITES, LinkSubject, extract_links
-from ragcore.core.models.enums import SourceName
+from ragcore.core.models.enums import DocumentType, SourceName
 from ragcore.sources.generic import GenericParser
 from ragcore.sources.jurisprudence import (
     JURI_LINK_TABLE,
@@ -168,3 +168,22 @@ def test_le_contenu_de_larret_est_ingere() -> None:
     assert document.content.strip(), "l'arrêt DOIT avoir du texte"
     assert document.title.strip()
     assert document.metadata.get("juridiction")
+
+
+@pytest.mark.parametrize(
+    ("fixture", "source", "nature"),
+    [
+        ("cass_avec_liens.xml", SourceName.CASS, "ARRET"),
+        # JADE écrit « Texte » pour toutes ses décisions : une nature qui ne dit rien.
+        ("jade.xml", SourceName.JADE, None),
+        ("constit.xml", SourceName.CONSTIT, "QPC"),
+    ],
+)
+def test_toute_decision_est_typee_DECISION_avec_sa_nature(
+    fixture: str, source: SourceName, nature: str | None
+) -> None:
+    document = _parse(fixture, source)
+
+    assert document.document_type == DocumentType.DECISION
+    assert document.nature == nature
+    assert not {"nature", "type_document"} & document.metadata.keys()

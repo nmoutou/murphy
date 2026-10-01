@@ -1,7 +1,7 @@
 from .audit import AuditEvent
 from .chunk import Chunk, EmbeddedChunk
 from .document import ParsedDocument, RawDocument
-from .enums import SourceName, TargetStore
+from .enums import DocumentType, SourceName, TargetStore
 from .identifiers import (
     DocumentId,
     Identifier,
@@ -18,6 +18,7 @@ __all__ = [
     "AuditEvent",
     "Chunk",
     "DocumentId",
+    "DocumentType",
     "Identifier",
     "EmbeddedChunk",
     "ParsedDocument",
