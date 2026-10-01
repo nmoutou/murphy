@@ -118,7 +118,7 @@ async def test_a_failed_compensation_is_counted_and_told_truthfully(
 ) -> None:  # noqa: ANN001
     """Le forward de Qdrant casse ⇒ compensation ; MAIS le rollback de Mongo casse
     aussi. L'écrit partiel qui subsiste doit être COMPTÉ (SAGA_COMPENSATION_FAILED,
-    breakdown par `step`) et l'audit ne doit PAS prétendre à un rollback propre.
+    avec son `step`) et l'audit ne doit PAS prétendre à un rollback propre.
     """
 
     async def boom(*args, **kwargs):  # noqa: ANN002, ANN003, ANN202

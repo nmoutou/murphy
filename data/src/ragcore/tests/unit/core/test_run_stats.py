@@ -10,12 +10,10 @@ from ragcore.core.models.run_stats import RunStats
 
 A = RunStats(
     counts={"persisted": 2, "invalidated": 1},
-    breakdowns={"invalidated": {"validation_error": 1}},
     unknowns={"field": ["NOTA"]},
 )
 B = RunStats(
     counts={"persisted": 3},
-    breakdowns={"invalidated": {"parse_error": 2}},
     unknowns={"field": ["NOTA", "CONTENU"], "relation_type": ["titre_tm"]},
 )
 C = RunStats(counts={"promoted": 1}, unknowns={"field": ["LIENS"]})
@@ -39,11 +37,6 @@ def test_counts_are_summed() -> None:
     merged = A.merge(B)
     assert merged.counts["persisted"] == 5
     assert merged.counts["invalidated"] == 1
-
-
-def test_breakdowns_are_summed_per_key() -> None:
-    merged = A.merge(B)
-    assert merged.breakdowns["invalidated"] == {"validation_error": 1, "parse_error": 2}
 
 
 def test_unknowns_are_a_deduplicated_union() -> None:

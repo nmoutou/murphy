@@ -83,7 +83,7 @@ class RegistryAwareTelemetry:
             _LOGGER.warning(
                 "telemetry backend '%s' error on %s: %s", name, event.event_type, exc
             )
-            self.record_audit_failure(name)
+            self.record_audit_failure()
 
     def log(self, level: str, message: str, **context: Any) -> None:
         """Passe-plat vers le backend log.
@@ -107,7 +107,7 @@ class RegistryAwareTelemetry:
         """
         self._backends.aggregate.record_unknown(category, value)
 
-    def record_audit_failure(self, backend: str, n: int = 1) -> None:
+    def record_audit_failure(self, n: int = 1) -> None:
         """Compte une écriture d'audit perdue — sans jamais la réémettre.
 
         Droit à l'agrégat, comme ``record_unknown``, et pour une raison plus forte
@@ -115,7 +115,7 @@ class RegistryAwareTelemetry:
         rater. Au mieux ils rateraient encore, au pire la récursion serait infinie.
         Un compteur en mémoire, lui, ne peut pas échouer sur du réseau.
         """
-        self._backends.aggregate.record_audit_failure(backend, n)
+        self._backends.aggregate.record_audit_failure(n)
 
     def snapshot(self) -> RunStats:
         """L'agrégat local de ce worker, à fusionner avec celui des autres."""
@@ -145,4 +145,4 @@ class RegistryAwareTelemetry:
                 _LOGGER.warning(
                     "telemetry backend '%s' error on close(): %s", name, exc
                 )
-                self.record_audit_failure(name)
+                self.record_audit_failure()

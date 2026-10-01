@@ -20,21 +20,8 @@ from ragcore.core.models.run_summary import RunStatus, RunSummary
 from ragcore.core.telemetry_events import (
     AUDIT_WRITE_FAILED,
     COUNT_CARRYING_EVENTS,
-    DOCUMENT_FAILED,
-    DOCUMENT_INVALIDATED,
-    DOCUMENT_SKIPPED,
     PAYLOAD_COUNT_KEY,
-    SAGA_COMPENSATION_FAILED,
 )
-
-# Events dont on veut un breakdown par clé de payload.
-_BREAKDOWN_KEY: dict[str, str] = {
-    DOCUMENT_INVALIDATED: "reason",  # breakdown par raison de rejet
-    DOCUMENT_FAILED: "reason",  # breakdown par CAUSE de la fuite
-    DOCUMENT_SKIPPED: "reason",  # breakdown par raison d'écart (artefact / illisible)
-    AUDIT_WRITE_FAILED: "backend",  # breakdown par backend défaillant (mongo, drain…)
-    SAGA_COMPENSATION_FAILED: "step",  # breakdown par store dont le rollback a raté
-}
 
 
 def _weight_of(event_type: str, payload: dict[str, Any]) -> int:
@@ -67,7 +54,7 @@ class RunStatsAggregator:
 
     ``snapshot()`` rend l'agrégat brut — c'est lui qu'on fusionne entre workers.
     ``finalize()`` y attache l'identité du run pour produire le ``RunSummary`` ;
-    la persistance (fichier JSON + Mongo) reste à l'orchestrateur.
+    la persistance (Mongo) reste à l'orchestrateur.
     """
 
     def __init__(
@@ -86,29 +73,12 @@ class RunStatsAggregator:
         return dict(self._stats.counts)
 
     def emit(self, event: AuditEvent) -> None:
-        payload = event.payload or {}
-        weight = _weight_of(event.event_type, payload)
-        stats = self._stats.with_count(event.event_type, weight)
-
-        payload_key = _BREAKDOWN_KEY.get(event.event_type)
-        if payload_key is not None:
-            value = payload.get(payload_key, "unknown")
-            stats = stats.with_breakdown(event.event_type, value, weight)
-
-        # ⚠️ DETTE : PAS de ventilation par source. Sur un run multi-source, le bilan dit
-        # « 3 compensations » sans dire *chez qui* — donc il faut tout rejouer, faute de
-        # savoir quoi rejouer. La matière est pourtant là : `ingest_document` estampille
-        # `source=parsed.source` (la source du DOCUMENT, correcte même quand le contexte du
-        # run vaut `None`).
-        #
-        # Ce qui manque n'est pas une ligne ici, c'est un CHAMP : `breakdowns` est
-        # `event_type -> {clé -> compte}` et sa place est prise (`reason`, `step`…).
-        # Ventiler par source demande un axe de plus — un `by_source` sur `RunStats`, de
-        # même forme et de même monoïde. Le bricoler ici (clé composite
-        # `"legi:document.persisted"`) donnerait un bilan qu'il faudrait re-parser pour
-        # lire. C'est du §12, et ça se fait dans le modèle, pas dans l'adaptateur.
-
-        self._stats = stats
+        weight = _weight_of(event.event_type, event.payload or {})
+        # ⚠️ DETTE : PAS de compteurs par source. Sur un run multi-source, le bilan dit
+        # « 3 compensations » sans dire *chez qui* ; il faut aller lire la `source` de
+        # chaque événement dans `meta_audit_events`. Compter par source demanderait un
+        # axe de plus sur `RunStats`, de même monoïde : ça se fait dans le modèle, pas ici.
+        self._stats = self._stats.with_count(event.event_type, weight)
 
     def log(self, level: str, message: str, **context: Any) -> None:  # noqa: ARG002
         return
@@ -117,7 +87,7 @@ class RunStatsAggregator:
         """Un vocabulaire non reconnu se DÉCLARE — il ne se jette pas en silence."""
         self._stats = self._stats.with_unknown(category, value)
 
-    def record_audit_failure(self, backend: str, n: int = 1) -> None:
+    def record_audit_failure(self, n: int = 1) -> None:
         """Une écriture d'audit perdue — comptée ICI, jamais réémise.
 
         Elle ne repasse **pas** par le fan-out, et c'est la seule façon de couper la
@@ -128,9 +98,7 @@ class RunStatsAggregator:
         Le compteur voyage jusqu'au bilan par le monoïde, comme tout le reste : c'est
         ``snapshot()`` qui le rendra, et la fusion inter-workers le sommera.
         """
-        self._stats = self._stats.with_count(AUDIT_WRITE_FAILED, n).with_breakdown(
-            AUDIT_WRITE_FAILED, backend, n
-        )
+        self._stats = self._stats.with_count(AUDIT_WRITE_FAILED, n)
 
     def snapshot(self) -> RunStats:
         """L'agrégat local, à fusionner avec celui des autres workers."""

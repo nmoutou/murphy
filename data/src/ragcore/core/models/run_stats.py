@@ -33,9 +33,6 @@ class RunStats(BaseModel):
     counts: dict[str, int] = Field(default_factory=dict)
     """event_type -> nombre d'occurrences. Fusion : somme."""
 
-    breakdowns: dict[str, dict[str, int]] = Field(default_factory=dict)
-    """event_type -> {clé de payload -> compte}. Fusion : somme imbriquée."""
-
     unknowns: dict[str, list[str]] = Field(default_factory=dict)
     """Catégorie -> vocabulaire que le run n'a pas su nommer.
 
@@ -55,14 +52,6 @@ class RunStats(BaseModel):
         for event_type, n in other.counts.items():
             counts[event_type] = counts.get(event_type, 0) + n
 
-        breakdowns: dict[str, dict[str, int]] = {
-            event_type: dict(keys) for event_type, keys in self.breakdowns.items()
-        }
-        for event_type, keys in other.breakdowns.items():
-            merged = breakdowns.setdefault(event_type, {})
-            for key, n in keys.items():
-                merged[key] = merged.get(key, 0) + n
-
         unknowns: dict[str, list[str]] = {
             category: list(values) for category, values in self.unknowns.items()
         }
@@ -72,7 +61,7 @@ class RunStats(BaseModel):
                 if value not in known:
                     known.append(value)
 
-        return RunStats(counts=counts, breakdowns=breakdowns, unknowns=unknowns)
+        return RunStats(counts=counts, unknowns=unknowns)
 
     @classmethod
     def reduce(cls, stats: Iterable["RunStats"]) -> "RunStats":
@@ -84,9 +73,6 @@ class RunStats(BaseModel):
 
     def with_count(self, event_type: str, n: int = 1) -> "RunStats":
         return self.merge(RunStats(counts={event_type: n}))
-
-    def with_breakdown(self, event_type: str, key: str, n: int = 1) -> "RunStats":
-        return self.merge(RunStats(breakdowns={event_type: {key: n}}))
 
     def with_unknown(self, category: str, value: str) -> "RunStats":
         return self.merge(RunStats(unknowns={category: [value]}))

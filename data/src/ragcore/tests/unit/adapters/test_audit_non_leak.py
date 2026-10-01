@@ -131,7 +131,6 @@ class TestTheFanOutCountsWhatItSwallows:
 
         stats = telemetry.snapshot()
         assert stats.counts[AUDIT_WRITE_FAILED] == 1
-        assert stats.breakdowns[AUDIT_WRITE_FAILED] == {"mongo": 1}
 
     def test_the_ingestion_still_does_not_fail(self) -> None:
         """Le principe tient : compter la perte ne la transforme pas en exception."""
@@ -190,7 +189,6 @@ class TestTheCloseCountsWhatItSwallows:
 
         stats = telemetry.snapshot()
         assert stats.counts[AUDIT_WRITE_FAILED] == 1
-        assert stats.breakdowns[AUDIT_WRITE_FAILED] == {"mongo": 1}
 
     def test_the_aggregate_is_closed_last(self) -> None:
         """Sinon il ne serait plus là pour compter la mort des autres.
@@ -346,35 +344,9 @@ class TestTheCountTravelsAcrossWorkers:
         C'est tout l'intérêt d'en faire un event agrégé plutôt qu'un compteur ad hoc :
         il n'y a aucune logique de fusion à écrire, donc aucune à se tromper.
         """
-        first = RunStats(
-            counts={AUDIT_WRITE_FAILED: 2},
-            breakdowns={AUDIT_WRITE_FAILED: {"mongo": 2}},
-        )
-        second = RunStats(
-            counts={AUDIT_WRITE_FAILED: 1},
-            breakdowns={AUDIT_WRITE_FAILED: {"drain": 1}},
-        )
+        first = RunStats(counts={AUDIT_WRITE_FAILED: 2})
+        second = RunStats(counts={AUDIT_WRITE_FAILED: 1})
 
         merged = RunStats.reduce([first, second])
 
         assert merged.counts[AUDIT_WRITE_FAILED] == 3
-        assert merged.breakdowns[AUDIT_WRITE_FAILED] == {"mongo": 2, "drain": 1}
-
-    def test_the_breakdown_names_the_guilty_backend(self) -> None:
-        """« 3 écritures perdues » ne suffit pas — il faut savoir OÙ.
-
-        Sans le breakdown, un `degraded` dit qu'il faut chercher, sans dire où : c'est
-        exactement le défaut du critère qui nommait une seule cause.
-        """
-        aggregator = RunStatsAggregator(
-            run_id=RunId("r-1"),
-            source=SourceName.LEGI,
-            started_at=datetime.now(UTC),
-        )
-
-        aggregator.record_audit_failure("mongo", 2)
-        aggregator.record_audit_failure("drain", 1)
-
-        stats = aggregator.snapshot()
-        assert stats.counts[AUDIT_WRITE_FAILED] == 3
-        assert stats.breakdowns[AUDIT_WRITE_FAILED] == {"mongo": 2, "drain": 1}

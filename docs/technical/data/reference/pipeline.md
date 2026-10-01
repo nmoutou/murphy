@@ -145,7 +145,7 @@ Entrées : `to_process`, `runner`, contexte. Le nœud est mince : il lance
   et le mur est le GPU (parse 0,9 ms, chunk 0,1 ms, embed ~1 364 ms).
 - **Un échec de document ne casse pas le run** : l'exception est attrapée, comptée
   (`document.failed`, avec `reason` = le *type* de l'exception — le type regroupe, le
-  message disperserait le breakdown) et le document rejoint `failures`
+  message, gardé dans `error`, disperserait les raisons) et le document rejoint `failures`
   (identifiant + message : un échec anonyme est un échec qu'on ne peut pas rejouer).
 - **Fin de shard, ordre invariant** : `runtime.drain()` (attend les écritures d'audit en
   vol et compte celles qui ont levé) → `record_audit_failure` → `telemetry.close()` →

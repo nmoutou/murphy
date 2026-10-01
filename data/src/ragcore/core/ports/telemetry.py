@@ -35,7 +35,7 @@ class WorkerTelemetry(TelemetryPort, Protocol):
         """Ferme les backends du worker (fichiers, écritures en vol)."""
         ...
 
-    def record_audit_failure(self, backend: str, n: int = 1) -> None:
+    def record_audit_failure(self, n: int = 1) -> None:
         """Déclare une écriture d'audit PERDUE — la télémétrie s'observe elle-même.
 
         Le principe « la télémétrie ne fait jamais échouer l'ingestion » est bon, et il

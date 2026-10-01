@@ -40,7 +40,7 @@ def test_aggregator_produces_a_valid_summary(aggregator: RunStatsAggregator) -> 
     assert summary.ended_at >= summary.started_at
 
 
-def test_counts_and_breakdown_reach_the_stats(aggregator: RunStatsAggregator) -> None:
+def test_counts_reach_the_stats(aggregator: RunStatsAggregator) -> None:
     aggregator.emit(build_event(DOCUMENT_PERSISTED, RUN))
     aggregator.emit(
         build_event(
@@ -54,14 +54,14 @@ def test_counts_and_breakdown_reach_the_stats(aggregator: RunStatsAggregator) ->
     summary = aggregator.finalize(RunStatus.OK)
 
     assert summary.stats.counts[DOCUMENT_PERSISTED] == 1
-    assert summary.stats.breakdowns[DOCUMENT_INVALIDATED]["validation_error"] == 1
+    assert summary.stats.counts[DOCUMENT_INVALIDATED] == 1
 
 
-def test_skipped_files_are_counted_by_reason_outside_the_equation(
+def test_skipped_files_are_counted_outside_the_equation(
     aggregator: RunStatsAggregator,
 ) -> None:
     """Un `document.skipped` par raison, porteur de son `count` : le bilan compte les
-    fichiers écartés, ventilés par raison, sans toucher l'équation de complétude."""
+    fichiers écartés, sans toucher l'équation de complétude."""
     aggregator.emit(build_event(DOCUMENT_FETCHED, RUN, payload={"count": 1}))
     aggregator.emit(build_event(DOCUMENT_PERSISTED, RUN))
     for reason, count in (("export_artifact", 3), ("unreadable", 1)):
@@ -74,10 +74,6 @@ def test_skipped_files_are_counted_by_reason_outside_the_equation(
     summary = aggregator.finalize(RunStatus.OK)
 
     assert summary.stats.counts[DOCUMENT_SKIPPED] == 4
-    assert summary.stats.breakdowns[DOCUMENT_SKIPPED] == {
-        "export_artifact": 3,
-        "unreadable": 1,
-    }
     assert summary.status is RunStatus.OK
 
 

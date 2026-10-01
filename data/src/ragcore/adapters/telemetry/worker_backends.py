@@ -45,8 +45,8 @@ class WorkerBackends:
     def closable_in_order(self) -> list[tuple[str, TelemetryPort]]:
         """Les backends à fermer, ``aggregate`` en DERNIER.
 
-        Le nom accompagne chaque backend : il sert à imputer un échec de fermeture
-        (``record_audit_failure(name)``). L'agrégat ferme en dernier parce qu'il est
+        Le nom accompagne chaque backend : il nomme un échec de fermeture dans les
+        logs. L'agrégat ferme en dernier parce qu'il est
         le seul à pouvoir enregistrer la mort des autres — le fermer d'abord, ce
         serait perdre le compte des pertes qui suivent.
         """

@@ -34,9 +34,8 @@ sort en silence.
 
 **Contrat de cardinalité** : la plupart des événements pèsent 1. Quatre — et eux
 exactement (`COUNT_CARRYING_EVENTS`) — portent leur poids dans `payload["count"]` :
-`document.fetched`, `document.skipped`, `relation.upserted`, `chunk.truncated`. Ce poids
-vaut aussi pour leur ventilation (`breakdowns`). L'ensemble est nommé et
-verrouillé par golden : un émetteur qui prétend porter une cardinalité sans y figurer est
+`document.fetched`, `document.skipped`, `relation.upserted`, `chunk.truncated`.
+L'ensemble est nommé et verrouillé par golden : un émetteur qui prétend porter une cardinalité sans y figurer est
 un bug visible, pas une dérive muette.
 
 ## Les backends
@@ -60,16 +59,17 @@ Motor est lié à la boucle qui l'a touché en premier). Chaque worker tient son
 
 Un **monoïde de fusion** : élément neutre `empty()`, opérateur `merge` associatif **et
 commutatif** (les workers finissent dans un ordre non déterministe — une fusion non
-commutative ferait dépendre le bilan de l'ordonnancement). Trois champs :
+commutative ferait dépendre le bilan de l'ordonnancement). Deux champs :
 
-- `counts` : event_type → occurrences (fusion : somme) ;
-- `breakdowns` : event_type → {clé de payload → compte} (ventilation par `reason`,
-  `step`, `backend` — ⚠️ dette ouverte : pas encore par **source**, un run
-  multi-sources rend un bilan agrégé où l'échec est anonyme quant à sa provenance) ;
+- `counts` : event_type → occurrences (fusion : somme). Le détail d'un compteur (raison
+  d'un rejet, étape d'une compensation ratée) est dans le payload des événements de
+  `meta_audit_events` ; `audit.write.failed`, qui n'y va jamais, nomme son backend dans
+  les logs. ⚠️ Dette ouverte : pas de compteurs par **source**, un run multi-sources
+  rend un bilan où l'échec est anonyme quant à sa provenance ;
 - `unknowns` : catégorie → vocabulaire que le run n'a pas su nommer (ensemble dédupliqué,
   pas un compteur : « la balise foo est inconnue » est vraie une fois pour toutes).
-  Catégories : `balise` / `racine` (parse), `typelien` / `sens` / `identifiant`
-  (extraction). Vide = la table de rôles a tout couvert.
+  Catégories : `tag.unconfigured` / `racine` (parse), `typelien` / `sens` /
+  `identifiant` (extraction). Vide = la table de rôles a tout couvert.
 
 **La remontée passe par le DAG, pas par le hook** : le node terminal `report` pousse
 `ingestion_outcome.stats` dans l'agrégat du run (`run_stats_sink`, que le hook finalise) — Kedro libère un `MemoryDataset` dès

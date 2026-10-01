@@ -17,6 +17,7 @@ paralléliser. Le modèle de concurrence n'est donc pas prisonnier de l'orchestr
 — on peut le lancer depuis un test, un CLI ou un service.
 """
 
+import logging
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
@@ -31,6 +32,8 @@ from ragcore.core.telemetry_events import DOCUMENT_FAILED
 from .run_context import PipelineContext
 
 __all__ = ["DocumentWorkload", "IngestionOutcome", "IngestionRunner", "WorkloadResult"]
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -194,9 +197,9 @@ def _declare_failure(
     perdu 98 documents.
 
     La `reason` est le TYPE de l'exception, pas son message : le message porte des
-    identifiants et des chiffres, il ferait exploser le breakdown en autant de clés que
-    d'échecs. Le type, lui, regroupe — et c'est ce qu'on veut lire : « 98 fuites, toutes
-    sur le même mur ».
+    identifiants et des chiffres, il donnerait autant de raisons que d'échecs dans
+    `meta_audit_events`. Le type, lui, regroupe — et c'est ce qu'on veut lire : « 98
+    fuites, toutes sur le même mur ». Le message reste dans `error`.
     """
     telemetry.emit(
         build_event(
@@ -229,6 +232,11 @@ def _close_worker(runtime: AsyncRuntime, telemetry: WorkerTelemetry) -> None:
     """
     report = runtime.drain()
     if report.failed:
-        telemetry.record_audit_failure("drain", report.failed)
+        telemetry.record_audit_failure(report.failed)
+        logger.error(
+            "%d écriture(s) d'audit PERDUE(S) au drain d'un worker : le bilan de ce run "
+            "est déclaré `degraded`.",
+            report.failed,
+        )
     telemetry.close()
     runtime.close()

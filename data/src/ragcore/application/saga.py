@@ -81,8 +81,8 @@ class SagaExecutor:
         except Exception as comp_exc:  # noqa: BLE001 — une compensation ratée ne doit pas interrompre les suivantes ; l'échec est émis et compté
             # Une compensation qui rate laisse un écrit partiel derrière elle.
             # Le `logger.error` seul le rendait invisible au bilan : on émet
-            # donc un événement COMPTÉ (breakdown par `step`), pour que l'état
-            # corrompu apparaisse dans le RunSummary — pas de perte sans compteur.
+            # donc un événement COMPTÉ (le `step` en cause dans son payload), pour que
+            # l'état corrompu apparaisse dans le RunSummary — pas de perte sans compteur.
             logger.error(
                 "compensation.failed step=%s error=%s",
                 step.name,

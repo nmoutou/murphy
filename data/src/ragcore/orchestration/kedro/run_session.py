@@ -155,7 +155,7 @@ class RunSession:
         report = self.runtime.drain()
         if not report.failed:
             return
-        self.aggregator.record_audit_failure("drain", report.failed)
+        self.aggregator.record_audit_failure(report.failed)
         logger.error(
             "%d écriture(s) d'audit PERDUE(S) : le bilan de ce run repose sur des "
             "compteurs incomplets — il est déclaré `degraded`.",

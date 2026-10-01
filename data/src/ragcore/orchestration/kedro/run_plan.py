@@ -90,10 +90,9 @@ def plan_run(
     # Un run nu ingère TOUTES les sources ; `--params source=cass` le restreint.
     #
     # ⚠️ DETTE OUVERTE : un run qui mélange des sources doit pouvoir dire *laquelle* a
-    # échoué, et il ne le peut pas encore. `RunStats.breakdowns` ventile par `reason`,
-    # `step` ou `backend` (cf. `adapters/telemetry/aggregator.py`), PAS par source. La
-    # restriction garde la voie du rejeu ciblé ouverte, mais le bilan ne dit pas encore
-    # *quoi* rejouer.
+    # échoué, et il ne le peut pas encore : `RunStats` ne compte pas par source (cf.
+    # `adapters/telemetry/aggregator.py`). La restriction garde la voie du rejeu ciblé
+    # ouverte, mais le bilan ne dit pas encore *quoi* rejouer.
     requested_source = (
         settings.source if parameters.source is None else parameters.source
     )
