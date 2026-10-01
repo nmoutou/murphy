@@ -19,7 +19,9 @@ ne sait pas faire génériquement, et qui doit donc être nommé.
 - ``META``    — le fourre-tout **légitime** : tout champ plat qui n'est ni du corps, ni
                 un lien, ni une date de version. C'est le rôle par défaut *déclaré*, pas
                 le rôle par défaut *implicite* : une balise doit y être mappée
-                explicitement, sinon elle ressort en ``unknowns``.
+                explicitement, sinon elle ressort en ``unknowns``. Le rôle ne suffit
+                pas à la configurer : sans renommage dans ``meta_renames``, elle reste
+                non-configurée (ADR-047).
 
 **Ce que la table N'EST PAS.** Ce n'est pas une validation, et le rôle ne réintroduit pas
 de typage métier (§2) : ``doc_type`` ne fait que *choisir la table*. Il n'y a pas de

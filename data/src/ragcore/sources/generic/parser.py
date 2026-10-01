@@ -28,7 +28,6 @@ naturel. Le texte original n'était stocké nulle part : la destruction était i
 
 from __future__ import annotations
 
-from collections.abc import Iterator
 from typing import Any
 
 from pydantic import ValidationError as PydanticValidationError
@@ -39,27 +38,20 @@ from ragcore.core.models.identifiers import Identifier
 from ragcore.core.ports.parser import ParseResult
 
 from .classification import document_type_of, nature_of
+from .metadata import collect_metadata
 from .normalize import normalize_text
 from .role_table import RoleTable
-from .roles import Role
 from .structure import read_context, read_references
 from .tree import (
     Node,
     find_all,
-    find_all_with_path,
     first,
     holders,
-    path_key,
     text_of,
-    walk_with_path,
 )
 from .unconfigured import UnconfiguredRouting, route_unconfigured
 
 __all__ = ["GenericParser"]
-
-_COLLECTABLE_ROLES = frozenset({Role.META, Role.VERSION})
-"""Les rôles qui entrent en métadonnées : ``META``, et ``VERSION``, qui *est* une
-métadonnée, sur l'axe temporel."""
 
 
 class GenericParser:
@@ -87,9 +79,9 @@ class GenericParser:
         panne de lecture, et ``document.invalidated`` ne les compte pas sous la même
         raison.
 
-        Rend un ``ParseResult`` : le document, plus ce que la cascade a rangé sans que
-        la table le lui apprenne (balises non-configurées → metadata ou lien) et les
-        signaux associés. Le parser reste PUR : il constate et rend, il ne compte rien.
+        Rend un ``ParseResult`` : le document, plus les signaux des balises
+        non-configurées — absentes de la table (cascade → metadata ou lien) ou sans
+        renommage (→ metadata sous leur clé chemin-complet). Le parser reste PUR : il constate et rend, il ne compte rien.
         """
         try:
             return self._interpret(raw)
@@ -102,9 +94,10 @@ class GenericParser:
         facets = self._facets(raw)
         routing = UnconfiguredRouting(
             identifier=self._identifier(facets),
-            metadata=self._metadata(facets),
+            metadata={},
             references=read_references(facets, self._table),
         )
+        collect_metadata(facets, self._table, routing)
         route_unconfigured(facets, self._table, routing)
         return ParseResult(
             document=self._document(raw, facets, routing),
@@ -195,65 +188,6 @@ class GenericParser:
             for path, text in self._text_blocks(facets)
             if text.strip()
         ]
-
-    def _metadata(self, facets: list[Node]) -> dict[str, Any]:
-        """Les métadonnées des conteneurs ``<META>``, canonicalisées par la table.
-
-        Ni le contenu ni les liens n'y sont : ils ont leur place, et la dupliquer ferait
-        deux vérités.
-
-        **Une balise absente de ``meta_renames`` n'est pas perdue** — elle entre sous son
-        nom brut, en minuscules. Le renommage est une *promotion*, pas un péage : le
-        parser LEGI, lui, jetait tout ce qu'il ne savait pas renommer, ce qui faisait de
-        la table de renommage un filtre déguisé. Une métadonnée non canonicalisée reste
-        une métadonnée.
-
-        **Le rôle décide, pas l'emplacement.** ``<META>`` n'est pas un territoire : un
-        ``<LIEN>`` niché dedans reste un lien, et l'aspirer en métadonnée en ferait une
-        seconde vérité — la même arête, décrite à deux endroits, qui peuvent diverger.
-        Seules les balises de rôle ``META`` (et ``VERSION``, qui *est* une métadonnée, sur
-        l'axe temporel) entrent ici. C'est précisément à ça que sert la table de rôles :
-        sans elle, on rangeait par position dans l'arbre, ce qui est un pari sur la forme
-        du XML plutôt qu'une lecture de son sens.
-
-        **Sauf l'identifiant et la nature.** Ils ont leur champ dédié
-        (``ParsedDocument.identifier``, ``ParsedDocument.nature``) : les recopier ici en
-        ferait, là encore, une seconde vérité.
-
-        **La clé est le CHEMIN COMPLET, plus le nom de balise nu** (ADR-022 §3). L'ancien
-        ``node["tag"].lower()`` faisait s'écraser deux balises homonymes à deux endroits
-        de l'arbre — premier arrivé gagne, en silence. Le chemin rend la clé injective
-        par construction : la collision n'est plus gérée, elle est impossible. Seule la
-        **promotion** (``meta_renames``) garde un nom court : c'est une décision de la
-        table, premier-arrivé-gagne assumé (l'ordre de préférence des facettes).
-        """
-        metadata: dict[str, Any] = {}
-        for facet in facets:
-            for node, path in self._meta_leaves(facet):
-                key = self._table.meta_renames.get(node["tag"], path_key(path))
-                if key not in metadata:
-                    metadata[key] = node["text"].strip()
-        return metadata
-
-    def _meta_leaves(self, facet: Node) -> Iterator[tuple[Node, tuple[str, ...]]]:
-        """Les feuilles collectables des conteneurs ``<META>``, avec leur chemin."""
-        for container in self._table.meta_containers:
-            for meta, meta_path in find_all_with_path(facet, container):
-                yield from (
-                    (node, path)
-                    for node, path in walk_with_path(meta, meta_path[:-1])
-                    if self._is_collectable(node)
-                )
-
-    def _is_collectable(self, node: Node) -> bool:
-        """Une feuille non vide, de rôle collectable, qui n'a pas son champ dédié
-        (l'identifiant, la nature)."""
-        return (
-            not node["children"]
-            and bool(node["text"].strip())
-            and node["tag"] not in (self._table.identifier_tag, self._table.nature_tag)
-            and self._table.role_of(node["tag"]) in _COLLECTABLE_ROLES
-        )
 
     # ── Source UNIQUE de `_content` et `_sections` ─────────────────────────────
 

@@ -1,5 +1,9 @@
 """La cascade des trois portes : ce que la table de rôles ne sait pas ranger.
 
+C'est l'un des deux cas de balise NON-CONFIGURÉE (ADR-047) : la balise est absente de la
+table. L'autre, une balise connue sans renommage, est traité par ``metadata.py`` et
+alimente le même ``UnconfiguredRouting``.
+
 Il n'y a plus d'« unknown » : une balise que la table ne connaît pas est une donnée dont
 on n'a pas encore promu le nom, et elle a une DESTINATION —
 
@@ -55,7 +59,8 @@ class UnconfiguredRouting:
     metadata: dict[str, Any]
     references: list[dict[str, Any]]
     tags: list[str] = field(default_factory=list)
-    """Les balises non-configurées rencontrées."""
+    """Les balises non-configurées rencontrées : absentes de la table, ou sans
+    renommage."""
     keys: list[str] = field(default_factory=list)
     """Les clés de métadonnées que la cascade a ajoutées."""
     roots: list[str] = field(default_factory=list)

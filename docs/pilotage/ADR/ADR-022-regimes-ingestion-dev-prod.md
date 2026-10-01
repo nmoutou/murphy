@@ -8,7 +8,8 @@ corpus réel ; le corpus témoin relève de `--params source=`) · **§5-§6
 amendés par ADR-043** (routage d'audit laissé au code, conf morte refusée
 par le modèle strict) · **§2 et §4 amendés par ADR-043** (en dev,
 `include_path` écrit les chemins des fichiers source dans Mongo aussi) ·
-**§4-§5 amendés par ADR-044** (le manifest est supprimé)
+**§4-§5 amendés par ADR-044** (le manifest est supprimé) · **§1 amendé par
+ADR-047** (une balise sans renommage est non configurée)
 
 ## Contexte
 

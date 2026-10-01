@@ -265,9 +265,17 @@ def test_les_inconnus_sont_DECLARES_et_pas_jetes() -> None:
     result = _run()
 
     # « balise » est devenu « tag.unconfigured » (cascade des trois portes) : ZORG n'est plus un
-    # inconnu dans la donnée — sa valeur est en métadonnée, et LE SIGNAL le déclare.
+    # inconnu dans la donnée — sa valeur est en métadonnée, et LE SIGNAL le déclare. Les
+    # balises connues SANS renommage sont non-configurées elles aussi (ADR-047).
     assert result["unknowns"] == {
         "typelien": ["ZORGLUB"],
         "sens": ["lateral"],
-        "tag.unconfigured": ["ZORG"],
+        "tag.unconfigured": [
+            "DERNIERE_MODIFICATION",
+            "NUM_PARUTION",
+            "NUM_SEQUENCE",
+            "ORIGINE_PUBLI",
+            "TITRE",
+            "ZORG",
+        ],
     }

@@ -12,11 +12,11 @@ class ParseResult:
     la télémétrie, ni l'environnement), donc ce qu'il constate voyage dans sa valeur de
     retour, et c'est l'appelant — le site de parse, qui tient la télémétrie — qui signale.
 
-    - ``unconfigured_tags`` : les balises que la table de rôles ne connaît pas, dédupli-
-      quées. C'est le SIGNAL (``tag.unconfigured``) — la vigie de dérive DILA. Il est
+    - ``unconfigured_tags`` : les balises non-configurées, dédupliquées — absentes de la
+      table de rôles, ou connues mais sans renommage dans ``meta_renames`` (ADR-047). C'est le SIGNAL (``tag.unconfigured``) — la vigie de dérive DILA. Il est
       émis même quand la donnée est ingérée : on compte d'abord, on filtre ensuite.
     - ``unconfigured_keys`` : les clés de ``document.metadata`` que ces balises ont
-      produites (cascade « trois portes », porte metadata). C'est la POIGNÉE du curseur
+      produites (clé chemin-complet). C'est la POIGNÉE du curseur
       ``skip`` : les retirer juste avant l'ingestion, sans retoucher le parser.
     - ``unknown_roots`` : les racines de facette hors table — une famille de documents
       jamais déclarée. Signal seul : une racine inconnue n'a pas de valeur à ingérer.

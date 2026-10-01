@@ -66,7 +66,8 @@ commutative ferait dépendre le bilan de l'ordonnancement). Deux champs :
   quant à sa provenance ;
 - `unknowns` : catégorie → vocabulaire que le run n'a pas su nommer (ensemble dédupliqué,
   pas un compteur : « la balise foo est inconnue » est vraie une fois pour toutes).
-  Catégories : `tag.unconfigured` / `racine` (parse), `typelien` / `sens` /
+  Catégories : `tag.unconfigured` (balise absente de la table ou sans renommage,
+  ADR-047) / `racine` (parse), `typelien` / `sens` /
   `identifiant` (extraction). Vide = la table de rôles a tout couvert.
 
 **La remontée passe par le DAG, pas par le hook** : le node terminal `report` pousse

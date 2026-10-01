@@ -16,6 +16,9 @@ from ragcore.core.links import CITES, LinkSubject, extract_links
 from ragcore.core.models.enums import DocumentType, SourceName
 from ragcore.sources.generic import GenericParser
 from ragcore.sources.jurisprudence import (
+    JURI_ADMIN_ROLE_TABLE,
+    JURI_CONSTIT_ROLE_TABLE,
+    JURI_JUDI_ROLE_TABLE,
     JURI_LINK_TABLE,
     ROLE_TABLE_BY_ROOT,
     JuriFileConnector,
@@ -100,21 +103,25 @@ def test_un_arret_est_nomme_par_son_identifiant_brut() -> None:
 def test_la_juri_n_a_AUCUNE_balise_sans_role() -> None:
     """Le cliquet de §3, appliqué aux trois tables juri.
 
-    Une balise que la table ne connaît pas voit son contenu **disparaître** — sans
-    exception, sans log. Ce test l'interdit sur les fixtures ; le ``RunSummary`` le
-    signalera sur le corpus complet. Le cliquet interdit la régression, l'instrument permet
-    la saturation ; ni l'un ni l'autre seul ne suffit.
+    Une balise que la table ne connaît pas entre sans être comprise. Ce test l'interdit
+    sur les fixtures ; le ``RunSummary`` le signalera sur le corpus complet. Le cliquet
+    interdit la régression, l'instrument permet la saturation ; ni l'un ni l'autre seul ne
+    suffit.
+
+    Le signal ``unconfigured_tags`` porte aussi les balises connues SANS renommage
+    (ADR-047) : le cliquet ne garde que celles que la table ne connaît pas du tout.
     """
     orphelines: dict[str, set[str]] = {}
 
-    for fixture, source in (
-        ("cass_avec_liens.xml", SourceName.CASS),
-        ("jade.xml", SourceName.JADE),
-        ("constit.xml", SourceName.CONSTIT),
+    for fixture, source, table in (
+        ("cass_avec_liens.xml", SourceName.CASS, JURI_JUDI_ROLE_TABLE),
+        ("jade.xml", SourceName.JADE, JURI_ADMIN_ROLE_TABLE),
+        ("constit.xml", SourceName.CONSTIT, JURI_CONSTIT_ROLE_TABLE),
     ):
         result = _parse_result(fixture, source)
-        if result.unconfigured_tags:
-            orphelines.setdefault("tag", set()).update(result.unconfigured_tags)
+        sans_role = {tag for tag in result.unconfigured_tags if not table.knows(tag)}
+        if sans_role:
+            orphelines.setdefault("tag", set()).update(sans_role)
         if result.unknown_roots:
             orphelines.setdefault("racine", set()).update(result.unknown_roots)
 

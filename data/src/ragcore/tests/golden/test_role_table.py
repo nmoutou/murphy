@@ -72,12 +72,18 @@ def test_aucune_balise_du_corpus_ne_reste_sans_role() -> None:
     ``unknown`` dans la donnée : elle est ROUTÉE (metadata ou lien) et SIGNALÉE dans le
     ``ParseResult``. Le cliquet lit désormais le signal — il garde exactement la même
     chose : sur les fixtures saturées, il doit être vide.
+
+    Le signal porte aussi les balises connues SANS renommage (ADR-047) : elles ont un
+    rôle, le cliquet ne les retient donc pas.
     """
     orphelines: dict[str, set[str]] = {}
 
     for result in _parse_all():
-        if result.unconfigured_tags:
-            orphelines.setdefault("tag", set()).update(result.unconfigured_tags)
+        sans_role = {
+            tag for tag in result.unconfigured_tags if not LEGI_ROLE_TABLE.knows(tag)
+        }
+        if sans_role:
+            orphelines.setdefault("tag", set()).update(sans_role)
         if result.unknown_roots:
             orphelines.setdefault("racine", set()).update(result.unknown_roots)
 

@@ -205,9 +205,9 @@ def test_le_contexte_porte_la_fermeture_des_ancetres(fixtures_dir: Path) -> None
 def test_une_balise_non_configuree_est_ROUTEE_et_SIGNALEE(fixtures_dir: Path) -> None:
     """La cascade des trois portes : plus d'« unknown ».
 
-    Le corpus réel ne déclenche AUCUNE balise non-configurée — le vocabulaire est
-    saturé, et c'est le résultat attendu. C'est précisément pourquoi il ne peut pas
-    prouver l'instrument. D'où cette fixture synthétique : ``<ZORG>`` doit être
+    Le corpus réel n'a AUCUNE balise absente de la table — le vocabulaire est saturé,
+    et c'est le résultat attendu. C'est précisément pourquoi il ne peut pas prouver la
+    cascade. D'où cette fixture synthétique : ``<ZORG>`` doit être
     **signalée** (``unconfigured_tags``, la vigie de dérive DILA) ET **ingérée** en
     métadonnée sous sa clé chemin-complet — routée, pas jetée, pas « inconnue ».
     """
@@ -226,6 +226,39 @@ def test_une_balise_non_configuree_est_ROUTEE_et_SIGNALEE(fixtures_dir: Path) ->
     }  # la poignée du curseur `skip`
     assert parsed.identifier.raw == ARTICLE_INCONNU
     assert "texte parfaitement ordinaire" in parsed.content  # le reste est parsé
+
+
+def test_une_balise_connue_SANS_RENOMMAGE_est_non_configuree() -> None:
+    """ADR-047 : seul le renommage configure une métadonnée.
+
+    ``DERNIERE_MODIFICATION`` a un rôle (``META``) mais pas d'entrée dans
+    ``meta_renames`` : elle entre sous sa clé chemin-complet, ET elle est signalée, ET sa
+    clé est la poignée du curseur ``skip``. ``ORIGINE``, renommée, ne l'est pas.
+    """
+    tree = to_tree(
+        ET.fromstring(
+            "<ARTICLE><META>"
+            f"<META_COMMUN><ID>{ARTICLE_INCONNU}</ID><ORIGINE>LEGI</ORIGINE></META_COMMUN>"
+            "<META_SPEC><META_ARTICLE>"
+            "<DERNIERE_MODIFICATION>2020-01-01</DERNIERE_MODIFICATION>"
+            "</META_ARTICLE></META_SPEC>"
+            "</META></ARTICLE>"
+        )
+    )
+    result = GenericParser(LEGI_ROLE_TABLE, _SN.LEGI).parse(
+        RawDocument(
+            source=SourceName.LEGI,
+            source_document_id="x",
+            payload={"content": [tree]},
+            fetched_at=datetime.now(UTC),
+        )
+    )
+    key = "article_meta_meta_spec_meta_article_derniere_modification"
+
+    assert result.unconfigured_tags == ("DERNIERE_MODIFICATION",)
+    assert result.unconfigured_keys == (key,)
+    assert result.document.metadata[key] == "2020-01-01"
+    assert result.document.metadata["origine"] == "LEGI"
 
 
 def test_une_valeur_au_format_DILA_devient_un_LIEN_pas_une_metadonnee(
