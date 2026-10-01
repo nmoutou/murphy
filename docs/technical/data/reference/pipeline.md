@@ -72,7 +72,8 @@ Entrées : les quatre dépôts du hook, `nuke_all` (du plan du run).
 - `nuke_all: true` → le garde-fou a déjà joué en amont : hors `ENVIRONMENT=dev`, `plan_run`
   ignore `parameters.yml` et `nuke_all` arrive ici à `false` (l'absence de la variable vaut
   `prod`). Le nœud n'efface donc qu'en dev :
-  - Mongo `MURPHY_DATA` : les collections `documents` et `pending_relations`
+  - Mongo `MURPHY_DATA` : les collections `documents`, `pending_relations` et
+    `unformatted_relations`
     (`schemas.reset_data_collections`, qui **repose les index** qu'un drop détruit avec
     la collection) ;
   - Neo4j : le graphe entier ;
@@ -153,8 +154,8 @@ Entrées : `to_process`, `runner`, contexte. Le nœud est mince : il lance
 ### Le workload d'un document (`orchestration/kedro/workload.py`)
 
 1. **Extraction** (`extractor.extract(parsed)`) — AVANT le chunking : elle sépare les
-   cibles identifiées (→ relations, pour la phase 2) des cibles décrites (→ citations,
-   champ du document, qui doit être posé avant l'écriture Mongo/Neo4j). Les inconnus
+   cibles identifiées (→ relations, pour la phase 2) des cibles décrites (→ relations
+   non formatées, que la saga du document écrit, ADR-045). Les inconnus
    d'extraction (`typelien`, `sens`, `identifiant`) sont déclarés à la télémétrie du
    worker.
 2. **Chunking** (`chunker.chunk(parsed)`) — voir [sources.md](sources.md#le-chunking).

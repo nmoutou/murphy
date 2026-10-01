@@ -24,13 +24,14 @@ les documents en INSERT/UPDATE a été retiré : le classement ne changeait aucu
 
 ## La saga (`application/saga.py`, `application/ingest_document.py`)
 
-La phase 1 écrit chaque document par une saga de trois steps, **dans cet ordre** :
+La phase 1 écrit chaque document par une saga de quatre steps, **dans cet ordre** :
 
 | # | Step | Forward | Compensation |
 |---|---|---|---|
 | 1 | `mongo_upsert` | `replace_one(upsert=True)` — remplacement atomique en place | `delete` (le rollback juste d'une première écriture) |
-| 2 | `qdrant_upsert` | `delete_by_document` **puis** `upsert` des points | `delete_by_document` |
-| 3 | `neo4j_merge_node` | `MERGE` du nœud (jamais ses arêtes) | conditionnelle : `DETACH DELETE` si orphelin, dé-hydratation en `:Pending` s'il est cité par d'autres |
+| 2 | `mongo_unformatted_upsert` | upsert-union des relations non formatées du document (ADR-045) | `delete_first_seen` : seules les lignes du document nées dans ce run |
+| 3 | `qdrant_upsert` | `delete_by_document` **puis** `upsert` des points | `delete_by_document` |
+| 4 | `neo4j_merge_node` | `MERGE` du nœud (jamais ses arêtes) | conditionnelle : `DETACH DELETE` si orphelin, dé-hydratation en `:Pending` s'il est cité par d'autres |
 
 En cas d'échec d'un step, les steps déjà exécutés sont compensés en ordre inverse, les
 événements `saga.compensation.*` sont émis (y compris `saga.compensation.failed` si une
@@ -38,7 +39,7 @@ compensation rate — un écrit partiel doit être **compté**, pas seulement lo
 l'exception d'origine est relevée : le document est perdu, **pas le run** (il est compté
 `document.failed` et nommé dans `failures`).
 
-`document.persisted` **n'est émis qu'après le succès des trois steps** : un document à
+`document.persisted` **n'est émis qu'après le succès des quatre steps** : un document à
 moitié écrit n'est jamais compté ingéré.
 
 Choix d'ordre : Neo4j en dernier parce que c'est le store le moins librement compensable
@@ -47,18 +48,21 @@ compensation n'est appelée que si lui-même échoue.
 
 ### Les résiduels assumés (v0)
 
-Deux fenêtres existent, toutes deux **hors du chemin `nuke_all`** (où les bases sont
+Trois fenêtres existent, toutes **hors du chemin `nuke_all`** (où les bases sont
 vides, donc rien n'est réécrit) — elles ne concernent que le run incrémental, un chemin
 v1 :
 
 - **compensation Mongo d'une réécriture** : elle supprime au lieu de restaurer l'ancien. Le
   vrai rollback versionné (snapshoter pour réinsérer) est un choix explicite de v1 ;
+- **compensation des relations non formatées déjà connues** : elles s'accumulent, et la
+  compensation ne retire que celles nées dans le run ; une relation déjà en base garde
+  son `last_seen_run` avancé par le run qui a échoué ;
 - **fenêtre intra-step Qdrant** : entre le delete et l'insert, les vecteurs du document
   sont absents. Qdrant n'offre pas de remplacement atomique par document — le
   delete-puis-insert est le modèle, pas un défaut (un simple upsert laisserait des points
   orphelins quand la nouvelle version a moins de chunks).
 
-Dans les deux cas, l'at-least-once rattrape : le run suivant ré-écrit le document.
+Dans les trois cas, l'at-least-once rattrape : le run suivant ré-écrit le document.
 
 ## Pourquoi les relations ont leur propre phase
 
@@ -81,8 +85,8 @@ erreur ni trace. D'où :
 
 `nuke_all: true` + `ENVIRONMENT=dev` (ailleurs, `parameters.yml` est ignoré : rien n'est effacé) :
 
-- efface Mongo `MURPHY_DATA` (`documents` et `pending_relations`, puis **repose les
-  index**), le graphe Neo4j entier, et **toutes** les collections Qdrant (pas seulement
+- efface Mongo `MURPHY_DATA` (`documents`, `pending_relations` et
+  `unformatted_relations`, puis **repose les index**), le graphe Neo4j entier, et **toutes** les collections Qdrant (pas seulement
   `QDRANT_COLLECTION`). Les pendantes partent avec le corpus : elles pointent vers des
   nœuds effacés, et le run suivant retrouve celles qui manquent toujours ;
 - **préserve `MURPHY_META`** : les bilans de run. Un nuke ne doit jamais rendre les

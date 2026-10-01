@@ -169,7 +169,7 @@ concurrentes : on ne coupe jamais à travers un bloc structurel, et on ne dépas
   [configuration.md](configuration.md#chunkingsettings-préfixe-chunking_)
   pour le raisonnement mesuré derrière `CHUNKING_MAX_CHARS=384`.
 
-## Relations et citations (`core/links/`, `sources/generic/relations.py`)
+## Relations et relations non formatées (`core/links/`, `sources/generic/relations.py`)
 
 L'extraction tourne **dans le worker**, avant le chunking, et distingue deux natures de
 cible sur un seul critère — l'identification, jamais la source :
@@ -181,12 +181,13 @@ cible sur un seul critère — l'identification, jamais la source :
   d'enum `RelationType` : un enum de six verbes déclarait perdue toute relation au verbe
   inattendu). Les relations ne sont pas écrites par le worker : elles remontent vers la
   phase 2 (voir [pipeline.md](pipeline.md#6-resolverelations--la-phase-2)).
-- **`@id` vide** → une **`Citation`**, champ du document (`ParsedDocument.citations`),
-  jamais un nœud. Mesuré sur le corpus : 89/89 `<LIEN>` LEGI à `@id` vide portent du
+- **`@id` vide** → une **`UnformattedRelation`** (ADR-045), jamais un nœud ni un champ
+  du document : la saga du document l'écrit dans `MURPHY_DATA.unformatted_relations`, où
+  elle s'accumule de run en run comme une pendante. Mesuré sur le corpus : 89/89 `<LIEN>` LEGI à `@id` vide portent du
   texte (« code de l'environnement »…), 68/68 côté CASS — ce sont des désignations en
   toutes lettres, pas des scories. Les matérialiser en nœuds `:Unknown` peuplait le
-  graphe d'entités jamais résolues, une par formulation. Le texte est conservé **brut et
-  intégral** (une balise CASS énumère souvent plusieurs articles d'un coup — le découpage
+  graphe d'entités jamais résolues, une par formulation. Le texte (`target_text`) est
+  conservé **brut et intégral** (une balise CASS énumère souvent plusieurs articles d'un coup — le découpage
   demanderait de la sémantique juridique et appartient à une passe de résolution future) ;
   `sens` est conservé pour pouvoir orienter l'arête ce jour-là.
 
@@ -195,4 +196,4 @@ retour de l'extracteur et sont déclarés par le workload à la télémétrie du
 
 La hiérarchie déclarée en double (fermeture d'ancêtres côté article, arbre côté sections)
 est dédoublonnée en phase 2 par **réduction transitive** — contenance (`titre`) seulement,
-jamais les citations.
+jamais les arêtes `cites`.

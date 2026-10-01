@@ -25,21 +25,25 @@ identifiant (voir [idempotence.md](idempotence.md)).
 
 ```
 RawDocument ──parse──▶ ParsedDocument ──chunk──▶ Chunk ──embed──▶ EmbeddedChunk
-   (connecteur)          (+ citations,             (ordinal, text,     (+ embedding,
-    payload=arbre XML     metadata, content,        tag_path,           model, dim)
-    transcrit)            structure, source_files)  char_start/end)
+   (connecteur)          (metadata, content,       (ordinal, text,     (+ embedding,
+    payload=arbre XML     structure,                tag_path,           model, dim)
+    transcrit)            source_files)             char_start/end)
 ```
 
 - `ParsedDocument` : `identifier`, `source`, `title`, `content` (texte
   intégral lisible), `structure` (sections/references/context — **jamais persisté**,
-  voir plus bas), `metadata` (clés = chemin complet de balise), `citations` (tuple de
-  `Citation`), `source_files` (provenance, persistée seulement en dev avec `include_path`).
+  voir plus bas), `metadata` (clés = chemin complet de balise), `source_files`
+  (provenance, persistée seulement en dev avec `include_path`).
 - `Chunk` : `chunk_id`, `parent_identifier`, `ordinal`, `text`, `tag_path`,
   `char_start`/`char_end` (offsets **littéraux** dans `content`), `metadata`.
 - `Relation` : source → cible (deux identifiants), `relation_type` = **verbe validé**
   (chaîne, pas un enum — un verbe non traduit entre sous son nom brut), `metadata`.
-- `Citation` : `text` (brut, intégral — la seule donnée non reconstructible), `verb`,
-  `sens` (conservé pour orienter l'arête d'une future résolution).
+- `UnformattedRelation` (ADR-045) : la relation d'un lien à `@id` vide —
+  `source_identifier`, `target_text` (brut, intégral — la seule donnée non
+  reconstructible), `relation_type` (traduit, brut sinon ; pas un verbe validé, il ne
+  devient pas un type d'arête), `sens` (conservé pour orienter l'arête d'une future
+  résolution), `source`, `metadata`. Extraite avec les relations, elle n'est pas portée
+  par le document.
 
 ## MongoDB — base de données `MURPHY_DATA`
 
@@ -60,8 +64,7 @@ Contenu : le dump JSON du `ParsedDocument`, **sauf** :
   donnée d'arête (elles vivent dans Neo4j), et `sections` est `content` re-découpé — son
   seul apport propre (`path`) survit sur les chunks (`tag_path` + offsets).
 
-Donc : `identifier` (sérialisé), `source`, `title`, `content`, `metadata`,
-`citations`.
+Donc : `identifier` (sérialisé), `source`, `title`, `content`, `metadata`.
 
 ### `pending_relations`
 
@@ -75,6 +78,22 @@ rejeu ciblé.
 
 Une pendante dérive des documents : elle vit dans leur base et `nuke_all` l'efface avec
 eux.
+
+### `unformatted_relations`
+
+Les `UnformattedRelation` (ADR-045) : les relations d'un lien à `@id` vide, dont la cible
+est décrite en toutes lettres (« code de l'environnement ») au lieu d'être identifiée —
+source_id, target_text, relation_type, sens, source, metadata, first_seen_run,
+last_seen_run. Écrites par la saga du document (étape `mongo_unformatted_upsert`, juste
+après `mongo_upsert`), elles **s'accumulent** comme les pendantes : rien n'est supprimé
+d'un run à l'autre, seul `last_seen_run` avance. La compensation de la saga ne retire que
+les lignes du document nées dans le run qui échoue.
+
+Index **unique** `uq_unformatted_source_text_type_sens` (source_id, target_text,
+relation_type, sens) — l'union de l'upsert ; `sens` en fait partie, car « je cite X » et
+« X me cite » sont deux faits. Son préfixe `source_id` sert aussi la compensation.
+
+Comme les pendantes, elles dérivent des documents et `nuke_all` les efface avec eux.
 
 ## MongoDB — base méta `MURPHY_META`
 
@@ -125,7 +144,7 @@ données.
   `nuke_all`. Un nœud cité dont le document manque porte `Pending`.
 - **Hydratation** (ADR-022 §2) : en prod, nœud **maigre** (`title`, `source`). En dev (et seulement en dev), `parameters.yml` ouvre les vannes : `metadata`
   en props (clés chemin-complet), `include_path` (les fichiers XML source, écrits aussi
-  dans Mongo), `include_content_neo4j` (le texte, prop `_text_content`), les citations. Neo4j est l'outil
+  dans Mongo), `include_content_neo4j` (le texte, prop `_text_content`). Neo4j est l'outil
   d'inspection de la v0.
 - **Arêtes** : écrites en phase 2 uniquement, `MERGE (a)-[r:TYPE]->(b)` avec le **verbe
   comme type d'arête** (type paramétré natif), taguées du `run_id` qui les a posées
@@ -134,4 +153,5 @@ données.
 - **Label `Pending`** : la compensation d'un nœud cité par d'autres le dé-hydrate en
   `:Pending` au lieu de l'arracher (les arêtes entrantes appartiennent à d'autres
   documents) ; un `merge_document_node` ultérieur le ré-hydrate naturellement. Plus de
-  label `Unknown` : une cible décrite est une `Citation` sur le document, pas un nœud.
+  label `Unknown` : une cible décrite est une ligne d'`unformatted_relations`, pas un
+  nœud.

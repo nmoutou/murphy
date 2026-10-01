@@ -1,6 +1,6 @@
 # INDEX — Registre des décisions (ADR)
 
-> Un fichier par ADR (format Nygard). **Prochain numéro : ADR-045.**
+> Un fichier par ADR (format Nygard). **Prochain numéro : ADR-046.**
 
 ## Registre
 
@@ -26,6 +26,7 @@
 | [ADR-042](ADR-042-collection-qdrant-nom-fixe.md) | Une collection Qdrant au nom fixe : fin de l'empreinte, du pointeur et du tracking | ✅ Accepté (30 septembre 2026) — remplace ADR-026, amende ADR-039 §3, §3 amendé par ADR-043 |
 | [ADR-043](ADR-043-configuration-ingestion-environment.md) | Configuration de l'ingestion : un fichier, un bloc `dev`, `ENVIRONMENT` seul arbitre | ✅ Accepté (30 septembre 2026) — amende ADR-022 §5-§6, ADR-023, ADR-042 §3 ; §3 et §4 amendés (labels Neo4j déclarés par les sources ; découpe dans l'environnement ; bloc `dev` aplati), §4 par ADR-044 |
 | [ADR-044](ADR-044-suppression-du-manifest.md) | Suppression du manifest d'ingestion | ✅ Accepté (1er octobre 2026) — amende ADR-022 §4-§5 et ADR-043 §2 et §4 |
+| [ADR-045](ADR-045-relations-non-formatees.md) | Relations non formatées : une collection, plus un champ du document | ✅ Accepté (1er octobre 2026) |
 
 ## Points ouverts rattachés
 

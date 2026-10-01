@@ -68,9 +68,9 @@ Déroulé détaillé nœud par nœud : [reference/pipeline.md](reference/pipelin
 - **Phase 1 — documents** (`ingest`) : un pool de 4 workers, dispatch par clé document
   (hash blake2b de l'identifiant). Chaque worker a sa boucle asyncio, ses clients Mongo /
   Neo4j / Qdrant, sa télémétrie et son agrégat local : rien de mutable n'est partagé, donc
-  aucun verrou. Le travail d'un document (le *workload*) : extraction des
-  relations/citations → chunking → embedding → saga d'écriture (Mongo → Qdrant → nœud
-  Neo4j).
+  aucun verrou. Le travail d'un document (le *workload*) : extraction des relations
+  et des relations non formatées → chunking → embedding → saga d'écriture (Mongo →
+  relations non formatées `MURPHY_DATA.unformatted_relations` → Qdrant → nœud Neo4j).
 - **Phase 2 — relations** (`resolveRelations`) : après la barrière, un service unique
   écrit les arêtes en batch, met en attente celles dont la cible n'est pas dans le corpus
   (`MURPHY_DATA.pending_relations`) et **promeut** les pendantes de runs passés dont la cible
