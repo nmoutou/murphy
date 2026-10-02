@@ -155,7 +155,7 @@ def test_le_parser_rend_les_liens_BRUTS_sans_les_typer(fixtures_dir: Path) -> No
     )
 
     (lien,) = [r for r in parsed.structure["references"] if r["kind"] == "LIEN"]
-    assert lien["typelien"] == "CREE"  # le mot de LEGI, pas CREATES
+    assert lien["typelien"] == "CREE"  # le mot de LEGI, pas encore traduit
     assert lien["sens"] == "cible"
 
 

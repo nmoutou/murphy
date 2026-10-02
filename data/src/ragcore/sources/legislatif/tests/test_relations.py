@@ -6,12 +6,12 @@ from typing import Any
 from xml.etree import ElementTree as ET
 
 from ragcore.core.links import (
-    CITES,
-    CONTAINS,
+    CITE,
+    CODIFIE,
+    CONTIENT,
     HEURISTIC_KIND,
-    MODIFIES,
-    REFERENCES,
-    SUCCEEDED_BY,
+    MODIFIE,
+    SUIVI_PAR,
     VERSION_KIND,
 )
 from ragcore.core.models.document import ParsedDocument, RawDocument
@@ -67,7 +67,7 @@ def test_UN_lien_donne_UNE_arete(fixtures_dir: Path) -> None:
     # Seule exception : les liens de version se traitent en groupe, et un document
     # n'émet que les maillons de la chaîne qui le touchent.
     versions = [r for r in liens if r["kind"] == VERSION_KIND]
-    chain = [r for r in result.relations if r.relation_type == SUCCEEDED_BY]
+    chain = [r for r in result.relations if r.relation_type == SUIVI_PAR]
 
     assert len(result.relations) == len(liens) - len(versions) + len(chain) + len(
         ancestors
@@ -90,7 +90,7 @@ def test_les_versions_forment_une_CHAINE_dans_le_sens_du_temps(
         document
     )
 
-    chain = [r for r in result.relations if r.relation_type == SUCCEEDED_BY]
+    chain = [r for r in result.relations if r.relation_type == SUIVI_PAR]
     edges = {
         (r.source_identifier.raw, r.target_identifier.raw): r.metadata for r in chain
     }
@@ -140,34 +140,34 @@ def test_les_paires_actives_et_passives_partagent_leur_verbe(
         document
     )
 
-    modifies = [r for r in result.relations if r.relation_type == MODIFIES]
-    typeliens = {r.metadata["typelien"] for r in modifies}
+    modifie = [r for r in result.relations if r.relation_type == MODIFIE]
+    typeliens = {r.metadata["typelien"] for r in modifie}
 
     assert typeliens == {"MODIFIE", "MODIFICATION"}
     # Le même verbe, chacun orienté par son sens
-    assert len({r.source_identifier.raw for r in modifies}) == 2
+    assert len({r.source_identifier.raw for r in modifie}) == 2
 
 
 def test_le_typelien_dorigine_SURVIT_dans_les_metadonnees(fixtures_dir: Path) -> None:
-    """``REFERENCES`` recouvre plusieurs ``typelien`` : l'original survit en
+    """Un verbe peut recouvrir plusieurs ``typelien`` : l'original survit en
     métadonnée, sinon ils seraient indiscernables en base."""
     document = _parse(fixtures_dir, f"{ARTICLE_RICHE}.xml")
     result = GenericRelationExtractor(LEGI_ROLE_TABLE, SourceName.LEGI).extract(
         document
     )
 
-    references = [r for r in result.relations if r.relation_type == REFERENCES]
-    assert {r.metadata["typelien"] for r in references} >= {"CODIFICATION"}
+    codifie = [r for r in result.relations if r.relation_type == CODIFIE]
+    assert {r.metadata["typelien"] for r in codifie} == {"CODIFICATION"}
 
 
-def test_la_hierarchie_devient_des_aretes_CONTAINS(fixtures_dir: Path) -> None:
+def test_la_hierarchie_devient_des_aretes_CONTIENT(fixtures_dir: Path) -> None:
     """Une section contient ses articles, un texte ses sections."""
     document = _parse(fixtures_dir, f"{SECTION_ARTICLES}.xml")
     result = GenericRelationExtractor(LEGI_ROLE_TABLE, SourceName.LEGI).extract(
         document
     )
 
-    contains = [r for r in result.relations if r.relation_type == CONTAINS]
+    contains = [r for r in result.relations if r.relation_type == CONTIENT]
     articles = [r for r in contains if r.metadata.get("kind") == "LIEN_ART"]
 
     assert len(articles) == 14
@@ -191,7 +191,7 @@ def test_les_ancetres_du_contexte_CONTIENNENT_le_document(fixtures_dir: Path) ->
 
     assert len(ancestors) == 7
     for relation in ancestors:
-        assert relation.relation_type == CONTAINS
+        assert relation.relation_type == CONTIENT
         assert relation.target_identifier.raw == ARTICLE_SIMPLE  # tous le contiennent
 
 
@@ -215,7 +215,7 @@ def test_un_verbe_inconnu_ENTRE_mais_un_sens_inconnu_NON(
     assert result.lost_links == 1
 
     verbs = {r.relation_type for r in result.relations}
-    assert verbs == {CITES, "zorglub"}, (
+    assert verbs == {CITE, "zorglub"}, (
         "le lien valide ET le verbe inconnu produisent une arête ; le sens inconnu, non"
     )
 
@@ -300,8 +300,23 @@ def test_le_curseur_RETIRE_les_aretes_non_configurees_mais_pas_le_signal() -> No
         assert result.unknowns == {CATEGORY_LINK: ["ZORGLUB"]}
         return {r.relation_type for r in result.relations}
 
-    assert verbs(skip=False) == {CITES, "zorglub", REFERENCES}
-    assert verbs(skip=True) == {CITES}
+    assert verbs(skip=False) == {CITE, "zorglub", "zorg_ref"}
+    assert verbs(skip=True) == {CITE}
+
+
+def test_une_balise_heuristique_impossible_en_verbe_est_PERDUE_et_comptee() -> None:
+    """La balise devient le verbe : si elle ne peut pas être un type d'arête, le lien
+    est compté en ``relation.unknown``, pas inventé."""
+    document = _document_with_references(
+        [{"kind": HEURISTIC_KIND, "id": _CIBLE, "tag": "ZORG-REF"}]
+    )
+
+    result = GenericRelationExtractor(LEGI_ROLE_TABLE, SourceName.LEGI).extract(
+        document
+    )
+
+    assert result.relations == []
+    assert result.lost_links == 1
 
 
 def test_une_mort_nee_saccroche_en_branche_LATERALE_hors_chaine() -> None:
@@ -351,7 +366,7 @@ def test_une_mort_nee_saccroche_en_branche_LATERALE_hors_chaine() -> None:
     edges = {
         (r.source_identifier.raw, r.target_identifier.raw): r.metadata
         for r in result.relations
-        if r.relation_type == SUCCEEDED_BY
+        if r.relation_type == SUIVI_PAR
     }
     assert set(edges) == {
         ("LEGIARTI000000000009", me),  # ma précédente → moi
@@ -396,7 +411,7 @@ def test_une_mort_nee_recoit_son_arete_et_nen_emet_AUCUNE() -> None:
         document
     )
 
-    chain = [r for r in result.relations if r.relation_type == SUCCEEDED_BY]
+    chain = [r for r in result.relations if r.relation_type == SUIVI_PAR]
     assert len(chain) == 1, "l'entrante, et rien d'autre"
     assert chain[0].source_identifier.raw == "LEGIARTI000000000009"
     assert chain[0].target_identifier.raw == me

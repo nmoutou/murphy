@@ -14,12 +14,12 @@ from collections import defaultdict
 
 import networkx as nx
 
-from ..links.vocabulary import CONTAINS, RelationVerb
+from ..links.vocabulary import CONTIENT, RelationVerb
 from ..models.relation import Relation
 
 __all__ = ["REDUCIBLE_TYPES", "reduce_transitively"]
 
-REDUCIBLE_TYPES: frozenset[RelationVerb] = frozenset({CONTAINS})
+REDUCIBLE_TYPES: frozenset[RelationVerb] = frozenset({CONTIENT})
 """Liste blanche : un verbe brut non traduit n'est jamais réduit, faute de connaître son
 algèbre."""
 

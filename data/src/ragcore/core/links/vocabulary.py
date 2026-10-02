@@ -15,14 +15,21 @@ from typing import NewType
 from ..models.verbs import VERB_PATTERN, normalize_verb
 
 __all__ = [
-    "ABROGATES",
+    "ABROGE",
+    "APPLIQUE",
+    "APPLIQUE_SPEC",
+    "ASSOCIE",
     "CANONICAL_VERBS",
-    "CITES",
-    "CONTAINS",
-    "CREATES",
-    "MODIFIES",
-    "REFERENCES",
-    "SUCCEEDED_BY",
+    "CITE",
+    "CODIFIE",
+    "CONCORDE",
+    "CONTIENT",
+    "CREE",
+    "DEPLACE",
+    "MODIFIE",
+    "SOURCE",
+    "SUIVI_PAR",
+    "TRANSFERE",
     "RelationVerb",
     "TranslationTable",
     "is_valid_verb",
@@ -40,26 +47,28 @@ RelationVerb = NewType("RelationVerb", str)
 #
 # Des constantes, pas un enum : des noms privilégiés dans un espace ouvert.
 
-CITES = RelationVerb("cites")
-MODIFIES = RelationVerb("modifies")
-ABROGATES = RelationVerb("abrogates")
-CREATES = RelationVerb("creates")
+CITE = RelationVerb("cite")
+MODIFIE = RelationVerb("modifie")
+ABROGE = RelationVerb("abroge")
+CREE = RelationVerb("cree")
+SOURCE = RelationVerb("source")
+CODIFIE = RelationVerb("codifie")
+CONCORDE = RelationVerb("concorde")
+APPLIQUE_SPEC = RelationVerb("applique_spec")
+APPLIQUE = RelationVerb("applique")
+ASSOCIE = RelationVerb("associe")
+TRANSFERE = RelationVerb("transfere")
+DEPLACE = RelationVerb("deplace")
 
-CONTAINS = RelationVerb("contains")
+CONTIENT = RelationVerb("contient")
 """Contenance structurelle : un texte contient ses sections, une section ses articles.
 
 Le seul verbe transitif, donc le seul réductible (``core/services/relation_reduction``).
 Son orientation est connue par construction, jamais lue dans ``sens``.
 """
 
-REFERENCES = RelationVerb("references")
-"""Le renvoi qualifié : un verbe de source sans sémantique propre dans le domaine, rangé
-ici sciemment par une table de traduction. À ne pas confondre avec le verbe brut d'un
-``typelien`` inconnu.
-"""
-
-SUCCEEDED_BY = RelationVerb("succeeded_by")
-"""L'axe temporel : ``(v1)-[:succeeded_by]->(v2)``, dans le sens du temps.
+SUIVI_PAR = RelationVerb("suivi_par")
+"""L'axe temporel : ``(v1)-[:suivi_par]->(v2)``, dans le sens du temps.
 
 Ni une contenance (la réduire détruirait la ligne de vie), ni une citation. Le graphe
 porte la chaîne des versions d'un article, pas leur produit cartésien. Une version
@@ -68,7 +77,22 @@ l'écarter.
 """
 
 CANONICAL_VERBS: frozenset[RelationVerb] = frozenset(
-    {CITES, MODIFIES, ABROGATES, CREATES, CONTAINS, REFERENCES, SUCCEEDED_BY}
+    {
+        CITE,
+        MODIFIE,
+        ABROGE,
+        CREE,
+        SOURCE,
+        CODIFIE,
+        CONCORDE,
+        APPLIQUE_SPEC,
+        APPLIQUE,
+        ASSOCIE,
+        TRANSFERE,
+        DEPLACE,
+        CONTIENT,
+        SUIVI_PAR,
+    }
 )
 """Les verbes dont le domaine connaît la sémantique, figés par un cliquet : ils sont
 écrits en base. Pas une validation : un verbe hors de cet ensemble reste légitime.

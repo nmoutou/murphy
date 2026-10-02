@@ -25,7 +25,7 @@ from .subject import LinkSubject
 from .table import LinkTable
 from .unformatted import unformatted_relation_from
 from .versions import STILLBORN_SUFFIX, VERSION_KIND, VersionEntry, version_chain
-from .vocabulary import CONTAINS, REFERENCES, translate
+from .vocabulary import CONTIENT, is_valid_verb, translate, verb
 
 __all__ = [
     "HEURISTIC_KIND",
@@ -41,8 +41,9 @@ __all__ = [
 
 HEURISTIC_KIND = "unconfigured:dila_id"
 """Le ``kind`` des références trouvées par la cascade du parser : une balise non
-configurée dont la valeur a la forme d'un identifiant DILA. Elle devient une arête
-``references`` du document courant vers la cible : on sait que ça pointe, pas pourquoi.
+configurée dont la valeur a la forme d'un identifiant DILA. Elle devient une arête du
+document courant vers la cible, sous le nom brut de la balise : on sait que ça pointe,
+pas pourquoi.
 """
 
 
@@ -63,7 +64,8 @@ class ExtractedLinks:
 
     lost_links: int = 0
     """Liens de la source qu'on ne sait pas écrire (``sens`` inconnu, ``@id`` illisible,
-    ``typelien`` impossible en verbe), comptés en ``relation.unknown``."""
+    ``typelien`` ou balise heuristique impossible en verbe), comptés en
+    ``relation.unknown``."""
 
     unformatted_relations: list[UnformattedRelation] = field(default_factory=list)
     """Les cibles décrites, à ``@id`` vide : pas des arêtes."""
@@ -147,7 +149,7 @@ class _Extraction:
 
         if kind in self.table.structural_kinds:
             return self.subject.relation(
-                self.subject.current, linked, CONTAINS, {"kind": kind}
+                self.subject.current, linked, CONTIENT, {"kind": kind}
             )
         return self._typed(reference, linked)
 
@@ -157,12 +159,16 @@ class _Extraction:
         linked = self.identifier(reference.get("id", ""))
         if linked is None:
             return
+        tag = reference.get("tag", "")
+        if not is_valid_verb(tag):
+            self.lost.append(tag)
+            return
         self.unconfigured.append(
             self.subject.relation(
                 self.subject.current,
                 linked,
-                REFERENCES,
-                {"kind": reference.get("tag", ""), "origin": "heuristic"},
+                verb(tag),
+                {"kind": tag, "origin": "heuristic"},
             )
         )
 
@@ -191,8 +197,8 @@ class _Extraction:
             edge_source,
             edge_target,
             relation_verb,
-            # Même traduit, le `typelien` d'origine survit : `references` en recouvre
-            # plusieurs, indiscernables sans cette trace.
+            # Même traduit, le `typelien` d'origine survit : un verbe en recouvre
+            # plusieurs (`MODIFIE` et `MODIFICATION`), indiscernables sans cette trace.
             {"typelien": raw_typelien, "sens": raw_sens},
         )
         if known:
@@ -208,7 +214,7 @@ class _Extraction:
         if linked is None:
             return None
         return self.subject.relation(
-            linked, self.subject.current, CONTAINS, {"kind": ancestor.get("kind", "")}
+            linked, self.subject.current, CONTIENT, {"kind": ancestor.get("kind", "")}
         )
 
     def identifier(self, raw_id: str) -> Identifier | None:

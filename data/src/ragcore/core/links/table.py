@@ -14,13 +14,13 @@ class LinkTable:
     """Le pendant, pour les arêtes, de la table de rôles pour les balises."""
 
     translation: TranslationTable
-    """Le vocabulaire de la source vers celui du domaine (``"CITATION" -> cites``). Ce
+    """Le vocabulaire de la source vers celui du domaine (``"CITATION" -> cite``). Ce
     qu'elle ne contient pas entre sous son nom brut et remonte dans ``unknowns``.
     """
 
     structural_kinds: frozenset[str] = frozenset()
     """Balises de contenance, sans ``typelien`` ni ``sens`` : toutes donnent un
-    ``CONTAINS`` du document courant vers le lié.
+    ``CONTIENT`` du document courant vers le lié.
     """
 
     ancestor_kinds: frozenset[str] = frozenset()

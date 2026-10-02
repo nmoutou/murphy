@@ -196,13 +196,14 @@ cible sur un seul critère — l'identification, jamais la source :
   `sens` est conservé pour pouvoir orienter l'arête ce jour-là.
 
 Un `typelien` non traduit est un type de lien non configuré : l'arête entre sous son
-nom brut, et le mot ressort dans `unknowns["links"]`. Un lien qu'on ne sait pas écrire
-(`sens` inconnu, `@id` illisible, `typelien` qui ne peut pas être un verbe) est compté
-(`relation.unknown`). Les deux voyagent dans la valeur de retour de l'extracteur et sont
+nom brut, et le mot ressort dans `unknowns["links"]`. Un lien heuristique n'a pas de
+`typelien` : son arête entre sous le nom brut de sa balise. Un lien qu'on ne sait pas
+écrire (`sens` inconnu, `@id` illisible, `typelien` ou balise heuristique qui ne peut
+pas être un verbe) est compté (`relation.unknown`). Les deux voyagent dans la valeur de retour de l'extracteur et sont
 déclarés par le workload à la télémétrie du worker. Avec `skip_unconfigured: true`,
 l'extracteur retire les arêtes d'un type non configuré — `typelien` inconnu ou
 heuristique (ADR-048).
 
 La hiérarchie déclarée en double (fermeture d'ancêtres côté article, arbre côté sections)
-est dédoublonnée en phase 2 par **réduction transitive** — contenance (`titre`) seulement,
-jamais les arêtes `cites`.
+est dédoublonnée en phase 2 par **réduction transitive** — contenance (`contient`)
+seulement, jamais les arêtes `cite`.

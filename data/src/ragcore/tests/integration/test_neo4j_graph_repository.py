@@ -14,7 +14,7 @@ from testcontainers.neo4j import Neo4jContainer
 from ragcore.adapters.storage.neo4j.client import create_neo4j_driver
 from ragcore.adapters.storage.neo4j.graph_repository import Neo4jGraphRepository
 from ragcore.adapters.storage.neo4j.schema import ensure_graph_constraints
-from ragcore.core.links import CITES
+from ragcore.core.links import CITE
 from ragcore.core.models.document import ParsedDocument
 from ragcore.core.models.enums import DocumentType, SourceName
 from ragcore.core.models.identifiers import Identifier, RunId
@@ -42,7 +42,7 @@ def _relation(source: int, target: int) -> Relation:
     return Relation(
         source_identifier=Identifier(raw=f"LEGIARTI{source:012d}"),
         target_identifier=Identifier(raw=f"LEGIARTI{target:012d}"),
-        relation_type=CITES,
+        relation_type=CITE,
         source=SourceName.LEGI,
         metadata={},
     )
@@ -79,13 +79,13 @@ async def _edge_types(repo) -> list[str]:
 
 
 async def test_the_verb_IS_the_edge_type(repo) -> None:
-    """Le verbe est le type d'arête, pas une propriété : ``MATCH (a)-[:CITES]->(b)`` est
+    """Le verbe est le type d'arête, pas une propriété : ``MATCH (a)-[:cite]->(b)`` est
     une traversée native. Un mot brut non traduit devient un type d'arête lui aussi."""
     await repo.merge_document_node(_doc(1))
     await repo.merge_document_node(_doc(2))
     await repo.merge_document_node(_doc(3))
 
-    canonical = _relation(1, 2)  # cites
+    canonical = _relation(1, 2)  # cite
     raw = Relation(
         source_identifier=Identifier(raw=f"LEGIARTI{1:012d}"),
         target_identifier=Identifier(raw=f"LEGIARTI{3:012d}"),
@@ -97,8 +97,8 @@ async def test_the_verb_IS_the_edge_type(repo) -> None:
     result = await repo.upsert_relations([canonical, raw], RUN)
     assert len(result.written) == 2, "les deux arêtes sont écrites"
 
-    # Neo4j écrit le type tel quel, sans le majusculer : `:CITES` n'est qu'un usage
-    assert await _edge_types(repo) == ["cites", "zorglub"], (
+    # Neo4j écrit le type tel quel, sans le majusculer : `:cite` n'est qu'un usage
+    assert await _edge_types(repo) == ["cite", "zorglub"], (
         "le verbe EST le type d'arête — et le mot brut y a droit "
         "au même titre que le verbe canonique"
     )
@@ -162,7 +162,7 @@ async def test_upserting_the_same_edge_twice_creates_one_edge(repo) -> None:
     await repo.upsert_relations([_relation(1, 2)], RUN)
     await repo.upsert_relations([_relation(1, 2)], RUN)
 
-    assert await _edge_types(repo) == ["cites"], "une seule arête, pas deux"
+    assert await _edge_types(repo) == ["cite"], "une seule arête, pas deux"
 
 
 async def test_existing_node_ids_returns_only_what_exists(repo) -> None:

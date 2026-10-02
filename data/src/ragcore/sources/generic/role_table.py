@@ -89,7 +89,7 @@ class RoleTable:
     structural_link_tags: Sequence[str] = ()
     version_link_containers: Sequence[str] = ()
     """Les conteneurs des liens de version (``<VERSIONS>``), qui deviennent la chaîne
-    ``succeeded_by``."""
+    ``suivi_par``."""
 
     version_link_tags: Sequence[str] = ()
     ancestor_containers: Sequence[str] = ()

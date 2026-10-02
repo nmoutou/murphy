@@ -12,7 +12,7 @@ from typing import Any
 from ..models.identifiers import Identifier
 from ..models.relation import Relation
 from .subject import LinkSubject
-from .vocabulary import SUCCEEDED_BY
+from .vocabulary import SUIVI_PAR
 
 __all__ = ["STILLBORN_SUFFIX", "VERSION_KIND", "VersionEntry", "version_chain"]
 
@@ -77,12 +77,12 @@ def _neighbour_edges(
         _, prev_id = living[position - 1]
         my_ref, _ = living[position]
         relations.append(
-            subject.relation(prev_id, subject.current, SUCCEEDED_BY, _dating(my_ref))
+            subject.relation(prev_id, subject.current, SUIVI_PAR, _dating(my_ref))
         )
     if position < len(living) - 1:
         next_ref, next_id = living[position + 1]
         relations.append(
-            subject.relation(subject.current, next_id, SUCCEEDED_BY, _dating(next_ref))
+            subject.relation(subject.current, next_id, SUIVI_PAR, _dating(next_ref))
         )
     return relations
 
@@ -103,7 +103,7 @@ def _stillborn_branches(
         if anchor is not None and anchor[1].serialize() == me:
             relations.append(
                 subject.relation(
-                    subject.current, identified, SUCCEEDED_BY, _dating(reference)
+                    subject.current, identified, SUIVI_PAR, _dating(reference)
                 )
             )
     return relations
@@ -126,7 +126,7 @@ def _edge_if_stillborn(
     anchor = _anchor(living, str(mine.get("debut", "")))
     if anchor is None:
         return []
-    return [subject.relation(anchor[1], subject.current, SUCCEEDED_BY, _dating(mine))]
+    return [subject.relation(anchor[1], subject.current, SUIVI_PAR, _dating(mine))]
 
 
 def _anchor(living: Sequence[VersionEntry], debut: str) -> VersionEntry | None:

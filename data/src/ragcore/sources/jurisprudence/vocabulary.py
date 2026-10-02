@@ -9,14 +9,14 @@ cibles par phrase, versions, renumérotations, cibles hors LEGI), sans ré-inges
 phrase est déjà conservée.
 """
 
-from ragcore.core.links import CITES, LinkTable, RelationVerb
+from ragcore.core.links import CITE, LinkTable, RelationVerb
 
 __all__ = ["JURI_LINK_TABLE", "TYPELIEN_TO_VERB"]
 
 
 TYPELIEN_TO_VERB: dict[str, RelationVerb] = {
     # Le seul typelien du corpus juri : un arrêt cite, il ne modifie ni n'abroge
-    "CITATION": CITES,
+    "CITATION": CITE,
 }
 """Mesuré sur un corpus maigre (1 fichier CAPP, 1 INCA, 2 CONSTIT) : un export complet
 en révélera d'autres, qui entreront sous leur nom brut."""

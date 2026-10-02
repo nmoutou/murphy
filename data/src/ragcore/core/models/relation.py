@@ -16,7 +16,7 @@ class Relation(BaseModel):
     target_identifier: Identifier
 
     relation_type: ValidatedVerb
-    """Devient le type d'arête Neo4j. Un verbe canonique (``cites``) et un mot brut non
+    """Devient le type d'arête Neo4j. Un verbe canonique (``cite``) et un mot brut non
     traduit y cohabitent ; la validation écarte ce qui ne peut pas être un type d'arête.
     """
 

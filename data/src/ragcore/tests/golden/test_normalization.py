@@ -83,20 +83,27 @@ def test_canonical_verbs_are_frozen() -> None:
     pas les seuls possibles : un mot non traduit entre sous son nom brut (test suivant).
     """
     assert set(CANONICAL_VERBS) == {
-        "cites",
-        "modifies",
-        "abrogates",
-        "creates",
-        "contains",
-        "references",
+        "cite",
+        "modifie",
+        "abroge",
+        "cree",
+        "source",
+        "codifie",
+        "concorde",
+        "applique_spec",
+        "applique",
+        "associe",
+        "transfere",
+        "deplace",
+        "contient",
         # L'axe temporel : la chaîne des versions d'un article
-        "succeeded_by",
+        "suivi_par",
     }
 
 
 def test_an_unknown_verb_enters_the_graph_instead_of_vanishing() -> None:
     """Un verbe inconnu produit une arête sous son nom brut, et l'appelant le déclare."""
-    translated, known = translate({"CITATION": "cites"}, "ZORGLUB")
+    translated, known = translate({"CITATION": "cite"}, "ZORGLUB")
 
     assert translated == "zorglub", "le mot brut entre, normalisé"
     assert known is False, "et il est signalé comme non traduit"

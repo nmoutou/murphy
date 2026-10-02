@@ -9,7 +9,7 @@ import asyncio
 import collections
 from pathlib import Path
 
-from ragcore.core.links import CANONICAL_VERBS, CONTAINS
+from ragcore.core.links import CANONICAL_VERBS, CONTIENT
 from ragcore.core.models.enums import SourceName as _SN
 from ragcore.core.models.processing import ChunkingConfig
 from ragcore.core.services.exclusion_reasons import (
@@ -104,18 +104,20 @@ def test_la_chaine_complete_est_figee() -> None:
     # `malformed.xml` est écarté et compté (`unreadable`)
     assert result["skipped"] == {REASON_EXPORT_ARTIFACT: 1, REASON_UNREADABLE: 1}
 
-    # L'axe temporel est une chaîne `succeeded_by` : chaque document n'émet que les
+    # L'axe temporel est une chaîne `suivi_par` : chaque document n'émet que les
     # maillons qui le touchent (2 + 1 + 0 = 3).
     assert result["before_reduction"] == 126
     assert result["after_reduction"] == 119  # 116 + 3 : la réduction n'y touche pas
     assert dict(result["by_type"]) == {
-        "contains": 66,
-        "cites": 41,
-        "succeeded_by": 3,  # l'axe temporel : une CHAÎNE, plus un produit cartésien
-        "references": 4,
-        "modifies": 2,
-        "abrogates": 1,
-        "creates": 1,
+        "contient": 66,
+        "cite": 41,
+        "suivi_par": 3,  # l'axe temporel : une CHAÎNE, plus un produit cartésien
+        "modifie": 2,
+        "concorde": 2,
+        "abroge": 1,
+        "cree": 1,
+        "codifie": 1,
+        "applique": 1,
         # Le mot de LEGI, entré tel quel faute de traduction : non canonique
         "zorglub": 1,
     }
@@ -149,7 +151,7 @@ def test_le_graphe_EXISTE() -> None:
     result = _run()
 
     assert result["after_reduction"] > 0
-    assert result["by_type"]["cites"] > 0  # la CITATION, 88 % du corpus réel
+    assert result["by_type"]["cite"] > 0  # la CITATION, 88 % du corpus réel
 
 
 def test_la_reduction_nelimine_QUE_de_la_contenance() -> None:
@@ -161,7 +163,7 @@ def test_la_reduction_nelimine_QUE_de_la_contenance() -> None:
 
     assert eliminated, "la fixture hiérarchisée doit produire des arêtes redondantes"
     for relation in eliminated:
-        assert relation.relation_type == CONTAINS
+        assert relation.relation_type == CONTIENT
 
 
 def test_la_fermeture_des_ancetres_est_ramenee_a_larbre() -> None:
@@ -172,7 +174,7 @@ def test_la_fermeture_des_ancetres_est_ramenee_a_larbre() -> None:
     edges = {
         (r.source_identifier.raw, r.target_identifier.raw)
         for r in result["reduced"]
-        if r.relation_type == CONTAINS
+        if r.relation_type == CONTIENT
     }
 
     # Le chemin survit…
@@ -187,9 +189,9 @@ def test_les_citations_traversent_la_reduction_INTACTES() -> None:
     après."""
     result = _run()
 
-    before = collections.Counter(r.relation_type for r in result["relations"])["cites"]
+    before = collections.Counter(r.relation_type for r in result["relations"])["cite"]
 
-    assert result["by_type"]["cites"] == before
+    assert result["by_type"]["cite"] == before
 
 
 def test_les_inconnus_sont_DECLARES_et_pas_jetes() -> None:

@@ -69,7 +69,7 @@ def _unformatted(target_text: str) -> UnformattedRelation:
     return UnformattedRelation(
         source_identifier=Identifier(raw="LEGIARTI000000000001"),
         target_text=target_text,
-        relation_type="cites",
+        relation_type="cite",
         sens="source",
         source=SourceName.LEGI,
     )

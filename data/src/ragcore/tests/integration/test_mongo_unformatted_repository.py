@@ -17,7 +17,7 @@ from ragcore.adapters.storage.mongo.schemas import (
 from ragcore.adapters.storage.mongo.unformatted_repository import (
     MongoUnformattedRelationRepository,
 )
-from ragcore.core.links import CITES
+from ragcore.core.links import CITE
 from ragcore.core.models.enums import SourceName
 from ragcore.core.models.identifiers import Identifier, RunId
 from ragcore.core.models.unformatted_relation import UnformattedRelation
@@ -34,7 +34,7 @@ def _unformatted(target_text: str, sens: str = "source") -> UnformattedRelation:
     return UnformattedRelation(
         source_identifier=CITING,
         target_text=target_text,
-        relation_type=CITES,
+        relation_type=CITE,
         sens=sens,
         source=SourceName.CASS,
     )
@@ -84,7 +84,7 @@ async def test_the_written_row_has_the_agreed_schema(repo) -> None:
         {
             "source_id": "JURITEXT000000000001",
             "target_text": "Articles 1103 et 1229 du code civil.",
-            "relation_type": "cites",
+            "relation_type": "cite",
             "sens": "source",
             "source": "cass",
             "last_seen_run": "run-1",

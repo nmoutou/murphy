@@ -173,7 +173,7 @@ LEGI_ROLE_TABLE = RoleTable(
     # Jamais sous <VERSIONS>, où LIEN_ART désigne une autre version du même article
     link_containers=("STRUCTURE_TA", "STRUCT"),
     structural_link_tags=("LIEN_ART", "LIEN_SECTION_TA"),
-    # Ceux-là deviennent la chaîne `succeeded_by`
+    # Ceux-là deviennent la chaîne `suivi_par`
     version_link_containers=("VERSIONS",),
     version_link_tags=("LIEN_ART",),
     ancestor_containers=("CONTEXTE",),

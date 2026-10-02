@@ -17,7 +17,7 @@ from ragcore.adapters.storage.mongo.schemas import (
     ensure_data_indexes,
     reset_data_collections,
 )
-from ragcore.core.links import CITES
+from ragcore.core.links import CITE
 from ragcore.core.models.enums import SourceName
 from ragcore.core.models.identifiers import RunId
 from ragcore.core.models.pending import PendingRelation
@@ -31,7 +31,7 @@ def _pending(source: str, target: str, run_id: str) -> PendingRelation:
     return PendingRelation(
         source_id=source,
         target_id=target,
-        relation_type=CITES,
+        relation_type=CITE,
         source=SourceName.LEGI,
         metadata={},
         first_seen_run=RunId(run_id),

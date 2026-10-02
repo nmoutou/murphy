@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pytest
 
-from ragcore.core.links import CITES, LinkSubject, extract_links
+from ragcore.core.links import CITE, LinkSubject, extract_links
 from ragcore.core.models.document import RawDocument
 from ragcore.core.models.enums import DocumentType, SourceName
 from ragcore.core.ports.parser import ParseResult
@@ -72,7 +72,7 @@ def test_une_citation_decrite_devient_une_RELATION_NON_FORMATEE_jamais_une_arete
         "elle sait quel document l'énonce : elle ne vit plus sur lui"
     )
     assert unformatted.source == SourceName.CASS
-    assert unformatted.relation_type == CITES, "le verbe traduit survit"
+    assert unformatted.relation_type == CITE, "le verbe traduit survit"
     assert unformatted.sens == "source", (
         "le sens aussi : c'est lui qui orientera l'arête le jour de la résolution"
     )

@@ -10,7 +10,7 @@ import pytest
 
 from ragcore.application.resolve_relations import ResolveRelationsService
 from ragcore.application.run_context import PipelineContext
-from ragcore.core.links import CITES
+from ragcore.core.links import CITE
 from ragcore.core.models.document import ParsedDocument
 from ragcore.core.models.enums import DocumentType, SourceName
 from ragcore.core.models.identifiers import Identifier
@@ -51,7 +51,7 @@ def _rel(source: str, target: str) -> Relation:
     return Relation(
         source_identifier=_identifier(source),
         target_identifier=_identifier(target),
-        relation_type=CITES,
+        relation_type=CITE,
         source=SourceName.LEGI,
     )
 

@@ -3,7 +3,7 @@ entrer toute une famille d'arêtes sous son nom brut. Un typelien nouveau ne fai
 échouer ce test : il ressort au bilan du run.
 """
 
-from ragcore.core.links import CITES
+from ragcore.core.links import CITE
 from ragcore.sources.legislatif.vocabulary import TYPELIEN_TO_VERB
 
 TYPELIENS = {
@@ -42,4 +42,4 @@ def test_les_paires_actives_et_passives_partagent_leur_verbe() -> None:
 
 def test_la_citation_est_le_verbe_dominant() -> None:
     """88 % des liens du corpus."""
-    assert TYPELIEN_TO_VERB["CITATION"] == CITES
+    assert TYPELIEN_TO_VERB["CITATION"] == CITE

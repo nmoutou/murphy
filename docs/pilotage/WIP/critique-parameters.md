@@ -75,7 +75,7 @@ Priorité : P1 à P4, puis P18 (qui règle P1, P2, P6 et P12).
 | `nlp.spacy_model`, `formatting.tokenizing.*` | spaCy retiré, découpe en caractères. `${nlp…}` est la seule interpolation du fichier et n'alimente qu'un bloc mort. | Non |
 | `importation.extraction.content_tag` | `text_holders` déclaré par source (`sources/legi/table.py:167`, `sources/juri/table.py:110`). | Non : propriété de chaque source |
 | `importation.normalization.title_mapping` | `_TITLE_TAGS` (`sources/legi/table.py:45`). Les clés `Article`/`Texte`/`TexteAdmin` ne correspondent plus à rien d'actuel ; `enabled` n'a pas d'alternative. | Non |
-| `formatting.relations.*` | `LinkTable` par source (`sources/legi/vocabulary.py`) et `REDUCIBLE_TYPES = {CONTAINS}` (`core/services/relation_reduction.py:42`). Verbes `titre`/`source` obsolètes ; `filtering: []` vide. | Non : table propre à LEGI, sur six sources |
+| `formatting.relations.*` | `LinkTable` par source (`sources/legi/vocabulary.py`) et `REDUCIBLE_TYPES = {CONTIENT}` (`core/services/relation_reduction.py:42`). Verbes `titre`/`source` obsolètes ; `filtering: []` vide. | Non : table propre à LEGI, sur six sources |
 | `embedding_runtime.embedding_service_timeout` | Constante `_TIMEOUT_SECONDS = 120.0` (`adapters/embedding/openai_embedder.py:21`). `.env.dev` a aussi `EMBEDDING_SERVICE_TIMEOUT=10000` (en ms, pour le backend). Trois valeurs, deux unités, une seule appliquée. | Oui, dans l'environnement, avec le reste du transport |
 | `embedding_runtime.batch_size` | La valeur réelle vient de `EMBEDDING_BATCH_SIZE`. Même nom à deux endroits, un seul lu. | Supprimer du YAML |
 | `exportation.mongodb.*` | La base vient de `MONGODB_DATA_DB_NAME`. La collection `chunks` n'existe pas (réelles : `documents`, `manifest`). | Non |

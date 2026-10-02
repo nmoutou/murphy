@@ -13,7 +13,7 @@ from ragcore.application.ingest_document import (
     IngestionStores,
 )
 from ragcore.application.run_context import PipelineContext
-from ragcore.core.links import CITES
+from ragcore.core.links import CITE
 from ragcore.core.models.chunk import Chunk, EmbeddedChunk
 from ragcore.core.models.document import ParsedDocument
 from ragcore.core.models.enums import DocumentType, SourceName
@@ -41,7 +41,7 @@ SOURCE_FILE = "LEGIARTI000000000001.xml"
 DESCRIBED = UnformattedRelation(
     source_identifier=SELF,
     target_text="code de l'environnement",
-    relation_type=CITES,
+    relation_type=CITE,
     sens="source",
     source=SourceName.LEGI,
 )
@@ -112,7 +112,7 @@ class _StubExtractor:
                 Relation(
                     source_identifier=SELF,
                     target_identifier=OTHER,
-                    relation_type=CITES,
+                    relation_type=CITE,
                     source=SourceName.LEGI,
                 )
             ],
@@ -207,7 +207,7 @@ def test_la_phase_1_NECRIT_AUCUNE_arete() -> None:
     assert graph.edges == []  # …mais aucune arête
     # La relation ressort intacte pour la phase 2
     assert len(result.relations) == 1
-    assert result.relations[0].relation_type == CITES
+    assert result.relations[0].relation_type == CITE
 
 
 def test_les_relations_non_formatees_sont_ECRITES_des_la_phase_1() -> None:

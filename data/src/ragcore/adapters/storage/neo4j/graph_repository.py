@@ -48,7 +48,7 @@ class Neo4jGraphRepository:
         self, relations: list[Relation], run_id: RunId
     ) -> RelationWriteResult:
         """Le type d'arête est le verbe, pour une traversée native
-        (``MATCH (a)-[:CITES]->(b)``). Le paramétrer (``$(...)``, Cypher 5.26+) est sûr :
+        (``MATCH (a)-[:cite]->(b)``). Le paramétrer (``$(...)``, Cypher 5.26+) est sûr :
         un ``ValidatedVerb`` n'a rien à injecter.
 
         Un ``MATCH`` sans résultat réussit sans rien écrire : seul le ``RETURN r``
