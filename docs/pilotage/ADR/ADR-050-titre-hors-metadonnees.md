@@ -18,19 +18,23 @@ qu'elle a déjà sa place.
 
 ## Décision
 
-**Une balise de titre que la table ne renomme pas n'entre pas en métadonnée**, comme
-l'identifiant et la nature : elle a son champ dédié (`title`).
+**Le titre a son rôle, `TITLE`**, distinct de `META` : `TITRE` (LEGI et jurisprudence)
+et `TITRE_TA` (LEGI) le portent. Une balise `TITLE` est connue de la table, donc jamais
+routée par la cascade des balises non configurées, et n'est pas collectable : elle
+n'entre ni dans `metadata`, ni dans le signal `tags`. Sa valeur va dans son champ
+dédié, `title`, lu par `title_tags`.
 
-**Une balise de titre renommée reste une métadonnée.** `NUM` → `num` est le titre d'un
-article, mais le numéro d'un texte (`2016-1967`), qui n'est pas son titre. Le renommage
-est une promotion explicite : la table a choisi d'en faire une métadonnée.
+**`NUM` garde le rôle `META`.** Il est le titre d'un article, mais le numéro d'un texte
+(`2016-1967`), qui n'est pas son titre : renommé en `num`, il reste une métadonnée.
 
-Les balises de titre gardent leur rôle `META` dans les tables. Retirer `TITRE` de la
-table en ferait une balise inconnue : la cascade des balises non configurées la
-remettrait en métadonnée, et les cliquets « aucune balise sans rôle » échoueraient.
+Retirer `TITRE` de la table ne suffit pas : une balise absente est inconnue, et la
+cascade la remettrait en métadonnée, signalée en `tags`.
 
 ## Alternatives rejetées
 
+- **Exclure de `metadata` les balises de `title_tags` sans renommage, rôle `META`
+  conservé.** Écarté : la règle croisait deux champs de la table au lieu de dire ce
+  qu'est la balise.
 - **Exclure toutes les balises de `title_tags`.** Écarté : le numéro d'un texte
   (`num`) disparaîtrait.
 - **N'exclure que la balise qui a fourni le titre du document.** Écarté : l'article
@@ -47,5 +51,6 @@ remettrait en métadonnée, et les cliquets « aucune balise sans rôle » écho
 
 ## Références
 
+`data/src/ragcore/sources/generic/roles.py` (`TITLE`) ·
 `data/src/ragcore/sources/generic/metadata.py` ·
 `data/src/ragcore/sources/generic/role_table.py` (`title_tags`)

@@ -43,7 +43,7 @@ class RoleTable:
 
     title_tags: Sequence[str] = ()
     """Où chaque famille range son titre, par ordre de préférence entre facettes.
-    Sans renommage, une balise de titre n'entre pas en métadonnée (ADR-050).
+    Une balise de rôle ``TITLE`` n'entre pas en métadonnée (ADR-050).
     """
 
     identifier_tag: str = "ID"

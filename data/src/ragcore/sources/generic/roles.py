@@ -1,10 +1,11 @@
-"""Les quatre rôles d'une balise : chacun correspond à un traitement qu'on ne sait pas
+"""Les cinq rôles d'une balise : chacun correspond à un traitement qu'on ne sait pas
 faire génériquement.
 
 - ``BODY`` : le texte du document, pour Mongo et l'embedding ;
 - ``LINK`` : une arête, traitée par ``core/links`` ;
 - ``VERSION`` : l'axe temporel (``date_debut``/``date_fin``/``etat``), absent de la
   jurisprudence mais nommé, pour qu'un filtre « en vigueur au… » ait de quoi lire ;
+- ``TITLE`` : le titre, qui a son champ dédié et n'entre pas en métadonnée (ADR-050) ;
 - ``META`` : tout champ plat qui n'est rien de cela. Il doit être déclaré ; sans
   renommage dans ``meta_renames``, il reste non configuré (ADR-047).
 
@@ -27,4 +28,5 @@ class Role(StrEnum):
     BODY = "body"
     LINK = "link"
     VERSION = "version"
+    TITLE = "title"
     META = "meta"

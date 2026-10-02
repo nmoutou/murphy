@@ -46,7 +46,7 @@ _COMMON_ROLES: dict[str, Role] = {
     "NATURE": Role.META,
     "ECLI": Role.META,
     # Ce que toute décision porte
-    "TITRE": Role.META,
+    "TITRE": Role.TITLE,
     "DATE_DEC": Role.META,
     "JURIDICTION": Role.META,
     "NUMERO": Role.META,

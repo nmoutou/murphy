@@ -147,6 +147,7 @@ def test_le_contenu_de_larret_est_ingere() -> None:
 
     assert document.content.strip(), "l'arrêt DOIT avoir du texte"
     assert document.title.strip()
+    assert not any(key.endswith("_titre") for key in document.metadata)
     assert document.metadata.get("juridiction")
 
 

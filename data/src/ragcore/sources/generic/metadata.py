@@ -2,9 +2,9 @@
 
 - Le rôle décide, pas l'emplacement : un ``<LIEN>`` dans ``<META>`` reste un lien. Seuls
   les rôles ``META`` et ``VERSION`` entrent ici.
-- L'identifiant, la nature et le titre ont leur champ dédié (ADR-050), sauf une balise
-  de titre que la table renomme : ``NUM`` est le titre d'un article mais le numéro d'un
-  texte.
+- L'identifiant et la nature ont leur champ dédié. Le titre aussi, par son rôle
+  ``TITLE`` (ADR-050) : ``NUM``, titre d'un article mais numéro d'un texte, garde
+  ``META``.
 - La clé est le chemin complet (ADR-022), ou le nom court du renommage. Une balise sans
   renommage est non configurée (ADR-047) : elle entre quand même, mais signalée.
 - Aucune clé n'est injective : chaque valeur s'ajoute à sa clé, et
@@ -59,13 +59,6 @@ def _is_collectable(node: Node, table: RoleTable) -> bool:
     return (
         not node["children"]
         and bool(node["text"].strip())
-        and not _has_dedicated_field(node["tag"], table)
+        and node["tag"] not in (table.identifier_tag, table.nature_tag)
         and table.role_of(node["tag"]) in _COLLECTABLE_ROLES
     )
-
-
-def _has_dedicated_field(tag: str, table: RoleTable) -> bool:
-    """Une balise de titre renommée reste une métadonnée."""
-    if tag in (table.identifier_tag, table.nature_tag):
-        return True
-    return tag in table.title_tags and tag not in table.meta_renames
