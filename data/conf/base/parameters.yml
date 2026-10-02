@@ -13,7 +13,7 @@ embedding_enabled: false
 
 # `true` retire les métadonnées et les arêtes non configurées ; les signaux `tags` et
 # `links` sont émis dans les deux cas (ADR-011, ADR-024).
-skip_unconfigured: true
+skip_unconfigured: false
 
 # Les chemins des fichiers XML source (`source_files`), dans Mongo et sur le nœud Neo4j.
 # Repasser à `false` sans `nuke_all` laisse ceux déjà écrits : un document déjà ingéré
