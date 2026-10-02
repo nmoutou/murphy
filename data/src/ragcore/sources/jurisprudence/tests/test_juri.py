@@ -152,6 +152,25 @@ def test_le_contenu_de_larret_est_ingere() -> None:
 
 
 @pytest.mark.parametrize(
+    ("fixture", "source"),
+    [
+        ("cass_avec_liens.xml", SourceName.CASS),
+        ("jade.xml", SourceName.JADE),
+        ("constit.xml", SourceName.CONSTIT),
+    ],
+)
+def test_URL_nest_ni_une_metadonnee_ni_un_signal(
+    fixture: str, source: SourceName
+) -> None:
+    """ADR-051 : ``URL`` a le rôle ``IGNORED``. ``URL_CC``, l'adresse de la décision sur
+    le site du Conseil constitutionnel, reste une métadonnée."""
+    result = _parse_result(_raw(fixture, source), source)
+
+    assert "url" not in result.document.metadata
+    assert not any(key.endswith("_url") for key in result.unconfigured_tags)
+
+
+@pytest.mark.parametrize(
     ("fixture", "source", "nature"),
     [
         ("cass_avec_liens.xml", SourceName.CASS, "ARRET"),

@@ -1,6 +1,6 @@
 # INDEX — Registre des décisions (ADR)
 
-> Un fichier par ADR (format Nygard). **Prochain numéro : ADR-050.**
+> Un fichier par ADR (format Nygard). **Prochain numéro : ADR-052.**
 
 ## Registre
 
@@ -30,8 +30,9 @@
 | [ADR-046](ADR-046-typage-des-documents.md) | Typage des documents : `document_type` fait foi, Neo4j le reflète | ✅ Accepté (1er octobre 2026) — amende ADR-039 §2 et l'amendement du §3 d'ADR-043 |
 | [ADR-047](ADR-047-balise-non-configuree.md) | Une balise sans renommage est non configurée | ✅ Accepté (1er octobre 2026) — amende ADR-022 §1, amendé par ADR-048, ADR-049 et ADR-050 |
 | [ADR-048](ADR-048-inconnus-tags-roots-links.md) | Les inconnus du bilan : `tags`, `roots`, `links` | ✅ Accepté (1er octobre 2026) — amende ADR-047, amendé par ADR-049 |
-| [ADR-049](ADR-049-collisions-de-metadonnees.md) | Collisions de métadonnées : une liste, un ordre déclaré, un refus | ✅ Accepté (1er octobre 2026) — amende ADR-047 et ADR-048, corrige ADR-022 §3 · collection `MURPHY_META.collisions` retirée · `collisions` au premier niveau du bilan |
+| [ADR-049](ADR-049-collisions-de-metadonnees.md) | Collisions de métadonnées : une liste, un ordre déclaré, un refus | ✅ Accepté (1er octobre 2026) — amende ADR-047 et ADR-048, corrige ADR-022 §3 · collection `MURPHY_META.collisions` retirée · `collisions` au premier niveau du bilan · amendé par ADR-051 |
 | [ADR-050](ADR-050-titre-hors-metadonnees.md) | Le titre n'entre pas en métadonnée | ✅ Accepté (1er octobre 2026) — amende ADR-047 |
+| [ADR-051](ADR-051-url-non-ingeree.md) | L'URL n'est pas ingérée | ✅ Accepté (2 octobre 2026) — amende ADR-049 |
 
 ## Points ouverts rattachés
 

@@ -97,6 +97,22 @@ def test_les_deux_facettes_du_texte_donnent_UN_document_avec_son_titre(
     }  # vient de TEXTELR
 
 
+def test_URL_nest_ni_une_metadonnee_ni_un_signal(fixtures_dir: Path) -> None:
+    """ADR-051 : ``URL`` a le rôle ``IGNORED``. Chaque facette d'un texte porte la
+    sienne : sans ce rôle, elle reviendrait en métadonnée et en collision."""
+    result = GenericParser(LEGI_ROLE_TABLE, _SN.LEGI).parse(
+        _raw(
+            fixtures_dir,
+            f"{TEXTE_DEUX_FACETTES}-version.xml",
+            f"{TEXTE_DEUX_FACETTES}-struct.xml",
+        )
+    )
+
+    assert not any(key.endswith("url") for key in result.document.metadata)
+    assert not any(key.endswith("url") for key in result.unconfigured_tags)
+    assert result.collisions == ()
+
+
 def test_le_texte_dun_decret_nest_PAS_dans_un_BLOC_TEXTUEL(fixtures_dir: Path) -> None:
     """Aucun ``TEXTE_VERSION`` n'a de ``<BLOC_TEXTUEL>`` : son texte vit sous
     ``<VISAS>``, ``<SIGNATAIRES>`` et ``<TP>``."""

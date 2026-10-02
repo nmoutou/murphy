@@ -153,7 +153,10 @@ def _article(identifier: str, metadata: str) -> RawDocument:
     )
 
 
-_LISTED = _article("LEGIARTI000000000002", "<URL>a</URL><URL>b</URL>")
+_LISTED = _article(
+    "LEGIARTI000000000002",
+    "<VERSION_A_VENIR>a</VERSION_A_VENIR><VERSION_A_VENIR>b</VERSION_A_VENIR>",
+)
 _REFUSED = _article("LEGIARTI000000000003", "<NUM>1</NUM><NUM>2</NUM>")
 
 
@@ -188,5 +191,5 @@ def test_parse_ou_refuse_chaque_collision_est_comptee_au_bilan() -> None:
 
     stats = telemetry.snapshot()
     tally = CollisionTally(count=1, example=(_SOURCE_FILE,))
-    assert stats.collisions == {"url": tally, "num": tally}
+    assert stats.collisions == {"versions_a_venir": tally, "num": tally}
     assert stats.unknowns.keys() <= {CATEGORY_TAG}

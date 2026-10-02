@@ -98,7 +98,8 @@ _ROLES: dict[str, Role] = {
     "PAGE_FIN_PUBLI": Role.META,
     "TITREFULL": Role.META,
     "TYPE": Role.META,
-    "URL": Role.META,
+    # ── IGNORED : connues, non ingérées ────────────────────────────────────────
+    "URL": Role.IGNORED,
 }
 
 
@@ -139,14 +140,12 @@ _META_RENAMES = {
     "PAGE_DEB_PUBLI": "page_debut_publication",
     "PAGE_FIN_PUBLI": "page_fin_publication",
     "TITREFULL": "titre_full",
-    "URL": "url",
     "TYPE": "type",
     "VERSION_A_VENIR": "versions_a_venir",
 }
 
-_LIST_KEYS = frozenset({"url", "versions_a_venir"})
-"""ADR-049. ``url`` : chaque facette d'un texte donne le chemin de son propre fichier.
-``versions_a_venir`` : plusieurs dates dans une même facette."""
+_LIST_KEYS = frozenset({"versions_a_venir"})
+"""ADR-049 : plusieurs dates dans une même facette."""
 
 
 LEGI_ROLE_TABLE = RoleTable(

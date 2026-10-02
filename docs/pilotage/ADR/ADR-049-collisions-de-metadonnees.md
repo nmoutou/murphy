@@ -2,7 +2,8 @@
 
 **Statut** : ✅ Accepté (1er octobre 2026) — amende ADR-047 et ADR-048, corrige ADR-022 §3 ·
 **amendé le 1er octobre 2026** : la collection `MURPHY_META.collisions` est retirée ; les
-collisions sortent des inconnus du bilan
+collisions sortent des inconnus du bilan · **amendé par ADR-051** (`url` n'est plus
+ingérée, ni déclarée en `list`)
 
 ## Contexte
 
@@ -76,7 +77,8 @@ jurisprudence.
 LEGI renomme ses 7 balises répétées entre facettes (`derniere_modification`,
 `num_sequence`, `num_parution`, `page_debut_publication`, `page_fin_publication`,
 `origine_publication`, `versions_a_venir`) et déclare `url` et `versions_a_venir` en
-`list` ; JUDI déclare `numero_affaire`.
+`list` ; JUDI déclare `numero_affaire`. *Amendé par ADR-051 : `url` n'est plus
+ingérée.*
 
 ## Alternatives rejetées
 
@@ -95,7 +97,7 @@ LEGI renomme ses 7 balises répétées entre facettes (`derniere_modification`,
   (sous-classe de `ValidationError`) celles d'un document refusé.
 - Une métadonnée peut être une liste de chaînes dans Mongo, Qdrant et Neo4j. Le backend
   ne lit aucune métadonnée.
-- `url` d'un texte LEGI vaut `[version, struct]`.
+- `url` d'un texte LEGI vaut `[version, struct]`. *Caduc depuis ADR-051.*
 - Les 7 clés chemin-complet LEGI quittent `unknowns.tags` et entrent en prod.
 - `RunStats` et `RunSummary` portent `collisions` à côté de `unknowns` ; la télémétrie
   les reçoit par `record_collision`.

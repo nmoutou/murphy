@@ -132,8 +132,8 @@ document est plat :
     "roots": {},
     "links": { "ZORGLUB": { "count": 1, "example": { … } } } },
   "collisions": {
-    "url": { "count": 98, "example": [
-      "/…/texte/version/LEGITEXT….xml", "/…/texte/struct/LEGITEXT….xml" ] } } }
+    "versions_a_venir": { "count": 14, "example": [
+      "/…/texte/version/LEGITEXT….xml" ] } } }
 ```
 
 `sources` est toujours une liste, même pour un run mono-source. `error_message` n'est

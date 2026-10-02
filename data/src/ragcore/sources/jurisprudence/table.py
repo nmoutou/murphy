@@ -42,7 +42,7 @@ _COMMON_ROLES: dict[str, Role] = {
     "ID": Role.META,
     "ANCIEN_ID": Role.META,
     "ORIGINE": Role.META,
-    "URL": Role.META,
+    "URL": Role.IGNORED,
     "NATURE": Role.META,
     "ECLI": Role.META,
     # Ce que toute décision porte
@@ -65,7 +65,6 @@ _TRANSPARENT = {
 _COMMON_RENAMES = {
     "ANCIEN_ID": "ancien_id",
     "ORIGINE": "origine",
-    "URL": "url",
     "DATE_DEC": "date_decision",
     "JURIDICTION": "juridiction",
     "NUMERO": "numero",
