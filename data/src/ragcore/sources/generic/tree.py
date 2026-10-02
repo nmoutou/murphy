@@ -36,7 +36,7 @@ def walk_with_path(
     tree: Node, prefix: tuple[str, ...] = ()
 ) -> Iterator[tuple[Node, tuple[str, ...]]]:
     """Comme ``walk``, avec le chemin depuis la racine : de quoi construire des clés par
-    chemin complet (ADR-022)."""
+    chemin complet (ADR-011)."""
     path = (*prefix, tree["tag"])
     yield tree, path
     for child in tree["children"]:

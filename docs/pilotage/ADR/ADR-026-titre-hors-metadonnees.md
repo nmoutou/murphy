@@ -1,6 +1,6 @@
-# ADR-050 — Le titre n'entre pas en métadonnée
+# ADR-026 — Le titre n'entre pas en métadonnée
 
-**Statut** : ✅ Accepté (1er octobre 2026) — amende ADR-047
+**Statut** : ✅ Accepté (1er octobre 2026) — amende ADR-023
 
 ## Contexte
 
@@ -10,7 +10,7 @@ Le parser lit le titre d'un document dans les balises de `title_tags` (`TITRE`,
 recopiait donc dans `metadata`, sous leur clé chemin-complet
 (`texte_version_meta_meta_spec_meta_texte_version_titre`).
 
-ADR-047 avait écarté leur exclusion : cette copie est une métadonnée sans renommage
+ADR-023 avait écarté leur exclusion : cette copie est une métadonnée sans renommage
 comme les autres, que `skip_unconfigured: true` retire. Mais en dev, avec
 `skip_unconfigured: false`, chaque texte et chaque décision porte son titre deux fois,
 et la copie remonte dans le signal `tags` du bilan comme une donnée à nommer, alors

@@ -2,7 +2,7 @@
 
 > Le fichier était `data/conf/base/ingestion/parameters.yml` jusqu'à P7.
 
-Rédigée le 2026-09-30. Elle porte sur le fichier, sur le code qui le lit et sur les ADR 022, 023, 026 et 042.
+Rédigée le 2026-09-30. Elle porte sur le fichier, sur le code qui le lit et sur les ADR 011, 012, 014 et 018.
 Chemins relatifs à `data/`.
 
 ## Synthèse
@@ -58,7 +58,7 @@ Priorité : P1 à P4, puis P18 (qui règle P1, P2, P6 et P12).
 
 ### P4. `unconfigured` échappe à `ENVIRONMENT`
 
-- **Constat** : ADR-022 §1 prévoit ingestion en dev, exclusion en prod. Les trois autres réglages propres au dev sont arbitrés par l'environnement, pas celui-ci.
+- **Constat** : ADR-011 §1 prévoit ingestion en dev, exclusion en prod. Les trois autres réglages propres au dev sont arbitrés par l'environnement, pas celui-ci.
 - **Conséquence** : un seul fichier de paramètres, sans surcouche par environnement, donc **la prod ingère les balises non configurées**.
 - **Piste** : arbitrer par `ENVIRONMENT`, comme les autres (voir P11).
 
@@ -103,7 +103,7 @@ Priorité : P1 à P4, puis P18 (qui règle P1, P2, P6 et P12).
 
 ### P7. Fichier unique dans un sous-dossier
 
-- `ingestion/` est un vestige de la partition d'ADR-026. ADR-042 a supprimé `workflow/` sans défaire la partition.
+- `ingestion/` est un vestige de la partition d'ADR-014. ADR-018 a supprimé `workflow/` sans défaire la partition.
 - Tout `data/` est de l'ingestion : ce nom ne distingue rien.
 - **Piste** : `conf/base/parameters.yml`.
 
@@ -134,7 +134,7 @@ Depuis P18, `exportation` ne contient plus que `skip_unconfigured` et `neo4j` (`
 
 ### P10. `embedding` / `embedding_runtime` : séparation sans objet
 
-- La séparation « quoi / comment » servait l'empreinte d'ADR-026, qui a été supprimée.
+- La séparation « quoi / comment » servait l'empreinte d'ADR-014, qui a été supprimée.
 - `embedding_runtime` n'a plus qu'une clé lue, `enabled`, qui est un choix de régime dev, pas un réglage de transport.
 - Le « comment » vit en réalité dans l'environnement (`EmbeddingRuntimeSettings`) : même notion, deux emplacements.
 
@@ -146,7 +146,7 @@ Depuis P18, `embedding_runtime` ne contient plus que `enabled` : le timeout et l
 
 - Quatre réglages (`nuke_all`, `embedding_runtime.enabled`, `neo4j.include_*`, `unconfigured`) dans trois blocs.
 - `docs/technical/data/reference/configuration.md` regroupe déjà les trois premiers dans un tableau « garde-fous dev/prod ».
-- **Piste** : un bloc `dev:` unique, ignoré hors dev. C'est l'argument d'ADR-026 : une frontière portée par la structure, pas par des commentaires.
+- **Piste** : un bloc `dev:` unique, ignoré hors dev. C'est l'argument d'ADR-014 : une frontière portée par la structure, pas par des commentaires.
 
 > **Traité** : un bloc `dev` regroupe `nuke_all`, `embedding_enabled`, `skip_unconfigured` et `node_hydration.*`. Un seul arbitrage, `run_parameters.resolve_dev_settings`, l'applique en dev et le remplace ailleurs par les valeurs sûres, avec un avertissement au log. `nuke_all` suit la règle commune : hors dev, il est ignoré au lieu d'arrêter le run (`NukeAllOutsideDevError` a disparu). Les clés restent obligatoires et validées partout.
 
@@ -200,7 +200,7 @@ Depuis P18, `embedding_runtime` ne contient plus que `enabled` : le timeout et l
 > - La table est déclarée avec la source : `LEGI_NODE_LABELS` (`sources/legi/table.py`), portée par `SourceDefinition.node_labels`. `registry.node_labels_by_prefix` fusionne les tables de toutes les sources, pas seulement celles du run (la dé-hydratation doit connaître tous les labels), et lève si deux sources donnent deux labels au même préfixe.
 > - Le repli `Document` est une constante, `node_properties.DEFAULT_LABEL`.
 > - Aucun label n'est ajouté : les décisions (`JURITEXT`, `CETATEXT`, `CONSTEXT`) gardent `Document`, par choix. En donner un reviendra à remplir la table de leur source.
-> - Un `parameters.yml` qui porte encore `node_labels` est refusé comme clé inconnue. ADR-043 §4 est amendé.
+> - Un `parameters.yml` qui porte encore `node_labels` est refusé comme clé inconnue. ADR-019 §4 est amendé.
 
 ### P16. Noms ambigus
 
@@ -248,26 +248,26 @@ Depuis P4 et P11, la clé est `dev.skip_unconfigured` : la proposition `unconfig
 
 ## F. ADR
 
-### P19. ADR-042 a remplacé ADR-026 à moitié
+### P19. ADR-018 a remplacé ADR-014 à moitié
 
 - Il a déplacé `chunking` et `embedding` dans `ingestion/` au lieu de supprimer la partition.
 - Il en reste le sous-dossier et le nom `embedding_runtime`.
 
-> **Traité** : le code était déjà corrigé (sous-dossier supprimé en P7, `embedding_runtime` en P10, bloc `embedding` en P14). ADR-043 amende ADR-042 §3 : un seul fichier, `conf/base/parameters.yml`, et le modèle lu d'`EMBEDDING_MODEL`.
+> **Traité** : le code était déjà corrigé (sous-dossier supprimé en P7, `embedding_runtime` en P10, bloc `embedding` en P14). ADR-019 amende ADR-018 §3 : un seul fichier, `conf/base/parameters.yml`, et le modèle lu d'`EMBEDDING_MODEL`.
 
-### P20. ADR-022 appliqué partiellement
+### P20. ADR-011 appliqué partiellement
 
 - §1 (`unconfigured` selon l'environnement) : non implémenté comme écrit (P4).
 - §6 (nettoyer la conf morte) : appliqué à `field_mappings` seulement.
 
-> **Traité** : §1 est appliqué tel qu'écrit depuis P4, et §6 au-delà de sa lettre depuis P18 (toute la conf morte est supprimée, et le modèle strict refuse les clés inconnues). ADR-043 le consigne, et retire un écart que la critique n'avait pas relevé : §5 prévoyait d'exposer le routage d'audit (`EventBehavior`) dans `parameters.yml` ; il reste dans `EVENT_CATALOG`.
+> **Traité** : §1 est appliqué tel qu'écrit depuis P4, et §6 au-delà de sa lettre depuis P18 (toute la conf morte est supprimée, et le modèle strict refuse les clés inconnues). ADR-019 le consigne, et retire un écart que la critique n'avait pas relevé : §5 prévoyait d'exposer le routage d'audit (`EventBehavior`) dans `parameters.yml` ; il reste dans `EVENT_CATALOG`.
 
-### P21. ADR-023 : un second interrupteur de fait
+### P21. ADR-012 : un second interrupteur de fait
 
 - L'ADR rejetait deux interrupteurs, mais `EMBEDDING_PROVIDER=noop` en est un second.
 - `noop` est la valeur par défaut, alors que `ENVIRONMENT` applique « le défaut penche vers le refus ». Par défaut, on écrit donc des vecteurs nuls.
 
-> **Traité** : `EMBEDDING_PROVIDER` et `noop` ont disparu en P14 (TEI seul embedder), et l'interrupteur est devenu `dev.embedding_enabled` en P11, sans effet hors dev. ADR-043 amende ADR-023 en ce sens.
+> **Traité** : `EMBEDDING_PROVIDER` et `noop` ont disparu en P14 (TEI seul embedder), et l'interrupteur est devenu `dev.embedding_enabled` en P11, sans effet hors dev. ADR-019 amende ADR-012 en ce sens.
 
 ### P22. Deux notions d'environnement
 
@@ -276,4 +276,4 @@ Depuis P4 et P11, la clé est `dev.skip_unconfigured` : la proposition `unconfig
 - **Coût** : aucune surcouche de valeurs pour la prod, d'où P4.
 - **À faire** : trancher explicitement ce choix dans un ADR plutôt que d'en hériter.
 
-> **Traité** : ADR-043 tranche. Pas d'environnement Kedro ; un seul `parameters.yml` ; ce qui diffère entre dev et prod vit dans le bloc `dev`, remplacé hors dev par les valeurs sûres. `ENVIRONMENT` ne vaut plus que `dev` ou `prod` (absente ou vide = `prod`) : toute autre valeur arrête le run au chargement de la configuration, alors qu'une coquille valait prod en silence.
+> **Traité** : ADR-019 tranche. Pas d'environnement Kedro ; un seul `parameters.yml` ; ce qui diffère entre dev et prod vit dans le bloc `dev`, remplacé hors dev par les valeurs sûres. `ENVIRONMENT` ne vaut plus que `dev` ou `prod` (absente ou vide = `prod`) : toute autre valeur arrête le run au chargement de la configuration, alors qu'une coquille valait prod en silence.

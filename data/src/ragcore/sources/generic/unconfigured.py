@@ -1,9 +1,9 @@
-"""La cascade des balises absentes de la table (ADR-047) : rien ne disparaît, chaque
+"""La cascade des balises absentes de la table (ADR-023) : rien ne disparaît, chaque
 valeur a une destination.
 
 - une valeur au format d'identifiant DILA, autre que le document lui-même → un lien
   heuristique (``HEURISTIC_KIND``) ;
-- sinon → une métadonnée, sous sa clé chemin-complet (ADR-022).
+- sinon → une métadonnée, sous sa clé chemin-complet (ADR-011).
 
 Les balises connues n'arrivent jamais ici : la table tranche avant l'heuristique. Rien
 n'est compté ici non plus : le site de parse déclare les signaux rangés dans
@@ -39,7 +39,7 @@ class UnconfiguredRouting:
     """Ce que la cascade range, et ce qu'elle signale.
 
     ``occurrences`` et ``references`` sont ceux du document, que la cascade complète.
-    Les signaux sont tenus par clé chemin-complet, jamais par nom de balise (ADR-048).
+    Les signaux sont tenus par clé chemin-complet, jamais par nom de balise (ADR-024).
     """
 
     identifier: Identifier

@@ -21,7 +21,7 @@ __all__ = ["LEGI_ROLE_TABLE"]
 
 _ROOTS = ("TEXTE_VERSION", "TEXTELR", "ARTICLE", "SECTION_TA")
 """Dans l'ordre de fusion des facettes : ``TEXTE_VERSION``, qui porte le titre, passe
-avant ``TEXTELR`` (ADR-049)."""
+avant ``TEXTELR`` (ADR-025)."""
 
 _CONTENT_BLOCKS = ("BLOC_TEXTUEL", "VISAS", "SIGNATAIRES", "TP")
 """Un ``TEXTE_VERSION`` n'a pas de ``<BLOC_TEXTUEL>`` : son texte vit sous ``<VISAS>``,
@@ -145,7 +145,7 @@ _META_RENAMES = {
 }
 
 _LIST_KEYS = frozenset({"versions_a_venir"})
-"""ADR-049 : plusieurs dates dans une même facette."""
+"""ADR-025 : plusieurs dates dans une même facette."""
 
 
 LEGI_ROLE_TABLE = RoleTable(

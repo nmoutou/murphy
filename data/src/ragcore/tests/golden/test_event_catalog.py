@@ -18,7 +18,7 @@ GOLDEN = {
     "relation.upserted",
     "relation.pending",
     "relation.promoted",
-    # Un lien de la source qu'on ne sait pas écrire (ADR-048)
+    # Un lien de la source qu'on ne sait pas écrire (ADR-024)
     "relation.unknown",
     "saga.compensation.triggered",
     "saga.compensation.completed",

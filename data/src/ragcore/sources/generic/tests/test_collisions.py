@@ -1,4 +1,4 @@
-"""Les collisions de métadonnées (ADR-049) : dédoublonner, lister, ou refuser. Une table
+"""Les collisions de métadonnées (ADR-025) : dédoublonner, lister, ou refuser. Une table
 minimale, aux racines ordonnées ``VERSION`` puis ``STRUCT``.
 """
 
@@ -117,7 +117,7 @@ def test_deux_facettes_de_meme_racine_rendent_l_ordre_indetermine() -> None:
 
 def test_une_facette_seule_de_racine_inconnue_reste_un_signal() -> None:
     """Une seule facette n'a pas d'ordre à décider : la racine inconnue est seulement
-    signalée (ADR-048)."""
+    signalée (ADR-024)."""
     result = _parse(_facet("AUTRE", ""))
 
     assert result.unknown_roots == {"AUTRE": "0.xml"}

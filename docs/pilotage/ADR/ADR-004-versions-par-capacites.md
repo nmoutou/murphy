@@ -1,4 +1,4 @@
-# ADR-012 — Versions par capacités mesurables
+# ADR-004 — Versions par capacités mesurables
 
 **Statut** : rétro-documenté (décision implicite antérieure au 17 juillet 2026)
 
@@ -22,4 +22,4 @@ et de sortie mesurables**.
 
 ## Références
 
-ADR-014
+ADR-005

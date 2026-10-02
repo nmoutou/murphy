@@ -3,7 +3,7 @@ arête.
 
 Le second point se prouve contre un vrai ``IngestDocumentUseCase`` sur un graphe en
 mémoire : le nœud est écrit, ``graph.edges`` reste vide. Les relations non formatées,
-elles, sont écrites dès la phase 1 (ADR-045).
+elles, sont écrites dès la phase 1 (ADR-021).
 """
 
 from __future__ import annotations
@@ -184,7 +184,7 @@ def test_les_inconnus_de_lextraction_sont_DECLARES() -> None:
 
 
 def test_les_liens_perdus_sont_COMPTES_en_relation_unknown() -> None:
-    """Les liens perdus sont comptés en ``relation.unknown`` (ADR-048)."""
+    """Les liens perdus sont comptés en ``relation.unknown`` (ADR-024)."""
     _result, _graph, _vectors, telemetry = _run(
         _doc(), extractor=_StubExtractor(lost_links=2)
     )
@@ -211,7 +211,7 @@ def test_la_phase_1_NECRIT_AUCUNE_arete() -> None:
 
 
 def test_les_relations_non_formatees_sont_ECRITES_des_la_phase_1() -> None:
-    """ADR-045 : une cible décrite n'attend aucun nœud, la saga l'écrit."""
+    """ADR-021 : une cible décrite n'attend aucun nœud, la saga l'écrit."""
     unformatted = InMemoryUnformattedRepository()
 
     _run(_doc(), unformatted=unformatted)
@@ -244,7 +244,7 @@ def test_embedding_actif_ecrit_les_vecteurs() -> None:
 
 
 def test_embedding_coupe_nECRIT_AUCUN_vecteur_mais_merge_le_noeud() -> None:
-    """ADR-023 : ``embedding_enabled=False`` n'écrit aucun vecteur, mais le nœud et la
+    """ADR-012 : ``embedding_enabled=False`` n'écrit aucun vecteur, mais le nœud et la
     relation suivent leur cours."""
     result, graph, vectors, _telemetry = _run(_doc(), embedding_enabled=False)
 

@@ -20,7 +20,7 @@ _EVERY_CATEGORY = RunStats(
     counts={}, unknowns={category: {} for category in UNKNOWN_CATEGORIES}
 )
 """Neutre pour la fusion, mais fait exister chaque catégorie : un bilan sans inconnu dit
-``"roots": {}`` plutôt que de perdre la clé (ADR-048)."""
+``"roots": {}`` plutôt que de perdre la clé (ADR-024)."""
 
 
 def _weight_of(event_type: str, payload: dict[str, Any]) -> int:

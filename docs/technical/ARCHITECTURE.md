@@ -52,8 +52,8 @@ C'est la seule zone où une modification d'un côté casse l'autre. Quatre contr
 
 | Contrat | Écrit par l'ingestion | Lu par le serving |
 |---|---|---|
-| **Nom de collection** | `QDRANT_COLLECTION` (`.env.dev`), un nom **fixe** : la collection est réécrite en place à chaque run | La même variable. Au boot (`backend/src/infra/clients.ts`), refus de démarrer si la collection n'existe pas (ADR-042). |
-| **Vecteurs** | Payload `chunk_id`, `identifier`, `char_start`, `char_end` (ADR-039) | Recherche cosine top-K dans cette collection |
+| **Nom de collection** | `QDRANT_COLLECTION` (`.env.dev`), un nom **fixe** : la collection est réécrite en place à chaque run | La même variable. Au boot (`backend/src/infra/clients.ts`), refus de démarrer si la collection n'existe pas (ADR-018). |
+| **Vecteurs** | Payload `chunk_id`, `identifier`, `char_start`, `char_end` (ADR-015) | Recherche cosine top-K dans cette collection |
 | **Contenu** | Mongo `MURPHY_DATA.documents` : un document entier par `identifier` | Lecture des documents parents ; le texte d'un passage est `content[char_start:char_end]` (points de code). Le passage va au LLM, le document entier au client (`data-parentDocument`) |
 | **Modèle d'embedding** | `all-mpnet-base-v2`, 768 dim, Cosine — vérifié contre TEI au démarrage du run | Le même modèle via le même conteneur TEI |
 
@@ -100,11 +100,11 @@ avec les mêmes options).
   3050 : un cœur à 100 %, GPU inactif) et dépasse 4 Go de mémoire pendant ce
   chargement (1 Go ensuite). Un `mem_limit` de 2 Go l'empêchait de démarrer.
 
-## Où vit quoi (un seul dépôt, ADR-040)
+## Où vit quoi (un seul dépôt, ADR-016)
 
 | Emplacement | Contenu |
 |---|---|
-| `docs/pilotage/ADR/` | Les **ADR** (les décisions d'architecture citées partout : ADR-022 régimes dev/prod, ADR-023 interrupteur d'embedding, …), indexés dans `INDEX.md` |
+| `docs/pilotage/ADR/` | Les **ADR** (les décisions d'architecture citées partout : ADR-011 régimes dev/prod, ADR-012 interrupteur d'embedding, …), indexés dans `INDEX.md` |
 | `docs/pilotage/WIP/` | Le travail en cours (critiques, plans) |
 | `docs/technical/` | Ce document — la vue système —, puis la documentation de chaque projet |
 | `backend/`, `frontend/`, `data/` | Les projets. `backend` et `frontend` sont des npm workspaces (un seul lockfile à la racine) ; `data` est en Python |

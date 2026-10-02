@@ -1,4 +1,4 @@
-# Le contexte de build est la racine du dépôt (ADR-040).
+# Le contexte de build est la racine du dépôt (ADR-016).
 .git
 .env*
 .claude

@@ -59,7 +59,7 @@ class ExtractedLinks:
     au parse, où leur clé chemin-complet est connue."""
 
     unconfigured_relations: list[Relation] = field(default_factory=list)
-    """Arêtes heuristiques ou de ``typelien`` inconnu (ADR-048), à part pour que
+    """Arêtes heuristiques ou de ``typelien`` inconnu (ADR-024), à part pour que
     ``skip_unconfigured`` puisse les retirer sans que l'extraction le connaisse."""
 
     lost_links: int = 0

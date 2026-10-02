@@ -55,7 +55,7 @@ class QdrantVectorRepository:
 
     @staticmethod
     def _payload(chunk: Chunk) -> dict[str, Any]:
-        """Les champs du contrat de service (ADR-039) viennent en dernier : une
+        """Les champs du contrat de service (ADR-015) viennent en dernier : une
         métadonnée homonyme ne peut pas les écraser. Le texte du passage n'y est pas : il
         se lit dans le ``content`` du document Mongo.
         """

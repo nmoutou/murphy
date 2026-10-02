@@ -1,4 +1,4 @@
-# ADR-019 — Rejet d'Akoma Ntoso comme format de travail
+# ADR-009 — Rejet d'Akoma Ntoso comme format de travail
 
 **Statut** : rétro-documenté (décision implicite antérieure au 17 juillet 2026)
 
@@ -27,4 +27,4 @@ adapté aux pipelines de retrieval. Ses **distinctions ontologiques**
 
 ## Références
 
-ADR-020
+ADR-010

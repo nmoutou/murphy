@@ -7,7 +7,7 @@
   ne peut pas prouver l'instrument. Un test qui n'observe jamais d'inconnu ne
   démontre pas qu'on saurait en déclarer un.
 
-  Ce document en fabrique trois (ADR-048) :
+  Ce document en fabrique trois (ADR-024) :
     - typelien="ZORGLUB"   -> catégorie `links` (l'arête entre, sous son nom brut)
     - sens="lateral"       -> lien perdu, compté en `relation.unknown`
                               (l'arête ne peut pas être orientée)

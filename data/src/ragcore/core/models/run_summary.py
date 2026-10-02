@@ -53,7 +53,7 @@ class RunSummary(BaseModel):
     documents qui le portent et l'un d'eux. Vide = le vocabulaire a tout couvert."""
 
     collisions: dict[str, CollisionTally]
-    """Les clés de métadonnée qui ont reçu plusieurs valeurs distinctes (ADR-049)."""
+    """Les clés de métadonnée qui ont reçu plusieurs valeurs distinctes (ADR-025)."""
 
     error_message: str | None = None
     """Seulement sur un run ``failed`` : un ``degraded`` n'a pas d'exception, il se lit

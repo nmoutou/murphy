@@ -2,7 +2,7 @@
   "name": "@murphy/contract",
   "version": "1.0.0",
   "private": true,
-  "description": "What backend and frontend exchange at runtime: zod schemas, and the types inferred from them. One module per contract, imported by subpath (ADR-040).",
+  "description": "What backend and frontend exchange at runtime: zod schemas, and the types inferred from them. One module per contract, imported by subpath (ADR-016).",
   "type": "commonjs",
   "exports": {
     "./messages": {

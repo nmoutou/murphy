@@ -75,7 +75,7 @@ async def test_the_unique_index_covers_the_four_fields(repo) -> None:
 
 
 async def test_the_written_row_has_the_agreed_schema(repo) -> None:
-    """Le schéma d'ADR-045, champ par champ : celui que la résolution lira."""
+    """Le schéma d'ADR-021, champ par champ : celui que la résolution lira."""
     await repo.upsert_many(
         [_unformatted("Articles 1103 et 1229 du code civil.")], RUN_1
     )

@@ -47,7 +47,7 @@ class RunStats(BaseModel):
 
     collisions: dict[str, CollisionTally] = Field(default_factory=dict)
     """Clé de métadonnée qui a reçu plusieurs valeurs -> nombre de documents et
-    fichiers de l'un d'eux (ADR-049)."""
+    fichiers de l'un d'eux (ADR-025)."""
 
     @classmethod
     def empty(cls) -> "RunStats":

@@ -1,10 +1,10 @@
-# ADR-024 — Retrait de l'échantillonnage de corpus
+# ADR-013 — Retrait de l'échantillonnage de corpus
 
-**Statut** : acté (18 juillet 2026) — amende ADR-022 §7
+**Statut** : acté (18 juillet 2026) — amende ADR-011 §7
 
 ## Contexte
 
-ADR-022 §7 prévoyait un « paramètre de restriction du connecteur » (une
+ADR-011 §7 prévoyait un « paramètre de restriction du connecteur » (une
 limite N documents, en plus du `--params source=` existant), avec deux
 usages : (1) l'itération dev sur un petit corpus, (2) un corpus témoin
 pour tester la ré-ingestion du `doc_id` article LEGI.
@@ -17,7 +17,7 @@ les deux usages :
   fichiers, JADE 256, CASS 92, CONSTIT 2, **CAPP 1, INCA 1**. Ce n'est
   pas le stock DILA (LEGI seul y pèse des dizaines de Go).
 - **Usage 1 (itération rapide) — sans objet.** À cette échelle, et
-  l'embedding désormais coupable en dev (ADR-023, l'embedding étant
+  l'embedding désormais coupable en dev (ADR-012, l'embedding étant
   ~99,9 % du temps d'un run), limiter à N documents ne gagne rien de
   perceptible. Une limite numérique est de surcroît absurde sur des
   sources à 1 fichier.
@@ -31,24 +31,24 @@ les deux usages :
 
 ## Décision
 
-Retirer le point 7 d'ADR-022 : **aucun paramètre de limite N n'est
+Retirer le point 7 d'ADR-011 : **aucun paramètre de limite N n'est
 ajouté au connecteur.** L'échantillonnage par source reste assuré par
 le `--params source=` existant. La désignation et le gel du corpus
 témoin de ré-ingestion relèvent du test, pas du connecteur.
 
 ## Alternatives rejetées
 
-- **Implémenter la limite N quand même** (ADR-022 §7 littéral) : aucun
+- **Implémenter la limite N quand même** (ADR-011 §7 littéral) : aucun
   cas d'usage v0 sur les données réelles ; « pas de tâche au cas où ».
   Un échafaudage pour un stock DILA complet qui
   n'est pas le corpus de la v0 serait un besoin de scaling (v1), pas de
   mesurabilité (v0).
-- **Garder §7 ouvert « au cas où »** : laisserait un point d'ADR-022 sans
+- **Garder §7 ouvert « au cas où »** : laisserait un point d'ADR-011 sans
   critère de fin vérifiable.
 
 ## Conséquences
 
-- ADR-022 §7 est **amendé** (retiré). Les autres points d'ADR-022 (fin des unknowns, hydratation
+- ADR-011 §7 est **amendé** (retiré). Les autres points d'ADR-011 (fin des unknowns, hydratation
   Neo4j, aplatissement, épuration Mongo, nettoyage `field_mappings`,
   interrupteur d'embedding) sont inchangés.
 - La désignation du corpus témoin (quel sous-ensemble LEGI) et son gel
@@ -59,5 +59,5 @@ témoin de ré-ingestion relèvent du test, pas du connecteur.
 
 ## Références
 
-ADR-022 (§7 amendé) · ADR-023 (même démarche, §5) · ADR-004 · corpus mesuré (40 Mo,
+ADR-011 (§7 amendé) · ADR-012 (même démarche, §5) · ADR-003 · corpus mesuré (40 Mo,
 ~1100 docs, CAPP/INCA à 1 fichier)

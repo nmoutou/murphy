@@ -46,7 +46,7 @@ class MongoDocumentRepository:
         détruire avant d'écrire."""
         identifier_key = _serialize_identifier(document.identifier)
         filter_ = {"identifier": identifier_key}
-        # `structure` n'est jamais écrit (ADR-022) : ses liens vivent dans Neo4j, ses
+        # `structure` n'est jamais écrit (ADR-011) : ses liens vivent dans Neo4j, ses
         # sections répètent `content`. Le chunker et l'extracteur le lisent en mémoire.
         data = document.model_dump(mode="json", exclude=self._excluded_fields)
         data["identifier"] = identifier_key

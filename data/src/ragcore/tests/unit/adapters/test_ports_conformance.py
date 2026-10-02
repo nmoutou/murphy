@@ -74,7 +74,7 @@ class TestStorageAdapters:
         assert isinstance(repo, PendingRelationRepository)
 
     def test_mongo_unformatted_repository(self) -> None:
-        """Sans lui, une cible décrite serait perdue (ADR-045)."""
+        """Sans lui, une cible décrite serait perdue (ADR-021)."""
         repo = MongoUnformattedRelationRepository.__new__(
             MongoUnformattedRelationRepository
         )

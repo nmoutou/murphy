@@ -1,4 +1,4 @@
-"""Le payload Qdrant, contrat du service (ADR-039). Un faux client suffit : on teste ce
+"""Le payload Qdrant, contrat du service (ADR-015). Un faux client suffit : on teste ce
 que le dépôt construit ; les filtres sont testés en intégration.
 """
 

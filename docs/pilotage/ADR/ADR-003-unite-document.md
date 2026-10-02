@@ -1,10 +1,10 @@
-# ADR-004 — Définition de l'unité « document »
+# ADR-003 — Définition de l'unité « document »
 
 **Statut** : acté (17 juillet 2026)
 
 ## Contexte
 
-L'identité canonique et le contrat entre ingestion et serving (ADR-039)
+L'identité canonique et le contrat entre ingestion et serving (ADR-015)
 reposent sur une définition stable de l'unité « document ». Candidats :
 arrêt entier, article, section, fichier XML.
 
@@ -29,4 +29,4 @@ suivantes : *ce qu'un juriste cite*.
 
 ## Références
 
-ADR-018 (identité) · ADR-039 (contrat ingestion / serving)
+ADR-008 (identité) · ADR-015 (contrat ingestion / serving)

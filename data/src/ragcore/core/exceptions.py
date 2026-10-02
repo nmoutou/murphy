@@ -34,7 +34,7 @@ class ValidationError(RagCoreError):
 
 class CollisionError(ValidationError):
     """Une clé renommée, non déclarée ``list``, a reçu plusieurs valeurs distinctes : la
-    table ne dit pas laquelle garder, le document est refusé (ADR-049).
+    table ne dit pas laquelle garder, le document est refusé (ADR-025).
 
     Elle porte toutes les collisions du document, pour le bilan.
     """

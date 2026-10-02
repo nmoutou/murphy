@@ -1,5 +1,5 @@
 """La relation non formatée — une cible décrite en toutes lettres, jamais un nœud
-(ADR-045).
+(ADR-021).
 
 LEGI et la jurisprudence décrivent leurs cibles de la même façon : un ``<LIEN>`` à
 ``@id`` vide porte une désignation (« code de l'environnement »). La règle ne dépend que

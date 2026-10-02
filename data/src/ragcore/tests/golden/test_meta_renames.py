@@ -1,4 +1,4 @@
-"""Cliquet : les renommages de métadonnées (ADR-049).
+"""Cliquet : les renommages de métadonnées (ADR-025).
 
 Une collision de valeurs se voit au bilan ; une collision de noms est une décision de la
 table, invisible au run : deux balises renommées pareil, un renommage commun redéfini,

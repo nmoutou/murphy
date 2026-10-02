@@ -1,6 +1,6 @@
-# ADR-044 — Suppression du manifest d'ingestion
+# ADR-020 — Suppression du manifest d'ingestion
 
-**Statut** : ✅ Accepté (1er octobre 2026) — amende ADR-022 §4-§5 et ADR-043 (§2 et §4)
+**Statut** : ✅ Accepté (1er octobre 2026) — amende ADR-011 §4-§5 et ADR-019 (§2 et §4)
 
 ## Contexte
 
@@ -52,4 +52,4 @@ d'idempotence : il parse, déclare les signaux et rejette.
 
 ## Références
 
-ADR-022 (régimes dev/prod, §4-§5) · ADR-043 (§2 et §4, `include_path`)
+ADR-011 (régimes dev/prod, §4-§5) · ADR-019 (§2 et §4, `include_path`)

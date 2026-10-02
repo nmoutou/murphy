@@ -12,14 +12,14 @@ class ParseResult:
 
     Le parser est pur : ce qu'il constate voyage ici, et le site de parse le signale à
     la télémétrie. Les signaux sont tenus par clé chemin-complet, avec le fichier de la
-    première facette qui la porte (ADR-048), et émis même quand ``skip_unconfigured``
+    première facette qui la porte (ADR-024), et émis même quand ``skip_unconfigured``
     retire la donnée.
 
-    - ``unconfigured_tags`` : clés de ``document.metadata`` non configurées (ADR-047),
+    - ``unconfigured_tags`` : clés de ``document.metadata`` non configurées (ADR-023),
       signal ``tags`` du bilan, que le curseur retire avant l'ingestion ;
     - ``unconfigured_links`` : liens heuristiques, signal ``links`` ;
     - ``unknown_roots`` : racines de facette hors table, signal seul ;
-    - ``collisions`` : clés résolues en liste (ADR-049). Une collision non configurée
+    - ``collisions`` : clés résolues en liste (ADR-025). Une collision non configurée
       refuse le document (``CollisionError``).
     """
 

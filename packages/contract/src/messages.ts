@@ -7,11 +7,11 @@
 import type { UIMessage } from 'ai';
 import { z } from 'zod';
 
-/** La forme d'un document, identique dans tous les stores de l'ingestion (ADR-046) */
+/** La forme d'un document, identique dans tous les stores de l'ingestion (ADR-022) */
 export const documentTypeSchema = z.enum(['article', 'section', 'texte', 'decision']);
 
 /**
- * Un passage retrouvé (ADR-039) : son texte est `content.slice(highlightStart,
+ * Un passage retrouvé (ADR-015) : son texte est `content.slice(highlightStart,
  * highlightEnd)` du `ParentDocument` de même `identifier`. `title`, `documentType` et
  * `nature` répètent ceux du parent tant que le frontend ne lit pas `ParentDocument`.
  */

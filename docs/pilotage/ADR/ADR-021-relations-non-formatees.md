@@ -1,4 +1,4 @@
-# ADR-045 — Relations non formatées : une collection, plus un champ du document
+# ADR-021 — Relations non formatées : une collection, plus un champ du document
 
 **Statut** : ✅ Accepté (1er octobre 2026)
 

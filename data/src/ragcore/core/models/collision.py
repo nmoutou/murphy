@@ -1,4 +1,4 @@
-"""Une clé de métadonnée qui a reçu plusieurs valeurs distinctes (ADR-049).
+"""Une clé de métadonnée qui a reçu plusieurs valeurs distinctes (ADR-025).
 
 Toutes les occurrences sont gardées, doublons compris, dans l'ordre déclaré : rang de la
 facette, puis ordre du document.

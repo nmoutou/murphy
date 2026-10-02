@@ -22,7 +22,7 @@ RELATION_UPSERTED = "relation.upserted"
 RELATION_PENDING = "relation.pending"  # cible absente → pendante
 RELATION_PROMOTED = "relation.promoted"  # pendante enfin résolue
 # Un lien de la source qu'on ne sait pas écrire (``sens`` inconnu, ``@id`` illisible,
-# ``typelien`` impossible en verbe) : compté pour ne pas disparaître en silence (ADR-048).
+# ``typelien`` impossible en verbe) : compté pour ne pas disparaître en silence (ADR-024).
 RELATION_UNKNOWN = "relation.unknown"
 
 SAGA_COMPENSATION_STARTED = "saga.compensation.triggered"

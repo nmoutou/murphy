@@ -7,7 +7,7 @@ from ..models.unformatted_relation import UnformattedRelation
 
 @runtime_checkable
 class UnformattedRelationRepository(Protocol):
-    """Les relations non formatées (ADR-045) : elles vivent avec les documents dont elles
+    """Les relations non formatées (ADR-021) : elles vivent avec les documents dont elles
     dérivent, et un nuke les efface avec eux.
     """
 

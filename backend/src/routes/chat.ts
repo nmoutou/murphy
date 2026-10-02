@@ -31,7 +31,7 @@ const sendChatError = (res: Response, chatError: ChatError): void => {
     .json(buildApiResponse(HTTP_STATUS.INTERNAL_SERVER_ERROR, CHAT_STREAM_ERROR, chatError));
 };
 
-/** Levé quand le client part : le pipeline s'arrête, LLM compris (ADR-041) */
+/** Levé quand le client part : le pipeline s'arrête, LLM compris (ADR-017) */
 const abortOnClose = (res: Response): AbortSignal => {
   const abortController = new AbortController();
   res.on('close', () => abortController.abort());

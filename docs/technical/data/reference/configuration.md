@@ -19,7 +19,7 @@ accepté, et il est rangé à part avant la validation, parce qu'il vaut aussi e
 ## La collection Qdrant : un nom fixe
 
 La collection s'appelle `QDRANT_COLLECTION` (`.env.dev`), et le backend lit la même
-variable (ADR-042). Il n'y a **qu'une** collection, réécrite en place à chaque run.
+variable (ADR-018). Il n'y a **qu'une** collection, réécrite en place à chaque run.
 Conséquence : changer `CHUNKING_*` ou `EMBEDDING_MODEL` invalide les vecteurs déjà écrits, sans
 que rien ne les sépare des nouveaux — après un tel changement, **réingérer tout le
 corpus** (`nuke_all` en dev).
@@ -39,10 +39,10 @@ coquille arrête le run même en prod.
 | Clé | Valeur | En `dev` | Hors `dev` |
 |---|---|---|---|
 | `nuke_all` | `true` | Efface TOUTES les données de TOUTES les bases en tête de run (Mongo `documents`, `pending_relations` et `unformatted_relations`, graphe Neo4j, **toutes** les collections Qdrant), en **préservant `MURPHY_META`**. Le levier disque du développement. | Rien n'est effacé. |
-| `embedding_enabled` | `true` | **L'interrupteur d'embedding (ADR-023).** `false` = aucun vecteur calculé ni écrit (Qdrant vide, Mongo/Neo4j normaux) — le régime d'itération sur le modèle de données. TEI doit quand même tourner : le modèle servi est vérifié et la dimension mesurée au démarrage. | On embarque toujours. |
-| `skip_unconfigured` | `false` | Le sort des données non configurées (ADR-047, ADR-048) : les métadonnées d'une balise absente de la table de rôles ou sans renommage dans `meta_renames`, et les arêtes d'un type de lien non configuré (`typelien` inconnu, lien heuristique). `false` = ingérées (métadonnée sous sa clé chemin-complet, arête sous son nom brut : le `typelien`, ou la balise d'un lien heuristique) ; `true` = retirées. Les signaux `tags` et `links`, eux, sont TOUJOURS émis — on compte d'abord, on filtre ensuite. | Toujours retirées (ADR-022 §1). |
-| `include_path` | `true` | Les chemins des fichiers XML source (`source_files`), dans le document Mongo **et** sur le nœud Neo4j. Repasser à `false` sans `nuke_all` : Mongo les perd au run suivant (`replace_one` remplace le document entier), mais Neo4j les garde (`SET +=` n'efface aucune propriété). | Aucun chemin écrit (ADR-022 §4). |
-| `include_content_neo4j` | `true` | Le texte du document sur son nœud Neo4j (`_text_content`), en plus de ses métadonnées, toujours là en dev. Repasser à `false` sans `nuke_all` laisse le texte déjà écrit (`SET +=`). | Nœud maigre (ADR-022 §2). |
+| `embedding_enabled` | `true` | **L'interrupteur d'embedding (ADR-012).** `false` = aucun vecteur calculé ni écrit (Qdrant vide, Mongo/Neo4j normaux) — le régime d'itération sur le modèle de données. TEI doit quand même tourner : le modèle servi est vérifié et la dimension mesurée au démarrage. | On embarque toujours. |
+| `skip_unconfigured` | `false` | Le sort des données non configurées (ADR-023, ADR-024) : les métadonnées d'une balise absente de la table de rôles ou sans renommage dans `meta_renames`, et les arêtes d'un type de lien non configuré (`typelien` inconnu, lien heuristique). `false` = ingérées (métadonnée sous sa clé chemin-complet, arête sous son nom brut : le `typelien`, ou la balise d'un lien heuristique) ; `true` = retirées. Les signaux `tags` et `links`, eux, sont TOUJOURS émis — on compte d'abord, on filtre ensuite. | Toujours retirées (ADR-011 §1). |
+| `include_path` | `true` | Les chemins des fichiers XML source (`source_files`), dans le document Mongo **et** sur le nœud Neo4j. Repasser à `false` sans `nuke_all` : Mongo les perd au run suivant (`replace_one` remplace le document entier), mais Neo4j les garde (`SET +=` n'efface aucune propriété). | Aucun chemin écrit (ADR-011 §4). |
+| `include_content_neo4j` | `true` | Le texte du document sur son nœud Neo4j (`_text_content`), en plus de ses métadonnées, toujours là en dev. Repasser à `false` sans `nuke_all` laisse le texte déjà écrit (`SET +=`). | Nœud maigre (ADR-011 §2). |
 
 Rien de l'embedding n'est dans `parameters.yml` : le modèle, l'URL de TEI, la taille de
 lot et le timeout sont dans l'environnement (voir `EmbeddingRuntimeSettings`).
@@ -65,7 +65,7 @@ service.
 
 | Variable | Défaut | Rôle |
 |---|---|---|
-| `ENVIRONMENT` | `prod` | `dev` ou `prod` (ADR-043). **Le défaut penche vers le refus** : seul `dev` applique `parameters.yml` (`nuke_all`, interrupteur d'embedding, balises non configurées, chemins des fichiers source, hydratation Neo4j). Absente ou vide, la variable vaut `prod` : un `.env` incomplet est traité comme protégé. Toute autre valeur (`Dev`, `development`…) arrête le run au chargement de la configuration, avant tout nœud. |
+| `ENVIRONMENT` | `prod` | `dev` ou `prod` (ADR-019). **Le défaut penche vers le refus** : seul `dev` applique `parameters.yml` (`nuke_all`, interrupteur d'embedding, balises non configurées, chemins des fichiers source, hydratation Neo4j). Absente ou vide, la variable vaut `prod` : un `.env` incomplet est traité comme protégé. Toute autre valeur (`Dev`, `development`…) arrête le run au chargement de la configuration, avant tout nœud. |
 | `MONGODB_URI` | `mongodb://localhost:27017` | |
 | `MONGODB_DATA_DB_NAME` | `MURPHY_DATA` | Données : `documents`, `pending_relations`, `unformatted_relations`. |
 | `MONGODB_META_DB_NAME` | `MURPHY_META` | Méta : bilans de run. |

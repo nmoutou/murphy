@@ -7,7 +7,7 @@ import { contractViolation, toRagError } from '../types/rag';
 const logger = rootLogger.child({ context: 'mongodb' });
 
 const MONGO_MAX_POOL_SIZE = 10;
-/** Écrite par l'ingestion : un document entier par `identifier` (ADR-039) */
+/** Écrite par l'ingestion : un document entier par `identifier` (ADR-015) */
 const DOCUMENTS_COLLECTION = 'documents';
 const DOCUMENT_PROJECTION = { _id: 0, identifier: 1, title: 1, content: 1 };
 const DOCUMENT_FETCH_FAILURE: RagFailure = {

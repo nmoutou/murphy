@@ -1,4 +1,4 @@
-# ADR-016 — Découplage récupération / génération
+# ADR-007 — Découplage récupération / génération
 
 **Statut** : rétro-documenté (décision implicite antérieure au 17 juillet 2026)
 
@@ -21,4 +21,4 @@ raisonner**. La génération LLM est un échafaudage transitoire, destiné à
 
 ## Références
 
-ADR-039
+ADR-015

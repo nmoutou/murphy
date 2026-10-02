@@ -11,7 +11,7 @@ export function useRagChat() {
       // Le transport vérifie les parts de données ; les métadonnées le sont ici
       messageMetadataSchema: appMessageMetadataSchema,
       onError: (chatError) => console.error('Chat request failed:', chatError),
-      // Une réponse en échec ne laisse pas de bulle : la question reste, la modale dit pourquoi (ADR-041)
+      // Une réponse en échec ne laisse pas de bulle : la question reste, la modale dit pourquoi (ADR-017)
       onFinish: ({ isError, message }) => {
         if (!isError) return;
         setMessages((current) => current.filter((candidate) => candidate.id !== message.id));

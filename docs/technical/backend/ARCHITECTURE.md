@@ -35,7 +35,7 @@ cette stack) : les deux ne partagent que les bases.
 
 Le flux est construit avec le Vercel **AI SDK** (`createUIMessageStream` /
 `pipeUIMessageStreamToResponse`). Le contrat de parts est `AppUIMessage`, importé de
-`@murphy/contract/messages` (`packages/contract/`, ADR-040), que le frontend importe
+`@murphy/contract/messages` (`packages/contract/`, ADR-016), que le frontend importe
 aussi : parts custom `{ document: DocumentChunk; parentDocument: ParentDocument }`,
 metadata `{ ragTiming }`. Le backend n'en importe que les types ; changer le contrat
 casse la compilation des deux côtés à la fois.
@@ -57,7 +57,7 @@ casse la compilation des deux côtés à la fois.
 Toute évolution du pipeline se fait dans `createChatStream` ; les trois chemins en
 héritent.
 
-### Erreurs et arrêt (ADR-041)
+### Erreurs et arrêt (ADR-017)
 
 - **Une erreur dit l'étape, pas le détail.** Le `errorText` d'une part `error` est un
   `ChatError` sérialisé, `{ stage, code }` (`@murphy/contract/errors`) :
@@ -73,9 +73,9 @@ héritent.
   - Le flux s'arrête sans part `error` ni `finish`, et le backend logue « Chat stream
     aborted by the client ».
 
-## Le contrat avec l'ingestion (ADR-039)
+## Le contrat avec l'ingestion (ADR-015)
 
-L'ingestion et le serving ne partagent aucun code : leur contrat est écrit dans l'ADR-039.
+L'ingestion et le serving ne partagent aucun code : leur contrat est écrit dans l'ADR-015.
 Ce que le backend lit :
 
 | Où | Quoi |
@@ -95,7 +95,7 @@ Ce que le backend lit :
 ## La collection Qdrant
 
 Son nom est **fixe** : `QDRANT_COLLECTION`, la variable que l'ingestion lit dans le même
-`.env.dev` (ADR-042). Au boot, `QdrantVectorClient.assertCollectionExists()` **refuse de
+`.env.dev` (ADR-018). Au boot, `QdrantVectorClient.assertCollectionExists()` **refuse de
 démarrer** si Qdrant est injoignable ou si la collection n'existe pas : mieux vaut le
 découvrir au boot que sur la première question d'un utilisateur.
 

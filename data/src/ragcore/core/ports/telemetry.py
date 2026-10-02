@@ -42,7 +42,7 @@ class WorkerTelemetry(TelemetryPort, Protocol):
 
     def record_collision(self, key: str, source_files: tuple[str, ...]) -> None:
         """Une clé de métadonnée qui a reçu plusieurs valeurs dans le document de
-        fichiers ``source_files`` (ADR-049). Un appel par document et par clé.
+        fichiers ``source_files`` (ADR-025). Un appel par document et par clé.
         """
         ...
 

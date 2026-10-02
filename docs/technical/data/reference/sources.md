@@ -19,7 +19,7 @@ Le pipeline ingère aujourd'hui **six** bases :
 | **CONSTIT** | Décisions du Conseil constitutionnel | constitutionnel |
 
 CASS + INCA + CAPP + JADE + CONSTIT = l'intégralité de la jurisprudence DILA disponible en
-open data (ADR-002 : ingérée dès la v0). Les autres jeux DILA (JORF, KALI, DOLE,
+open data (ADR-001 : ingérée dès la v0). Les autres jeux DILA (JORF, KALI, DOLE,
 CIRCULAIRES…) ne sont pas ingérés — `JORF` et `UPLOAD` existent dans le vocabulaire
 (`SourceName`) mais n'ont ni connecteur ni table : ils sont volontairement absents du
 registre, et les demander lève une erreur nette au démarrage.
@@ -106,7 +106,7 @@ texte, **dans l'ordre** — LEGI range le texte d'un article sous `BLOC_TEXTUEL`
 **Le cliquet** : une balise sans rôle ne disparaît pas — sa valeur ressort dans
 `unknowns["tags"]` ou `unknowns["links"]`, sous sa clé chemin-complet, et les golden
 tests (qui parcourent l'arbre XML) la font échouer. Une métadonnée qui a un rôle mais
-pas de renommage ressort aussi dans `tags` (ADR-047), sans faire échouer le cliquet. Sur un corpus saturé la table ne
+pas de renommage ressort aussi dans `tags` (ADR-023), sans faire échouer le cliquet. Sur un corpus saturé la table ne
 déclare rien ; sur le prochain export DILA, une balise neuve sort dans le bilan du run au
 lieu de s'évaporer.
 
@@ -119,7 +119,7 @@ Une balise absente de la table est **routée**, pas jetée :
 - sinon → **métadonnée**, sous sa clé chemin-complet.
 
 Le signal est déclaré au site de parse (`parseDocuments`), sous la clé chemin-complet
-de la valeur : `links` pour un lien, `tags` pour une métadonnée (ADR-048). Une balise
+de la valeur : `links` pour un lien, `tags` pour une métadonnée (ADR-024). Une balise
 sans texte ni attribut ne laisse aucune trace. Le curseur `skip_unconfigured` (booléen,
 validé en tête de run, forcé à `true` hors `ENVIRONMENT=dev`) décide ensuite du sort de
 la donnée : la métadonnée est retirée au site de parse, l'arête heuristique à
@@ -185,7 +185,7 @@ cible sur un seul critère — l'identification, jamais la source :
   d'enum `RelationType` : un enum de six verbes déclarait perdue toute relation au verbe
   inattendu). Les relations ne sont pas écrites par le worker : elles remontent vers la
   phase 2 (voir [pipeline.md](pipeline.md#6-resolverelations--la-phase-2)).
-- **`@id` vide** → une **`UnformattedRelation`** (ADR-045), jamais un nœud ni un champ
+- **`@id` vide** → une **`UnformattedRelation`** (ADR-021), jamais un nœud ni un champ
   du document : la saga du document l'écrit dans `MURPHY_DATA.unformatted_relations`, où
   elle s'accumule de run en run comme une pendante. Mesuré sur le corpus : 89/89 `<LIEN>` LEGI à `@id` vide portent du
   texte (« code de l'environnement »…), 68/68 côté CASS — ce sont des désignations en
@@ -202,7 +202,7 @@ nom brut, et le mot ressort dans `unknowns["links"]`. Un lien heuristique n'a pa
 pas être un verbe) est compté (`relation.unknown`). Les deux voyagent dans la valeur de retour de l'extracteur et sont
 déclarés par le workload à la télémétrie du worker. Avec `skip_unconfigured: true`,
 l'extracteur retire les arêtes d'un type non configuré — `typelien` inconnu ou
-heuristique (ADR-048).
+heuristique (ADR-024).
 
 La hiérarchie déclarée en double (fermeture d'ancêtres côté article, arbre côté sections)
 est dédoublonnée en phase 2 par **réduction transitive** — contenance (`contient`)

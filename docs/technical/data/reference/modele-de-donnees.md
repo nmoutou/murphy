@@ -11,7 +11,7 @@ de la DILA, sans rien ajouter : `LEGIARTI000006419264`.
 
 Le format est validé à la construction (`^[A-Z]{8}[0-9]{12}$`) pour toutes les sources.
 Les 8 lettres de tête (`Identifier.prefix`) disent le fonds et le type du document
-(`document_type`, ADR-046), que la table de rôles de la source déclare
+(`document_type`, ADR-022), que la table de rôles de la source déclare
 (`RoleTable.document_types`) :
 
 | Préfixe | Source | `document_type` |
@@ -45,7 +45,7 @@ RawDocument ──parse──▶ ParsedDocument ──chunk──▶ Chunk ─�
   `char_start`/`char_end` (offsets **littéraux** dans `content`), `metadata`.
 - `Relation` : source → cible (deux identifiants), `relation_type` = **verbe validé**
   (chaîne, pas un enum — un verbe non traduit entre sous son nom brut), `metadata`.
-- `UnformattedRelation` (ADR-045) : la relation d'un lien à `@id` vide —
+- `UnformattedRelation` (ADR-021) : la relation d'un lien à `@id` vide —
   `source_identifier`, `target_text` (brut, intégral — la seule donnée non
   reconstructible), `relation_type` (traduit, brut sinon ; pas un verbe validé, il ne
   devient pas un type d'arête), `sens` (conservé pour orienter l'arête d'une future
@@ -67,7 +67,7 @@ Contenu : le dump JSON du `ParsedDocument`, **sauf** :
 - `source_files` est exclu (provenance d'inspection, chemins absolus du poste
   d'ingestion), sauf en dev avec `include_path` (`parameters.yml`), qui l'écrit aussi
   sur le nœud Neo4j ;
-- `structure` est exclue **entièrement** (ADR-022 §4) : `references`/`context` sont de la
+- `structure` est exclue **entièrement** (ADR-011 §4) : `references`/`context` sont de la
   donnée d'arête (elles vivent dans Neo4j), et `sections` est `content` re-découpé — son
   seul apport propre (`path`) survit sur les chunks (`tag_path` + offsets).
 
@@ -89,7 +89,7 @@ eux.
 
 ### `unformatted_relations`
 
-Les `UnformattedRelation` (ADR-045) : les relations d'un lien à `@id` vide, dont la cible
+Les `UnformattedRelation` (ADR-021) : les relations d'un lien à `@id` vide, dont la cible
 est décrite en toutes lettres (« code de l'environnement ») au lieu d'être identifiée —
 source_id, target_text, relation_type, sens, source, first_seen_run, last_seen_run.
 Écrites par la saga du document (étape `mongo_unformatted_upsert`, juste après
@@ -110,7 +110,7 @@ données.
 
 | Collection | Contenu | Index |
 |---|---|---|
-| `run_summaries` | Un `RunSummary` par run, à plat : run_id, `sources` (liste), dates, `status` (`ok`/`degraded`/`failed`), `counts`, `unknowns` (`tags` / `roots` / `links` → clé → `{count, example: {identifier, source_file}}`, ADR-048), `collisions` (clé → `{count, example: [fichiers]}`, ADR-049), et `error_message` sur un run `failed` seulement. | unique (run_id), (started_at) |
+| `run_summaries` | Un `RunSummary` par run, à plat : run_id, `sources` (liste), dates, `status` (`ok`/`degraded`/`failed`), `counts`, `unknowns` (`tags` / `roots` / `links` → clé → `{count, example: {identifier, source_file}}`, ADR-024), `collisions` (clé → `{count, example: [fichiers]}`, ADR-025), et `error_message` sur un run `failed` seulement. | unique (run_id), (started_at) |
 
 ## Qdrant
 
@@ -122,7 +122,7 @@ données.
 - **ID de point** : SHA-256 du `chunk_id`, replié sur 63 bits — stable entre processus
   (jamais `hash()` natif, resemé par interpréteur).
 - **Payload** : les `metadata` du chunk à plat, puis les champs du **contrat de
-  serving** (ADR-039), posés en dernier pour qu'aucune métadonnée
+  serving** (ADR-015), posés en dernier pour qu'aucune métadonnée
   homonyme ne les écrase :
 
   | Champ | Rôle côté serving |
@@ -142,14 +142,14 @@ données.
 
 ## Neo4j
 
-- **Nœuds documents** (ADR-046) : identifiés par `identifier` sérialisé. Chaque nœud
+- **Nœuds documents** (ADR-022) : identifiés par `identifier` sérialisé. Chaque nœud
   porte deux labels : `Document`, et celui de son `document_type` (`TYPE_LABELS` :
   `Article`, `Section`, `Texte`, `Decision`). Une contrainte d'unicité,
   `document_identifier`, porte sur `(:Document).identifier` ; elle est posée avec les
   index Mongo (`schema.ensure_graph_constraints`), et `nuke_all` la laisse en place. Le
   `MERGE` et tous les `MATCH` par identifiant passent par `Document`, donc par son index.
   Le label de type ne change jamais pour un identifiant : il vient du préfixe.
-- **Hydratation** (ADR-022 §2) : en prod, nœud **maigre** (`title`, `source`). En dev (et seulement en dev), `parameters.yml` ouvre les vannes : `metadata`
+- **Hydratation** (ADR-011 §2) : en prod, nœud **maigre** (`title`, `source`). En dev (et seulement en dev), `parameters.yml` ouvre les vannes : `metadata`
   en props (clés chemin-complet), `include_path` (les fichiers XML source, écrits aussi
   dans Mongo), `include_content_neo4j` (le texte, prop `_text_content`). Neo4j est l'outil
   d'inspection de la v0.

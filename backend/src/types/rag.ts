@@ -51,7 +51,7 @@ export const toRagError = (failure: RagFailure, error: unknown): RagError => {
 const INTERNAL_CHAT_ERROR: ChatError = { stage: 'internal', code: 'INTERNAL' };
 
 /**
- * Ce que le client apprend d'un échec (ADR-041) : étape et code d'une `RagError`, rien
+ * Ce que le client apprend d'un échec (ADR-017) : étape et code d'une `RagError`, rien
  * d'une autre erreur. Le message reste dans les logs.
  */
 export const toChatError = (error: unknown): ChatError =>
@@ -60,11 +60,11 @@ export const toChatError = (error: unknown): ChatError =>
 const CONTRACT_VIOLATION_CODE = 'CONTRACT_VIOLATION';
 
 /**
- * Les bases ne respectent pas le contrat de service (ADR-039). Jamais ignoré en silence :
+ * Les bases ne respectent pas le contrat de service (ADR-015). Jamais ignoré en silence :
  * un mauvais passage dans le contexte du LLM est pire qu'une erreur visible.
  */
 export const contractViolation = (message: string): RagError =>
-  new RagError('retrieval', CONTRACT_VIOLATION_CODE, `Serving contract violated (ADR-039): ${message}`);
+  new RagError('retrieval', CONTRACT_VIOLATION_CODE, `Serving contract violated (ADR-015): ${message}`);
 
 /** `charStart`/`charEnd` comptent des points de code Unicode dans le `content` du parent */
 export interface RetrievedChunk {

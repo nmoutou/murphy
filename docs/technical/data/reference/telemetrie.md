@@ -19,14 +19,14 @@ n'en sort en silence.
 | `document.fetched` | Documents vus par le connecteur (1 événement, `count` = lot). **Le dénominateur** de l'équation. |
 | `document.version_skipped` / `document.unreadable` | Écartés par le connecteur : artefacts d'export (`versions.xml`) / XML illisibles. Un compteur par raison, chacun porte son `count`. **Hors équation** : un fichier écarté n'est pas un document vu. |
 | `document.parsed` | Parse réussi |
-| `document.invalidated` | Rejet au parse (validation, lecture ou collision non configurée, ADR-049) : `reason`, `uid` (chemin source), `error` |
+| `document.invalidated` | Rejet au parse (validation, lecture ou collision non configurée, ADR-025) : `reason`, `uid` (chemin source), `error` |
 | `document.persisted` | Saga complète |
 | `document.failed` | **La fuite** : vu, jamais ingéré (saga échouée/compensée). `reason` = type d'exception. |
 | `chunk.truncated` | Chunks raccourcis par l'embedder pour tenir dans la fenêtre du modèle (1 événement en fin de run, `count`). Pas une fuite — mais la fin de ces chunks n'est pas indexée : `CHUNKING_MAX_CHARS` à corriger. |
 | `relation.upserted` | Arêtes **réussies** d'un batch (`count`) |
 | `relation.pending` | Cible absente → cache des pendantes |
 | `relation.promoted` | Pendante d'un run passé enfin résolue |
-| `relation.unknown` | Liens qu'on ne sait pas écrire (`sens` inconnu, `@id` illisible, `typelien` ou balise heuristique qui ne peut pas être un verbe) : 1 événement par document, `count` = liens perdus. L'arête n'existe pas ; un lien retiré par `skip_unconfigured` n'est pas compté. Ne change pas le statut du run (ADR-048). |
+| `relation.unknown` | Liens qu'on ne sait pas écrire (`sens` inconnu, `@id` illisible, `typelien` ou balise heuristique qui ne peut pas être un verbe) : 1 événement par document, `count` = liens perdus. L'arête n'existe pas ; un lien retiré par `skip_unconfigured` n'est pas compté. Ne change pas le statut du run (ADR-024). |
 | `saga.compensation.triggered` / `.completed` / `.failed` | Rollback d'une saga (`.failed` = un écrit partiel subsiste ; `success` du `.completed` dit la vérité : une seule compensation ratée et le rollback n'est pas propre) |
 
 **Contrat de cardinalité** : la plupart des événements pèsent 1. Six — et eux
@@ -71,9 +71,9 @@ commutative ferait dépendre le bilan de l'ordonnancement). Trois champs :
   des comptes, **plus petit** exemple — « le premier vu » dépendrait de l'ordre des
   workers. `source_file` est le fichier de la facette pour les inconnus de parse, le
   premier fichier du document pour ceux d'extraction.
-  Trois catégories plates (ADR-048) :
+  Trois catégories plates (ADR-024) :
   - `tags` : les métadonnées non configurées (balise absente de la table ou sans
-    renommage, ADR-047), sous leur **clé chemin-complet** — la clé même qu'elles ont
+    renommage, ADR-023), sous leur **clé chemin-complet** — la clé même qu'elles ont
     dans `metadata` ;
   - `roots` : les racines XML que la source ne déclare pas ;
   - `links` : les types de lien non configurés — un `typelien` non traduit, ou la clé
@@ -83,7 +83,7 @@ commutative ferait dépendre le bilan de l'ordonnancement). Trois champs :
   Une balise sans valeur n'y apparaît pas : elle n'a rien à ingérer. Un lien qu'on ne
   sait pas écrire n'est pas un type de lien : il est compté par `relation.unknown`.
 - `collisions` : clé de métadonnée qui a reçu au moins deux valeurs distinctes dans un
-  document (ADR-049), rangée en liste (`list`) ou refusée → `{count, example}`. Ce n'est
+  document (ADR-025), rangée en liste (`list`) ou refusée → `{count, example}`. Ce n'est
   pas un inconnu : la table sait la nommer. `count` est un nombre de documents ;
   `example` est la liste des fichiers d'où viennent les valeurs d'un de ces
   documents, distincts, dans l'ordre déclaré des facettes : deux pour une collision entre

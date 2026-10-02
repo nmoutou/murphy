@@ -1,17 +1,17 @@
-# ADR-039 — Contrat ingestion ↔ serving : le texte d'un passage vit dans Mongo, désigné par ses offsets
+# ADR-015 — Contrat ingestion ↔ serving : le texte d'un passage vit dans Mongo, désigné par ses offsets
 
-**Statut** : ✅ Accepté (25 septembre 2026), amendé le 30 septembre 2026 · **§2 amendé par [ADR-046](ADR-046-typage-des-documents.md)** (typage des documents)
+**Statut** : ✅ Accepté (25 septembre 2026), amendé le 30 septembre 2026 · **§2 amendé par [ADR-022](ADR-022-typage-des-documents.md)** (typage des documents)
 
 > **Amendement du 30 septembre 2026.** `owner_id` et la version du contrat sont retirés :
 > le projet est mono-utilisateur et en développement, aucun des deux n'avait d'usage. Un
 > document se lit par son seul `identifier`, et le backend ne vérifie plus de version au
 > boot. Le texte ci-dessous décrit le contrat après cet amendement.
 >
-> **Amendement par ADR-042 (30 septembre 2026).** Le pointeur de collection est retiré :
+> **Amendement par ADR-018 (30 septembre 2026).** Le pointeur de collection est retiré :
 > la collection Qdrant porte un nom fixe, `QDRANT_COLLECTION`. Le contrat (§2) et le §3
 > ci-dessous sont réécrits en conséquence.
 >
-> **Amendement par ADR-046 (1er octobre 2026).** `type_document` est remplacé par
+> **Amendement par ADR-022 (1er octobre 2026).** `type_document` est remplacé par
 > `document_type` (obligatoire) et `nature` (facultatif). Le §2 est réécrit en
 > conséquence ; le tableau du contexte garde l'état constaté le 25 septembre.
 
@@ -68,7 +68,7 @@ Les autres métadonnées restent à plat dans le payload, mais le serving ne s'y
 **Mongo `documents`** : `identifier`, `title`, `content`, déjà écrits aujourd'hui.
 
 **Collection Qdrant** : une seule, nommée par `QDRANT_COLLECTION`, la variable que les
-deux côtés lisent dans `.env.dev` (ADR-042).
+deux côtés lisent dans `.env.dev` (ADR-018).
 
 ### 3. Le backend ne sert qu'une collection qui existe
 
@@ -82,7 +82,7 @@ violation de contrat (§5).
 ### 4. Le serving : ce que chaque étape lit
 
 - **Contexte LLM** : le texte **du passage seul**. Donner le document parent, ou une
-  fenêtre élargie, est une stratégie de génération à évaluer (ADR-016), pas une
+  fenêtre élargie, est une stratégie de génération à évaluer (ADR-007), pas une
   réparation de contrat.
 - **Ordre** : les documents sont lus dans Mongo **avant** d'envoyer les sources, parce
   que le titre et le texte vivent dans le document. Les sources précèdent toujours le
@@ -114,14 +114,14 @@ retrouvé. Le flux porte donc **deux types de parts**, chacun envoyé une fois :
   du chantier d'affichage, pas d'un après indéfini.
 - **Violation du contrat** : un point sans document parent, ou dont les offsets sortent
   de `content`, lève une `RagError` (étape `retrieval`) qui cite le `chunk_id`. Pas
-  d'écart silencieux (ADR-020) : un passage faux dans le contexte du LLM est pire qu'une
+  d'écart silencieux (ADR-010) : un passage faux dans le contexte du LLM est pire qu'une
   erreur affichée.
 
 ## Alternatives rejetées
 
 - **Texte dans le payload Qdrant.** Retire Mongo du chemin de requête, mais stocke le
-  texte deux fois, contre la répartition tri-base (ADR-020 : Qdrant porte les vecteurs et
-  les métadonnées, Mongo le texte) et contre l'épuration d'ADR-022 §4, qui a justement
+  texte deux fois, contre la répartition tri-base (ADR-010 : Qdrant porte les vecteurs et
+  les métadonnées, Mongo le texte) et contre l'épuration d'ADR-011 §4, qui a justement
   retiré `sections` de Mongo parce qu'il doublait `content`.
 - **Collection Mongo `chunks`.** Même duplication, plus une quatrième écriture dans la
   saga, donc une compensation de plus.
@@ -169,5 +169,5 @@ retrouvé. Le flux porte donc **deux types de parts**, chacun envoyé une fois :
 
 ## Références
 
-ADR-004 (unité document) · ADR-016 (découplage récupération/génération) · ADR-020
-(tri-base, fail-fast) · ADR-022 §4 (épuration Mongo)
+ADR-003 (unité document) · ADR-007 (découplage récupération/génération) · ADR-010
+(tri-base, fail-fast) · ADR-011 §4 (épuration Mongo)

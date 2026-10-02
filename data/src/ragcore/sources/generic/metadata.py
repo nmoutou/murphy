@@ -3,12 +3,12 @@
 - Le rôle décide, pas l'emplacement : un ``<LIEN>`` dans ``<META>`` reste un lien. Seuls
   les rôles ``META`` et ``VERSION`` entrent ici.
 - L'identifiant et la nature ont leur champ dédié. Le titre aussi, par son rôle
-  ``TITLE`` (ADR-050) : ``NUM``, titre d'un article mais numéro d'un texte, garde
+  ``TITLE`` (ADR-026) : ``NUM``, titre d'un article mais numéro d'un texte, garde
   ``META``.
-- La clé est le chemin complet (ADR-022), ou le nom court du renommage. Une balise sans
-  renommage est non configurée (ADR-047) : elle entre quand même, mais signalée.
+- La clé est le chemin complet (ADR-011), ou le nom court du renommage. Une balise sans
+  renommage est non configurée (ADR-023) : elle entre quand même, mais signalée.
 - Aucune clé n'est injective : chaque valeur s'ajoute à sa clé, et
-  ``occurrences.resolve`` tranche (ADR-049).
+  ``occurrences.resolve`` tranche (ADR-025).
 """
 
 from __future__ import annotations

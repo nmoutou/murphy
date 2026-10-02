@@ -5,7 +5,7 @@ pas ici n'existe pas.
 # Rejets au parse : lecture impossible, ou document lisible mais irrecevable
 REASON_PARSE_ERROR = "parse_error"
 REASON_VALIDATION_ERROR = "validation_error"
-# Une clé renommée, non déclarée `list`, a reçu plusieurs valeurs distinctes (ADR-049) :
+# Une clé renommée, non déclarée `list`, a reçu plusieurs valeurs distinctes (ADR-025) :
 # un refus métier, nommé à part pour se lire au bilan.
 REASON_COLLISION = "collision"
 

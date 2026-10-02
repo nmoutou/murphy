@@ -282,7 +282,7 @@ _CIBLE = "LEGIARTI000000000002"
 
 
 def test_le_curseur_RETIRE_les_aretes_non_configurees_mais_pas_le_signal() -> None:
-    """``skip_unconfigured`` (ADR-048) retire l'arête d'un ``typelien`` inconnu et l'arête
+    """``skip_unconfigured`` (ADR-024) retire l'arête d'un ``typelien`` inconnu et l'arête
     heuristique ; le lien configuré reste, et le signal sort dans les deux régimes."""
     document = _document_with_references(
         [

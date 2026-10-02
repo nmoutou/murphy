@@ -147,7 +147,7 @@ def test_sources_list_every_ingested_source() -> None:
 
 def test_unknowns_defaults_to_empty_not_none() -> None:
     """Chaque catégorie est présente, même vide : le schéma du bilan est stable
-    (ADR-048)."""
+    (ADR-024)."""
     summary = RunStatsAggregator(RUN, (), datetime.now(UTC)).finalize(RunStatus.OK)
     assert summary.unknowns == {"tags": {}, "roots": {}, "links": {}}
     assert summary.collisions == {}

@@ -1,10 +1,10 @@
-# ADR-047 — Une balise sans renommage est non configurée
+# ADR-023 — Une balise sans renommage est non configurée
 
-**Statut** : ✅ Accepté (1er octobre 2026) — amende ADR-022 §1 · **amendé par ADR-048** (signal par clé chemin-complet en `tags`, `unconfigured_keys` supprimé) · **amendé par ADR-049** (une clé non renommée en collision devient une liste) · **amendé par ADR-050** (une balise de titre non renommée n'entre pas en métadonnée)
+**Statut** : ✅ Accepté (1er octobre 2026) — amende ADR-011 §1 · **amendé par ADR-024** (signal par clé chemin-complet en `tags`, `unconfigured_keys` supprimé) · **amendé par ADR-025** (une clé non renommée en collision devient une liste) · **amendé par ADR-026** (une balise de titre non renommée n'entre pas en métadonnée)
 
 ## Contexte
 
-ADR-022 §1 définit une balise non configurée comme une balise « non mappée ». Le code
+ADR-011 §1 définit une balise non configurée comme une balise « non mappée ». Le code
 lisait « absente de la table de rôles ». Or les tables ont été construites en relevant
 toutes les balises du corpus : aucune n'en est absente. Sur un run réel, le signal
 `tag.unconfigured` restait donc vide, et le curseur `skip_unconfigured` ne retirait rien.
@@ -30,7 +30,7 @@ Une feuille `META` ou `VERSION` sans renommage :
 
 Les balises qui ont un champ dédié et ne vont pas dans `metadata` (l'identifiant, la
 nature) ne sont pas concernées. Les balises de titre le sont : `title` est lu à part,
-et leur copie dans `metadata` n'a pas de renommage. *Amendé par ADR-050 : une balise de
+et leur copie dans `metadata` n'a pas de renommage. *Amendé par ADR-026 : une balise de
 titre non renommée a son champ dédié et n'entre plus dans `metadata`.*
 
 ## Alternatives rejetées
@@ -39,7 +39,7 @@ titre non renommée a son champ dédié et n'entre plus dans `metadata`.*
   nouvelle de la DILA. Il ne dit rien de ce qui reste à nommer, et le curseur est sans
   effet.
 - **Exclure les balises de titre de `metadata`, comme l'identifiant.** Écarté : leur
-  copie est une métadonnée sans renommage comme les autres. *Repris par ADR-050.*
+  copie est une métadonnée sans renommage comme les autres. *Repris par ADR-026.*
 
 ## Conséquences
 

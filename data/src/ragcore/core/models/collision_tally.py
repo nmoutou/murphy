@@ -1,6 +1,6 @@
 """Ce que le bilan sait d'une clé en collision : combien de documents, et où la voir.
 
-Un document compte une fois (ADR-049). La fusion reste commutative (cf. ``RunStats``) :
+Un document compte une fois (ADR-025). La fusion reste commutative (cf. ``RunStats``) :
 l'exemple gardé est le plus petit, jamais « le premier vu », qui dépendrait de l'ordre
 de fin des workers.
 """

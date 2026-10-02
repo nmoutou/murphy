@@ -1,16 +1,16 @@
-# ADR-022 — Régimes d'ingestion dev/prod : exhaustif vs sélectif
+# ADR-011 — Régimes d'ingestion dev/prod : exhaustif vs sélectif
 
-**Statut** : acté (18 juillet 2026) — **§5 amendé par ADR-023** (les
+**Statut** : acté (18 juillet 2026) — **§5 amendé par ADR-012** (les
 interrupteurs `exportation.<store>.enabled` sont remplacés par un unique
-interrupteur d'embedding en dev) · **§7 amendé par ADR-024** (le
+interrupteur d'embedding en dev) · **§7 amendé par ADR-013** (le
 paramètre d'échantillonnage du connecteur est retiré : sans objet sur le
 corpus réel ; le corpus témoin relève de `--params source=`) · **§5-§6
-amendés par ADR-043** (routage d'audit laissé au code, conf morte refusée
-par le modèle strict) · **§2 et §4 amendés par ADR-043** (en dev,
+amendés par ADR-019** (routage d'audit laissé au code, conf morte refusée
+par le modèle strict) · **§2 et §4 amendés par ADR-019** (en dev,
 `include_path` écrit les chemins des fichiers source dans Mongo aussi) ·
-**§4-§5 amendés par ADR-044** (le manifest est supprimé) · **§1 amendé par
-ADR-047** (une balise sans renommage est non configurée) · **§3 corrigé par
-ADR-049** (la clé chemin-complet n'est pas injective : balises sœurs homonymes)
+**§4-§5 amendés par ADR-020** (le manifest est supprimé) · **§1 amendé par
+ADR-023** (une balise sans renommage est non configurée) · **§3 corrigé par
+ADR-025** (la clé chemin-complet n'est pas injective : balises sœurs homonymes)
 
 ## Contexte
 
@@ -86,4 +86,4 @@ mode jetable.
 
 ## Références
 
-ADR-004 · ADR-018 · ADR-020 · ADR-023 · ADR-024 · ADR-043
+ADR-003 · ADR-008 · ADR-010 · ADR-012 · ADR-013 · ADR-019

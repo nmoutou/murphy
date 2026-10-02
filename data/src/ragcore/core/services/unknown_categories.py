@@ -5,7 +5,7 @@ encore traduire, et l'indice de ce qu'il faudrait apprendre.
 """
 
 CATEGORY_TAG = "tags"
-"""Une métadonnée non configurée, sous sa clé chemin-complet (ADR-047, ADR-048). La
+"""Une métadonnée non configurée, sous sa clé chemin-complet (ADR-023, ADR-024). La
 vigie de dérive DILA : émise même quand ``skip_unconfigured`` retire la métadonnée.
 """
 
@@ -13,7 +13,7 @@ CATEGORY_ROOT = "roots"
 """Une racine XML d'une famille de documents que la source ne connaît pas."""
 
 CATEGORY_LINK = "links"
-"""Un type de lien non configuré (ADR-048) : ``typelien`` non traduit, ou lien
+"""Un type de lien non configuré (ADR-024) : ``typelien`` non traduit, ou lien
 heuristique. Un lien qui ne peut pas être écrit est compté par ``relation.unknown``.
 """
 

@@ -29,7 +29,7 @@ TYPE_LABELS: Mapping[DocumentType, str] = {
 
 @dataclass(frozen=True)
 class NodeHydration:
-    """Ce qu'un nœud porte au-delà de ``title`` et ``source`` (ADR-022). Le défaut est
+    """Ce qu'un nœud porte au-delà de ``title`` et ``source`` (ADR-011). Le défaut est
     le nœud maigre de prod ; c'est le plan du run qui l'enrichit en dev.
 
     - ``metadata`` : les métadonnées en props, clés chemin-complet ;

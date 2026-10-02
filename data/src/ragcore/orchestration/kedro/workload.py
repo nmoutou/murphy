@@ -54,7 +54,7 @@ def build_document_workload(
     """``runtime`` et ``telemetry`` sont ceux du worker courant, fournis par le runner à
     chaque appel.
 
-    ``embedding_enabled=False`` (dev, ADR-023) saute l'embedding : Qdrant n'écrit rien,
+    ``embedding_enabled=False`` (dev, ADR-012) saute l'embedding : Qdrant n'écrit rien,
     Mongo et Neo4j tournent normalement. Le booléen arrive déjà arbitré par le plan.
     """
     use_cases = _UseCasePerWorker(use_case_factory)

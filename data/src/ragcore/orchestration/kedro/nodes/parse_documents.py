@@ -1,7 +1,7 @@
 """Parse les documents : ceux qui parsent partent à l'ingestion, déjà en base ou non ;
 les autres sont rejetés et comptés (``document.invalidated``).
 
-Les collisions (ADR-049) sont comptées par (document, clé), document refusé compris.
+Les collisions (ADR-025) sont comptées par (document, clé), document refusé compris.
 """
 
 from __future__ import annotations

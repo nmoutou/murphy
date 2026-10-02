@@ -1,6 +1,6 @@
-# ADR-043 — Configuration de l'ingestion : un fichier, un bloc `dev`, `ENVIRONMENT` seul arbitre
+# ADR-019 — Configuration de l'ingestion : un fichier, un bloc `dev`, `ENVIRONMENT` seul arbitre
 
-**Statut** : ✅ Accepté (30 septembre 2026) — amende ADR-022 §5-§6, ADR-023 et ADR-042 §3 · **§3 et §4 amendés le 30 septembre 2026** (labels Neo4j déclarés par les sources ; découpe dans l'environnement ; bloc `dev` aplati) · **§4 amendé par [ADR-044](ADR-044-suppression-du-manifest.md)** (suppression du manifest) · **amendement du §3 remplacé par [ADR-046](ADR-046-typage-des-documents.md)** (labels Neo4j)
+**Statut** : ✅ Accepté (30 septembre 2026) — amende ADR-011 §5-§6, ADR-012 et ADR-018 §3 · **§3 et §4 amendés le 30 septembre 2026** (labels Neo4j déclarés par les sources ; découpe dans l'environnement ; bloc `dev` aplati) · **§4 amendé par [ADR-020](ADR-020-suppression-du-manifest.md)** (suppression du manifest) · **amendement du §3 remplacé par [ADR-022](ADR-022-typage-des-documents.md)** (labels Neo4j)
 
 ## Contexte
 
@@ -14,12 +14,12 @@ en tient lieu, arbitrée dans le code (`run_parameters.resolve_dev_settings`). C
 Ce qu'il décide, les ADR précédents le supposent sans l'écrire, et ils ont dérivé du code
 (critique de `parameters.yml`, P19 à P22) :
 
-- ADR-042 §3 range la découpe et le modèle d'embedding dans
+- ADR-018 §3 range la découpe et le modèle d'embedding dans
   `conf/base/ingestion/parameters.yml`. Le sous-dossier a disparu, et le modèle n'est plus
   lu du YAML.
-- ADR-022 §5 prévoyait d'exposer le routage d'audit dans `parameters.yml`. Il est resté
+- ADR-011 §5 prévoyait d'exposer le routage d'audit dans `parameters.yml`. Il est resté
   dans le code.
-- ADR-023 ne dit pas que l'interrupteur d'embedding ne vaut qu'en dev, et un second
+- ADR-012 ne dit pas que l'interrupteur d'embedding ne vaut qu'en dev, et un second
   interrupteur a existé à côté de lui (`EMBEDDING_PROVIDER=noop`).
 
 `ENVIRONMENT` ne concerne que `data/` : le backend tire `NODE_ENV` de sa cible de build.
@@ -51,7 +51,7 @@ environnements : une coquille arrête le run même en prod.
 > erreurs sont listées avec celles du fichier. Un réglage qui vaudrait partout ne peut
 > plus aller dans ce fichier : il va dans l'environnement ou dans le code. Le
 > sous-bloc `node_hydration` est aplati lui aussi : `include_path` en sort parce qu'il
-> vaut aussi pour Mongo (voir l'amendement d'ADR-022 §2 et §4), et `include_content`,
+> vaut aussi pour Mongo (voir l'amendement d'ADR-011 §2 et §4), et `include_content`,
 > resté seul, devient `include_content_neo4j`.
 
 **4. Ce qui vaut partout est hors du bloc** : `chunking`.
@@ -62,7 +62,7 @@ environnements : une coquille arrête le run même en prod.
 > (`SourceDefinition.node_labels`), et un préfixe qu'aucune source ne déclare reçoit
 > `Document` (critique de `parameters.yml`, P15).
 >
-> **Amendement par ADR-046 (1er octobre 2026)** : les sources ne déclarent plus de
+> **Amendement par ADR-022 (1er octobre 2026)** : les sources ne déclarent plus de
 > labels. Un nœud porte `Document` et le label de son `document_type`, que la table de
 > rôles déduit du préfixe ; il ne change jamais pour un identifiant.
 
@@ -91,7 +91,7 @@ environnements : une coquille arrête le run même en prod.
 
 ## Amendements
 
-**ADR-022.**
+**ADR-011.**
 
 - §1 s'applique tel qu'écrit : hors dev, les métadonnées des balises non configurées sont
   toujours retirées ; le compteur `tag.unconfigured` est émis dans les deux régimes.
@@ -106,10 +106,10 @@ environnements : une coquille arrête le run même en prod.
   de Mongo tient en prod, où `include_path` vaut toujours `false` ; en dev, ces chemins
   servent l'inspection dans les deux bases. Repasser à `false` sans `nuke_all` : Mongo
   les perd au run suivant (`replace_one` remplace le document entier), Neo4j les garde
-  (`SET +=` n'efface aucune propriété). Corrigé par ADR-044 : la version précédente
+  (`SET +=` n'efface aucune propriété). Corrigé par ADR-020 : la version précédente
   prêtait au manifest un saut de réécriture qu'il n'a jamais fait.
 
-**ADR-023.**
+**ADR-012.**
 
 - L'interrupteur s'appelle `dev.embedding_enabled` (`embedding_enabled` depuis l'amendement
   de §3). Il n'a d'effet qu'en `dev` : la prod
@@ -117,13 +117,13 @@ environnements : une coquille arrête le run même en prod.
 - Il est le seul : `EMBEDDING_PROVIDER` et son fournisseur `noop`, qui écrivait par défaut
   des vecteurs nuls, ont disparu. TEI est le seul embedder.
 
-**ADR-042.**
+**ADR-018.**
 
 - §3 : `chunking` vit dans `conf/base/parameters.yml`, à la racine (depuis l'amendement
   de §4 : dans l'environnement, `CHUNKING_*`). Il n'y a plus de bloc
   `embedding` : le modèle vient d'`EMBEDDING_MODEL`, la variable que lisent aussi TEI et
   le backend, et la dimension est mesurée auprès de TEI au démarrage. Il ne reste rien de
-  la partition d'ADR-026.
+  la partition d'ADR-014.
 - La précondition TEI (`GET /info`) compare le modèle servi à `EMBEDDING_MODEL`, non plus
   à `parameters.yml`.
 
@@ -138,7 +138,7 @@ environnements : une coquille arrête le run même en prod.
 
 ## Références
 
-ADR-022 (régimes dev/prod) · ADR-023 (interrupteur d'embedding) · ADR-026 (partition de
-la configuration, remplacé) · ADR-042 (collection au nom fixe) ·
+ADR-011 (régimes dev/prod) · ADR-012 (interrupteur d'embedding) · ADR-014 (partition de
+la configuration, remplacé) · ADR-018 (collection au nom fixe) ·
 `run_parameters.resolve_dev_settings` · `InfraSettings.environment` ·
 `docs/pilotage/WIP/critique-parameters.md` (P19 à P22)

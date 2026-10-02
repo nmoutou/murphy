@@ -23,9 +23,9 @@ Le flux lu par `useChat` se règle **une seule fois** :
 - il passe en erreur quand le socket échoue ou se ferme avant la fin de la réponse.
 
 Fermer le socket (bouton d'arrêt, erreur) arrête aussi le pipeline côté backend, LLM
-compris (ADR-041).
+compris (ADR-017).
 
-## Les erreurs : une modale (ADR-041)
+## Les erreurs : une modale (ADR-017)
 
 Le chemin d'une erreur, du backend jusqu'à l'écran :
 1. Une part `error` porte `{ stage, code }` (`@murphy/contract/errors`), et `useChat`
@@ -46,7 +46,7 @@ Le chemin d'une erreur, du backend jusqu'à l'écran :
 
 ## Le contrat de messages
 
-`AppUIMessage` vient de `@murphy/contract/messages` (`packages/contract/`, ADR-040),
+`AppUIMessage` vient de `@murphy/contract/messages` (`packages/contract/`, ADR-016),
 partagé avec le backend : une modification casse la compilation des deux côtés à la
 fois. Une part qui ne respecte pas le contrat est rejetée à l'arrivée, avec les mêmes
 schémas zod :

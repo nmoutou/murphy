@@ -1,4 +1,4 @@
-# ADR-015 — Association entre beta et publication
+# ADR-006 — Association entre beta et publication
 
 **Statut** : rétro-documenté (décision implicite antérieure au 17 juillet 2026)
 

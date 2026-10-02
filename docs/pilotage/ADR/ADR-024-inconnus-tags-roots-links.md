@@ -1,10 +1,10 @@
-# ADR-048 — Les inconnus du bilan : `tags`, `roots`, `links`
+# ADR-024 — Les inconnus du bilan : `tags`, `roots`, `links`
 
-**Statut** : ✅ Accepté (1er octobre 2026) — amende ADR-047 · **amendé par ADR-049** (catégorie `collisions`, sortie ensuite des inconnus)
+**Statut** : ✅ Accepté (1er octobre 2026) — amende ADR-023 · **amendé par ADR-025** (catégorie `collisions`, sortie ensuite des inconnus)
 
 ## Contexte
 
-Après ADR-047, `run_summaries.unknowns` portait cinq catégories : `tag.unconfigured`,
+Après ADR-023, `run_summaries.unknowns` portait cinq catégories : `tag.unconfigured`,
 `racine`, `typelien`, `sens` et `identifiant`. Trois défauts :
 
 - une balise y était nommée par son nom (`NUM_SEQUENCE`), alors que la donnée vit en

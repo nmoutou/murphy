@@ -35,11 +35,11 @@ class RunPlan:
     include_path: bool
     """Les chemins des fichiers source dans les documents Mongo. ``False`` hors ``dev``."""
     node_hydration: NodeHydration
-    """Partagée entre le dépôt du hook et ceux des workers (ADR-022)."""
+    """Partagée entre le dépôt du hook et ceux des workers (ADR-011)."""
     embedding_enabled: bool
-    """ADR-023. ``True`` hors ``dev``."""
+    """ADR-012. ``True`` hors ``dev``."""
     skip_unconfigured: bool
-    """``True`` retire les métadonnées non configurées (ADR-022). ``True`` hors ``dev``."""
+    """``True`` retire les métadonnées non configurées (ADR-011). ``True`` hors ``dev``."""
     nuke_all: bool
     """``False`` hors ``dev``."""
 
@@ -73,7 +73,7 @@ def plan_run(
 
 
 def _node_hydration(dev: DevParameters, is_dev: bool) -> NodeHydration:
-    """Hors ``dev``, pas de métadonnées sur le nœud (ADR-022)."""
+    """Hors ``dev``, pas de métadonnées sur le nœud (ADR-011)."""
     return NodeHydration(
         metadata=is_dev,
         include_path=dev.include_path,
@@ -109,7 +109,7 @@ def _log_plan(plan: RunPlan) -> None:
     )
     if not plan.embedding_enabled:
         logger.warning(
-            "EMBEDDING COUPÉ (dev, ADR-023) : aucun vecteur ne sera calculé ni écrit "
+            "EMBEDDING COUPÉ (dev, ADR-012) : aucun vecteur ne sera calculé ni écrit "
             "dans Qdrant. Mongo et Neo4j sont peuplés normalement — régime d'itération "
             "sur le modèle de données. La collection %s restera vide pour ce run.",
             plan.collection,

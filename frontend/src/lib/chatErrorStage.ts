@@ -8,7 +8,7 @@ export const CONNECTION_ERROR_MESSAGE =
 /** `connection` = backend injoignable, ou réponse abandonnée */
 export type DisplayedErrorStage = ChatErrorStage | 'connection';
 
-/** L'étape nommée par le backend (ADR-041), sinon `internal` */
+/** L'étape nommée par le backend (ADR-017), sinon `internal` */
 export function readErrorStage(error: Error): DisplayedErrorStage {
   if (error.message === CONNECTION_ERROR_MESSAGE) return 'connection';
   return parseChatError(error.message)?.stage ?? 'internal';

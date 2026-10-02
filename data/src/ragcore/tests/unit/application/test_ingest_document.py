@@ -177,7 +177,7 @@ async def test_a_rewrite_replaces_in_place_without_a_preceding_delete(
 async def test_the_unformatted_relations_are_written_with_the_run_stamps(
     stores, context
 ) -> None:  # noqa: ANN001
-    """ADR-045 : les cibles décrites vont dans leur collection, estampillées du run."""
+    """ADR-021 : les cibles décrites vont dans leur collection, estampillées du run."""
     use_case = _use_case(stores)
     relation = _unformatted("Articles 1103 et 1229 du code civil.")
 

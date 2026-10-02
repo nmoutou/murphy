@@ -199,8 +199,8 @@ def test_les_inconnus_sont_DECLARES_et_pas_jetes() -> None:
     l'instrument saurait en déclarer."""
     result = _run()
 
-    # Trois catégories plates (ADR-048). Les balises connues sans renommage sont non
-    # configurées aussi (ADR-047). `sens="lateral"` n'est pas un type de lien : c'est un
+    # Trois catégories plates (ADR-024). Les balises connues sans renommage sont non
+    # configurées aussi (ADR-023). `sens="lateral"` n'est pas un type de lien : c'est un
     # lien perdu, compté en `relation.unknown`.
     assert result["unknowns"] == {
         "links": ["ZORGLUB"],

@@ -20,7 +20,7 @@ class RoleTable:
     """Tout ce qu'une source déclare de sa structure XML."""
 
     roots: tuple[str, ...]
-    """Les racines XML connues, dans l'ordre de fusion des facettes (ADR-049) : les
+    """Les racines XML connues, dans l'ordre de fusion des facettes (ADR-025) : les
     valeurs multiples d'une métadonnée suivent ce rang. Une autre racine ressort en
     ``unknowns["roots"]``.
     """
@@ -43,7 +43,7 @@ class RoleTable:
 
     title_tags: Sequence[str] = ()
     """Où chaque famille range son titre, par ordre de préférence entre facettes.
-    Une balise de rôle ``TITLE`` n'entre pas en métadonnée (ADR-050).
+    Une balise de rôle ``TITLE`` n'entre pas en métadonnée (ADR-026).
     """
 
     identifier_tag: str = "ID"
@@ -67,7 +67,7 @@ class RoleTable:
     renommage, la balise entre quand même, sous sa clé chemin-complet."""
 
     list_keys: frozenset[str] = frozenset()
-    """Clés renommées multivaluées, toujours en liste (ADR-049). Une autre clé renommée
+    """Clés renommées multivaluées, toujours en liste (ADR-025). Une autre clé renommée
     qui reçoit deux valeurs distinctes fait refuser le document."""
 
     version_tags: frozenset[str] = frozenset()

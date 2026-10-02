@@ -1,5 +1,5 @@
 # Commodités de développement, appliquées seulement si ENVIRONMENT=dev ; sinon le fichier
-# est remplacé par des valeurs sûres, avec un avertissement (ADR-043). Les clés restent
+# est remplacé par des valeurs sûres, avec un avertissement (ADR-019). Les clés restent
 # obligatoires et validées partout : une coquille arrête le run même en prod.
 #
 # La découpe vit dans `.env.dev`, à côté d'EMBEDDING_MODEL dont elle dépend.
@@ -7,12 +7,12 @@
 # Efface toutes les données de toutes les bases, sauf la base méta, en tête de run.
 nuke_all: true
 
-# `false` : aucun vecteur calculé ni écrit (ADR-023) ; Mongo et Neo4j normaux. TEI
+# `false` : aucun vecteur calculé ni écrit (ADR-012) ; Mongo et Neo4j normaux. TEI
 # doit quand même tourner : le modèle servi est vérifié au démarrage.
 embedding_enabled: false
 
 # `true` retire les métadonnées et les arêtes non configurées ; les signaux `tags` et
-# `links` sont émis dans les deux cas (ADR-022, ADR-048).
+# `links` sont émis dans les deux cas (ADR-011, ADR-024).
 skip_unconfigured: true
 
 # Les chemins des fichiers XML source (`source_files`), dans Mongo et sur le nœud Neo4j.
@@ -21,5 +21,5 @@ skip_unconfigured: true
 include_path: true
 
 # Le texte du document sur son nœud Neo4j (`_text_content`), en plus des métadonnées,
-# toujours présentes en dev (ADR-022). Même remarque sans `nuke_all`.
+# toujours présentes en dev (ADR-011). Même remarque sans `nuke_all`.
 include_content_neo4j: true

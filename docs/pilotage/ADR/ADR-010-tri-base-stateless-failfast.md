@@ -1,4 +1,4 @@
-# ADR-020 — Architecture tri-base + serving stateless/fail-fast
+# ADR-010 — Architecture tri-base + serving stateless/fail-fast
 
 **Statut** : rétro-documenté (décision implicite antérieure au 17 juillet 2026)
 
@@ -30,10 +30,10 @@ claire), **aucune analyse du contenu** des requêtes.
 
 ## Conséquences
 
-- L'identité canonique inter-BDD (ADR-018) devient l'invariant bloquant
+- L'identité canonique inter-BDD (ADR-008) devient l'invariant bloquant
   du socle.
 - La confidentialité est structurelle, pas une option de configuration.
 
 ## Références
 
-ADR-018
+ADR-008

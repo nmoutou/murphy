@@ -20,7 +20,7 @@ un document dont l'ingestion a échoué est réécrit au run suivant.
 
 Le manifest (`manifest`, dans la base de données alors nommée `LEGIFRANCE`) qui classait
 les documents en INSERT/UPDATE a été retiré : le classement ne changeait aucune écriture
-(ADR-044).
+(ADR-020).
 
 ## La saga (`application/saga.py`, `application/ingest_document.py`)
 
@@ -29,7 +29,7 @@ La phase 1 écrit chaque document par une saga de quatre steps, **dans cet ordre
 | # | Step | Forward | Compensation |
 |---|---|---|---|
 | 1 | `mongo_upsert` | `replace_one(upsert=True)` — remplacement atomique en place | `delete` (le rollback juste d'une première écriture) |
-| 2 | `mongo_unformatted_upsert` | upsert-union des relations non formatées du document (ADR-045) | `delete_first_seen` : seules les lignes du document nées dans ce run |
+| 2 | `mongo_unformatted_upsert` | upsert-union des relations non formatées du document (ADR-021) | `delete_first_seen` : seules les lignes du document nées dans ce run |
 | 3 | `qdrant_upsert` | `delete_by_document` **puis** `upsert` des points | `delete_by_document` |
 | 4 | `neo4j_merge_node` | `MERGE` du nœud (jamais ses arêtes) | aucune : step terminal, jamais compensé ; un `MERGE` raté est annulé par sa transaction |
 
@@ -98,6 +98,6 @@ saga ci-dessus n'existent pas.
 ## Ce que le serving lit
 
 Il n'y a pas d'étape de publication : le backend interroge la collection
-`QDRANT_COLLECTION`, que le run réécrit en place (ADR-042). Un run `degraded` ou `failed`
+`QDRANT_COLLECTION`, que le run réécrit en place (ADR-018). Un run `degraded` ou `failed`
 laisse donc un corpus incomplet **dans la collection servie** : lire le bilan (voir
 [telemetrie.md](telemetrie.md#le-statut-dun-run)) et relancer le run.

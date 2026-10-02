@@ -1,4 +1,4 @@
-# ADR-014 — Exhaustivité DILA = critère de publication
+# ADR-005 — Exhaustivité DILA = critère de publication
 
 **Statut** : rétro-documenté (décision implicite antérieure au 17 juillet 2026)
 
@@ -11,7 +11,7 @@ les premières versions bloquerait tout.
 
 L'exhaustivité DILA est un critère de **publication** — pas de v0 ni de
 beta. Ingestion **progressive**, priorisée par valeur pour les experts
-(cf. ADR-003).
+(cf. ADR-002).
 
 ## Alternatives rejetées
 
@@ -26,4 +26,4 @@ beta. Ingestion **progressive**, priorisée par valeur pour les experts
 
 ## Références
 
-ADR-003 · ADR-012
+ADR-002 · ADR-004

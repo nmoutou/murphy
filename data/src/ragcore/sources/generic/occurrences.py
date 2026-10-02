@@ -1,4 +1,4 @@
-"""Les valeurs d'une clé de métadonnée, toutes gardées, puis résolues (ADR-049).
+"""Les valeurs d'une clé de métadonnée, toutes gardées, puis résolues (ADR-025).
 
 La collecte ajoute chaque occurrence à sa clé, dans l'ordre de lecture ; ce module
 tranche, une fois :

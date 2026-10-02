@@ -1,7 +1,7 @@
-# ADR-046 — Typage des documents : `document_type` fait foi, Neo4j le reflète
+# ADR-022 — Typage des documents : `document_type` fait foi, Neo4j le reflète
 
-**Statut** : ✅ Accepté (1er octobre 2026) — amende ADR-039 §2 et l'amendement du §3
-d'ADR-043
+**Statut** : ✅ Accepté (1er octobre 2026) — amende ADR-015 §2 et l'amendement du §3
+d'ADR-019
 
 ## Contexte
 
@@ -57,7 +57,7 @@ porte sur `(:Document).identifier`, posée avec les index Mongo (`ensure_indexes
 Le label de type ne change jamais pour un identifiant, puisqu'il vient du préfixe : la
 table `NodeLabels` et `SourceDefinition.node_labels` disparaissent.
 
-**5. Le contrat du payload (ADR-039 §2).** `type_document` (facultatif) est remplacé
+**5. Le contrat du payload (ADR-015 §2).** `type_document` (facultatif) est remplacé
 par `document_type` (obligatoire, l'une des quatre valeurs) et `nature` (facultatif).
 Le backend refuse un point sans `document_type` connu (`CONTRACT_VIOLATION`). Les parts
 `data-document` et `data-parentDocument` portent `documentType` et `nature`

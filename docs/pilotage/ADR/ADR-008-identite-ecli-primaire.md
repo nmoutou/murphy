@@ -1,4 +1,4 @@
-# ADR-018 — Identité : ECLI primaire
+# ADR-008 — Identité : ECLI primaire
 
 **Statut** : rétro-documenté (décision implicite antérieure au 17 juillet 2026)
 
@@ -26,10 +26,10 @@ dans Qdrant, Neo4j et MongoDB.
 
 ## Conséquences
 
-- Point ouvert (ADR-004) : `doc_id` stable au niveau article pour LEGI.
+- Point ouvert (ADR-003) : `doc_id` stable au niveau article pour LEGI.
 - Sous-document : schéma d'identifiant sous l'ECLI non résolu (index
   simple suffisant à ce stade).
 
 ## Références
 
-ADR-004 · ADR-020
+ADR-003 · ADR-010

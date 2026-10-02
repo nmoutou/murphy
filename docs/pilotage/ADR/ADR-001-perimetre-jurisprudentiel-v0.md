@@ -1,4 +1,4 @@
-# ADR-002 — Périmètre jurisprudentiel de la v0
+# ADR-001 — Périmètre jurisprudentiel de la v0
 
 **Statut** : acté — décision **constatée** (17 juillet 2026)
 
@@ -29,4 +29,4 @@ pour l'alpha.
 
 ## Références
 
-ADR-003 (séquençage) · ADR-004 (unité document)
+ADR-002 (séquençage) · ADR-003 (unité document)

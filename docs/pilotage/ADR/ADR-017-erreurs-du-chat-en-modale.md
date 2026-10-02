@@ -1,4 +1,4 @@
-# ADR-041 — Erreurs du chat : une modale, l'étape en cause, un arrêt propagé au backend
+# ADR-017 — Erreurs du chat : une modale, l'étape en cause, un arrêt propagé au backend
 
 **Statut** : ✅ Accepté (26 septembre 2026)
 
@@ -90,5 +90,5 @@ d'arrêt du `ChatBox` en bénéficie aussi.
 
 ## Références
 
-ADR-040 (dépôt unique, contrat partagé) · `backend/src/types/rag.ts` (`RagError`) ·
+ADR-016 (dépôt unique, contrat partagé) · `backend/src/types/rag.ts` (`RagError`) ·
 `packages/contract/src/messages.ts`

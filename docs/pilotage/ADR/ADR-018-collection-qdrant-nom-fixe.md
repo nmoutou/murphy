@@ -1,6 +1,6 @@
-# ADR-042 — Une collection Qdrant au nom fixe : fin de l'empreinte, du pointeur et du tracking
+# ADR-018 — Une collection Qdrant au nom fixe : fin de l'empreinte, du pointeur et du tracking
 
-**Statut** : ✅ Accepté (30 septembre 2026) — remplace ADR-026, amende ADR-039 §3 · **§3 amendé par [ADR-043](ADR-043-configuration-ingestion-environment.md)** (fichier unique, modèle lu d'`EMBEDDING_MODEL`)
+**Statut** : ✅ Accepté (30 septembre 2026) — remplace ADR-014, amende ADR-015 §3 · **§3 amendé par [ADR-019](ADR-019-configuration-ingestion-environment.md)** (fichier unique, modèle lu d'`EMBEDDING_MODEL`)
 
 ## Contexte
 
@@ -11,11 +11,11 @@ stratégies (A/B).
 
 Ce mécanisme en portait trois autres :
 
-- une **partition de la configuration** en deux fichiers (ADR-026), pour que seul le
+- une **partition de la configuration** en deux fichiers (ADR-014), pour que seul le
   « hashé » entre dans l'empreinte ;
 - un **pointeur** Mongo (`MURPHY_META.meta_published_collection`), publié par les seuls
   runs `ok` et lu par le backend au boot, puisque le serving ne pouvait pas deviner un
-  nom de collection (ADR-039 §3) ;
+  nom de collection (ADR-015 §3) ;
 - un **tracker d'expériences** (MLflow), dont le run-id était l'empreinte, pour relire
   les paramètres qu'un hash ne dit pas.
 
@@ -71,5 +71,5 @@ supprimés.
 
 ## Références
 
-ADR-026 (partition de la configuration, remplacé) · ADR-039 (contrat ingestion ↔ serving,
-§3 amendé) · ADR-043 (amende §3)
+ADR-014 (partition de la configuration, remplacé) · ADR-015 (contrat ingestion ↔ serving,
+§3 amendé) · ADR-019 (amende §3)

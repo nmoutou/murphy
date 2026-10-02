@@ -137,7 +137,7 @@ def test_sans_skip_la_metadonnee_sans_renommage_est_INGEREE() -> None:
     assert parsed.metadata[_UNRENAMED_KEY] == "Justice"
 
 
-# ── Collisions de métadonnées (ADR-049) ───────────────────────────────────────
+# ── Collisions de métadonnées (ADR-025) ───────────────────────────────────────
 
 
 def _article(identifier: str, metadata: str) -> RawDocument:

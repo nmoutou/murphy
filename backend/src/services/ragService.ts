@@ -48,7 +48,7 @@ export const fetchPassages = async (chunks: readonly RetrievedChunk[]): Promise<
   return { passages: assemblePassages(chunks, documents), docFetchMs: Date.now() - start };
 };
 
-/** Le LLM lit le passage seul, pas son document entier (ADR-039) */
+/** Le LLM lit le passage seul, pas son document entier (ADR-015) */
 export const buildContextString = (passages: readonly Passage[]): string => {
   if (passages.length === 0) {
     return NO_PASSAGE_CONTEXT;

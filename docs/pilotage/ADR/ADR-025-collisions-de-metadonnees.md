@@ -1,8 +1,8 @@
-# ADR-049 — Collisions de métadonnées : une liste, un ordre déclaré, un refus
+# ADR-025 — Collisions de métadonnées : une liste, un ordre déclaré, un refus
 
-**Statut** : ✅ Accepté (1er octobre 2026) — amende ADR-047 et ADR-048, corrige ADR-022 §3 ·
+**Statut** : ✅ Accepté (1er octobre 2026) — amende ADR-023 et ADR-024, corrige ADR-011 §3 ·
 **amendé le 1er octobre 2026** : la collection `MURPHY_META.collisions` est retirée ; les
-collisions sortent des inconnus du bilan · **amendé par ADR-051** (`url` n'est plus
+collisions sortent des inconnus du bilan · **amendé par ADR-027** (`url` n'est plus
 ingérée, ni déclarée en `list`)
 
 ## Contexte
@@ -17,7 +17,7 @@ Une clé de métadonnée peut recevoir plusieurs valeurs dans un même document 
 `collect_metadata` et la cascade des balises non configurées gardaient la première valeur
 et jetaient les autres en silence. L'ordre des facettes venait du tri des chemins de
 fichiers (`TEXTELR` avant `TEXTE_VERSION`) : il était accidentel. La clé chemin-complet
-d'ADR-022 §3 était dite injective. Elle ne l'est pas : deux balises sœurs homonymes ont
+d'ADR-011 §3 était dite injective. Elle ne l'est pas : deux balises sœurs homonymes ont
 le même chemin.
 
 Mesuré sur le corpus de dev (1 121 documents) :
@@ -77,7 +77,7 @@ jurisprudence.
 LEGI renomme ses 7 balises répétées entre facettes (`derniere_modification`,
 `num_sequence`, `num_parution`, `page_debut_publication`, `page_fin_publication`,
 `origine_publication`, `versions_a_venir`) et déclare `url` et `versions_a_venir` en
-`list` ; JUDI déclare `numero_affaire`. *Amendé par ADR-051 : `url` n'est plus
+`list` ; JUDI déclare `numero_affaire`. *Amendé par ADR-027 : `url` n'est plus
 ingérée.*
 
 ## Alternatives rejetées
@@ -97,7 +97,7 @@ ingérée.*
   (sous-classe de `ValidationError`) celles d'un document refusé.
 - Une métadonnée peut être une liste de chaînes dans Mongo, Qdrant et Neo4j. Le backend
   ne lit aucune métadonnée.
-- `url` d'un texte LEGI vaut `[version, struct]`. *Caduc depuis ADR-051.*
+- `url` d'un texte LEGI vaut `[version, struct]`. *Caduc depuis ADR-027.*
 - Les 7 clés chemin-complet LEGI quittent `unknowns.tags` et entrent en prod.
 - `RunStats` et `RunSummary` portent `collisions` à côté de `unknowns` ; la télémétrie
   les reçoit par `record_collision`.

@@ -85,7 +85,7 @@ const handleChatMessage = async (ws: WebSocket, raw: RawData, remoteAddress: str
     return;
   }
 
-  // Le départ du client arrête le pipeline, LLM compris (ADR-041)
+  // Le départ du client arrête le pipeline, LLM compris (ADR-017)
   const abortController = new AbortController();
   ws.on('close', () => abortController.abort());
   try {

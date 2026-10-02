@@ -1,23 +1,23 @@
-# ADR-051 — L'URL n'est pas ingérée
+# ADR-027 — L'URL n'est pas ingérée
 
-**Statut** : ✅ Accepté (2 octobre 2026) — amende ADR-049
+**Statut** : ✅ Accepté (2 octobre 2026) — amende ADR-025
 
 ## Contexte
 
 Chaque fichier DILA porte dans `<URL>` son propre chemin dans l'archive
 (`article/LEGI/ARTI/00/00/45/32/82/LEGIARTI000045328204.xml`). Renommée en `url`,
 c'était une métadonnée de LEGI et de la jurisprudence, et une clé `list` de LEGI
-(ADR-049) : les deux facettes d'un texte donnaient chacune la leur.
+(ADR-025) : les deux facettes d'un texte donnaient chacune la leur.
 
 Cette valeur ne dit rien du document : elle se déduit de l'identifiant, n'est pas une
 adresse consultable, et le chemin du fichier source a déjà son champ (`source_files`,
-ADR-022). Elle encombrait pourtant Mongo, le payload Qdrant et le nœud Neo4j, et
+ADR-011). Elle encombrait pourtant Mongo, le payload Qdrant et le nœud Neo4j, et
 remplissait les collisions du bilan (98 textes LEGI sur le corpus de dev).
 
 ## Décision
 
 **Un rôle `IGNORED` : la balise est connue, et n'est pas ingérée.** `URL` le porte, chez
-LEGI et dans le socle commun de la jurisprudence. Comme une balise `TITLE` (ADR-050),
+LEGI et dans le socle commun de la jurisprudence. Comme une balise `TITLE` (ADR-026),
 elle n'est jamais routée par la cascade des balises non configurées, et n'est pas
 collectable : elle n'entre ni dans `metadata`, ni dans le signal `tags`, ni dans les
 collisions, quel que soit `skip_unconfigured`.

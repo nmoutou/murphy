@@ -1,4 +1,4 @@
-# ADR-040 — Un seul dépôt : fin des sous-modules, contrat du flux dans un paquet partagé
+# ADR-016 — Un seul dépôt : fin des sous-modules, contrat du flux dans un paquet partagé
 
 **Statut** : ✅ Accepté (25 septembre 2026)
 
@@ -9,7 +9,7 @@ et trois sous-modules git, `murphy-backend`, `murphy-frontend` et `murphy-data`.
 
 Trois mois plus tard, ce découpage coûte plus qu'il ne rapporte :
 
-- **Les changements traversent les dépôts.** L'ADR-039 a touché `data/`, `backend/`,
+- **Les changements traversent les dépôts.** L'ADR-015 a touché `data/`, `backend/`,
   la doc du parent, et devait encore toucher `frontend/`. Chaque dépôt demande
   son commit, puis le parent un commit de pointeur. Rien ne garantit qu'ils partent
   ensemble.
@@ -76,7 +76,7 @@ des deux images).
 - La migration a produit quatre commits : le retrait des sous-modules, puis une fusion
   par dossier. Les dépôts `left-eyebr0w/murphy-{backend,frontend,data}` sont à archiver,
   avec un renvoi vers le dépôt unique.
-- Le **contrat Python ↔ TypeScript** (payload Qdrant, `documents`, pointeur ; ADR-039)
+- Le **contrat Python ↔ TypeScript** (payload Qdrant, `documents`, pointeur ; ADR-015)
   ne peut pas passer par un paquet npm. Il reste répliqué des deux côtés.
   S'il grossit, la piste est de l'écrire sous forme de schéma (un JSON Schema tiré des
   modèles pydantic, dont les types TypeScript sont générés).
@@ -89,4 +89,4 @@ des deux images).
 
 ## Références
 
-ADR-039 (contrat ingestion ↔ serving) · `packages/contract/src/messages.ts`
+ADR-015 (contrat ingestion ↔ serving) · `packages/contract/src/messages.ts`

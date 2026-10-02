@@ -15,7 +15,7 @@ __all__ = ["GenericRelationExtractor"]
 
 
 class GenericRelationExtractor:
-    """``skip_unconfigured`` retire les arêtes de type non configuré (ADR-048) ; le
+    """``skip_unconfigured`` retire les arêtes de type non configuré (ADR-024) ; le
     signal sort quand même.
     """
 

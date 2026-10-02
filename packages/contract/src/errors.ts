@@ -1,5 +1,5 @@
 /**
- * Contrat d'erreur entre backend et frontend (ADR-041) : un échec porte l'étape fautive
+ * Contrat d'erreur entre backend et frontend (ADR-017) : un échec porte l'étape fautive
  * et un code, jamais le message brut. Il voyage sérialisé dans l'`errorText` de la part
  * `error` du flux.
  */

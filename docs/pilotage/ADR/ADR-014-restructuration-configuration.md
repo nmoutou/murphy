@@ -1,6 +1,6 @@
-# ADR-026 — Restructuration de la configuration en partition workflow / ingestion
+# ADR-014 — Restructuration de la configuration en partition workflow / ingestion
 
-**Statut** : ❌ Remplacé par [ADR-042](ADR-042-collection-qdrant-nom-fixe.md) (30 septembre 2026) — accepté le 19 juillet 2026
+**Statut** : ❌ Remplacé par [ADR-018](ADR-018-collection-qdrant-nom-fixe.md) (30 septembre 2026) — accepté le 19 juillet 2026
 **Version cible** : v0
 
 ## Contexte
@@ -13,7 +13,7 @@ de paramètres, distinguées aujourd'hui **par commentaires** seulement :
    dans l'empreinte de collection Qdrant. Le changer crée une nouvelle
    collection.
 2. **Infra** — provider d'embedding (`.env`), `batch_size`, `timeout`,
-   `embedding.enabled` (ADR-023) : n'affecte pas les vecteurs, hors du
+   `embedding.enabled` (ADR-012) : n'affecte pas les vecteurs, hors du
    hash.
 
 Le bloc hashé (`W`) détermine le nom de la collection Qdrant. Ce lien
@@ -86,7 +86,7 @@ déplacement de fichiers à forme inchangée.
 
 ## Références
 
-ADR-022 (régimes dev/prod) · ADR-023 (interrupteur d'embedding) ·
-ADR-039 (contrat ingestion ↔ serving) · `WorkflowConfig`
+ADR-011 (régimes dev/prod) · ADR-012 (interrupteur d'embedding) ·
+ADR-015 (contrat ingestion ↔ serving) · `WorkflowConfig`
 (`data/src/ragcore/core/config/workflow.py`) · cliquet
 `golden/test_fingerprint.py`

@@ -1,4 +1,4 @@
-"""Les relations non formatées (ADR-045), accumulées de run en run comme les pendantes.
+"""Les relations non formatées (ADR-021), accumulées de run en run comme les pendantes.
 
 La compensation filtre sur ``first_seen_run``, jamais sur le seul ``source_id`` : une
 ligne née d'un run précédent n'appartient pas à la saga qui échoue.

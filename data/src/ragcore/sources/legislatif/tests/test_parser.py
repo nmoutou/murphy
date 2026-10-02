@@ -98,7 +98,7 @@ def test_les_deux_facettes_du_texte_donnent_UN_document_avec_son_titre(
 
 
 def test_URL_nest_ni_une_metadonnee_ni_un_signal(fixtures_dir: Path) -> None:
-    """ADR-051 : ``URL`` a le rôle ``IGNORED``. Chaque facette d'un texte porte la
+    """ADR-027 : ``URL`` a le rôle ``IGNORED``. Chaque facette d'un texte porte la
     sienne : sans ce rôle, elle reviendrait en métadonnée et en collision."""
     result = GenericParser(LEGI_ROLE_TABLE, _SN.LEGI).parse(
         _raw(
@@ -211,7 +211,7 @@ def test_une_balise_non_configuree_est_ROUTEE_et_SIGNALEE(fixtures_dir: Path) ->
 
 
 def test_une_balise_connue_SANS_RENOMMAGE_est_non_configuree() -> None:
-    """ADR-047 : ``MINISTERE``, rôle ``META`` sans renommage, entre sous sa clé
+    """ADR-023 : ``MINISTERE``, rôle ``META`` sans renommage, entre sous sa clé
     chemin-complet et est signalée. ``ORIGINE``, renommée, ne l'est pas."""
     tree = to_tree(
         ET.fromstring(
@@ -275,7 +275,7 @@ def test_une_valeur_au_format_DILA_devient_un_LIEN_pas_une_metadonnee(
 
 def test_une_balise_non_configuree_VIDE_ne_laisse_aucune_trace() -> None:
     """Sans texte ni attribut, ni métadonnée ni signal : le signal naît des valeurs
-    (ADR-048)."""
+    (ADR-024)."""
     tree = to_tree(
         ET.fromstring(
             "<ARTICLE>"

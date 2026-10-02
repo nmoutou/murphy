@@ -89,7 +89,7 @@ Déroulé détaillé nœud par nœud : [reference/pipeline.md](reference/pipelin
    Voir [reference/telemetrie.md](reference/telemetrie.md).
 
 3. **Une collection Qdrant, un nom fixe.** `QDRANT_COLLECTION` (`.env.dev`), lue aussi par
-   le backend (ADR-042). Un run réécrit la collection en place : après un changement de
+   le backend (ADR-018). Un run réécrit la collection en place : après un changement de
    `chunking` ou de modèle d'embedding, tout le corpus se réingère.
    Voir [reference/configuration.md](reference/configuration.md).
 
@@ -110,7 +110,7 @@ Déroulé détaillé nœud par nœud : [reference/pipeline.md](reference/pipelin
 | Contrat | Écrit par l'ingestion | Lu par le backend |
 |---|---|---|
 | Contenu | Mongo `MURPHY_DATA.documents` | documents parents par `identifier`, passage = `content[char_start:char_end]` |
-| Vecteurs | Qdrant, collection `QDRANT_COLLECTION` (nom fixe, ADR-042) | la même variable ; refus de démarrer si la collection n'existe pas |
+| Vecteurs | Qdrant, collection `QDRANT_COLLECTION` (nom fixe, ADR-018) | la même variable ; refus de démarrer si la collection n'existe pas |
 | Graphe | Neo4j (nœuds + arêtes typées par verbe) | pas encore câblé côté serving |
 
 Le modèle d'embedding et sa dimension (`all-mpnet-base-v2`, 768, Cosine) doivent être les

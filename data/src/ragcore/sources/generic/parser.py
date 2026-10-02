@@ -49,7 +49,7 @@ class GenericParser:
 
     def parse(self, raw: RawDocument) -> ParseResult:
         """Lève ``ValidationError`` si le document est lisible mais irrecevable (dont
-        ``CollisionError``, ADR-049), ``ParseError`` s'il est illisible : un refus métier
+        ``CollisionError``, ADR-025), ``ParseError`` s'il est illisible : un refus métier
         et une panne de lecture ne sont pas comptés sous la même raison.
 
         Pur : les signaux non configurés et les collisions sont rendus, pas comptés.
@@ -176,7 +176,7 @@ class GenericParser:
 
 
 def _ordered(sourced: list[SourcedFacet], table: RoleTable) -> list[SourcedFacet]:
-    """Dans l'ordre de ``table.roots``, qui fixe celui des valeurs d'une clé (ADR-049).
+    """Dans l'ordre de ``table.roots``, qui fixe celui des valeurs d'une clé (ADR-025).
 
     Sans ordre possible (racine non déclarée ou partagée), le document est refusé
     plutôt que trié au hasard.

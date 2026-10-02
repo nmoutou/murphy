@@ -39,7 +39,7 @@ const readDocumentType = (payload: Payload): DocumentType | undefined => {
 };
 
 /**
- * Vérifie le payload d'un point contre le contrat de service (ADR-039)
+ * Vérifie le payload d'un point contre le contrat de service (ADR-015)
  * @throws RagError `CONTRACT_VIOLATION` nommant le point si un champ manque
  */
 export const toRetrievedChunk = ({ id, score, payload }: ScoredPoint): RetrievedChunk => {

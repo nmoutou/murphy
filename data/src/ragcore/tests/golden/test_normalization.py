@@ -39,7 +39,7 @@ EXCLUSION_REASONS = {
     # Exclusion de lecture, distincte du `parse_error`, échec d'interprétation
     "unreadable",
 }
-# Trois catégories plates (ADR-048). Un lien qu'on ne sait pas écrire n'est pas un type :
+# Trois catégories plates (ADR-024). Un lien qu'on ne sait pas écrire n'est pas un type :
 # il est compté par `relation.unknown`.
 UNKNOWN_CATEGORIES = {"tags", "roots", "links"}
 
