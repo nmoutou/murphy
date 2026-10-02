@@ -1,6 +1,8 @@
 # ADR-015 — Contrat ingestion ↔ serving : le texte d'un passage vit dans Mongo, désigné par ses offsets
 
 **Statut** : ✅ Accepté (25 septembre 2026), amendé le 30 septembre 2026 · **§2 amendé par [ADR-022](ADR-022-typage-des-documents.md)** (typage des documents)
+· **§1 à §5 amendés par [ADR-028](ADR-028-opensearch-remplace-qdrant.md)** (OpenSearch
+remplace Qdrant)
 
 > **Amendement du 30 septembre 2026.** `owner_id` et la version du contrat sont retirés :
 > le projet est mono-utilisateur et en développement, aucun des deux n'avait d'usage. Un
@@ -14,6 +16,15 @@
 > **Amendement par ADR-022 (1er octobre 2026).** `type_document` est remplacé par
 > `document_type` (obligatoire) et `nature` (facultatif). Le §2 est réécrit en
 > conséquence ; le tableau du contexte garde l'état constaté le 25 septembre.
+>
+> **Amendement par ADR-028 (2 octobre 2026).** OpenSearch remplace Qdrant. Le payload
+> d'un point devient un passage imbriqué dans le document OpenSearch de son parent ; le
+> texte reste dans Mongo seul, indexé mais non stocké dans OpenSearch. Les §1 à §5
+> sont réécrits en conséquence ; le contexte et les alternatives gardent l'état du 25
+> septembre. Le LLM est retiré à l'étape 2 de la migration : le §4 ne vaut que
+> jusque-là, et l'ADR de l'API de recherche remplacera le §5. Sans LLM, l'argument qui
+> écartait une route servant le texte à la demande (alternatives) tombe : cette ADR
+> la rouvrira.
 
 ## Contexte
 
@@ -42,9 +53,9 @@ Deux faits rendent les offsets exploitables :
 
 ### 1. Le texte d'un passage vit dans Mongo, désigné par ses offsets
 
-Le payload Qdrant porte `char_start` et `char_end`. Le texte d'un passage est
-`documents.content[char_start:char_end]`, lu dans le document parent par son
-`identifier`, clé déjà indexée.
+Chaque passage du document OpenSearch porte `char_start` et `char_end`. Le texte d'un
+passage est `documents.content[char_start:char_end]`, lu dans le document parent par
+son `identifier`, clé déjà indexée.
 
 Les offsets sont comptés en **points de code Unicode** (le `str` de Python). Le backend
 doit découper dans la même unité : `String.prototype.slice` compte en unités UTF-16 et
@@ -53,37 +64,40 @@ ou un découpage par points de code côté Node, satisfait le contrat.
 
 ### 2. Le contrat
 
-**Payload Qdrant** : ce que le serving lit, et rien de plus.
+**Document OpenSearch** : ce que le serving lit, et rien de plus. Le mapping complet,
+champs de recherche compris, est celui d'ADR-028 §2.
 
 | Champ | Type | Rôle |
 |---|---|---|
-| `chunk_id` | string | Identité du passage, envoyée au client |
-| `identifier` | string | Clé du document parent dans Mongo |
-| `char_start`, `char_end` | int | Bornes du passage dans `content`, en points de code |
-| `document_type` | string : `article`, `section`, `texte` ou `decision` | Forme du document, affichée comme type de la source |
-| `nature` | string ou `null` | Nature juridique (`LOI`, `ARRET`, `QPC`…), affichée après le type |
+| `identifier` | keyword (`_id`) | Clé du document dans Mongo |
+| `document_type` | keyword : `article`, `section`, `texte` ou `decision` | Forme du document, affichée comme type de la source |
+| `nature` | keyword ou absent | Nature juridique (`LOI`, `ARRET`, `QPC`…), affichée après le type |
+| `passages[].chunk_id` | keyword | Identité du passage, envoyée au client |
+| `passages[].char_start`, `passages[].char_end` | integer | Bornes du passage dans `content`, en points de code |
 
-Les autres métadonnées restent à plat dans le payload, mais le serving ne s'y appuie pas.
+Un document peut n'avoir aucun passage : une section, qui n'a pas de texte, est
+indexée pour être trouvée par son titre. Les métadonnées sont des champs cherchés
+(ADR-028 §3), mais le serving ne les lit pas.
 
 **Mongo `documents`** : `identifier`, `title`, `content`, déjà écrits aujourd'hui.
 
-**Collection Qdrant** : une seule, nommée par `QDRANT_COLLECTION`, la variable que les
-deux côtés lisent dans `.env.dev` (ADR-018).
+**Index OpenSearch** : un seul, nommé par `OPENSEARCH_INDEX`, la variable que les deux
+côtés lisent dans `.env.dev` (ADR-018).
 
-### 3. Le backend ne sert qu'une collection qui existe
+### 3. Le backend ne sert qu'un index qui existe
 
-Le backend **refuse de démarrer** si la collection `QDRANT_COLLECTION` n'existe pas dans
-Qdrant (`infra/qdrant.ts:assertCollectionExists`).
+Le backend **refuse de démarrer** si l'index `OPENSEARCH_INDEX` n'existe pas dans
+OpenSearch.
 
 **Un changement de contrat impose une réingestion complète.** Rien ne le vérifie au
-boot : une collection dans un ancien format se révèle à la première requête, par une
+boot : un index dans un ancien format se révèle à la première requête, par une
 violation de contrat (§5).
 
 ### 4. Le serving : ce que chaque étape lit
 
-- **Contexte LLM** : le texte **du passage seul**. Donner le document parent, ou une
-  fenêtre élargie, est une stratégie de génération à évaluer (ADR-007), pas une
-  réparation de contrat.
+- **Contexte LLM**, jusqu'au retrait du LLM (ADR-028 §10) : le texte **des passages
+  retenus** (ADR-028 §7). Un document trouvé sans passage correspondant donne tous
+  ses passages.
 - **Ordre** : les documents sont lus dans Mongo **avant** d'envoyer les sources, parce
   que le titre et le texte vivent dans le document. Les sources précèdent toujours le
   LLM ; elles attendent en plus une lecture indexée de quelques documents.
@@ -96,7 +110,7 @@ retrouvé. Le flux porte donc **deux types de parts**, chacun envoyé une fois :
 | Part | Type (`types/messages.ts`) | Envoyée | Contenu |
 |---|---|---|---|
 | `data-parentDocument` | `ParentDocument` | une fois par document distinct | `identifier`, `title`, `type?`, `content` (texte entier) |
-| `data-document` | `DocumentChunk` | une fois par résultat Qdrant | `chunkId`, `identifier`, `highlightStart`, `highlightEnd`, `score`, `title?`, `type?` |
+| `data-document` | `DocumentChunk` | une fois par passage retenu (ADR-028 §7) | `chunkId`, `identifier`, `highlightStart`, `highlightEnd`, `score`, `title?`, `type?` |
 
 - **Un passage renvoie à son document par `identifier`.** Deux passages d'un même article
   donnent deux `data-document` et **un seul** `data-parentDocument` : le texte n'est
@@ -104,6 +118,9 @@ retrouvé. Le flux porte donc **deux types de parts**, chacun envoyé une fois :
 - **Le document précède ses passages.** En parcourant les résultats dans l'ordre du
   classement, le backend envoie le `data-parentDocument` d'un document avant son premier
   passage. Le client n'a jamais à attendre un document qu'un passage désigne déjà.
+  Un document sans passage (une section) n'a que son `data-parentDocument`.
+- **`score` est le score RRF du document** : ses passages, ordonnés entre eux par la
+  fusion d'ADR-028 §7, le partagent.
 - **`highlightStart`/`highlightEnd` sont en unités UTF-16**, celles des chaînes
   JavaScript : `content.slice(highlightStart, highlightEnd)` rend le passage. Le backend
   convertit une fois les offsets du payload, comptés en points de code (§1) ; le client
@@ -112,7 +129,7 @@ retrouvé. Le flux porte donc **deux types de parts**, chacun envoyé une fois :
   nom `data-document` et ces deux champs gardent le client actuel intact. Ils quittent
   `DocumentChunk` quand le frontend lit `ParentDocument`, et cette migration fait partie
   du chantier d'affichage, pas d'un après indéfini.
-- **Violation du contrat** : un point sans document parent, ou dont les offsets sortent
+- **Violation du contrat** : un passage sans document parent, ou dont les offsets sortent
   de `content`, lève une `RagError` (étape `retrieval`) qui cite le `chunk_id`. Pas
   d'écart silencieux (ADR-010) : un passage faux dans le contexte du LLM est pire qu'une
   erreur affichée.

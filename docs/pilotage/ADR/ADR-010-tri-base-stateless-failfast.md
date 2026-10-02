@@ -1,6 +1,14 @@
 # ADR-010 — Architecture tri-base + serving stateless/fail-fast
 
-**Statut** : rétro-documenté (décision implicite antérieure au 17 juillet 2026)
+**Statut** : rétro-documenté (décision implicite antérieure au 17 juillet 2026) ·
+**amendé par [ADR-028](ADR-028-opensearch-remplace-qdrant.md)** (OpenSearch remplace
+Qdrant ; le LLM est retiré)
+
+> **Amendement par ADR-028 (2 octobre 2026).** Qdrant ne faisait qu'une recherche
+> vectorielle : OpenSearch le remplace et porte la recherche hybride (BM25 et
+> vecteurs). Le LLM est retiré : le fail-fast vaut pour le pipeline de recherche, et
+> « stateless » couvre aussi la pagination, chaque page recalculant tout. La décision
+> ci-dessous décrit la répartition après cet amendement.
 
 ## Contexte
 
@@ -14,11 +22,12 @@ confidentialité structurelle.
 
 - **MongoDB** : texte intégral brut.
 - **Neo4j** : nœuds/arêtes typés — **références, pas de texte**.
-- **Qdrant** : embeddings + métadonnées, recherche hybride.
+- **OpenSearch** : embeddings + métadonnées, recherche hybride ; le texte y est
+  indexé, pas stocké (ADR-028).
 
 **Serving** : **stateless** (aucun historique serveur, seule la dernière
-question compte), **fail-fast** (pas de retry/fallback LLM, erreur
-claire), **aucune analyse du contenu** des requêtes.
+question compte, aucun état entre deux pages), **fail-fast** (pas de
+retry ni de fallback, erreur claire), **aucune analyse du contenu** des requêtes.
 
 ## Alternatives rejetées
 
@@ -36,4 +45,4 @@ claire), **aucune analyse du contenu** des requêtes.
 
 ## Références
 
-ADR-008
+ADR-008 · ADR-028

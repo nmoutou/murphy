@@ -1,6 +1,12 @@
 # ADR-007 — Découplage récupération / génération
 
-**Statut** : rétro-documenté (décision implicite antérieure au 17 juillet 2026)
+**Statut** : rétro-documenté (décision implicite antérieure au 17 juillet 2026) ·
+**amendé par [ADR-028](ADR-028-opensearch-remplace-qdrant.md)** (la génération est retirée)
+
+> **Amendement par ADR-028 (2 octobre 2026).** L'échafaudage est retiré : Murphy
+> devient un moteur de recherche, sans LLM. Le contrat de la récupération devient
+> `requête → liste ordonnée de documents (+ scores RRF) et leurs passages`. Le retrait
+> se fait à l'étape 2 de la migration vers OpenSearch.
 
 ## Contexte
 

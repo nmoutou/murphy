@@ -1,6 +1,13 @@
 # ADR-018 — Une collection Qdrant au nom fixe : fin de l'empreinte, du pointeur et du tracking
 
-**Statut** : ✅ Accepté (30 septembre 2026) — remplace ADR-014, amende ADR-015 §3 · **§3 amendé par [ADR-019](ADR-019-configuration-ingestion-environment.md)** (fichier unique, modèle lu d'`EMBEDDING_MODEL`)
+**Statut** : ✅ Accepté (30 septembre 2026) — remplace ADR-014, amende ADR-015 §3 · **§3 amendé par [ADR-019](ADR-019-configuration-ingestion-environment.md)** (fichier unique, modèle lu d'`EMBEDDING_MODEL`) · **§1-§2 amendés par
+[ADR-028](ADR-028-opensearch-remplace-qdrant.md)** (un index OpenSearch remplace la
+collection)
+
+> **Amendement par ADR-028 (2 octobre 2026).** OpenSearch remplace Qdrant. Le nom fixe
+> s'applique à l'index OpenSearch, nommé par `OPENSEARCH_INDEX` ; `QDRANT_COLLECTION`
+> disparaît. Les §1 et §2 sont réécrits en conséquence ; le contexte, les alternatives
+> et les conséquences gardent l'état du 30 septembre.
 
 ## Contexte
 
@@ -25,14 +32,13 @@ backend) sans s'en servir.
 
 ## Décision
 
-**1. Un nom fixe.** La collection Qdrant s'appelle `QDRANT_COLLECTION`, une variable
-obligatoire de `.env.dev`. L'ingestion (`InfraSettings.qdrant_collection`) et le backend
-(`config.qdrant.collection`) lisent la même variable du même fichier.
+**1. Un nom fixe.** L'index OpenSearch s'appelle `OPENSEARCH_INDEX`, une variable
+obligatoire de `.env.dev`. L'ingestion et le backend lisent la même variable du même
+fichier.
 
 **2. Plus de pointeur.** `PublishedCollection`, `CollectionPublisher`, leur port, leur
 dépôt Mongo et `backend/src/infra/collectionPointer.ts` sont supprimés. Au boot, le
-backend vérifie seulement que la collection existe (`assertCollectionExists`) et refuse
-de démarrer sinon.
+backend vérifie seulement que l'index existe et refuse de démarrer sinon.
 
 **3. Plus d'empreinte ni de `WorkflowConfig`.** Le paquet `core/config/` et
 `conf/base/workflow/parameters.yml` sont supprimés. La découpe et le modèle d'embedding
@@ -72,4 +78,4 @@ supprimés.
 ## Références
 
 ADR-014 (partition de la configuration, remplacé) · ADR-015 (contrat ingestion ↔ serving,
-§3 amendé) · ADR-019 (amende §3)
+§3 amendé) · ADR-019 (amende §3) · ADR-028 (amende §1-§2)
