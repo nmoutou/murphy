@@ -14,8 +14,6 @@ services:
       - discovery.type=single-node
       - OPENSEARCH_JAVA_OPTS=-Xms1g -Xmx1g
       - OPENSEARCH_INITIAL_ADMIN_PASSWORD=${OPENSEARCH_INITIAL_ADMIN_PASSWORD}
-      # Query Insights garde le corps des requêtes dans des index top_queries-* :
-      # aucune question ne doit persister (ADR-010)
       - search.insights.top_queries.latency.enabled=false
       - search.insights.top_queries.cpu.enabled=false
       - search.insights.top_queries.memory.enabled=false
