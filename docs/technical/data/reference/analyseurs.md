@@ -26,7 +26,7 @@ Relevé par expressions régulières sur le `content` des documents Mongo.
 | … sans tiret | `L. 32`, `D. 591`, `A4` (article d'un règlement de PLU) | ≈ 350 | `l32` |
 | … de loi organique | `L.O. 1112-1` ; titre `LO1112-1` | 9 | `lo1112-1` |
 | … réglementaire en Conseil d'État | `R. * 222-19`, `R.* 771-16`, `R*196-1` | 9 | `r222-19` |
-| Pourvoi en cassation | `n° 18-21.717`, `n° H 24-15.857` (lettre de la chambre), `08-12.742` ; métadonnée `numero_affaire` : `22-13330` | 295 | `18-21717` |
+| Pourvoi en cassation | `n° 18-21.717`, `n° H 24-15.857` (lettre de la chambre), `08-12.742`, `n 08-12.742` ; métadonnée `numero_affaire` : `22-13330` | 295 | `18-21717` |
 | Texte numéroté | `loi n° 86-1067`, `décret n°85-603`, `ordonnance n° 58-1136`, `loi organique n° 2001-692`, `arrêté n° 2024-01455`, `décret n° 2017 - 105` | 901 | `n°86-1067` |
 | ECLI | `ECLI:FR:CCASS:2023:C300395`, `ECLI:FR:CECHR:2026:502302.20260612`, `ECLI:FR:CC:2026:2026.1206.QPC` | 7 dans le texte ; métadonnée `ecli` des décisions | `ecli:fr:ccass:2023:c300395` |
 
@@ -67,20 +67,27 @@ Un champ `.ref` ne contient que ces jetons : une phrase sans référence n'y pro
 
 ### La chaîne
 
-1. **`ref_pourvoi`** réduit un pourvoi à sa forme compacte, en retirant `n°` et la
-   lettre de chambre : `n° H 24-15.857` devient `24-15857`. Il passe **le premier** :
-   sinon `ref_article` lirait `D 24-21` dans `n° D 24-21.811` comme un article.
-2. **`ref_texte`** écrit `n°` devant le numéro d'un texte, qu'il suive une nature (`loi`,
+1. **`ordinal_degre`** remplace l'indicateur ordinal `º`, que certains claviers donnent
+   pour `n°`, par le signe degré du corpus. `fr_juridique` le partage.
+2. **`ref_pourvoi`** réduit un pourvoi à sa forme compacte, en retirant `n°` et la
+   lettre de chambre : `n° H 24-15.857` devient `24-15857`. Il passe **avant les autres
+   motifs** : sinon `ref_article` lirait `D 24-21` dans `n° D 24-21.811` comme un article.
+3. **`ref_texte`** écrit `n°` devant le numéro d'un texte, qu'il suive une nature (`loi`,
    `décret`, `ordonnance`, `arrêté`, avec ou sans `organique`, avec ou sans `n°`) ou un
    `n°` seul : `loi 86-1067` comme `décret n° 2017 - 105` deviennent `n°86-1067`,
    `n°2017-105`. Le `n°` est le contexte qui distingue un numéro de texte d'un numéro
    d'article (`article 21-1`) ; les pourvois sont déjà réduits, sans `n°`.
-3. **`ref_article_lo`** réduit `L.O.` à `LO`.
-4. **`ref_article`** colle la lettre au numéro, en retirant le point, l'astérisque et les
+4. **`ref_article_lo`** réduit `L.O.` à `LO`.
+5. **`ref_article`** colle la lettre au numéro, en retirant le point, l'astérisque et les
    espaces : `R. * 222-19` devient `R222-19`.
-5. **Le tokenizer `pattern`** (`group: 0`) n'émet que les formes compactes ; le reste du
+6. **Le tokenizer `pattern`** (`group: 0`) n'émet que les formes compactes ; le reste du
    texte est ignoré.
-6. **`lowercase`**.
+7. **`lowercase`**.
+
+**Le `n°` d'un utilisateur.** `ref_pourvoi` et `ref_texte` acceptent `n°`, `no`, `nos`
+et un `n` seul, collé ou non au numéro : `loi n86-1067` et `n 86-1067` donnent
+`n°86-1067`, `pourvoi n21-12.345` donne `21-12345`. Le `\b` qui précède le `n` l'empêche
+de mordre sur la fin d'un mot : « un 12-3 » et « an 2004-374 » ne donnent aucun jeton.
 
 Les filtres de caractères réécrivent librement le texte autour des références : seul ce
 qu'émet le tokenizer compte.
@@ -97,14 +104,18 @@ tokenizer. Sinon « il y a 12 mois » donnerait le jeton `a12`.
 {
   "analysis": {
     "char_filter": {
+      "ordinal_degre": {
+        "type": "mapping",
+        "mappings": ["º => °"]
+      },
       "ref_pourvoi": {
         "type": "pattern_replace",
-        "pattern": "(?i)(?:\\bn[°ºo]s?\\.?\\s*)?(?:\\b[A-Z]\\s+)?\\b(\\d{2})-(\\d{2})\\.?(\\d{3})\\b",
+        "pattern": "(?i)(?:\\bn[°o]?s?\\.?\\s*(?:[A-Z]\\s+)?|\\b[A-Z]\\s+|\\b)(\\d{2})-(\\d{2})\\.?(\\d{3})\\b",
         "replacement": "$1-$2$3"
       },
       "ref_texte": {
         "type": "pattern_replace",
-        "pattern": "(?iu)(?:\\b(?:loi|d[ée]cret|ordonnance|arr[êe]t[ée])(?:\\s+organique)?\\s*(?:n[°ºo]s?\\.?\\s*)?|\\bn[°ºo]s?\\.?\\s*)(\\d{2,4})\\s*-\\s*(\\d{1,5})\\b",
+        "pattern": "(?iu)(?:\\b(?:loi|d[ée]cret|ordonnance|arr[êe]t[ée])(?:\\s+organique)?\\s*(?:n[°o]?s?\\.?\\s*)?|\\bn[°o]?s?\\.?\\s*)(\\d{2,4})\\s*-\\s*(\\d{1,5})\\b",
         "replacement": "n°$1-$2"
       },
       "ref_article_lo": {
@@ -129,16 +140,13 @@ tokenizer. Sinon « il y a 12 mois » donnerait le jeton `a12`.
       "references": {
         "type": "custom",
         "tokenizer": "references",
-        "char_filter": ["ref_pourvoi", "ref_texte", "ref_article_lo", "ref_article"],
+        "char_filter": ["ordinal_degre", "ref_pourvoi", "ref_texte", "ref_article_lo", "ref_article"],
         "filter": ["lowercase"]
       }
     }
   }
 }
 ```
-
-`n[°ºo]` accepte le signe degré du corpus, l'indicateur ordinal `º` de certains claviers
-et `no`.
 
 ### Sur le corpus
 
@@ -171,14 +179,23 @@ Les 811 documents avec du texte donnent 6 509 jetons :
 
 ## `fr_juridique`
 
-Le tokenizer `standard`, puis :
+Le filtre de caractères `ordinal_degre` (voir `references`), le tokenizer `standard`,
+puis :
 
 1. **`fr_elision`** retire `l'`, `d'`, `qu'`, `jusqu'`… avec l'apostrophe droite comme
    avec l'apostrophe typographique `’` du corpus.
 2. **`lowercase`**.
-3. **`fr_stop`** retire les mots vides (`_french_`).
-4. **`asciifolding`** retire les accents.
-5. **`fr_stemmer`** (`light_french`) racinise.
+3. **`fr_numero`** retire le `n` collé devant un nombre : `n1234` devient `1234`.
+4. **`fr_stop`** retire les mots vides (`_french_`).
+5. **`asciifolding`** retire les accents.
+6. **`fr_stemmer`** (`light_french`) racinise.
+
+**`n1234` et `n° 1234` donnent le même jeton.** Le tokenizer `standard` coupe au signe
+`°` : `n° 1234` donne `n`, que la liste `_french_` retire, puis `1234`. Sans le `°`,
+`n1234` reste un seul mot ; `fr_numero` le ramène à `1234`. La forme `n` + chiffres
+n'apparaît nulle part dans le corpus : le filtre ne touche que la saisie des
+utilisateurs. `ordinal_degre` fait de même pour `Nº 1234`, qui sinon garderait un jeton
+`nº`.
 
 **Les mots vides passent avant `asciifolding`**, alors que l'ADR-028 §5 cite
 `asciifolding` d'abord. La liste `_french_` est accentuée : une fois les accents retirés,
@@ -189,12 +206,16 @@ de l'ADR laisse trois jetons `a` de plus et `ou`.
 ```json
 {
   "analysis": {
+    "char_filter": {
+      "ordinal_degre": { "type": "mapping", "mappings": ["º => °"] }
+    },
     "filter": {
       "fr_elision": {
         "type": "elision",
         "articles_case": true,
         "articles": ["l", "m", "t", "qu", "n", "s", "j", "d", "c", "jusqu", "quoiqu", "lorsqu", "puisqu"]
       },
+      "fr_numero": { "type": "pattern_replace", "pattern": "^n(\\d+)$", "replacement": "$1" },
       "fr_stop": { "type": "stop", "stopwords": "_french_" },
       "fr_stemmer": { "type": "stemmer", "language": "light_french" }
     },
@@ -202,7 +223,8 @@ de l'ADR laisse trois jetons `a` de plus et `ou`.
       "fr_juridique": {
         "type": "custom",
         "tokenizer": "standard",
-        "filter": ["fr_elision", "lowercase", "fr_stop", "asciifolding", "fr_stemmer"]
+        "char_filter": ["ordinal_degre"],
+        "filter": ["fr_elision", "lowercase", "fr_numero", "fr_stop", "asciifolding", "fr_stemmer"]
       }
     }
   }
@@ -216,6 +238,11 @@ de l'ADR laisse trois jetons `a` de plus et `ou`.
 | `l'article L. 1234-5 du code du travail` | `articl`, `1234`, `5`, `code`, `travail` |
 | `pourvoi n° 21-12.345` | `pourvoi`, `21`, `12.345` |
 | `25MA00274` | `25ma00274` |
+| `n1234` · `N1234` · `n°1234` · `nº1234` · `Nº 1234` · `n 1234` | `1234` |
+| `décision n516908` | `decision`, `516908` |
+| `loi n86-1067` · `loi n° 86-1067` | `loi`, `86`, `1067` |
+| `1º de l'article` | `1`, `articl` |
+| `rn1234` · `n1234a` | `rn1234` · `n1234a` |
 
 Le tokenizer `standard` coupe une référence au tiret (`l1234`, `5`) : c'est la raison
 d'être de `references`.
@@ -233,7 +260,7 @@ POST analyseurs-essai/_analyze
 { "analyzer": "references", "text": "pourvoi n° H 24-15.857 et article L. 1234-5" }
 ```
 
-Les cas vérifiés, tous conformes :
+Les cas vérifiés, tous conformes ; ceux de `fr_juridique` sont dans sa section :
 
 | Entrée | Jetons `references` |
 |---|---|
@@ -242,9 +269,10 @@ Les cas vérifiés, tous conformes :
 | `R. * 222-19` · `R*196-1` | `r222-19` · `r196-1` |
 | `art. L1234-5` · `art L 1234-5` · `l. 1234-5` · `L.1234-5` · `l1234-5` | `l1234-5` |
 | `pourvoi n° 18-21.717` · `n° H 24-15.857` · `08-12.742` | `18-21717` · `24-15857` · `08-12742` |
-| `pourvoi 21-12345` · `Y 21-12.345` · `nº 21-12.345` | `21-12345` |
+| `pourvoi 21-12345` · `Y 21-12.345` · `nº 21-12.345` · `pourvoi n21-12.345` | `21-12345` |
+| `pourvoi n 08-12.742` · `Pourvoi n° N 25-11.726` · `nº H 24-15.857` | `08-12742` · `25-11726` · `24-15857` |
 | `Cour de cassation, 8 juin 2023, 22-13.330, Publié` · `22-13330` | `22-13330` |
-| `loi n° 86-1067` · `loi 86-1067` · `loi no 86-1067` | `n°86-1067` |
+| `loi n° 86-1067` · `loi 86-1067` · `loi no 86-1067` · `loi n86-1067` · `loi n 86-1067` · `n86-1067` · `Nº 86-1067` | `n°86-1067` |
 | `Décret n°2004-374 du 29 avril 2004` · `décret 2004-374` · `Decret 2004-374` · `DÉCRET 2004-374` | `n°2004-374` |
 | `Loi organique n° 2010-837` · `décret n° 2017 - 105` · `arrete n° 2024-01455` | `n°2010-837` · `n°2017-105` · `n°2024-01455` |
 | `ECLI:FR:CECHR:2026:502302.20260612.` (point final) | `ecli:fr:cechr:2026:502302.20260612` |
@@ -252,5 +280,5 @@ Les cas vérifiés, tous conformes :
 | `le code du travail et l'article L1234-5` | `l1234-5` |
 | `quelles sont les conditions du licenciement pour faute grave ?` | — |
 | `article 1240 du code civil` · `l'article 21-1 de la loi` | — |
-| `il y a 12 mois, le 12-3` · `du 29 avril 2004` | — |
+| `il y a 12 mois, le 12-3` · `du 29 avril 2004` · `un 12-3` · `an 2004-374` · `n1234` | — |
 | `catégorie A1` · `cote D 1430` (bruit accepté) | `a1` · `d1430` |
