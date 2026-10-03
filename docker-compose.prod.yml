@@ -2,6 +2,9 @@ services:
   qdrant:
     restart: always
 
+  opensearch:
+    restart: always
+
   mongo:
     restart: always
 

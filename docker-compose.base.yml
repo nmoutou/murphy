@@ -7,6 +7,18 @@ services:
     volumes:
       - qdrant_data:/qdrant/storage
 
+  opensearch:
+    container_name: opensearch
+    image: opensearchproject/opensearch:3.9.0
+    environment:
+      - discovery.type=single-node
+      - OPENSEARCH_JAVA_OPTS=-Xms1g -Xmx1g
+      - OPENSEARCH_INITIAL_ADMIN_PASSWORD=${OPENSEARCH_INITIAL_ADMIN_PASSWORD}
+    networks:
+      - backend
+    volumes:
+      - opensearch_data:/usr/share/opensearch/data
+
   mongo:
     container_name: mongo
     image: mongo:8.2
@@ -109,4 +121,5 @@ volumes:
   mongo_data:
   neo4j_data:
   qdrant_data:
+  opensearch_data:
   hf_cache:

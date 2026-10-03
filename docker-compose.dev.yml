@@ -4,6 +4,29 @@ services:
       - "6333:6333"
     restart: "no"
 
+  opensearch:
+    environment:
+      - DISABLE_SECURITY_PLUGIN=true
+      - DISABLE_INSTALL_DEMO_CONFIG=true
+    ports:
+      - "9200:9200"
+    restart: "no"
+
+  # Dev seulement : ouvert sans authentification
+  opensearch-dashboards:
+    container_name: opensearch-dashboards
+    image: opensearchproject/opensearch-dashboards:3.9.0
+    environment:
+      - OPENSEARCH_HOSTS=["http://opensearch:9200"]
+      - DISABLE_SECURITY_DASHBOARDS_PLUGIN=true
+    networks:
+      - backend
+    ports:
+      - "5601:5601"
+    depends_on:
+      - opensearch
+    restart: "no"
+
   mongo:
     ports:
       - "27017:27017"

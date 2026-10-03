@@ -34,9 +34,9 @@ The root scripts wrap Docker Compose and need `.env.dev` at the root (gitignored
 npm run up | watch | build | down | restart | logs | status | config
 ```
 
-- No profiles: every script acts on the whole stack — `mongo`, `qdrant`, `neo4j`, `embedding-service` (TEI, needs an NVIDIA GPU), `backend` and `frontend`. `data/`'s `kedro run` needs the databases and TEI, so `npm run up` covers it too.
+- No profiles: every script acts on the whole stack — `mongo`, `qdrant`, `opensearch` (single node, not yet wired: ADR-028), `opensearch-dashboards` (dev only), `neo4j`, `embedding-service` (TEI, needs an NVIDIA GPU), `backend` and `frontend`. `data/`'s `kedro run` needs the databases and TEI, so `npm run up` covers it too.
 - `npm run up` recreates the containers whose configuration changed: run it after editing `.env.dev`, a plain `restart` keeps the old environment.
-- Dev ports: frontend `3000`, backend `5000`, Qdrant `6333`, Mongo `27017`, Neo4j `7474`/`7687`, TEI `5001`.
+- Dev ports: frontend `3000`, backend `5000`, Qdrant `6333`, OpenSearch `9200` (security plugin disabled), OpenSearch Dashboards `5601`, Mongo `27017`, Neo4j `7474`/`7687`, TEI `5001`.
 - Dev mounts only the sources (`backend/src`, `frontend/src`, `frontend/public`) with hot reload. Dependencies, app configs and the built contract live in the images: run `npm run build` then `npm run up` after changing `packages/contract`, a `package.json` or an app config.
 - Production (`docker-compose.prod.yml`, no npm script) is not deployed yet: no reverse proxy, so the backend publishes `5000` and `CORS_ORIGIN` must be the frontend's public origin. `NEXT_PUBLIC_API_URL` is a build argument there (inlined by `next build`: changing it means rebuilding the image). Images run as `node`; `NODE_ENV` comes from the build target, never from `.env.dev`. TEI takes ~4 min and over 4 GB of RAM to start: no `mem_limit` below that.
 - The build context is the repo root (`backend/Dockerfile`, `frontend/Dockerfile`); the root `.dockerignore` keeps `.env*`, `node_modules`, `data/` and `docs/` out.

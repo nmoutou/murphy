@@ -69,7 +69,8 @@ l'enrichissement de contexte par graphe.
 ## La stack Docker (racine du repo)
 
 `docker-compose.base.yml` + overrides `.dev.yml` / `.prod.yml` : backend, frontend,
-MongoDB, Qdrant, Neo4j, TEI (GPU NVIDIA requis). L'ingestion n'est **pas** dans compose —
+MongoDB, Qdrant, OpenSearch (nœud unique, pas encore branché : ADR-028) et ses Dashboards
+(dev seulement), Neo4j, TEI (GPU NVIDIA requis). L'ingestion n'est **pas** dans compose —
 elle tourne sur l'hôte et parle aux bases via les ports publiés.
 
 Scripts racine (`package.json`, tous exigent `.env.dev`) :
@@ -78,8 +79,9 @@ Scripts racine (`package.json`, tous exigent `.env.dev`) :
 npm run up | watch | logs | status | down | build
 ```
 
-Ports dev : frontend `3000`, backend `5000`, Qdrant `6333`, Mongo `27017`, Neo4j
-`7474`/`7687`, TEI `5001→80`.
+Ports dev : frontend `3000`, backend `5000`, Qdrant `6333`, OpenSearch `9200` (plugin de
+sécurité désactivé), OpenSearch Dashboards `5601`, Mongo `27017`, Neo4j `7474`/`7687`, TEI
+`5001→80`.
 
 ### Production
 
