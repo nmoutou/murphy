@@ -31,7 +31,7 @@ async def inspect_served_model(base_url: str, expected_model: str) -> EmbeddingM
                 f"Le service sert « {served} », or EMBEDDING_MODEL vaut "
                 f"« {expected_model} ». TEI ignore le champ `model` de la requête : il ne "
                 f"sert QUE le modèle de son `--model-id`. Continuer écrirait les vecteurs "
-                f"de « {served} » dans une collection que le backend interroge avec "
+                f"de « {served} » dans un index que le backend interroge avec "
                 f"« {expected_model} ». Redémarrer TEI après avoir changé EMBEDDING_MODEL "
                 f"(.env.dev, à la racine) : `npm run ingest:up`."
             )
@@ -68,5 +68,5 @@ async def _probe_dimension(
     except (httpx.HTTPError, ValueError, KeyError, IndexError, TypeError) as exc:
         raise EmbeddingModelMismatchError(
             f"La sonde de dimension a échoué ({probe_url}) : {exc!r}. Sans la dimension "
-            f"des vecteurs, la collection Qdrant ne peut pas être créée : on n'écrit pas."
+            f"des vecteurs, rien ne garantit qu'elle est celle de l'index : on n'écrit pas."
         ) from exc

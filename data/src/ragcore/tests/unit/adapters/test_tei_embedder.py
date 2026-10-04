@@ -131,7 +131,7 @@ async def test_un_service_injoignable_ne_passe_pas_en_silence(_patch_client) -> 
 
 
 async def test_une_sonde_en_echec_arrete_le_run(_patch_client) -> None:
-    """Sans dimension, la collection Qdrant ne peut pas être créée."""
+    """Sans dimension, rien ne garantit qu'elle est celle de l'index."""
     _patch_client(_ServiceFactice(probe_status=500))
 
     with pytest.raises(EmbeddingModelMismatchError, match="sonde"):
@@ -217,3 +217,19 @@ class TestLeCompteurDeTruncations:
         await embedder.embed([_chunk("c-1", "court"), _chunk("c-2", "bref")])
 
         assert embedder.truncations == 0
+
+    async def test_un_titre_trop_long_est_raccourci_et_compte(self) -> None:
+        """``embed_text`` passe par la même dichotomie que les chunks."""
+        service = _ServiceAFenetre(limite=4)
+        embedder = service.embedder()
+
+        vector = await embedder.embed_text("Section 1 : Dispositions générales")
+
+        assert vector == [0.0] * DIM
+        assert embedder.truncations == 1
+
+
+async def test_embed_text_rend_le_vecteur_dun_texte_seul() -> None:
+    embedder = _ServiceAFenetre(limite=100).embedder()
+
+    assert await embedder.embed_text("Dispositions générales") == [0.0] * DIM

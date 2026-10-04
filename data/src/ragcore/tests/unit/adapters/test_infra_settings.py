@@ -10,7 +10,7 @@ ENVIRONMENT_VAR = "ENVIRONMENT"
 
 @pytest.fixture(autouse=True)
 def _required_env(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("QDRANT_COLLECTION", "chunks")
+    monkeypatch.setenv("OPENSEARCH_INDEX", "documents")
     monkeypatch.delenv(ENVIRONMENT_VAR, raising=False)
 
 

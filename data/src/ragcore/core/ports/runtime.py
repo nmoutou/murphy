@@ -2,7 +2,7 @@
 donc rien à verrouiller.
 """
 
-from collections.abc import Coroutine
+from collections.abc import Callable, Coroutine
 from typing import Any, Protocol, TypeVar, runtime_checkable
 
 T = TypeVar("T")
@@ -13,6 +13,11 @@ class AsyncRuntime(Protocol):
     """Une boucle asyncio et ses clients, propres à *un* worker."""
 
     def run(self, coro: Coroutine[Any, Any, T]) -> T: ...
+
+    def defer_close(self, close: Callable[[], Coroutine[Any, Any, None]]) -> None:
+        """Une fermeture à exécuter dans la boucle, juste avant ``close()`` : un client
+        lié à la boucle ne se ferme plus une fois celle-ci fermée."""
+        ...
 
     def close(self) -> None:
         """Idempotent."""

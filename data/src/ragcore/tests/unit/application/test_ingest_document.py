@@ -11,6 +11,7 @@ from ragcore.application.run_context import PipelineContext
 from ragcore.core.models.document import ParsedDocument
 from ragcore.core.models.enums import DocumentType, SourceName
 from ragcore.core.models.identifiers import Identifier
+from ragcore.core.models.search_content import SearchContent
 from ragcore.core.models.unformatted_relation import UnformattedRelation
 from ragcore.core.telemetry_events import (
     DOCUMENT_PERSISTED,
@@ -22,8 +23,8 @@ from ragcore.tests.fakes import (
     InMemoryDocumentRepository,
     InMemoryGraphRepository,
     InMemoryPendingRepository,
+    InMemorySearchIndex,
     InMemoryUnformattedRepository,
-    InMemoryVectorRepository,
     RecordingTelemetry,
 )
 
@@ -46,7 +47,7 @@ def stores() -> dict:
     return {
         "document_repo": InMemoryDocumentRepository(),
         "graph_repo": InMemoryGraphRepository(),
-        "vector_repo": InMemoryVectorRepository(),
+        "search_index": InMemorySearchIndex(),
         "unformatted_repo": InMemoryUnformattedRepository(),
         "telemetry": RecordingTelemetry(),
     }
@@ -57,7 +58,7 @@ def _use_case(stores: dict) -> IngestDocumentUseCase:
         IngestionStores(
             documents=stores["document_repo"],
             graph=stores["graph_repo"],
-            vectors=stores["vector_repo"],
+            search_index=stores["search_index"],
             pending=InMemoryPendingRepository(),
             unformatted=stores["unformatted_repo"],
         ),
@@ -75,8 +76,8 @@ def _unformatted(target_text: str) -> UnformattedRelation:
     )
 
 
-async def _fail_qdrant(*args, **kwargs):  # noqa: ANN002, ANN003, ANN202
-    raise RuntimeError("qdrant est tombé")
+async def _fail_opensearch(*args, **kwargs):  # noqa: ANN002, ANN003, ANN202
+    raise RuntimeError("opensearch est tombé")
 
 
 @pytest.fixture
@@ -88,7 +89,7 @@ async def test_phase_one_writes_the_node_and_never_an_edge(stores, context) -> N
     """Aucune arête dans cette saga."""
     use_case = _use_case(stores)
 
-    await use_case.execute(_doc(), [], context)
+    await use_case.execute(_doc(), SearchContent(), context)
 
     assert stores["graph_repo"].nodes == {"LEGIARTI000000000001"}
     assert stores["graph_repo"].edges == []
@@ -100,28 +101,28 @@ async def test_a_failed_saga_is_not_counted_persisted(stores, context) -> None: 
     """Un document à moitié écrit n'est pas compté persisté."""
 
     async def boom(*args, **kwargs):  # noqa: ANN002, ANN003, ANN202
-        raise RuntimeError("qdrant est tombé")
+        raise RuntimeError("opensearch est tombé")
 
-    stores["vector_repo"].upsert = boom
+    stores["search_index"].index_document = boom
     use_case = _use_case(stores)
 
-    with pytest.raises(RuntimeError, match="qdrant est tombé"):
-        await use_case.execute(_doc(), [], context)
+    with pytest.raises(RuntimeError, match="opensearch est tombé"):
+        await use_case.execute(_doc(), SearchContent(), context)
 
     assert stores["telemetry"].events_of(DOCUMENT_PERSISTED) == []
 
 
 async def test_a_failed_saga_compensates_what_it_had_written(stores, context) -> None:  # noqa: ANN001
-    """Mongo, écrit avant l'échec de Qdrant, est défait."""
+    """Mongo, écrit avant l'échec d'OpenSearch, est défait."""
 
     async def boom(*args, **kwargs):  # noqa: ANN002, ANN003, ANN202
-        raise RuntimeError("qdrant est tombé")
+        raise RuntimeError("opensearch est tombé")
 
-    stores["vector_repo"].upsert = boom
+    stores["search_index"].index_document = boom
     use_case = _use_case(stores)
 
     with pytest.raises(RuntimeError):
-        await use_case.execute(_doc(), [], context)
+        await use_case.execute(_doc(), SearchContent(), context)
 
     assert stores["document_repo"].documents == {}
     assert len(stores["telemetry"].events_of(SAGA_COMPENSATION_COMPLETED)) == 1
@@ -134,17 +135,17 @@ async def test_a_failed_compensation_is_counted_and_told_truthfully(
     ne prétend pas à un rollback propre."""
 
     async def boom(*args, **kwargs):  # noqa: ANN002, ANN003, ANN202
-        raise RuntimeError("qdrant est tombé")
+        raise RuntimeError("opensearch est tombé")
 
     async def boom_rollback(*args, **kwargs):  # noqa: ANN002, ANN003, ANN202
         raise RuntimeError("mongo refuse de se défaire")
 
-    stores["vector_repo"].upsert = boom  # déclenche la compensation
+    stores["search_index"].index_document = boom  # déclenche la compensation
     stores["document_repo"].delete = boom_rollback  # …dont le rollback rate
     use_case = _use_case(stores)
 
-    with pytest.raises(RuntimeError, match="qdrant est tombé"):
-        await use_case.execute(_doc(), [], context)
+    with pytest.raises(RuntimeError, match="opensearch est tombé"):
+        await use_case.execute(_doc(), SearchContent(), context)
 
     # La compensation ratée est comptée, avec le store fautif
     failed = stores["telemetry"].events_of(SAGA_COMPENSATION_FAILED)
@@ -166,11 +167,13 @@ async def test_a_rewrite_replaces_in_place_without_a_preceding_delete(
     est atomique."""
     use_case = _use_case(stores)
 
-    await use_case.execute(_doc(), [], context)
-    await use_case.execute(_doc(), [], context)
+    await use_case.execute(_doc(), SearchContent(), context)
+    await use_case.execute(_doc(), SearchContent(), context)
 
     assert stores["document_repo"].deleted == []
+    assert stores["search_index"].deleted == []
     assert list(stores["document_repo"].documents) == ["LEGIARTI000000000001"]
+    assert list(stores["search_index"].documents) == ["LEGIARTI000000000001"]
     assert len(stores["telemetry"].events_of(DOCUMENT_PERSISTED)) == 2
 
 
@@ -181,7 +184,7 @@ async def test_the_unformatted_relations_are_written_with_the_run_stamps(
     use_case = _use_case(stores)
     relation = _unformatted("Articles 1103 et 1229 du code civil.")
 
-    await use_case.execute(_doc(), [], context, [relation])
+    await use_case.execute(_doc(), SearchContent(), context, [relation])
 
     [row] = stores["unformatted_repo"].rows.values()
     assert row.relation == relation
@@ -192,12 +195,14 @@ async def test_the_unformatted_relations_are_written_with_the_run_stamps(
 async def test_a_failed_saga_removes_the_unformatted_relations_born_in_its_run(
     stores, context
 ) -> None:  # noqa: ANN001
-    """Qdrant casse : les relations non formatées nées dans ce run sont défaites."""
-    stores["vector_repo"].upsert = _fail_qdrant
+    """OpenSearch casse : les relations non formatées nées dans ce run sont défaites."""
+    stores["search_index"].index_document = _fail_opensearch
     use_case = _use_case(stores)
 
-    with pytest.raises(RuntimeError, match="qdrant est tombé"):
-        await use_case.execute(_doc(), [], context, [_unformatted("code civil")])
+    with pytest.raises(RuntimeError, match="opensearch est tombé"):
+        await use_case.execute(
+            _doc(), SearchContent(), context, [_unformatted("code civil")]
+        )
 
     assert stores["unformatted_repo"].rows == {}
 
@@ -207,13 +212,13 @@ async def test_a_failed_saga_keeps_the_unformatted_relations_of_earlier_runs(
 ) -> None:  # noqa: ANN001
     """Une relation vue par un run précédent survit à la compensation."""
     known = _unformatted("code civil")
-    await _use_case(stores).execute(_doc(), [], context, [known])
+    await _use_case(stores).execute(_doc(), SearchContent(), context, [known])
 
-    stores["vector_repo"].upsert = _fail_qdrant
+    stores["search_index"].index_document = _fail_opensearch
     next_run = PipelineContext.create(sources=(SourceName.LEGI,))
-    with pytest.raises(RuntimeError, match="qdrant est tombé"):
+    with pytest.raises(RuntimeError, match="opensearch est tombé"):
         await _use_case(stores).execute(
-            _doc(), [], next_run, [known, _unformatted("code pénal")]
+            _doc(), SearchContent(), next_run, [known, _unformatted("code pénal")]
         )
 
     [row] = stores["unformatted_repo"].rows.values()

@@ -9,7 +9,11 @@ class BaseEmbedder(Protocol):
 
     @property
     def dimension(self) -> int:
-        """Celle de la collection Qdrant."""
+        """Celle des champs vectoriels de l'index."""
         ...
 
     async def embed(self, chunks: list[Chunk]) -> list[EmbeddedChunk]: ...
+
+    async def embed_text(self, text: str) -> list[float]:
+        """Un texte hors chunk : le titre d'un document sans passage."""
+        ...

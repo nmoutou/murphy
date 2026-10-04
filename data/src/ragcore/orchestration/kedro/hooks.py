@@ -33,6 +33,7 @@ from ragcore.orchestration.kedro.run_plan import RunPlan, plan_run
 from ragcore.orchestration.kedro.run_session import RunSession, start_telemetry
 from ragcore.orchestration.kedro.stores import (
     MetaStores,
+    close_clients,
     ensure_indexes,
     open_clients,
     open_document_stores,
@@ -76,8 +77,9 @@ class TelemetryHooks:
         l'a touché en premier.
         """
         clients = open_clients(settings)
+        self._runtime.defer_close(lambda: close_clients(clients))
         ensure_indexes(clients, settings, self._runtime)
-        stores = open_document_stores(clients, settings, plan, embedder.dimension)
+        stores = open_document_stores(clients, settings, plan)
         meta = open_meta_stores(clients, settings)
         session = self._open_session(plan.sources, meta, embedder)
         stack = build_processing_stack(plan, Path(settings.xml_source_path), embedder)
@@ -86,7 +88,7 @@ class TelemetryHooks:
             "parser": stack.parser,
             "doc_repo": stores.documents,
             "graph_repo": stores.graph,
-            "vector_repo": stores.vectors,
+            "search_index": stores.search_index,
             "runner": build_runner(settings, plan, session.context, stack),
             "resolve_service": ResolveRelationsService(
                 graph_repo=stores.graph,

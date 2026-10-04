@@ -31,8 +31,8 @@ class Identifier(BaseModel):
         return v
 
     def serialize(self) -> DocumentId:
-        """La valeur brute, sans préfixe : clé Mongo, du payload Qdrant, du nœud Neo4j,
-        et ``document_id`` des événements d'audit.
+        """La valeur brute, sans préfixe : clé Mongo, ``_id`` OpenSearch, clé du nœud
+        Neo4j, et ``document_id`` des événements d'audit.
         """
         return DocumentId(self.raw)
 

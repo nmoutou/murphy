@@ -3,7 +3,7 @@ chaque worker a la sienne.
 """
 
 import asyncio
-from collections.abc import Coroutine
+from collections.abc import Callable, Coroutine
 from typing import Any, TypeVar
 
 T = TypeVar("T")
@@ -15,15 +15,22 @@ class FakeRuntime:
         self.closed = False
         self.run_count = 0
         self._loop = asyncio.new_event_loop()
+        self._deferred_closes: list[Callable[[], Coroutine[Any, Any, None]]] = []
 
     def run(self, coro: Coroutine[Any, Any, T]) -> T:
         self.run_count += 1
         return self._loop.run_until_complete(coro)
 
+    def defer_close(self, close: Callable[[], Coroutine[Any, Any, None]]) -> None:
+        self._deferred_closes.append(close)
+
     def close(self) -> None:
         self.closed = True
-        if not self._loop.is_closed():
-            self._loop.close()
+        if self._loop.is_closed():
+            return
+        while self._deferred_closes:
+            self._loop.run_until_complete(self._deferred_closes.pop()())
+        self._loop.close()
 
 
 class FakeRuntimeFactory:

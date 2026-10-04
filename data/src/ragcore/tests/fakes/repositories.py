@@ -3,11 +3,11 @@
 from collections.abc import Sequence
 from dataclasses import dataclass
 
-from ragcore.core.models.chunk import EmbeddedChunk
 from ragcore.core.models.document import ParsedDocument
 from ragcore.core.models.identifiers import Identifier, RunId
 from ragcore.core.models.pending import PendingKey, PendingRelation
 from ragcore.core.models.relation import Relation
+from ragcore.core.models.search_content import SearchContent
 from ragcore.core.models.unformatted_relation import UnformattedRelation
 from ragcore.core.ports.graph_repository import RelationWriteResult
 
@@ -26,20 +26,22 @@ class InMemoryDocumentRepository:
         self.documents.pop(key, None)
 
 
-class InMemoryVectorRepository:
+class InMemorySearchIndex:
+    """Un document par identifiant, remplacé entier à chaque écriture."""
+
     def __init__(self) -> None:
-        self.chunks: list[EmbeddedChunk] = []
+        self.documents: dict[str, SearchContent] = {}
         self.deleted: list[str] = []
 
-    async def upsert(self, embedded_chunks: list[EmbeddedChunk]) -> None:
-        self.chunks.extend(embedded_chunks)
+    async def index_document(
+        self, parsed: ParsedDocument, content: SearchContent
+    ) -> None:
+        self.documents[parsed.identifier.serialize()] = content
 
-    async def delete_by_document(self, identifier: Identifier) -> None:
+    async def delete_document(self, identifier: Identifier) -> None:
         key = identifier.serialize()
         self.deleted.append(key)
-        self.chunks = [
-            c for c in self.chunks if c.chunk.parent_identifier.serialize() != key
-        ]
+        self.documents.pop(key, None)
 
 
 class InMemoryGraphRepository:

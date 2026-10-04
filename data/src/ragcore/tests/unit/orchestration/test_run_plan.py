@@ -52,7 +52,7 @@ SHIPPED_PARAMETERS = Path(__file__).parents[5] / "conf/base/parameters.yml"
 
 def _settings(environment: Environment = "prod") -> InfraSettings:
     return InfraSettings(
-        source="all", environment=environment, qdrant_collection="chunks"
+        source="all", environment=environment, opensearch_index="documents"
     )
 
 
@@ -83,11 +83,11 @@ def _without(path: str) -> dict[str, Any]:
     return params
 
 
-def test_un_run_nu_ecrit_la_collection_configuree() -> None:
+def test_un_run_nu_ecrit_lindex_configure() -> None:
     plan = plan_run(PARAMS, _settings(), CHUNKING)
 
     assert len(plan.sources) > 1, "un run nu ingère toutes les sources"
-    assert plan.collection == "chunks"
+    assert plan.index == "documents"
     assert plan.chunking == CHUNKING
 
 
@@ -235,4 +235,4 @@ def test_toutes_les_erreurs_sont_signalees_ensemble() -> None:
 def test_le_parameters_yml_livre_est_valide() -> None:
     params = yaml.safe_load(SHIPPED_PARAMETERS.read_text(encoding="utf-8"))
 
-    assert plan_run(params, _settings("dev"), CHUNKING).collection == "chunks"
+    assert plan_run(params, _settings("dev"), CHUNKING).index == "documents"

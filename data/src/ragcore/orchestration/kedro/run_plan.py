@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 @dataclass(frozen=True)
 class RunPlan:
     chunking: ChunkingConfig
-    collection: str
+    index: str
     sources: tuple[SourceName, ...]
     include_path: bool
     """Les chemins des fichiers source dans les documents Mongo. ``False`` hors ``dev``."""
@@ -58,7 +58,7 @@ def plan_run(
     )
     plan = RunPlan(
         chunking=chunking,
-        collection=settings.qdrant_collection,
+        index=settings.opensearch_index,
         sources=resolve_sources(requested_source),
         include_path=dev.include_path,
         node_hydration=_node_hydration(dev, is_dev),
@@ -92,7 +92,7 @@ def _warn_dev_ignored(environment: Environment) -> None:
 
 
 def _log_plan(plan: RunPlan) -> None:
-    logger.info("Collection Qdrant : %s", plan.collection)
+    logger.info("Index OpenSearch : %s", plan.index)
     logger.info(
         "Découpe : %d caractères, recouvrement %d",
         plan.chunking.max_chars,
@@ -109,8 +109,8 @@ def _log_plan(plan: RunPlan) -> None:
     )
     if not plan.embedding_enabled:
         logger.warning(
-            "EMBEDDING COUPÉ (dev, ADR-012) : aucun vecteur ne sera calculé ni écrit "
-            "dans Qdrant. Mongo et Neo4j sont peuplés normalement — régime d'itération "
-            "sur le modèle de données. La collection %s restera vide pour ce run.",
-            plan.collection,
+            "EMBEDDING COUPÉ (dev, ADR-012) : aucun vecteur ne sera calculé. Les "
+            "passages sont écrits dans l'index %s sans vecteur : seule la recherche "
+            "lexicale les trouvera. Mongo et Neo4j sont peuplés normalement.",
+            plan.index,
         )

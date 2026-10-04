@@ -3,7 +3,7 @@
 import asyncio
 import logging
 import threading
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 import httpx
 
@@ -20,10 +20,18 @@ _MS_PER_SECOND = 1000
 _PAYLOAD_TOO_LARGE = 413
 
 
-def _rejected(chunk: Chunk) -> ValueError:
+@dataclass(frozen=True)
+class _EmbeddingInput:
+    key: str
+    """Nomme le texte dans les logs et le compte des raccourcis : un ``chunk_id``, ou
+    le texte lui-même hors chunk."""
+    text: str
+
+
+def _rejected(embedding_input: _EmbeddingInput) -> ValueError:
     return ValueError(
-        f"Le service refuse le chunk {chunk.chunk_id} même vide : le rejet n'est pas une "
-        f"question de taille. Vérifier la santé du service d'embedding."
+        f"Le service refuse le texte {embedding_input.key} même vide : le rejet n'est "
+        f"pas une question de taille. Vérifier la santé du service d'embedding."
     )
 
 
@@ -42,9 +50,9 @@ class TeiEmbedder:
         self._batch_size = transport.batch_size
         self._timeout_seconds = transport.timeout_ms / _MS_PER_SECOND
         self._base_url = transport.base_url.rstrip("/")
-        # Des `chunk_id` plutôt qu'un compteur : la dichotomie raccourcit un même chunk
+        # Des clés plutôt qu'un compteur : la dichotomie raccourcit un même chunk
         # plusieurs fois. Verrouillé : l'embedder est partagé entre les threads workers.
-        self._truncated_chunk_ids: set[str] = set()
+        self._truncated_keys: set[str] = set()
         self._truncations_lock = threading.Lock()
         # Un client par boucle : un client httpx est lié à la boucle qui l'a créé, et
         # l'embedder est partagé entre les workers.
@@ -56,9 +64,9 @@ class TeiEmbedder:
 
     @property
     def truncations(self) -> int:
-        """Combien de chunks distincts ont été raccourcis, pas combien de fois."""
+        """Combien de textes distincts ont été raccourcis, pas combien de fois."""
         with self._truncations_lock:
-            return len(self._truncated_chunk_ids)
+            return len(self._truncated_keys)
 
     def _client(self) -> httpx.AsyncClient:
         # Jamais fermé explicitement : `aclose()` ne peut tourner que dans la boucle du
@@ -71,23 +79,9 @@ class TeiEmbedder:
         return client
 
     async def embed(self, chunks: list[Chunk]) -> list[EmbeddedChunk]:
-        if not chunks:
-            return []
-
-        headers = {"Content-Type": "application/json"}
-
-        client = self._client()
-        batches = [
-            chunks[start : start + self._batch_size]
-            for start in range(0, len(chunks), self._batch_size)
-        ]
-
-        # En parallèle : une requête TEI coûte ~800 ms de frais fixes, et TEI regroupe
-        # les requêtes en vol côté GPU. `gather` préserve l'ordre des vecteurs.
-        results = await asyncio.gather(
-            *(self._embed_batch(client, headers, batch) for batch in batches)
+        vectors = await self._embed_all(
+            [_EmbeddingInput(key=chunk.chunk_id, text=chunk.text) for chunk in chunks]
         )
-
         return [
             EmbeddedChunk(
                 chunk=chunk,
@@ -95,15 +89,37 @@ class TeiEmbedder:
                 embedding_model=self._model_name,
                 embedding_dim=self._dimension,
             )
-            for batch, vectors in zip(batches, results, strict=True)
-            for chunk, vector in zip(batch, vectors, strict=True)
+            for chunk, vector in zip(chunks, vectors, strict=True)
         ]
+
+    async def embed_text(self, text: str) -> list[float]:
+        [vector] = await self._embed_all([_EmbeddingInput(key=text, text=text)])
+        return vector
+
+    async def _embed_all(self, inputs: list[_EmbeddingInput]) -> list[list[float]]:
+        if not inputs:
+            return []
+
+        headers = {"Content-Type": "application/json"}
+
+        client = self._client()
+        batches = [
+            inputs[start : start + self._batch_size]
+            for start in range(0, len(inputs), self._batch_size)
+        ]
+
+        # En parallèle : une requête TEI coûte ~800 ms de frais fixes, et TEI regroupe
+        # les requêtes en vol côté GPU. `gather` préserve l'ordre des vecteurs.
+        results = await asyncio.gather(
+            *(self._embed_batch(client, headers, batch) for batch in batches)
+        )
+        return [vector for vectors in results for vector in vectors]
 
     async def _embed_batch(
         self,
         client: httpx.AsyncClient,
         headers: dict[str, str],
-        batch: list[Chunk],
+        batch: list[_EmbeddingInput],
     ) -> list[list[float]]:
         """Un chunk trop long est raccourci, jamais perdu.
 
@@ -115,7 +131,7 @@ class TeiEmbedder:
         response = await client.post(
             f"{self._base_url}/embeddings",
             headers=headers,
-            json={"model": self._model_name, "input": [c.text for c in batch]},
+            json={"model": self._model_name, "input": [entry.text for entry in batch]},
         )
 
         if response.status_code == _PAYLOAD_TOO_LARGE:
@@ -131,9 +147,8 @@ class TeiEmbedder:
             if len(vector) != self._dimension:
                 raise ValueError(
                     f"Le service a renvoyé des vecteurs de dimension {len(vector)}, "
-                    f"or la configuration en déclare {self._dimension}. La collection "
-                    f"Qdrant est créée à la dimension déclarée : les deux doivent "
-                    f"coïncider."
+                    f"or la sonde du démarrage en a mesuré {self._dimension}, celle du "
+                    f"mapping de l'index : les deux doivent coïncider."
                 )
         return vectors
 
@@ -141,9 +156,9 @@ class TeiEmbedder:
         self,
         client: httpx.AsyncClient,
         headers: dict[str, str],
-        batch: list[Chunk],
+        batch: list[_EmbeddingInput],
     ) -> list[list[float]]:
-        """Le 413 ne dit pas quel chunk déborde : la dichotomie isole le fautif en
+        """Le 413 ne dit pas quel texte déborde : la dichotomie isole le fautif en
         ``log(n)`` requêtes, et lui seul est tronqué."""
         if len(batch) > 1:
             middle = len(batch) // 2
@@ -155,20 +170,20 @@ class TeiEmbedder:
 
         # Raccourci de moitié à chaque tour : la récursion termine, sans connaître la
         # fenêtre du modèle.
-        chunk = batch[0]
-        if not chunk.text:
+        oversized = batch[0]
+        if not oversized.text:
             # Refusé même vide : pas une question de taille
-            raise _rejected(chunk)
+            raise _rejected(oversized)
 
-        shrunk = chunk.model_copy(update={"text": chunk.text[: len(chunk.text) // 2]})
+        shrunk = replace(oversized, text=oversized.text[: len(oversized.text) // 2])
         with self._truncations_lock:
-            self._truncated_chunk_ids.add(str(chunk.chunk_id))
+            self._truncated_keys.add(oversized.key)
         _LOGGER.warning(
-            "chunk hors fenêtre du modèle — raccourci de %d à %d caractères (chunk_id=%s). "
-            "Le document est sauvé, mais la fin de ce chunk n'est pas indexée : le vrai "
+            "texte hors fenêtre du modèle — raccourci de %d à %d caractères (%s). "
+            "Le document est sauvé, mais la fin de ce texte n'est pas indexée : le vrai "
             "correctif est un `CHUNKING_MAX_CHARS` compatible avec la fenêtre.",
-            len(chunk.text),
+            len(oversized.text),
             len(shrunk.text),
-            chunk.chunk_id,
+            oversized.key,
         )
         return await self._embed_batch(client, headers, [shrunk])

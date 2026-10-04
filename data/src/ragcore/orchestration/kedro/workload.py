@@ -16,7 +16,9 @@ from ragcore.application.ingest_document import IngestDocumentUseCase
 from ragcore.application.ingestion_runner import DocumentWorkload, WorkloadResult
 from ragcore.application.run_context import PipelineContext
 from ragcore.core.models.audit import build_event
+from ragcore.core.models.chunk import Chunk
 from ragcore.core.models.document import ParsedDocument
+from ragcore.core.models.search_content import IndexedPassage, SearchContent
 from ragcore.core.models.unknown_tally import UnknownExample
 from ragcore.core.ports.chunker import BaseChunker
 from ragcore.core.ports.embedder import BaseEmbedder
@@ -30,8 +32,9 @@ from ragcore.core.telemetry_events import PAYLOAD_COUNT_KEY, RELATION_UNKNOWN
 
 __all__ = ["UseCaseFactory", "WorkloadSteps", "build_document_workload"]
 
-# Un use case par worker : ses dépôts sont liés à la boucle qui les a touchés en premier
-UseCaseFactory = Callable[[WorkerTelemetry], IngestDocumentUseCase]
+# Un use case par worker : ses dépôts sont liés à la boucle qui les a touchés en premier.
+# Le runtime reçoit la fermeture de ses clients.
+UseCaseFactory = Callable[[WorkerTelemetry, AsyncRuntime], IngestDocumentUseCase]
 
 
 @dataclass(frozen=True)
@@ -54,8 +57,8 @@ def build_document_workload(
     """``runtime`` et ``telemetry`` sont ceux du worker courant, fournis par le runner à
     chaque appel.
 
-    ``embedding_enabled=False`` (dev, ADR-012) saute l'embedding : Qdrant n'écrit rien,
-    Mongo et Neo4j tournent normalement. Le booléen arrive déjà arbitré par le plan.
+    ``embedding_enabled=False`` (dev, ADR-012) saute l'embedding : les passages partent
+    dans l'index sans vecteur. Le booléen arrive déjà arbitré par le plan.
     """
     use_cases = _UseCasePerWorker(use_case_factory)
 
@@ -67,20 +70,44 @@ def build_document_workload(
         extraction = _extract(steps.extractor, parsed, telemetry, context)
 
         chunks = steps.chunker.chunk(parsed)
-        embedded = (
-            runtime.run(steps.embedder.embed(chunks)) if embedding_enabled else []
+        content = (
+            runtime.run(_embed(steps.embedder, parsed.title, chunks))
+            if embedding_enabled
+            else _without_vectors(chunks)
         )
 
-        use_case = use_cases.for_worker(telemetry)
+        use_case = use_cases.for_worker(telemetry, runtime)
         runtime.run(
-            use_case.execute(
-                parsed, embedded, context, extraction.unformatted_relations
-            )
+            use_case.execute(parsed, content, context, extraction.unformatted_relations)
         )
 
         return WorkloadResult(relations=extraction.relations)
 
     return workload
+
+
+async def _embed(
+    embedder: BaseEmbedder, title: str, chunks: list[Chunk]
+) -> SearchContent:
+    """Le titre seulement sans passage (ADR-029) : celui d'un article (« L52-8 ») ou
+    d'une décision n'a pas de sens pour un embedding."""
+    if chunks:
+        embedded = await embedder.embed(chunks)
+        return SearchContent(
+            passages=tuple(
+                IndexedPassage(chunk=chunk.chunk, embedding=chunk.embedding)
+                for chunk in embedded
+            )
+        )
+    if not title:
+        return SearchContent()
+    return SearchContent(title_embedding=await embedder.embed_text(title))
+
+
+def _without_vectors(chunks: list[Chunk]) -> SearchContent:
+    return SearchContent(
+        passages=tuple(IndexedPassage(chunk=chunk) for chunk in chunks)
+    )
 
 
 class _UseCasePerWorker:
@@ -92,11 +119,13 @@ class _UseCasePerWorker:
         self._factory = factory
         self._use_cases: dict[int, IngestDocumentUseCase] = {}
 
-    def for_worker(self, telemetry: WorkerTelemetry) -> IngestDocumentUseCase:
+    def for_worker(
+        self, telemetry: WorkerTelemetry, runtime: AsyncRuntime
+    ) -> IngestDocumentUseCase:
         key = id(telemetry)
         use_case = self._use_cases.get(key)
         if use_case is None:
-            use_case = self._factory(telemetry)
+            use_case = self._factory(telemetry, runtime)
             self._use_cases[key] = use_case
         return use_case
 

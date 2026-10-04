@@ -31,7 +31,7 @@ SOURCE_NAMES = {
     "jade",
     "constit",  # les cinq juri
 }
-TARGET_STORES = {"mongo", "neo4j", "qdrant"}
+TARGET_STORES = {"mongo", "neo4j", "opensearch"}
 EXCLUSION_REASONS = {
     "parse_error",
     "validation_error",

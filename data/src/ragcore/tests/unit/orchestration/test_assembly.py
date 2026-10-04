@@ -1,5 +1,5 @@
-"""L'assemblage du run, sans base ni réseau. Le client Qdrant interroge le serveur dès
-sa création : il est remplacé par un client hors ligne, comme la vérification du modèle.
+"""L'assemblage du run, sans base ni réseau : aucun client ne se connecte à sa
+construction, et la vérification du modèle est remplacée.
 """
 
 import asyncio
@@ -16,7 +16,7 @@ from ragcore.adapters.embedding.tei_embedder import TeiEmbedder
 from ragcore.application.ingestion_runner import IngestionRunner
 from ragcore.application.run_context import PipelineContext
 from ragcore.core.models.processing import ChunkingConfig, EmbeddingModel
-from ragcore.orchestration.kedro import assembly, stores
+from ragcore.orchestration.kedro import assembly
 from ragcore.orchestration.kedro.assembly import (
     ReportsTruncations,
     build_processing_stack,
@@ -34,20 +34,6 @@ from ragcore.tests.fakes.embedder import NoopEmbedder
 from ragcore.tests.fakes.runtime import FakeRuntime
 
 
-class _OfflineQdrant:
-    """Tient la place d'``AsyncQdrantClient`` : aucune requête à la construction."""
-
-    async def close(self) -> None:
-        return None
-
-
-@pytest.fixture(autouse=True)
-def _offline_qdrant(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(
-        stores, "create_qdrant_client", lambda url, api_key=None: _OfflineQdrant()
-    )
-
-
 @pytest.fixture
 def settings(tmp_path: Path) -> InfraSettings:
     return InfraSettings(
@@ -55,8 +41,8 @@ def settings(tmp_path: Path) -> InfraSettings:
         environment="prod",
         mongodb_uri="mongodb://localhost:1",
         neo4j_uri="bolt://localhost:1",
-        qdrant_url="http://localhost:1",
-        qdrant_collection="chunks",
+        opensearch_url="http://localhost:1",
+        opensearch_index="documents",
         xml_source_path=tmp_path,
     )
 
@@ -85,7 +71,7 @@ def runtime() -> Iterator[FakeRuntime]:
 def _close(clients: InfraClients) -> None:
     clients.mongo.close()
     asyncio.run(clients.neo4j.close())
-    asyncio.run(clients.qdrant.close())
+    asyncio.run(clients.opensearch.close())
 
 
 def _embedding_settings() -> EmbeddingRuntimeSettings:
@@ -101,7 +87,7 @@ def test_chaque_appel_ouvre_des_clients_NEUFS(settings: InfraSettings) -> None:
     try:
         assert first.mongo is not second.mongo
         assert first.neo4j is not second.neo4j
-        assert first.qdrant is not second.qdrant
+        assert first.opensearch is not second.opensearch
     finally:
         _close(first)
         _close(second)
@@ -112,7 +98,7 @@ def test_les_depots_s_ouvrent_sans_se_connecter(
 ) -> None:
     clients = open_clients(settings)
     try:
-        open_document_stores(clients, settings, plan, vector_size=768)
+        open_document_stores(clients, settings, plan)
         open_meta_stores(clients, settings)
     finally:
         _close(clients)
@@ -128,7 +114,7 @@ def test_prepare_embedder_verifie_le_modele_et_mesure_la_dimension(
 
     async def _fake_inspect(base_url: str, expected_model: str) -> EmbeddingModel:
         inspected.append((base_url, expected_model))
-        return EmbeddingModel(model_name=expected_model, dimension=384)
+        return EmbeddingModel(model_name=expected_model, dimension=768)
 
     monkeypatch.setattr(assembly, "inspect_served_model", _fake_inspect)
 
@@ -136,8 +122,20 @@ def test_prepare_embedder_verifie_le_modele_et_mesure_la_dimension(
 
     assert inspected == [("http://localhost:1", "un-modele")]
     assert isinstance(embedder, TeiEmbedder)
-    assert embedder.dimension == 384
+    assert embedder.dimension == 768
     assert isinstance(embedder, ReportsTruncations)
+
+
+def test_prepare_embedder_refuse_un_modele_dune_autre_dimension_que_lindex(
+    runtime: FakeRuntime, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    async def _fake_inspect(base_url: str, expected_model: str) -> EmbeddingModel:
+        return EmbeddingModel(model_name=expected_model, dimension=384)
+
+    monkeypatch.setattr(assembly, "inspect_served_model", _fake_inspect)
+
+    with pytest.raises(ValueError, match="dimension 384"):
+        prepare_embedder(_embedding_settings(), runtime)
 
 
 # ── Le pool ────────────────────────────────────────────────────────

@@ -2,7 +2,7 @@
 n'hérite de son port, et ``isinstance`` contre un ``@runtime_checkable Protocol`` est la
 seule façon de vérifier la promesse.
 
-Ce que ces tests ne prouvent pas (Cypher, filtres Qdrant, ``$setOnInsert``), seules les
+Ce que ces tests ne prouvent pas (Cypher, mapping OpenSearch, ``$setOnInsert``), seules les
 vraies bases le disent : ``tests/integration/``.
 """
 
@@ -21,7 +21,7 @@ from ragcore.adapters.storage.mongo.unformatted_repository import (
     MongoUnformattedRelationRepository,
 )
 from ragcore.adapters.storage.neo4j.graph_repository import Neo4jGraphRepository
-from ragcore.adapters.storage.qdrant.vector_repository import QdrantVectorRepository
+from ragcore.adapters.storage.opensearch.search_index import OpenSearchSearchIndex
 from ragcore.adapters.telemetry import (
     ConsoleLogTelemetry,
     NoopTelemetry,
@@ -38,13 +38,13 @@ from ragcore.core.ports.graph_repository import GraphRepository
 from ragcore.core.ports.pending_repository import PendingRelationRepository
 from ragcore.core.ports.run_summary_repository import RunSummaryRepository
 from ragcore.core.ports.runtime import AsyncRuntime, AsyncRuntimeFactory
+from ragcore.core.ports.search_index_repository import SearchIndexRepository
 from ragcore.core.ports.telemetry import (
     TelemetryFactory,
     TelemetryPort,
     WorkerTelemetry,
 )
 from ragcore.core.ports.unformatted_repository import UnformattedRelationRepository
-from ragcore.core.ports.vector_repository import VectorRepository
 
 RUN_ID = "abc123"
 
@@ -85,9 +85,9 @@ class TestStorageAdapters:
         repo = Neo4jGraphRepository(driver=None)
         assert isinstance(repo, GraphRepository)
 
-    def test_qdrant_vector_repository(self) -> None:
-        repo = QdrantVectorRepository.__new__(QdrantVectorRepository)
-        assert isinstance(repo, VectorRepository)
+    def test_opensearch_search_index(self) -> None:
+        repo = OpenSearchSearchIndex.__new__(OpenSearchSearchIndex)
+        assert isinstance(repo, SearchIndexRepository)
 
 
 class TestEmbedders:
@@ -145,6 +145,42 @@ class TestRuntime:
             assert runtime.run(answer()) == 42
         finally:
             runtime.close()
+
+    def test_the_deferred_closes_run_in_the_loop_last_first(self) -> None:
+        """Un client lié à la boucle se ferme avant elle, et une seule fois."""
+        runtime = AsyncioRuntime()
+        closed: list[str] = []
+
+        def closer(name: str):  # noqa: ANN202
+            async def close() -> None:
+                assert not runtime._loop.is_closed()  # noqa: SLF001
+                closed.append(name)
+
+            return close
+
+        runtime.defer_close(closer("mongo"))
+        runtime.defer_close(closer("opensearch"))
+        runtime.close()
+        runtime.close()
+
+        assert closed == ["opensearch", "mongo"]
+
+    def test_a_failed_deferred_close_does_not_stop_the_others(self) -> None:
+        runtime = AsyncioRuntime()
+        closed: list[str] = []
+
+        async def failing() -> None:
+            raise RuntimeError("le client refuse de se fermer")
+
+        async def working() -> None:
+            closed.append("mongo")
+
+        runtime.defer_close(working)
+        runtime.defer_close(failing)
+        runtime.close()
+
+        assert closed == ["mongo"]
+        assert runtime._loop.is_closed()  # noqa: SLF001
 
 
 class TestTelemetry:

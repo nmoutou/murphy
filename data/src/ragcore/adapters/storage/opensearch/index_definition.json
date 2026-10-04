@@ -1,0 +1,251 @@
+{
+  "settings": {
+    "index": {
+      "knn": true,
+      "number_of_shards": 1,
+      "number_of_replicas": 0
+    },
+    "analysis": {
+      "char_filter": {
+        "ordinal_degre": {
+          "type": "mapping",
+          "mappings": [
+            "º => °"
+          ]
+        },
+        "ref_pourvoi": {
+          "type": "pattern_replace",
+          "pattern": "(?i)(?:\\bn[°o]?s?\\.?\\s*(?:[A-Z]\\s+)?|\\b[A-Z]\\s+|\\b)(\\d{2})-(\\d{2})\\.?(\\d{3})\\b",
+          "replacement": "$1-$2$3"
+        },
+        "ref_texte": {
+          "type": "pattern_replace",
+          "pattern": "(?iu)(?:\\b(?:loi|d[ée]cret|ordonnance|arr[êe]t[ée])(?:\\s+organique)?\\s*(?:n[°o]?s?\\.?\\s*)?|\\bn[°o]?s?\\.?\\s*)(\\d{2,4})\\s*-\\s*(\\d{1,5})\\b",
+          "replacement": "n°$1-$2"
+        },
+        "ref_article_lo": {
+          "type": "pattern_replace",
+          "pattern": "(?i)\\bL\\.?\\s*O\\.?\\s*(?=\\*?\\s*\\d)",
+          "replacement": "LO"
+        },
+        "ref_article": {
+          "type": "pattern_replace",
+          "pattern": "(?i)\\b(LO|[LRDA])\\s*\\.?\\s*\\*?\\s*(\\d+(?:-\\d+)*)\\b",
+          "replacement": "$1$2"
+        }
+      },
+      "tokenizer": {
+        "references": {
+          "type": "pattern",
+          "group": 0,
+          "pattern": "(?i)\\bECLI:[A-Z]{2}:[A-Z]+:\\d{4}:[A-Z0-9]+(?:\\.[A-Z0-9]+)*|n°\\d{2,4}-\\d{1,5}\\b|\\b\\d{2}-\\d{5}\\b|\\b(?:LO|[LRDA])\\d+(?:-\\d+)+\\b|\\b(?-i:LO|[LRDA])\\d+\\b"
+        }
+      },
+      "analyzer": {
+        "references": {
+          "type": "custom",
+          "tokenizer": "references",
+          "char_filter": [
+            "ordinal_degre",
+            "ref_pourvoi",
+            "ref_texte",
+            "ref_article_lo",
+            "ref_article"
+          ],
+          "filter": [
+            "lowercase"
+          ]
+        },
+        "fr_juridique": {
+          "type": "custom",
+          "tokenizer": "standard",
+          "char_filter": [
+            "ordinal_degre"
+          ],
+          "filter": [
+            "fr_elision",
+            "lowercase",
+            "fr_numero",
+            "fr_stop",
+            "asciifolding",
+            "fr_stemmer"
+          ]
+        }
+      },
+      "filter": {
+        "fr_elision": {
+          "type": "elision",
+          "articles_case": true,
+          "articles": [
+            "l",
+            "m",
+            "t",
+            "qu",
+            "n",
+            "s",
+            "j",
+            "d",
+            "c",
+            "jusqu",
+            "quoiqu",
+            "lorsqu",
+            "puisqu"
+          ]
+        },
+        "fr_numero": {
+          "type": "pattern_replace",
+          "pattern": "^n(\\d+)$",
+          "replacement": "$1"
+        },
+        "fr_stop": {
+          "type": "stop",
+          "stopwords": "_french_"
+        },
+        "fr_stemmer": {
+          "type": "stemmer",
+          "language": "light_french"
+        }
+      }
+    }
+  },
+  "mappings": {
+    "dynamic": "strict",
+    "date_detection": false,
+    "_source": {
+      "excludes": [
+        "passages.text",
+        "passages.embedding"
+      ]
+    },
+    "dynamic_templates": [
+      {
+        "metadata_dates": {
+          "path_match": "metadata.date_*",
+          "mapping": {
+            "type": "date",
+            "format": "strict_date"
+          }
+        }
+      },
+      {
+        "metadata_derniere_modification": {
+          "path_match": "metadata.derniere_modification",
+          "mapping": {
+            "type": "date",
+            "format": "strict_date"
+          }
+        }
+      },
+      {
+        "metadata_versions_a_venir": {
+          "path_match": "metadata.versions_a_venir",
+          "mapping": {
+            "type": "date",
+            "format": "strict_date"
+          }
+        }
+      },
+      {
+        "metadata_chaines": {
+          "path_match": "metadata.*",
+          "match_mapping_type": "string",
+          "mapping": {
+            "type": "keyword",
+            "ignore_above": 1024,
+            "fields": {
+              "texte": {
+                "type": "text",
+                "analyzer": "fr_juridique"
+              },
+              "ref": {
+                "type": "text",
+                "analyzer": "references"
+              }
+            }
+          }
+        }
+      }
+    ],
+    "properties": {
+      "identifier": {
+        "type": "keyword"
+      },
+      "document_type": {
+        "type": "keyword"
+      },
+      "nature": {
+        "type": "keyword"
+      },
+      "title": {
+        "type": "keyword",
+        "ignore_above": 1024,
+        "fields": {
+          "texte": {
+            "type": "text",
+            "analyzer": "fr_juridique"
+          },
+          "ref": {
+            "type": "text",
+            "analyzer": "references"
+          }
+        }
+      },
+      "parent_text_title": {
+        "type": "text",
+        "analyzer": "fr_juridique",
+        "fields": {
+          "ref": {
+            "type": "text",
+            "analyzer": "references"
+          }
+        }
+      },
+      "title_embedding": {
+        "type": "knn_vector",
+        "dimension": 768,
+        "method": {
+          "name": "hnsw",
+          "engine": "faiss",
+          "space_type": "cosinesimil"
+        }
+      },
+      "metadata": {
+        "type": "object",
+        "dynamic": true
+      },
+      "passages": {
+        "type": "nested",
+        "properties": {
+          "chunk_id": {
+            "type": "keyword"
+          },
+          "char_start": {
+            "type": "integer"
+          },
+          "char_end": {
+            "type": "integer"
+          },
+          "text": {
+            "type": "text",
+            "analyzer": "fr_juridique",
+            "fields": {
+              "ref": {
+                "type": "text",
+                "analyzer": "references"
+              }
+            }
+          },
+          "embedding": {
+            "type": "knn_vector",
+            "dimension": 768,
+            "method": {
+              "name": "hnsw",
+              "engine": "faiss",
+              "space_type": "cosinesimil"
+            }
+          }
+        }
+      }
+    }
+  }
+}

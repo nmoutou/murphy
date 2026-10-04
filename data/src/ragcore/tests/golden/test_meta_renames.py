@@ -28,7 +28,7 @@ TABLES: dict[str, RoleTable] = {"LEGI": LEGI_ROLE_TABLE, **ROLE_TABLE_BY_ROOT}
 
 RESERVED_FIELDS = frozenset(
     {
-        # Le contrat de service, dans le payload Qdrant
+        # Le contrat de service (ADR-015)
         "chunk_id",
         "identifier",
         "char_start",

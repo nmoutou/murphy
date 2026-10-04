@@ -22,7 +22,7 @@ graph_repo:
   type: MemoryDataset
   copy_mode: assign
 
-vector_repo:
+search_index:
   type: MemoryDataset
   copy_mode: assign
 

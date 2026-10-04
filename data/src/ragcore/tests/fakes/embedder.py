@@ -1,5 +1,5 @@
 """Des vecteurs nuls, de la bonne dimension : faux sur le contenu, jamais sur la forme,
-que Qdrant vérifie.
+qu'OpenSearch vérifie.
 """
 
 from ragcore.core.models.chunk import Chunk, EmbeddedChunk
@@ -28,3 +28,6 @@ class NoopEmbedder:
             )
             for chunk in chunks
         ]
+
+    async def embed_text(self, text: str) -> list[float]:
+        return [0.0] * self._dimension

@@ -42,7 +42,7 @@ def _nuke_all() -> Node:
         inputs=[
             "doc_repo",
             "graph_repo",
-            "vector_repo",
+            "search_index",
             # Déjà arbitré par le plan du run : `False` hors dev
             "nuke_all",
             "pipeline_runtime",
@@ -86,7 +86,13 @@ def _parse_documents() -> Node:
 def _ingest() -> Node:
     return node(
         func=ingest_node,
-        inputs=["to_process", "runner", "pipeline_context"],
+        inputs=[
+            "to_process",
+            "runner",
+            "search_index",
+            "pipeline_context",
+            "pipeline_runtime",
+        ],
         outputs="ingestion_outcome",
         name="ingest",
     )

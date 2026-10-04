@@ -1,4 +1,4 @@
-"""Doublures en mémoire, pour tester sans Mongo, Neo4j ni Qdrant. Hors du paquet de
+"""Doublures en mémoire, pour tester sans Mongo, Neo4j ni OpenSearch. Hors du paquet de
 production, qui ne les exécuterait jamais.
 """
 
@@ -7,8 +7,8 @@ from .repositories import (
     InMemoryDocumentRepository,
     InMemoryGraphRepository,
     InMemoryPendingRepository,
+    InMemorySearchIndex,
     InMemoryUnformattedRepository,
-    InMemoryVectorRepository,
 )
 from .runtime import FakeRuntime, FakeRuntimeFactory
 from .telemetry import RecordingTelemetry, RecordingTelemetryFactory
@@ -19,8 +19,8 @@ __all__ = [
     "InMemoryDocumentRepository",
     "InMemoryGraphRepository",
     "InMemoryPendingRepository",
+    "InMemorySearchIndex",
     "InMemoryUnformattedRepository",
-    "InMemoryVectorRepository",
     "NoopEmbedder",
     "RecordingTelemetry",
     "RecordingTelemetryFactory",

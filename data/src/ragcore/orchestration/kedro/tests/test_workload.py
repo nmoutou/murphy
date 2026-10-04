@@ -30,8 +30,8 @@ from ragcore.tests.fakes import (
     InMemoryDocumentRepository,
     InMemoryGraphRepository,
     InMemoryPendingRepository,
+    InMemorySearchIndex,
     InMemoryUnformattedRepository,
-    InMemoryVectorRepository,
     RecordingTelemetry,
 )
 
@@ -47,13 +47,18 @@ DESCRIBED = UnformattedRelation(
 )
 
 
-def _doc() -> ParsedDocument:
+TITLE_VECTOR = [1.0, 1.0, 1.0]
+
+
+def _doc(
+    content: str = "Le contenu réel de l'article, en français.", title: str = "Article"
+) -> ParsedDocument:
     return ParsedDocument(
         identifier=SELF,
         source=SourceName.LEGI,
         document_type=DocumentType.ARTICLE,
-        title="Article",
-        content="Le contenu réel de l'article, en français.",
+        title=title,
+        content=content,
         structure={},
         metadata={},
         source_files=(SOURCE_FILE,),
@@ -66,7 +71,11 @@ def _zorglub_seen_once() -> dict[str, dict[str, UnknownTally]]:
 
 
 class _StubChunker:
+    """Un chunk par document, aucun sans contenu."""
+
     def chunk(self, document: ParsedDocument) -> list[Chunk]:
+        if not document.content:
+            return []
         return [
             Chunk(
                 chunk_id=f"{document.identifier.raw}_0000",
@@ -96,6 +105,9 @@ class _StubEmbedder:
             for chunk in chunks
         ]
 
+    async def embed_text(self, text: str) -> list[float]:
+        return list(TITLE_VECTOR)
+
 
 class _StubExtractor:
     """Un résultat fixe : une relation, une relation non formatée, un inconnu, et à la
@@ -124,17 +136,17 @@ class _StubExtractor:
 
 def _use_case_factory(
     graph: InMemoryGraphRepository,
-    vectors: InMemoryVectorRepository,
+    search_index: InMemorySearchIndex,
     unformatted: InMemoryUnformattedRepository,
 ):
     """Les dépôts en mémoire sont partagés : le test ne parallélise pas."""
 
-    def factory(telemetry) -> IngestDocumentUseCase:  # noqa: ANN001
+    def factory(telemetry, runtime) -> IngestDocumentUseCase:  # noqa: ANN001
         return IngestDocumentUseCase(
             IngestionStores(
                 documents=InMemoryDocumentRepository(),
                 graph=graph,
-                vectors=vectors,
+                search_index=search_index,
                 pending=InMemoryPendingRepository(),
                 unformatted=unformatted,
             ),
@@ -151,7 +163,7 @@ def _run(
     unformatted: InMemoryUnformattedRepository | None = None,
 ):
     graph = InMemoryGraphRepository()
-    vectors = InMemoryVectorRepository()
+    search_index = InMemorySearchIndex()
     context = PipelineContext.create(sources=(SourceName.LEGI,))
     workload = build_document_workload(
         steps=WorkloadSteps(
@@ -160,7 +172,7 @@ def _run(
             extractor=extractor or _StubExtractor(),
         ),
         use_case_factory=_use_case_factory(
-            graph, vectors, unformatted or InMemoryUnformattedRepository()
+            graph, search_index, unformatted or InMemoryUnformattedRepository()
         ),
         context=context,
         embedding_enabled=embedding_enabled,
@@ -171,13 +183,13 @@ def _run(
         result = workload(document, runtime, telemetry)
     finally:
         runtime.close()
-    return result, graph, vectors, telemetry
+    return result, graph, search_index, telemetry
 
 
 def test_les_inconnus_de_lextraction_sont_DECLARES() -> None:
     """Les inconnus d'extraction rejoignent l'agrégat du worker ; ceux du parse sont
     déclarés ailleurs."""
-    _result, _graph, _vectors, telemetry = _run(_doc())
+    _result, _graph, _search_index, telemetry = _run(_doc())
 
     unknowns = telemetry.snapshot().unknowns
     assert unknowns == _zorglub_seen_once()
@@ -185,7 +197,7 @@ def test_les_inconnus_de_lextraction_sont_DECLARES() -> None:
 
 def test_les_liens_perdus_sont_COMPTES_en_relation_unknown() -> None:
     """Les liens perdus sont comptés en ``relation.unknown`` (ADR-024)."""
-    _result, _graph, _vectors, telemetry = _run(
+    _result, _graph, _search_index, telemetry = _run(
         _doc(), extractor=_StubExtractor(lost_links=2)
     )
 
@@ -194,14 +206,14 @@ def test_les_liens_perdus_sont_COMPTES_en_relation_unknown() -> None:
 
 
 def test_sans_lien_perdu_relation_unknown_n_est_PAS_emis() -> None:
-    _result, _graph, _vectors, telemetry = _run(_doc())
+    _result, _graph, _search_index, telemetry = _run(_doc())
 
     assert telemetry.events_of(RELATION_UNKNOWN) == []
 
 
 def test_la_phase_1_NECRIT_AUCUNE_arete() -> None:
     """Le nœud est écrit, pas l'arête : sa cible n'est peut-être pas encore un nœud."""
-    result, graph, _vectors, _telemetry = _run(_doc())
+    result, graph, _search_index, _telemetry = _run(_doc())
 
     assert graph.nodes == {SELF.serialize()}  # le nœud est écrit…
     assert graph.edges == []  # …mais aucune arête
@@ -231,23 +243,52 @@ def test_extract_est_appele_une_seule_fois_par_document() -> None:
 def test_aucun_inconnu_fantome_cote_parse() -> None:
     """Aucun inconnu fantôme côté parse : le workload ne déclare que ceux de
     l'extraction."""
-    _result, _graph, _vectors, telemetry = _run(_doc())
+    _result, _graph, _search_index, telemetry = _run(_doc())
 
     assert telemetry.snapshot().unknowns == _zorglub_seen_once()
 
 
-def test_embedding_actif_ecrit_les_vecteurs() -> None:
-    """Témoin du test suivant : le chemin nominal écrit bien un vecteur."""
-    _result, _graph, vectors, _telemetry = _run(_doc(), embedding_enabled=True)
+def test_embedding_actif_ecrit_les_vecteurs_des_passages_SANS_celui_du_titre() -> None:
+    """ADR-029 : le titre d'un document qui a des passages n'est pas embarqué."""
+    _result, _graph, search_index, _telemetry = _run(_doc(), embedding_enabled=True)
 
-    assert len(vectors.chunks) == 1  # le chunk unique du stub, embarqué et upserté
+    content = search_index.documents[SELF.serialize()]
+    (passage,) = content.passages
+    assert passage.embedding == [0.0] * 3
+    assert content.title_embedding is None
 
 
-def test_embedding_coupe_nECRIT_AUCUN_vecteur_mais_merge_le_noeud() -> None:
-    """ADR-012 : ``embedding_enabled=False`` n'écrit aucun vecteur, mais le nœud et la
-    relation suivent leur cours."""
-    result, graph, vectors, _telemetry = _run(_doc(), embedding_enabled=False)
+def test_un_document_sans_passage_recoit_le_VECTEUR_DE_SON_TITRE() -> None:
+    """ADR-029 : sans lui, une section n'est trouvée que par la recherche lexicale."""
+    _result, _graph, search_index, _telemetry = _run(_doc(content=""))
 
-    assert vectors.chunks == []  # rien d'embarqué, rien d'upserté
+    content = search_index.documents[SELF.serialize()]
+    assert content.passages == ()
+    assert content.title_embedding == TITLE_VECTOR
+
+
+def test_un_document_sans_passage_ni_titre_na_AUCUN_vecteur() -> None:
+    _result, _graph, search_index, _telemetry = _run(_doc(content="", title=""))
+
+    assert search_index.documents[SELF.serialize()].title_embedding is None
+
+
+def test_embedding_coupe_ecrit_les_passages_SANS_VECTEUR_et_merge_le_noeud() -> None:
+    """ADR-012 : ``embedding_enabled=False`` n'écrit aucun vecteur, mais les passages
+    restent cherchables par leur texte, et le nœud et la relation suivent leur cours."""
+    result, graph, search_index, _telemetry = _run(_doc(), embedding_enabled=False)
+
+    content = search_index.documents[SELF.serialize()]
+    (passage,) = content.passages
+    assert passage.embedding is None
+    assert content.title_embedding is None
     assert graph.nodes == {SELF.serialize()}  # …mais le nœud est bien écrit
     assert len(result.relations) == 1  # …et la relation part en phase 2, intacte
+
+
+def test_embedding_coupe_nembarque_pas_le_titre_dun_document_sans_passage() -> None:
+    _result, _graph, search_index, _telemetry = _run(
+        _doc(content=""), embedding_enabled=False
+    )
+
+    assert search_index.documents[SELF.serialize()].title_embedding is None

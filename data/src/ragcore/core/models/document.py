@@ -21,7 +21,7 @@ class RawDocument(BaseModel):
 class ParsedDocument(BaseModel):
     """Document parsé, prêt pour le chunking.
 
-    ``identifier`` est sa seule clé en aval (Mongo, Qdrant, nœud Neo4j). Pas de hash de
+    ``identifier`` est sa seule clé en aval (Mongo, OpenSearch, nœud Neo4j). Pas de hash de
     contenu : chaque run réécrit le document en place.
     """
 

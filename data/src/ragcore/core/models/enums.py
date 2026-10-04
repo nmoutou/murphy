@@ -16,7 +16,7 @@ class SourceName(StrEnum):
 
 class DocumentType(StrEnum):
     """La forme d'un document, déduite du préfixe de son identifiant, écrite à
-    l'identique dans Mongo, Qdrant et Neo4j. La nature juridique (``LOI``, ``QPC``…)
+    l'identique dans Mongo, OpenSearch et Neo4j. La nature juridique (``LOI``, ``QPC``…)
     est ailleurs : ``ParsedDocument.nature``.
     """
 
@@ -29,4 +29,4 @@ class DocumentType(StrEnum):
 class TargetStore(StrEnum):
     MONGO = "mongo"
     NEO4J = "neo4j"
-    QDRANT = "qdrant"
+    OPENSEARCH = "opensearch"

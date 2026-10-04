@@ -9,19 +9,19 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 
 from ragcore.core.models import (
-    EmbeddedChunk,
     Identifier,
     ParsedDocument,
     RunId,
+    SearchContent,
     UnformattedRelation,
 )
 from ragcore.core.models.audit import build_event
 from ragcore.core.ports.document_repository import DocumentRepository
 from ragcore.core.ports.graph_repository import GraphRepository
 from ragcore.core.ports.pending_repository import PendingRelationRepository
+from ragcore.core.ports.search_index_repository import SearchIndexRepository
 from ragcore.core.ports.telemetry import TelemetryPort
 from ragcore.core.ports.unformatted_repository import UnformattedRelationRepository
-from ragcore.core.ports.vector_repository import VectorRepository
 from ragcore.core.telemetry_events import DOCUMENT_PERSISTED
 
 from .run_context import PipelineContext
@@ -37,7 +37,7 @@ class IngestionStores:
 
     documents: DocumentRepository
     graph: GraphRepository
-    vectors: VectorRepository
+    search_index: SearchIndexRepository
     pending: PendingRelationRepository
     unformatted: UnformattedRelationRepository
 
@@ -51,34 +51,34 @@ class IngestDocumentUseCase:
     def __init__(self, stores: IngestionStores, telemetry: TelemetryPort) -> None:
         self._document_repo = stores.documents
         self._graph_repo = stores.graph
-        self._vector_repo = stores.vectors
+        self._search_index = stores.search_index
         self._unformatted_repo = stores.unformatted
         self._telemetry = telemetry
 
     async def execute(
         self,
         parsed: ParsedDocument,
-        embedded_chunks: list[EmbeddedChunk],
+        content: SearchContent,
         context: PipelineContext,
         unformatted_relations: Sequence[UnformattedRelation] = (),
     ) -> None:
         unformatted_step = self._unformatted_step(
             parsed.identifier, unformatted_relations, context.run_id
         )
-        steps = self._saga_steps(parsed, embedded_chunks, unformatted_step)
+        steps = self._saga_steps(parsed, content, unformatted_step)
         await SagaExecutor(self._telemetry).execute(steps, context)
         self._emit_persisted(parsed, context)
 
     def _saga_steps(
         self,
         parsed: ParsedDocument,
-        embedded_chunks: list[EmbeddedChunk],
+        content: SearchContent,
         unformatted_step: SagaStep,
     ) -> list[SagaStep]:
-        """Mongo → relations non formatées → Qdrant → nœud Neo4j.
+        """Mongo → relations non formatées → OpenSearch → nœud Neo4j.
 
-        La compensation Mongo supprime : juste pour une première écriture, mais un
-        document déjà en base est perdu au lieu d'être restauré. Ce cas n'existe qu'en
+        Les compensations Mongo et OpenSearch suppriment : juste pour une première
+        écriture, mais un document déjà en base est perdu au lieu d'être restauré. Ce cas n'existe qu'en
         run incrémental (jamais après `nuke_all`) et le run suivant le réécrit depuis la
         source.
 
@@ -93,11 +93,9 @@ class IngestDocumentUseCase:
             ),
             unformatted_step,
             SagaStep(
-                name="qdrant_upsert",
-                forward=lambda: self._qdrant_delete_then_insert(
-                    parsed.identifier, embedded_chunks
-                ),
-                compensate=lambda: self._vector_repo.delete_by_document(
+                name="opensearch_index",
+                forward=lambda: self._search_index.index_document(parsed, content),
+                compensate=lambda: self._search_index.delete_document(
                     parsed.identifier
                 ),
             ),
@@ -136,16 +134,3 @@ class IngestDocumentUseCase:
                 document_id=parsed.identifier.serialize(),
             )
         )
-
-    async def _qdrant_delete_then_insert(
-        self,
-        identifier: Identifier,
-        embedded_chunks: list[EmbeddedChunk],
-    ) -> None:
-        """Ne pas retirer le ``delete`` : si la nouvelle version a moins de chunks, un
-        simple ``upsert`` laisserait des points périmés dans l'index. Qdrant n'a pas de
-        remplacement atomique ; la fenêtre où les vecteurs manquent n'existe qu'en run
-        incrémental.
-        """
-        await self._vector_repo.delete_by_document(identifier)
-        await self._vector_repo.upsert(embedded_chunks)

@@ -85,11 +85,10 @@ class InfraSettings(BaseSettings):
     neo4j_username: str = "neo4j"
     neo4j_password: SecretStr = SecretStr("neo4j")
 
-    qdrant_url: str = "http://localhost:6333"
-    qdrant_api_key: SecretStr | None = None
-    qdrant_collection: str
-    """Sans défaut. Le backend lit la même variable : l'ingestion écrit la collection
-    qu'il interroge."""
+    opensearch_url: str = "http://localhost:9200"
+    opensearch_index: str
+    """Sans défaut. Le backend lit la même variable : l'ingestion écrit l'index qu'il
+    interroge."""
 
     xml_source_path: Path = Path("/mnt/data/Murphy/src")
     """La racine du corpus, en chemin absolu hors du dépôt. Le sous-répertoire de chaque
@@ -104,15 +103,6 @@ class InfraSettings(BaseSettings):
     def _environnement_vide_vaut_absent(cls, value: object) -> object:
         """``ENVIRONMENT=`` produit ``''`` : l'absence, pas une coquille."""
         return DEFAULT_ENVIRONMENT if value == "" else value
-
-    @field_validator("qdrant_api_key", mode="after")
-    @classmethod
-    def _secret_vide_vaut_absent(cls, value: SecretStr | None) -> SecretStr | None:
-        """``QDRANT_API_KEY=`` produit ``SecretStr('')``, pas ``None`` : le client
-        enverrait une clé vide et serait refusé."""
-        if value is not None and not value.get_secret_value():
-            return None
-        return value
 
 
 class EmbeddingRuntimeSettings(BaseSettings):
