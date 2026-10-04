@@ -4,6 +4,9 @@ Les deux analyseurs de l'index OpenSearch (ADR-028 §5) : `fr_juridique` pour la
 naturelle, `references` pour les références juridiques. L'ingestion les créera avec
 l'index ; la question de l'utilisateur passe par les mêmes, au moment de la recherche.
 
+Le mapping qui les emploie, et la requête qui les interroge, sont dans
+[index-opensearch.md](index-opensearch.md).
+
 Un analyseur enchaîne des filtres de caractères (`char_filter`), un tokenizer et des
 filtres de jetons (`filter`). Un même texte est lu par les deux : « le code du travail et
 l'article L. 1234-5 » donne `code` et `travail` à `fr_juridique`, `l1234-5` à

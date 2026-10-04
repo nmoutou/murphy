@@ -1,7 +1,8 @@
 # ADR-028 — OpenSearch remplace Qdrant : un moteur de recherche hybride, sans LLM
 
 **Statut** : ✅ Accepté (2 octobre 2026) — amende ADR-007, ADR-010, ADR-015 §2 à §5 et
-ADR-018 §1-§2
+ADR-018 §1-§2 · **§2 et §6 amendés par [ADR-029](ADR-029-recherche-hybride-quatre-listes.md)**
+(une sous-requête de références, un vecteur de titre pour les documents sans passage)
 
 ## Contexte
 
