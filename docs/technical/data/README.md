@@ -1,7 +1,7 @@
 # Documentation — data
 
 Documentation technique du pipeline d'**ingestion** de Murphy : LEGIFRANCE XML → parse →
-chunk → embed → MongoDB / Qdrant / Neo4j. Le pipeline tourne hors-ligne, hors de la stack
+chunk → embed → MongoDB / OpenSearch / Neo4j. Le pipeline tourne hors-ligne, hors de la stack
 Docker de serving ; il ne partage avec le backend que les bases de données.
 
 ## Quoi lire, dans quel ordre
@@ -11,9 +11,9 @@ Docker de serving ; il ne partage avec le backend que les bases de données.
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Vue d'ensemble : le shell Kedro, le cœur `ragcore` (hexagonal), le DAG, les principes de conception. **Commencer ici.** |
 | [reference/pipeline.md](reference/pipeline.md) | Le déroulé exhaustif d'un run, nœud par nœud, avec le pool de workers et les barrières du DAG. |
 | [reference/sources.md](reference/sources.md) | Les sources DILA, les connecteurs, le parser générique (table de rôles), le chunking, l'extraction des relations et des relations non formatées. |
-| [reference/modele-de-donnees.md](reference/modele-de-donnees.md) | Les modèles Pydantic et ce qui est réellement écrit dans Mongo (les deux bases), Qdrant et Neo4j — collections, index, schémas. |
+| [reference/modele-de-donnees.md](reference/modele-de-donnees.md) | Les modèles Pydantic et ce qui est réellement écrit dans Mongo (les deux bases), OpenSearch et Neo4j — collections, index, schémas. |
 | [reference/analyseurs.md](reference/analyseurs.md) | Les analyseurs OpenSearch `fr_juridique` et `references` (ADR-028) : l'inventaire des références du corpus, leurs définitions, les cas vérifiés par `_analyze`. |
-| [reference/index-opensearch.md](reference/index-opensearch.md) | L'index OpenSearch (ADR-028, ADR-029) : réglages, mapping, `parent_text_title`, la requête hybride à quatre listes et sa vérification sur le corpus de dev. |
+| [reference/index-opensearch.md](reference/index-opensearch.md) | L'index OpenSearch que l'ingestion crée et remplit (ADR-028, ADR-029) : réglages, mapping, `parent_text_title`, la requête hybride à quatre listes et sa vérification sur le corpus de dev. |
 | [reference/configuration.md](reference/configuration.md) | `parameters.yml` champ par champ et le `.env.dev` racine. |
 | [reference/idempotence.md](reference/idempotence.md) | La réécriture en place, la saga et ses compensations, `nuke_all`. |
 | [reference/telemetrie.md](reference/telemetrie.md) | Le vocabulaire des événements, les backends (console/agrégat), l'équation de complétude et le statut `ok`/`degraded`/`failed`. |
@@ -25,7 +25,7 @@ Docker de serving ; il ne partage avec le backend que les bases de données.
 ### Prérequis
 
 - Python ≥ 3.11 (venv dans `data/.venv`), installé par `uv sync --extra dev`, comme en CI.
-- Les bases (Mongo, Qdrant, Neo4j) et le service d'embedding TEI, déclarés à la **racine du
+- Les bases (Mongo, OpenSearch, Neo4j) et le service d'embedding TEI, déclarés à la **racine du
   dépôt** : `npm run up`, depuis la racine ou depuis `data/`, les démarre avec le reste de la stack (TEI exige un GPU NVIDIA ; le
   premier boot télécharge le modèle — patience, ce n'est pas un blocage).
 - Le corpus XML DILA sous `XML_SOURCE_PATH` (chemin **absolu**, hors dépôt — défaut
@@ -64,7 +64,7 @@ jamais de run silencieusement vide.
 
 Ce qu'un run laisse derrière lui :
 
-- les corpus dans Mongo `MURPHY_DATA`, Qdrant (collection `QDRANT_COLLECTION`) et Neo4j ;
+- les corpus dans Mongo `MURPHY_DATA`, OpenSearch (index `OPENSEARCH_INDEX`) et Neo4j ;
 - le bilan (`RunSummary`) dans `MURPHY_META.run_summaries`.
 
 ### Développer
@@ -88,5 +88,6 @@ Extras optionnels (`pyproject.toml`) : `notebooks`, `docs`, `dev`.
 | `ValidationError` sur `environment` au démarrage | `ENVIRONMENT` ne vaut ni `dev` ni `prod` (casse comprise) : corriger la valeur. |
 | Le run échoue avant d'ingérer, en nommant un modèle | La précondition TEI : le modèle servi par le conteneur (`GET /info`) n'est pas `EMBEDDING_MODEL`. Redémarrer TEI après avoir changé la variable (`npm run up`). |
 | Le run échoue avant d'ingérer sur « sonde de dimension » ou « Impossible d'interroger » | TEI n'est pas joignable à `EMBEDDING_SERVICE_URL` : le démarrer (`npm run up`, ~4 min) ou corriger l'URL. |
+| Le run échoue avant d'ingérer sur « le mapping de l'index en déclare » | Le modèle servi produit des vecteurs d'une autre dimension que celle du mapping (`index_definition.json`). Changer de modèle impose de modifier le mapping et de réingérer tout le corpus. |
 | `chunk.truncated` non nul au bilan | Le `CHUNKING_MAX_CHARS` configuré dépasse la fenêtre du modèle d'embedding : le corpus est complet mais des fins de chunks ne sont pas indexées — baisser `CHUNKING_MAX_CHARS`. |
-| Le backend ne trouve rien après un run | Le run était-il `ok` ? Un run `degraded` a laissé un corpus incomplet dans la collection servie. Lire le bilan dans `run_summaries`, puis relancer. |
+| Le backend ne trouve rien après un run | Le run était-il `ok` ? Un run `degraded` a laissé un corpus incomplet dans l'index servi. Lire le bilan dans `run_summaries`, puis relancer. |

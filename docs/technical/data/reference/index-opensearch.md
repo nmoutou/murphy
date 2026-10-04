@@ -2,8 +2,8 @@
 
 L'index OpenSearch qui porte la recherche (ADR-028, ADR-029) : ses réglages, son mapping,
 et la requête hybride qu'il doit servir. Les analyseurs `fr_juridique` et `references`
-sont décrits à part, dans [analyseurs.md](analyseurs.md). L'ingestion créera l'index ; le
-backend l'interrogera.
+sont décrits à part, dans [analyseurs.md](analyseurs.md). L'ingestion crée l'index et le
+remplit (voir [L'écriture](#lécriture)) ; le backend l'interrogera.
 
 Le mapping et la requête ont été vérifiés le 4 octobre 2026 sur tout le corpus de dev
 (1 121 documents, 18 023 passages), avec OpenSearch 3.9.0 et `all-mpnet-base-v2`.
@@ -23,6 +23,25 @@ analyseurs, du chunking ou du modèle d'embedding passe par une réingestion com
 
 Sur le corpus de dev, 310 documents n'ont aucun passage : les 287 sections, nœuds de
 structure sans texte, et 23 textes dont le `content` est vide.
+
+## L'écriture
+
+L'ingestion applique `data/src/ragcore/adapters/storage/opensearch/index_definition.json`,
+qui réunit les réglages, les analyseurs et le mapping de ce document. Les trois doivent
+rester identiques.
+
+- **La création** : `ensure_index()`, une fois avant le pool, crée l'index s'il est
+  absent. Elle ne touche jamais un index existant : un changement du mapping passe par
+  `nuke_all` en dev, qui supprime l'index du run et lui seul, puis le recrée.
+- **Un `PUT` par document**, et non un `_bulk` comme le prévoyait l'ADR-028 : la saga
+  écrit un document à la fois, et le `PUT` le remplace entier, passages compris, sans
+  fenêtre où il manquerait. Un rejet (date mal formée, champ inconnu) fait échouer la
+  saga du document, qui compense ; le run continue.
+- **Le rafraîchissement** est suspendu pendant la phase 1, puis relancé à sa fin, même
+  en échec (voir [Les réglages](#les-réglages)).
+- **L'interrupteur d'embedding coupé** (dev, ADR-012) : les passages sont écrits sans
+  `embedding`, et aucun `title_embedding` n'est calculé. Seules les sous-requêtes
+  lexicale et « références » trouvent alors quelque chose.
 
 ## Les réglages
 
@@ -118,8 +137,9 @@ structure sans texte, et 23 textes dont le `content` est vide.
 
 - **`dynamic: strict`** : un champ inconnu fait échouer l'écriture du document. Seul
   `metadata` accepte des clés nouvelles.
-- **Les vecteurs** : 768 dimensions, celles d'`all-mpnet-base-v2`. L'ingestion demandera
-  la dimension à TEI, comme pour Qdrant aujourd'hui. Moteur `faiss` (le défaut d'OpenSearch
+- **Les vecteurs** : 768 dimensions, celles d'`all-mpnet-base-v2`. Au démarrage,
+  l'ingestion vérifie que la dimension mesurée auprès de TEI est celle-ci, et s'arrête
+  sinon. Moteur `faiss` (le défaut d'OpenSearch
   3.x ; `nmslib` est déprécié), graphe HNSW, similarité cosinus.
 
 ### Les métadonnées
@@ -154,8 +174,9 @@ Le titre du texte qui contient un article ou une section : dans « l'article 3 d
 2005-850 », il départage les « 3 » de tous les textes. Il ne vit que dans l'index : ni
 Mongo ni le contrat du flux ne le portent.
 
-Il se lit dans le XML du document, sous `<CONTEXTE>/<TEXTE>/<TITRE_TXT>`, que l'ingestion
-parcourt déjà pour la relation `contient`. Le XML donne un titre par période, souvent
+Il se lit dans le XML du document, sous `<CONTEXTE>/<TEXTE>/<TITRE_TXT>`, que le parseur
+lit déjà pour la relation `contient` (`structure["context"]`, les `TITRE_TM` des
+subdivisions mis à part). Le XML donne un titre par période, souvent
 deux formes du même titre :
 
 ```
@@ -279,6 +300,19 @@ Une requête prend 55 ms en médiane (62 au plus), sur 11 questions. La paginati
 cohérente : à profondeur égale, la page `from: 10` prolonge la page `from: 0` sans
 recouvrement. Aucun index `top_queries-*` n'apparaît : Query Insights est désactivé.
 
+### Par l'ingestion
+
+Le 4 octobre 2026, `kedro run` a produit un index identique, document par document, à
+celui du script : mêmes identifiants, passages, offsets, `parent_text_title` et
+métadonnées, et `title_embedding` sur les 310 documents sans passage seulement (écart au
+plus de 3·10⁻⁴ entre les vecteurs : celui de TEI d'un lot à l'autre). Les rangs du
+tableau sont les mêmes ; les top 10 gardent 8 à 10 documents de ceux du script.
+
+L'écriture document par document laisse 3 segments au lieu de 2. Sur la même machine, la
+requête médiane passe de 80 à 106 ms. Un `_forcemerge` à un segment la ramène à 58 ms,
+mais il reconstruit le graphe HNSW, approché : les versions de `L52-8` passent alors aux
+rangs 4, 9 et 10.
+
 ### Limites connues
 
 - **Le bruit lexical** : les mots fréquents d'une question (`article`, `3`) suffisent à
@@ -293,11 +327,11 @@ recouvrement. Aucun index `top_queries-*` n'apparaît : Query Insights est désa
 
 ## Vérifier l'index
 
-L'index d'essai `documents-essai` est consultable dans les Dashboards
-(`http://localhost:5601`, Dev Tools) :
+L'index de l'ingestion (`OPENSEARCH_INDEX`, `documents` en dev) est consultable dans les
+Dashboards (`http://localhost:5601`, Dev Tools) :
 
 ```
-GET documents-essai/_mapping
-GET documents-essai/_search
+GET documents/_mapping
+GET documents/_search
 { "query": { "term": { "title": "L52-8" } }, "_source": ["title", "parent_text_title", "passages"] }
 ```

@@ -22,7 +22,7 @@ Le hook est le **point d'assemblage** du run. Dans l'ordre :
      compris : un modèle strict, sans défaut dans le code. Clé inconnue, absente ou mal
      typée = échec au démarrage, toutes les erreurs listées ensemble ;
    - la découpe : `CHUNKING_MAX_CHARS` et `CHUNKING_OVERLAP_CHARS` (`ChunkingSettings`) ;
-   - la collection Qdrant : `QDRANT_COLLECTION`, un nom fixe lu des settings ;
+   - l'index OpenSearch : `OPENSEARCH_INDEX`, un nom fixe lu des settings ;
    - les sources (`run_parameters.resolve_sources`) : `--params source=…` ou `SOURCE` du
      `.env`, défaut `all` = les six ingérables. Valeur inconnue = échec au démarrage en
      nommant les valides, **avant** qu'aucun client ne soit ouvert ;
@@ -35,8 +35,9 @@ Le hook est le **point d'assemblage** du run. Dans l'ordre :
    modèle servi à `EMBEDDING_MODEL`. TEI ignore le champ `model` des requêtes ; sans
    cette vérification, un conteneur pas redémarré après un changement de modèle écrirait
    les vecteurs d'un autre modèle que celui que le backend interroge — en silence. Puis
-   une requête de sonde mesure la dimension des vecteurs : c'est elle qui dimensionne la
-   collection Qdrant. Échec = run arrêté avant tout nœud ;
+   une requête de sonde mesure la dimension des vecteurs, comparée à celle que fixe le
+   mapping de l'index (`opensearch/index_definition.json`) : un modèle d'une autre
+   dimension ferait rejeter chaque document. Échec = run arrêté avant tout nœud ;
 5. **Clients, index et dépôts du hook** (`stores.open_clients`, `ensure_indexes`,
    `open_document_stores`, `open_meta_stores`) : `ensure_data_indexes` (MURPHY_DATA :
    documents, pendantes), `ensure_meta_indexes` (MURPHY_META : bilans) et
@@ -54,19 +55,23 @@ Le hook est le **point d'assemblage** du run. Dans l'ordre :
 9. **Service phase 2** : `ResolveRelationsService` (dépôts du hook, non parallélisé).
 10. Tout est posé au catalogue (`catalog.save(...)`).
 
-Pourquoi des fabriques : un client Motor/Neo4j/Qdrant est lié à la boucle asyncio qui le
+Pourquoi des fabriques : un client Motor/Neo4j/OpenSearch est lié à la boucle asyncio qui le
 touche en premier. Chaque worker construit donc **ses** clients sur **sa** boucle (le même
 `stores.open_clients` que le hook : le code est partagé, pas les instances) ; ceux
-du hook servent les nœuds non parallélisés (maintenance, phase 2).
+du hook servent les nœuds non parallélisés (maintenance, phase 2). Chacun inscrit la
+fermeture de ses clients auprès de son runtime (`AsyncRuntime.defer_close`), qui
+l'exécute dans la boucle juste avant de la fermer.
 
 ## 1. `nukeAll`
 
-Entrées : les quatre dépôts du hook, `nuke_all` (du plan du run).
+Entrées : les dépôts Mongo et Neo4j du hook, l'index OpenSearch, `nuke_all` (du plan du
+run), le runtime du hook.
 
 - `nuke_all: false` → ne supprime rien, mais fait quand même le **setup partagé** :
-  `vector_repo.ensure_collection()`. La collection du run doit exister
-  avant le pool — la laisser aux workers les mettrait en course (Qdrant répond 409 à tous
-  sauf un).
+  `search_index.ensure_index()`, qui crée l'index s'il est absent, avec ses analyseurs et
+  son mapping ([index-opensearch.md](index-opensearch.md)). L'index du run doit exister
+  avant le pool — la laisser aux workers les mettrait en course (OpenSearch refuse toutes
+  les créations sauf une).
 - `nuke_all: true` → le garde-fou a déjà joué en amont : hors `ENVIRONMENT=dev`, `plan_run`
   ignore `parameters.yml` et `nuke_all` arrive ici à `false` (l'absence de la variable vaut
   `prod`). Le nœud n'efface donc qu'en dev :
@@ -75,8 +80,8 @@ Entrées : les quatre dépôts du hook, `nuke_all` (du plan du run).
     (`schemas.reset_data_collections`, qui **repose les index** qu'un drop détruit avec
     la collection) ;
   - Neo4j : le graphe entier ;
-  - Qdrant : **toutes** les collections du store (c'est là que dorment les collections
-    d'anciennes stratégies) ;
+  - OpenSearch : **seulement** l'index du run, recréé aussitôt par `ensure_index()`. Les
+    index système (Dashboards, plugins) vivent dans le même cluster ;
   - **préservé** : la base méta `MURPHY_META` (bilans de run) — un nuke ne doit
     jamais emporter la mémoire de ce qu'on a fait.
 
@@ -129,8 +134,13 @@ Sorties : `to_process` (`list[ParsedDocument]`) et `to_skip` (`list[str]`).
 
 ## 4. `ingest` — la phase 1
 
-Entrées : `to_process`, `runner`, contexte. Le nœud est mince : il lance
-`IngestionRunner.run()` et rend son `IngestionOutcome`.
+Entrées : `to_process`, `runner`, l'index OpenSearch, contexte, le runtime du hook. Le
+nœud est mince : il lance `IngestionRunner.run()` et rend son `IngestionOutcome`.
+
+Autour du pool, il suspend le rafraîchissement de l'index (`refresh_interval: -1`), puis,
+dans un `finally`, lance un `_refresh` et rend au réglage sa valeur par défaut : même un
+run en échec laisse un index cherchable. Pendant le run, le backend ne voit donc pas les
+documents réécrits.
 
 ### Le pool (`application/ingestion_runner.py`)
 
@@ -148,7 +158,8 @@ Entrées : `to_process`, `runner`, contexte. Le nœud est mince : il lance
   message, gardé dans `error`, disperserait les raisons), journalisée en `logger.error`
   (seule trace de *quel* document a échoué) et le document rejoint `failures`
   (identifiant + message : un échec anonyme est un échec qu'on ne peut pas rejouer).
-- **Fin de shard** : `telemetry.close()` → `runtime.close()`.
+- **Fin de shard** : `telemetry.close()` → `runtime.close()`, qui ferme d'abord les
+  clients du worker.
 
 ### Le workload d'un document (`orchestration/kedro/workload.py`)
 
@@ -159,9 +170,11 @@ Entrées : `to_process`, `runner`, contexte. Le nœud est mince : il lance
    comptés (`relation.unknown`). Avec `skip_unconfigured`, les arêtes d'un type non
    configuré sont retirées (ADR-024).
 2. **Chunking** (`chunker.chunk(parsed)`) — voir [sources.md](sources.md#le-chunking).
-3. **Embedding** (`runtime.run(embedder.embed(chunks))`) — sauté si l'interrupteur
-   d'embedding est coupé (dev, ADR-012) : zéro vecteur calculé ni écrit, Qdrant reste
-   vide, Mongo/Neo4j normaux.
+3. **Embedding** (`embedder.embed(chunks)`) — un document sans chunk (une section, un
+   texte au `content` vide) embarque son titre à la place (`embedder.embed_text`,
+   `title_embedding`, ADR-029). Sauté si l'interrupteur d'embedding est coupé (dev,
+   ADR-012) : zéro vecteur calculé, les passages partent dans l'index sans vecteur,
+   cherchables par leur seul texte. Le résultat est un `SearchContent`.
 4. **Use case** (`IngestDocumentUseCase.execute`) — la saga d'écriture, voir
    [idempotence.md](idempotence.md#la-saga).
    Un use case **par worker**, mémorisé par identité de télémétrie (la fabrique crée

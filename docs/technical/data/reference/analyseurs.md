@@ -252,14 +252,11 @@ d'être de `references`.
 
 ## Vérifier un analyseur
 
-Dans les Dashboards (`http://localhost:5601`), Dev Tools. Un index d'essai, sans
-documents, suffit à `_analyze` :
+Dans les Dashboards (`http://localhost:5601`), Dev Tools. L'index de l'ingestion
+(`OPENSEARCH_INDEX`, `documents` en dev) porte les deux analyseurs :
 
 ```
-PUT analyseurs-essai
-{ "settings": { "analysis": { … les deux définitions ci-dessus, fusionnées … } } }
-
-POST analyseurs-essai/_analyze
+POST documents/_analyze
 { "analyzer": "references", "text": "pourvoi n° H 24-15.857 et article L. 1234-5" }
 ```
 

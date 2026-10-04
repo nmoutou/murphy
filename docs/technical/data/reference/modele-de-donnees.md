@@ -6,7 +6,7 @@ Ce que le pipeline écrit réellement, base par base. Modèles Pydantic :
 ## L'identité d'un document
 
 Un seul `identifier` (le type `Identifier`) nomme le document partout : clé Mongo,
-payload Qdrant, nœud Neo4j, événements de télémétrie. Sa forme sérialisée est la valeur brute
+`_id` OpenSearch, nœud Neo4j, événements de télémétrie. Sa forme sérialisée est la valeur brute
 de la DILA, sans rien ajouter : `LEGIARTI000006419264`.
 
 Le format est validé à la construction (`^[A-Z]{8}[0-9]{12}$`) pour toutes les sources.
@@ -112,33 +112,35 @@ données.
 |---|---|---|
 | `run_summaries` | Un `RunSummary` par run, à plat : run_id, `sources` (liste), dates, `status` (`ok`/`degraded`/`failed`), `counts`, `unknowns` (`tags` / `roots` / `links` → clé → `{count, example: {identifier, source_file}}`, ADR-024), `collisions` (clé → `{count, example: [fichiers]}`, ADR-025), et `error_message` sur un run `failed` seulement. | unique (run_id), (started_at) |
 
-## Qdrant
+## OpenSearch
 
-- **Nom de collection** : `QDRANT_COLLECTION` (`.env.dev`), un nom fixe que le backend
-  lit aussi. Une seule collection, réécrite en place à chaque run.
-- **Vecteurs** : dimension mesurée auprès de TEI au démarrage (768 pour
-  `all-mpnet-base-v2`), distance **Cosine** (codée en
-  dur dans le dépôt `QdrantVectorRepository`).
-- **ID de point** : SHA-256 du `chunk_id`, replié sur 63 bits — stable entre processus
-  (jamais `hash()` natif, resemé par interpréteur).
-- **Payload** : les `metadata` du chunk à plat, puis les champs du **contrat de
-  serving** (ADR-015), posés en dernier pour qu'aucune métadonnée
-  homonyme ne les écrase :
+Le détail (réglages, analyseurs, mapping complet, requête) vit dans
+[index-opensearch.md](index-opensearch.md) et [analyseurs.md](analyseurs.md). La
+définition que l'ingestion applique est
+`src/ragcore/adapters/storage/opensearch/index_definition.json`.
 
-  | Champ | Rôle côté serving |
+- **Nom de l'index** : `OPENSEARCH_INDEX` (`.env.dev`), un nom fixe que le backend lira
+  aussi. Un seul index, créé par `ensure_index()` s'il est absent, réécrit en place à
+  chaque run.
+- **Un document OpenSearch par document Mongo**, d'`_id` son `identifier`, construit par
+  `index_document.build_index_document` depuis le `ParsedDocument` et un `SearchContent`
+  (les passages, chacun avec son vecteur facultatif, et `title_embedding`) :
+
+  | Champ | Source |
   |---|---|
-  | `chunk_id` | identité du passage, envoyée au client |
-  | `identifier` | document parent dans `documents` (sérialisé, = clé de suppression par document) |
-  | `char_start`, `char_end` | bornes du passage dans le `content` du parent, en **points de code** |
-  | `document_type` | type du document (`article`, `section`, `texte`, `decision`), affiché comme type de la source |
-  | `nature` | nature juridique ou `null`, affichée après le type |
+  | `identifier`, `document_type`, `nature`, `title` | le `ParsedDocument` |
+  | `metadata` | les `metadata` du document, typées par les dynamic templates |
+  | `parent_text_title` | les `<TITRE_TXT>` du `<CONTEXTE>`, lus par le parseur (`structure["context"]`), sans doublon ; absent sans texte parent |
+  | `passages` | un par chunk : `chunk_id`, `char_start`, `char_end` (points de code), `text`, et `embedding` si l'embedding est actif |
+  | `title_embedding` | le vecteur du titre, pour un document sans passage seulement (ADR-029) |
 
-  Le texte du passage n'est **pas** dans le payload : c'est
-  `documents.content[char_start:char_end]`. Les autres métadonnées sont présentes mais le
-  serving ne s'y appuie pas. Changer un de ces champs impose une réingestion complète.
-- **Écriture** : delete-puis-insert par document (`delete_by_document` puis `upsert`) —
-  Qdrant n'a pas de « remplace tous les points de ce document » atomique, et un simple
-  upsert laisserait des points orphelins quand la nouvelle version a moins de chunks.
+  Les métadonnées vivent sous `metadata` : aucune ne peut écraser un champ du contrat.
+- **Texte indexé, pas stocké** : `_source` exclut `passages.text` et `passages.embedding`.
+  Mongo reste le seul stockage du texte (ADR-015).
+- **Vecteurs** : 768 dimensions, HNSW (`faiss`), `cosinesimil`. La dimension mesurée
+  auprès de TEI doit être celle du mapping, vérifiée au démarrage.
+- **Écriture** : un `PUT` du document entier, qui remplace l'ancien d'un coup, passages
+  compris (voir [idempotence.md](idempotence.md#la-saga)).
 
 ## Neo4j
 

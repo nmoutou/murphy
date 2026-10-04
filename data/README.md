@@ -1,8 +1,9 @@
 # Murphy — data
 
 Python/Kedro **ingestion** pipeline for the Murphy RAG system. Ingests LEGIFRANCE XML
-and writes chunks/embeddings into MongoDB / Qdrant / Neo4j — the same datastores the
-backend reads from.
+and writes documents, chunks and embeddings into MongoDB / OpenSearch / Neo4j. During the
+migration (ADR-028, step 1), the backend still reads the Qdrant collection written before
+it; the pipeline no longer writes Qdrant.
 
 Runs **offline and out-of-band**: it is not part of the Docker serving stack and the
 backend never calls into it. The two only share databases, no code.
@@ -16,11 +17,11 @@ pipeline reference, data model, configuration, telemetry.
 
 ## Run
 
-The pipeline needs Mongo, Qdrant, Neo4j and the TEI embedding service. They are declared
+The pipeline needs Mongo, OpenSearch, Neo4j and the TEI embedding service. They are declared
 **once**, at the repository root. You do not have to leave this directory to start them:
 
 ```bash
-npm run up       # mongo + qdrant + neo4j + embedding-service (GPU). Not backend/frontend.
+npm run up       # the whole stack, including mongo, opensearch, neo4j, embedding-service (GPU).
 npm run logs     # first TEI boot downloads the model — be patient, it is not a hang.
 npm run down     # stop them
 kedro run
@@ -41,8 +42,9 @@ Tuning surface: `conf/base/parameters.yml` holds dev conveniences only (ignored 
 `ENVIRONMENT=dev`). The chunking (`CHUNKING_MAX_CHARS`, `CHUNKING_OVERLAP_CHARS`) lives
 in `../.env.dev`, next to `EMBEDDING_MODEL`, since the chunk size is measured against
 the model's window. The
-Qdrant collection has a fixed name, `QDRANT_COLLECTION` in `../.env.dev`, shared with
-the backend: after changing the chunking or the embedding model, re-ingest the whole corpus.
+OpenSearch index has a fixed name, `OPENSEARCH_INDEX` in `../.env.dev`, which the backend
+will share: after changing the mapping, the analyzers, the chunking or the embedding
+model, re-ingest the whole corpus.
 
 ## Develop
 

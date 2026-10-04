@@ -23,7 +23,8 @@ flowchart TB
 
     subgraph stores ["Les bases partagées"]
         Mongo[(MongoDB<br>MURPHY_DATA + MURPHY_META)]
-        Qdrant[(Qdrant<br>une collection, nom fixe)]
+        OpenSearch[(OpenSearch<br>un index, nom fixe)]
+        Qdrant[(Qdrant<br>collection figée, lue en transition)]
         Neo4j[(Neo4j<br>graphe documentaire)]
     end
 
@@ -33,9 +34,10 @@ flowchart TB
         Back --> LLM[LLM API<br>OpenAI-compatible]
     end
 
-    Kedro --> Mongo & Qdrant & Neo4j
+    Kedro --> Mongo & OpenSearch & Neo4j
     TEI -.->|même modèle| Kedro
     Back --> Mongo & Qdrant
+    OpenSearch -.->|migration à venir, ADR-028| Back
     Neo4j -.->|réservé, non câblé| Back
 ```
 
@@ -52,10 +54,18 @@ C'est la seule zone où une modification d'un côté casse l'autre. Quatre contr
 
 | Contrat | Écrit par l'ingestion | Lu par le serving |
 |---|---|---|
-| **Nom de collection** | `QDRANT_COLLECTION` (`.env.dev`), un nom **fixe** : la collection est réécrite en place à chaque run | La même variable. Au boot (`backend/src/infra/clients.ts`), refus de démarrer si la collection n'existe pas (ADR-018). |
-| **Vecteurs** | Payload `chunk_id`, `identifier`, `char_start`, `char_end` (ADR-015) | Recherche cosine top-K dans cette collection |
+| **Nom de collection** | `QDRANT_COLLECTION` (`.env.dev`), un nom **fixe** : la collection n'est plus écrite depuis la migration de l'ingestion (voir ci-dessous) | La même variable. Au boot (`backend/src/infra/clients.ts`), refus de démarrer si la collection n'existe pas (ADR-018). |
+| **Vecteurs** | Payload `chunk_id`, `identifier`, `char_start`, `char_end` (ADR-015), dans la collection figée | Recherche cosine top-K dans cette collection |
 | **Contenu** | Mongo `MURPHY_DATA.documents` : un document entier par `identifier` | Lecture des documents parents ; le texte d'un passage est `content[char_start:char_end]` (points de code). Le passage va au LLM, le document entier au client (`data-parentDocument`) |
 | **Modèle d'embedding** | `all-mpnet-base-v2`, 768 dim, Cosine — vérifié contre TEI au démarrage du run | Le même modèle via le même conteneur TEI |
+
+**La transition (ADR-028, étape 1).** L'ingestion écrit l'index OpenSearch
+(`OPENSEARCH_INDEX`, [`data/reference/index-opensearch.md`](data/reference/index-opensearch.md))
+et ne touche plus Qdrant. Le backend lit encore la collection Qdrant écrite avant la
+migration : ses offsets pointent dans le `content` des documents Mongo, elle reste donc
+juste tant que Mongo est réingéré avec le même corpus et la même découpe. Sinon, le
+backend lève `CONTRACT_VIOLATION`. La migration du backend remplacera la collection par
+l'index, et Qdrant partira.
 
 Le modèle d'embedding est le contrat le plus fragile : question et corpus doivent être
 embarqués par le **même** modèle. C'est pourquoi il n'y a qu'**un** fichier
@@ -69,7 +79,8 @@ l'enrichissement de contexte par graphe.
 ## La stack Docker (racine du repo)
 
 `docker-compose.base.yml` + overrides `.dev.yml` / `.prod.yml` : backend, frontend,
-MongoDB, Qdrant, OpenSearch (nœud unique, pas encore branché : ADR-028) et ses Dashboards
+MongoDB, Qdrant, OpenSearch (nœud unique, écrit par l'ingestion, pas encore lu par le
+backend : ADR-028) et ses Dashboards
 (dev seulement), Neo4j, TEI (GPU NVIDIA requis). L'ingestion n'est **pas** dans compose —
 elle tourne sur l'hôte et parle aux bases via les ports publiés.
 

@@ -5,7 +5,7 @@ Deux surfaces :
 | Surface | Fichier | Contenu |
 |---|---|---|
 | **Réglages de dev** | `conf/base/parameters.yml` | Les commodités de développement, ignorées hors `dev` |
-| **Environnement** (`InfraSettings`, `EmbeddingRuntimeSettings`, `ChunkingSettings`) | `.env.dev` à la **racine du dépôt** | Le *où* et le *comment* : bases, secrets, chemins, nom de la collection Qdrant, modèle d'embedding servi par TEI, et la découpe, qui en dépend |
+| **Environnement** (`InfraSettings`, `EmbeddingRuntimeSettings`, `ChunkingSettings`) | `.env.dev` à la **racine du dépôt** | Le *où* et le *comment* : bases, secrets, chemins, nom de l'index OpenSearch, modèle d'embedding servi par TEI, et la découpe, qui en dépend |
 
 `parameters.yml` illisible = run arrêté, jamais de défauts silencieux. Le fichier est
 validé **en entier** par un modèle strict (`orchestration/kedro/parameters_model.py`),
@@ -16,13 +16,15 @@ Strict veut dire sans conversion : `"false"` n'est pas un booléen. Kedro fusion
 accepté, et il est rangé à part avant la validation, parce qu'il vaut aussi en prod
 (`--params sorce=cass` est une clé inconnue).
 
-## La collection Qdrant : un nom fixe
+## L'index OpenSearch : un nom fixe
 
-La collection s'appelle `QDRANT_COLLECTION` (`.env.dev`), et le backend lit la même
-variable (ADR-018). Il n'y a **qu'une** collection, réécrite en place à chaque run.
-Conséquence : changer `CHUNKING_*` ou `EMBEDDING_MODEL` invalide les vecteurs déjà écrits, sans
-que rien ne les sépare des nouveaux — après un tel changement, **réingérer tout le
-corpus** (`nuke_all` en dev).
+L'index s'appelle `OPENSEARCH_INDEX` (`.env.dev`), et le backend lira la même variable
+(ADR-018, ADR-028). Il n'y a **qu'un** index, réécrit en place à chaque run.
+Conséquence : changer `CHUNKING_*` ou `EMBEDDING_MODEL` invalide les passages et les
+vecteurs déjà écrits, sans que rien ne les sépare des nouveaux — après un tel changement,
+**réingérer tout le corpus** (`nuke_all` en dev). Un changement du mapping ou des
+analyseurs aussi : `ensure_index()` ne crée l'index que s'il est absent, et ne touche
+jamais à un index existant ([index-opensearch.md](index-opensearch.md)).
 
 ## `parameters.yml`, champ par champ
 
@@ -38,8 +40,8 @@ coquille arrête le run même en prod.
 
 | Clé | Valeur | En `dev` | Hors `dev` |
 |---|---|---|---|
-| `nuke_all` | `true` | Efface TOUTES les données de TOUTES les bases en tête de run (Mongo `documents`, `pending_relations` et `unformatted_relations`, graphe Neo4j, **toutes** les collections Qdrant), en **préservant `MURPHY_META`**. Le levier disque du développement. | Rien n'est effacé. |
-| `embedding_enabled` | `true` | **L'interrupteur d'embedding (ADR-012).** `false` = aucun vecteur calculé ni écrit (Qdrant vide, Mongo/Neo4j normaux) — le régime d'itération sur le modèle de données. TEI doit quand même tourner : le modèle servi est vérifié et la dimension mesurée au démarrage. | On embarque toujours. |
+| `nuke_all` | `true` | Efface TOUTES les données de TOUTES les bases en tête de run (Mongo `documents`, `pending_relations` et `unformatted_relations`, graphe Neo4j, l'index OpenSearch du run), en **préservant `MURPHY_META`**. Le levier disque du développement. | Rien n'est effacé. |
+| `embedding_enabled` | `true` | **L'interrupteur d'embedding (ADR-012).** `false` = aucun vecteur calculé ni écrit : les passages partent dans l'index sans vecteur, cherchables par leur seul texte ; Mongo/Neo4j normaux — le régime d'itération sur le modèle de données. TEI doit quand même tourner : le modèle servi est vérifié et la dimension mesurée au démarrage. | On embarque toujours. |
 | `skip_unconfigured` | `false` | Le sort des données non configurées (ADR-023, ADR-024) : les métadonnées d'une balise absente de la table de rôles ou sans renommage dans `meta_renames`, et les arêtes d'un type de lien non configuré (`typelien` inconnu, lien heuristique). `false` = ingérées (métadonnée sous sa clé chemin-complet, arête sous son nom brut : le `typelien`, ou la balise d'un lien heuristique) ; `true` = retirées. Les signaux `tags` et `links`, eux, sont TOUJOURS émis — on compte d'abord, on filtre ensuite. | Toujours retirées (ADR-011 §1). |
 | `include_path` | `true` | Les chemins des fichiers XML source (`source_files`), dans le document Mongo **et** sur le nœud Neo4j. Repasser à `false` sans `nuke_all` : Mongo les perd au run suivant (`replace_one` remplace le document entier), mais Neo4j les garde (`SET +=` n'efface aucune propriété). | Aucun chemin écrit (ADR-011 §4). |
 | `include_content_neo4j` | `true` | Le texte du document sur son nœud Neo4j (`_text_content`), en plus de ses métadonnées, toujours là en dev. Repasser à `false` sans `nuke_all` laisse le texte déjà écrit (`SET +=`). | Nœud maigre (ADR-011 §2). |
@@ -70,8 +72,8 @@ service.
 | `MONGODB_DATA_DB_NAME` | `MURPHY_DATA` | Données : `documents`, `pending_relations`, `unformatted_relations`. |
 | `MONGODB_META_DB_NAME` | `MURPHY_META` | Méta : bilans de run. |
 | `NEO4J_URI` / `NEO4J_USERNAME` / `NEO4J_PASSWORD` | `bolt://localhost:7687` / `neo4j` / `neo4j` | Mot de passe en `SecretStr`. |
-| `QDRANT_URL` / `QDRANT_API_KEY` | `http://localhost:6333` / — | Clé vide = absente (validator). |
-| `QDRANT_COLLECTION` | — (**obligatoire**) | Le nom fixe de la collection Qdrant, lu aussi par le backend. Absente = levée au chargement des settings. |
+| `OPENSEARCH_URL` | `http://localhost:9200` | Sans authentification : le plugin de sécurité est coupé en dev. La prod l'active (HTTPS, compte admin) ; l'ingestion n'y sait pas encore se connecter. |
+| `OPENSEARCH_INDEX` | — (**obligatoire**) | Le nom fixe de l'index, que le backend lira aussi. Absente = levée au chargement des settings. |
 | `XML_SOURCE_PATH` | `/mnt/data/Murphy/src` | La racine du corpus, **absolue** (un chemin relatif absent ne lève pas — il donne zéro document, indiscernable d'un run réussi). |
 | `SOURCE` | `all` | Les sources d'un run nu. `all` = les six ingérables (un défaut `legi` laissait cinq bases sur six intactes, en silence). Surchargeable par `--params source=…`. |
 
@@ -79,9 +81,9 @@ service.
 
 Le service TEI, seul embedder de l'ingestion : pas de fournisseur à choisir. Au
 démarrage, le hook vérifie que TEI sert `EMBEDDING_MODEL` (`GET /info`) et mesure la
-dimension des vecteurs par une requête de sonde (`served_model.inspect_served_model`) ;
-la collection Qdrant est créée à cette dimension. Service injoignable, autre modèle ou
-sonde en échec = run arrêté avant tout nœud.
+dimension des vecteurs par une requête de sonde (`served_model.inspect_served_model`),
+qui doit être celle du mapping de l'index (768). Service injoignable, autre modèle, sonde
+en échec ou autre dimension = run arrêté avant tout nœud.
 
 | Variable | Défaut | Rôle |
 |---|---|---|

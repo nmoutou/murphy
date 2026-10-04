@@ -3,10 +3,13 @@
 ## Ce que c'est
 
 Un pipeline **Kedro** qui ingère les corpus XML de la DILA (LEGIFRANCE et les cinq bases de
-jurisprudence) et peuple les trois bases que le backend de serving lit : MongoDB (contenu),
-Qdrant (vecteurs), Neo4j (graphe). Il tourne **hors-ligne et hors-bande** : il n'est pas dans
-la stack Docker de serving, et le backend ne l'appelle jamais — les deux ne partagent que
-les bases.
+jurisprudence) et peuple les trois bases du serving : MongoDB (contenu), OpenSearch
+(recherche lexicale et vectorielle), Neo4j (graphe). Il tourne **hors-ligne et hors-bande** :
+il n'est pas dans la stack Docker de serving, et le backend ne l'appelle jamais — les deux
+ne partagent que les bases.
+
+Pendant la migration (ADR-028, étape 1), le backend lit encore la collection Qdrant écrite
+avant elle ; l'ingestion ne l'écrit plus.
 
 ## Les deux couches du dépôt
 
@@ -19,7 +22,7 @@ data/
 └── src/ragcore/          # le CŒUR : toute la logique vit ici
     ├── core/             # domaine pur : modèles, ports, services — ne connaît AUCUNE base
     ├── application/      # cas d'usage : runner, saga, résolution de relations
-    ├── adapters/         # implémentations : Mongo, Neo4j, Qdrant, embedders, télémétrie
+    ├── adapters/         # implémentations : Mongo, Neo4j, OpenSearch, embedders, télémétrie
     ├── sources/          # un dossier par FORMAT XML, le registre qui y relie chaque base
     │   ├── legislatif/   #   LEGI
     │   ├── jurisprudence/#   CAPP, CASS, INCA, JADE, CONSTIT
@@ -67,10 +70,10 @@ Déroulé détaillé nœud par nœud : [reference/pipeline.md](reference/pipelin
 
 - **Phase 1 — documents** (`ingest`) : un pool de 4 workers, dispatch par clé document
   (hash blake2b de l'identifiant). Chaque worker a sa boucle asyncio, ses clients Mongo /
-  Neo4j / Qdrant, sa télémétrie et son agrégat local : rien de mutable n'est partagé, donc
+  Neo4j / OpenSearch, sa télémétrie et son agrégat local : rien de mutable n'est partagé, donc
   aucun verrou. Le travail d'un document (le *workload*) : extraction des relations
   et des relations non formatées → chunking → embedding → saga d'écriture (Mongo →
-  relations non formatées `MURPHY_DATA.unformatted_relations` → Qdrant → nœud Neo4j).
+  relations non formatées `MURPHY_DATA.unformatted_relations` → OpenSearch → nœud Neo4j).
 - **Phase 2 — relations** (`resolveRelations`) : après la barrière, un service unique
   écrit les arêtes en batch, met en attente celles dont la cible n'est pas dans le corpus
   (`MURPHY_DATA.pending_relations`) et **promeut** les pendantes de runs passés dont la cible
@@ -88,10 +91,11 @@ Déroulé détaillé nœud par nœud : [reference/pipeline.md](reference/pipelin
    `vus == ingérés + exclus + échoués` — jamais de l'absence d'exception.
    Voir [reference/telemetrie.md](reference/telemetrie.md).
 
-3. **Une collection Qdrant, un nom fixe.** `QDRANT_COLLECTION` (`.env.dev`), lue aussi par
-   le backend (ADR-018). Un run réécrit la collection en place : après un changement de
-   `chunking` ou de modèle d'embedding, tout le corpus se réingère.
-   Voir [reference/configuration.md](reference/configuration.md).
+3. **Un index OpenSearch, un nom fixe.** `OPENSEARCH_INDEX` (`.env.dev`), que le backend
+   lira aussi (ADR-018, ADR-028). Un run réécrit l'index en place : après un changement du
+   mapping, des analyseurs, du `chunking` ou du modèle d'embedding, tout le corpus se
+   réingère. Voir [reference/configuration.md](reference/configuration.md) et
+   [reference/index-opensearch.md](reference/index-opensearch.md).
 
 4. **Une source = une ligne de données, pas une classe.** Le parser, le chunker et
    l'extracteur sont **génériques** ; la spécificité d'une source tient dans une table de
@@ -110,7 +114,7 @@ Déroulé détaillé nœud par nœud : [reference/pipeline.md](reference/pipelin
 | Contrat | Écrit par l'ingestion | Lu par le backend |
 |---|---|---|
 | Contenu | Mongo `MURPHY_DATA.documents` | documents parents par `identifier`, passage = `content[char_start:char_end]` |
-| Vecteurs | Qdrant, collection `QDRANT_COLLECTION` (nom fixe, ADR-018) | la même variable ; refus de démarrer si la collection n'existe pas |
+| Recherche | OpenSearch, index `OPENSEARCH_INDEX` (nom fixe, ADR-018, ADR-028) : documents, passages, vecteurs | pas encore : le backend lit la collection Qdrant écrite avant la migration, que l'ingestion ne touche plus |
 | Graphe | Neo4j (nœuds + arêtes typées par verbe) | pas encore câblé côté serving |
 
 Le modèle d'embedding et sa dimension (`all-mpnet-base-v2`, 768, Cosine) doivent être les
