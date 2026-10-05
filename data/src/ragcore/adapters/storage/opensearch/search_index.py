@@ -20,6 +20,8 @@ _NOT_FOUND = 404
 # `null` rend au réglage sa valeur par défaut
 _SUSPENDED_REFRESH = {"index": {"refresh_interval": "-1"}}
 _DEFAULT_REFRESH = {"index": {"refresh_interval": None}}
+# La fusion réécrit tout l'index : le timeout par requête du client (10 s) n'y suffit pas
+_FORCE_MERGE_TIMEOUT_S = 1800
 
 
 def _load_index_definition() -> dict[str, Any]:
@@ -86,3 +88,15 @@ class OpenSearchSearchIndex:
         await self._client.indices.put_settings(
             index=self._index_name, body=_DEFAULT_REFRESH
         )
+
+    async def force_merge(self) -> None:
+        """Un seul segment, donc un seul graphe HNSW à parcourir par requête kNN : l'index
+        n'est plus écrit avant le run suivant. Le graphe reconstruit est approché, et
+        peut décaler un peu les rangs vectoriels. Le refresh publie le segment fusionné :
+        un shard inactif ne se rafraîchit pas seul."""
+        await self._client.indices.forcemerge(
+            index=self._index_name,
+            max_num_segments=1,
+            request_timeout=_FORCE_MERGE_TIMEOUT_S,
+        )
+        await self._client.indices.refresh(index=self._index_name)

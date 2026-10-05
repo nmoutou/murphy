@@ -21,9 +21,12 @@ def ingest_node(
     pipeline_runtime: AsyncRuntime,
 ) -> IngestionOutcome:
     """L'index n'est pas rafraîchi pendant l'écriture. ``finally`` : un run en échec ne
-    doit pas laisser un index qui ne publie plus rien."""
+    doit pas laisser un index qui ne publie plus rien. Seul un run arrivé au bout est
+    fusionné."""
     pipeline_runtime.run(search_index.suspend_refresh())
     try:
-        return runner.run(to_process, pipeline_context)
+        outcome = runner.run(to_process, pipeline_context)
     finally:
         pipeline_runtime.run(search_index.resume_refresh())
+    pipeline_runtime.run(search_index.force_merge())
+    return outcome

@@ -173,3 +173,15 @@ async def test_la_reprise_du_refresh_publie_et_rend_le_reglage_par_defaut(
     settings = await client.indices.get_settings(index=INDEX)
     assert "refresh_interval" not in settings[INDEX]["settings"]["index"]
     assert (await client.count(index=INDEX))["count"] == 1
+
+
+async def test_force_merge_laisse_un_seul_segment(search_index) -> None:
+    client = search_index._client  # noqa: SLF001
+    for passage_count in (1, 2, 3):
+        await search_index.index_document(_doc(), _content(passage_count))
+        await client.indices.refresh(index=INDEX)
+
+    await search_index.force_merge()
+
+    segments = await client.cat.segments(index=INDEX, format="json")
+    assert len(segments) == 1
