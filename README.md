@@ -15,17 +15,6 @@ publiés par la DILA, et rédige une réponse qui cite ses sources.
   <img src="docs/screenshots/reponse-sources.png" alt="Une réponse de Murphy et les documents sources qu'elle cite" width="800">
 </p>
 
-## Ce que fait Murphy
-
-- **Six bases de la DILA** : LEGI (codes, lois et règlements consolidés) et toute la
-  jurisprudence en open data — Cour de cassation (CASS, INCA), cours d'appel (CAPP),
-  juridictions administratives (JADE) et Conseil constitutionnel (CONSTIT).
-- **Des sources avant la réponse** : les documents retrouvés s'affichent dès la
-  recherche terminée ; la réponse se rédige ensuite, en streaming, à partir de leurs
-  passages.
-- **Sans état** : aucune conversation n'est conservée ; chaque question repart de zéro.
-  En cas de panne, l'interface nomme l'étape qui a échoué plutôt que de répondre à vide.
-
 ## Architecture
 
 ### Vue d'ensemble
