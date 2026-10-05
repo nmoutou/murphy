@@ -17,27 +17,32 @@ cette stack) : les deux ne partagent que les bases.
    (`extractQuestionFromMessages`). La requête porte un tableau `messages` (format
    AI SDK), pas une chaîne `question`.
 2. **Embedding** (`ragService.embedQuestion`) → service TEI.
-3. **Retrieval** (`ragService.retrieveChunks`) → Qdrant, top-K (`RETRIEVAL_TOP_K`,
-   défaut 5), seuil `RETRIEVAL_MIN_SCORE` (défaut 0.5).
-4. **Lecture des passages** (`ragService.fetchPassages`) → MongoDB `documents`, par
+3. **Recherche** (`ragService.retrieveDocuments`) → OpenSearch, requête hybride (voir
+   « La recherche ») : `PAGINATION_SIZE` documents classés (défaut 10), avec leurs
+   passages.
+4. **Lecture des documents** (`ragService.fetchDocuments`) → MongoDB `documents`, par
    `identifier` (clé indexée). Le texte de chaque passage est découpé dans le
-   `content` de son document parent, entre `char_start` et `char_end`
+   `content` de son document, entre `char_start` et `char_end`
    (`services/passages.ts`, voir « Le contrat avec l'ingestion »).
-5. **Streaming des sources** — **avant l'appel LLM** : pour chaque passage, dans l'ordre du
-   classement, une part `data-parentDocument` (le document entier, **une fois** par
-   document, avant son premier passage) puis une part `data-document` (le passage et ses
-   bornes de surlignage).
+5. **Streaming des sources** — **avant l'appel LLM** : pour chaque document, dans l'ordre du
+   classement, une part `data-parentDocument` (le document entier) puis une part
+   `data-document` par passage (le passage et ses bornes de surlignage). Une section n'a
+   aucun passage : seule sa part `data-parentDocument` part, que le frontend n'affiche
+   pas encore (ADR-028 §10).
 6. **Streaming LLM** — contexte (le texte **des passages seuls**, pas des documents)
    injecté dans le system prompt (`config.llm.systemPrompt` : assistant juridique FR,
    surchargeable via `SYSTEM_PROMPT`), tokens de
-   `getInfraClients().llm.stream()` écrits en parts `text-delta`.
+   `getInfraClients().llm.stream()` écrits en parts `text-delta`. Le contexte est rempli
+   dans l'ordre du classement et s'arrête avant le passage qui dépasserait **200 000
+   caractères** (`MAX_LLM_CONTEXT_CHARS`) ; la coupe est journalisée en `warn`. Les
+   sources, elles, partent toutes.
 7. **Finish** — part `finish` avec `ragTiming` (latence par étape, en ms).
 
 Le flux est construit avec le Vercel **AI SDK** (`createUIMessageStream` /
 `pipeUIMessageStreamToResponse`). Le contrat de parts est `AppUIMessage`, importé de
 `@murphy/contract/messages` (`packages/contract/`, ADR-016), que le frontend importe
 aussi : parts custom `{ document: DocumentChunk; parentDocument: ParentDocument }`,
-metadata `{ ragTiming }`. Le backend n'en importe que les types ; changer le contrat
+metadata `{ ragTiming }`. Le backend en importe les types, et `documentTypeSchema` pour valider l'index ; changer le contrat
 casse la compilation des deux côtés à la fois.
 
 ### Trois transports, un seul pipeline
@@ -80,45 +85,62 @@ Ce que le backend lit :
 
 | Où | Quoi |
 |---|---|
-| Payload Qdrant | `chunk_id`, `identifier`, `char_start`, `char_end`, `document_type` (l'un des quatre types), `nature` (facultatif) — validé à la lecture (`infra/qdrant.ts`) |
+| Index OpenSearch `OPENSEARCH_INDEX` | `_source` : `identifier`, `document_type` (l'un des quatre types), `nature` (facultatif), `passages` (`chunk_id`, `char_start`, `char_end`) ; les mêmes champs dans les `inner_hits` — validé à la lecture (`infra/searchHits.ts`) |
 | Mongo `MURPHY_DATA.documents` | `identifier`, `title`, `content` — un document **entier** par `identifier` (`infra/mongodb.ts`) |
 
 - **Offsets** : `char_start`/`char_end` comptent des **points de code** (le `str` Python).
   `services/passages.ts` les convertit une fois en unités UTF-16 : `highlightStart` /
   `highlightEnd` d'une part `data-document` se lisent directement avec
   `content.slice(highlightStart, highlightEnd)` côté client.
-- **Violation** : un point sans champ du contrat, un document parent absent ou des offsets
-  hors de `content` lèvent une `RagError` `retrieval` / `CONTRACT_VIOLATION`. Son message,
-  logué, cite le `chunk_id`. La réponse s'arrête sur une part `error` : pas d'écart
-  silencieux.
+- **Violation** : un document OpenSearch sans champ du contrat, un document absent de
+  Mongo ou des offsets hors de `content` lèvent une `RagError` `retrieval` /
+  `CONTRACT_VIOLATION`. Son message, logué, cite l'`identifier` ou le `chunk_id`. La
+  réponse s'arrête sur une part `error` : pas d'écart silencieux.
 
-## La collection Qdrant
+## La recherche (ADR-028, ADR-029)
 
-Son nom est **fixe** : `QDRANT_COLLECTION`, la variable que l'ingestion lit dans le même
-`.env.dev` (ADR-018). Au boot, `QdrantVectorClient.assertCollectionExists()` **refuse de
-démarrer** si Qdrant est injoignable ou si la collection n'existe pas : mieux vaut le
-découvrir au boot que sur la première question d'un utilisateur.
+**L'index** : son nom est `OPENSEARCH_INDEX`, la variable que l'ingestion lit dans le même
+`.env.dev`. L'ingestion le crée et le remplit ; le backend ne fait que le lire. Au boot,
+`OpenSearchClient.prepareSearch()` **refuse de démarrer** si OpenSearch est injoignable
+ou si l'index n'existe pas, puis écrit le pipeline de recherche `murphy-rrf` (fusion RRF),
+par une écriture idempotente.
+
+**La requête** (`infra/hybridQuery.ts`) : une requête `hybrid` à quatre sous-requêtes
+(lexicale, références, kNN sur les passages, kNN sur les titres), fusionnées par le
+pipeline. Elle est décrite et mesurée dans
+[`index-opensearch.md`](../data/reference/index-opensearch.md#la-requête) : les deux
+doivent rester identiques. `k` et `pagination_depth` valent `PAGINATION_DEPTH`
+(défaut 100) ; seule la première page est servie (`from: 0`, ADR-028 §10).
+
+**Les passages d'un document** (`services/passageRanking.ts`, ADR-028 §7) :
+- ceux de la sous-requête lexicale (ses `inner_hits`, 100 au plus) et les 3 plus proches
+  de la sous-requête vectorielle, fusionnés par RRF sur leurs rangs (constante 60, celle
+  d'OpenSearch) et dédoublonnés par `chunk_id` ;
+- un document trouvé sans passage correspondant (par son titre, ses métadonnées, son texte
+  parent) les reçoit tous, lus dans son `_source`, dans l'ordre du texte.
+
+Aucun score ne sort du backend : un score RRF n'est pas une similarité.
 
 ## Clients d'infrastructure (`src/infra/`)
 
-`EmbeddingClient` (TEI), `QdrantVectorClient`, `LLMProvider` (API OpenAI-compatible,
+`EmbeddingClient` (TEI), `OpenSearchClient`, `LLMProvider` (API OpenAI-compatible,
 type Mammouth.AI), `MongoDbClient`. Chaque constructeur reçoit sa section de `config`
 (`src/config.ts`) ; aucun ne lit l'environnement.
 
 `infra/clients.ts:initInfraClients(config)` les crée **une fois au boot**, avant
-l'écoute (`server.ts`) : connexion Mongo, vérification de la collection Qdrant
-(`assertCollectionExists`), puis les deux autres clients. Il peut refuser le démarrage.
+l'écoute (`server.ts`) : connexion Mongo, vérification de l'index OpenSearch et écriture
+du pipeline RRF (`prepareSearch`), puis les deux autres clients. Il peut refuser le démarrage.
 Les requêtes y accèdent par `getInfraClients()`, qui lève s'il est appelé avant
 l'initialisation ; `closeInfraClients()` ferme Mongo au shutdown gracieux. Ne jamais
 `new`-er un client par requête.
 
 **Erreurs** : chaque client traduit ses échecs par `types/rag.ts:toRagError(failure, error)`
 en `RagError { stage, code }`. Le code vaut `TIMEOUT` quand le **type** de l'erreur se
-termine par `TimeoutError` (`AbortSignal.timeout`, `QdrantClientTimeoutError`,
+termine par `TimeoutError` (`AbortSignal.timeout`, client OpenSearch,
 `MongoNetworkTimeoutError`…), sinon le code propre au client (`NETWORK`,
 `SEARCH_FAILED`, `DB_FETCH_FAILED`, `API_ERROR`). Délais par défaut : TEI et Mongo 10 s,
-Qdrant 10 s (`QDRANT_TIMEOUT`, pour la recherche comme pour la vérification au boot ; le
-client seul attendrait 300 s), LLM 30 s. Le délai du LLM ne couvre que l'attente de la
+OpenSearch 10 s (`OPENSEARCH_TIMEOUT`, pour la recherche comme pour le boot, sans
+relance), LLM 30 s. Le délai du LLM ne couvre que l'attente de la
 réponse, pas le streaming qui suit.
 
 ## Conventions transverses
@@ -150,7 +172,7 @@ réponse, pas le streaming qui suit.
 | Service | Rôle | Note |
 |---|---|---|
 | TEI (HuggingFace Text Embeddings Inference) | Embedding de la question | `POST /v1/embeddings`, GPU NVIDIA requis. Le modèle (`all-mpnet-base-v2`, 768, Cosine) doit être celui de l'ingestion. |
-| Qdrant | Recherche vectorielle | Collection `QDRANT_COLLECTION`, vérifiée au boot. |
+| OpenSearch | Recherche hybride | Index `OPENSEARCH_INDEX`, vérifié au boot ; pipeline `murphy-rrf` écrit au boot. Sonde de santé : `/_cluster/health`. |
 | MongoDB | Contenu des documents (contexte LLM) | |
 | LLM | Génération | API OpenAI-compatible, streaming. |
 | Neo4j | — | Provisionné, **pas encore câblé** dans le chemin de requête (réservé : enrichissement graphe). |

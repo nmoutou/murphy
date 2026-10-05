@@ -8,9 +8,6 @@ jurisprudence) et peuple les trois bases du serving : MongoDB (contenu), OpenSea
 il n'est pas dans la stack Docker de serving, et le backend ne l'appelle jamais — les deux
 ne partagent que les bases.
 
-Pendant la migration (ADR-028, étape 1), le backend lit encore la collection Qdrant écrite
-avant elle ; l'ingestion ne l'écrit plus.
-
 ## Les deux couches du dépôt
 
 ```
@@ -114,7 +111,7 @@ Déroulé détaillé nœud par nœud : [reference/pipeline.md](reference/pipelin
 | Contrat | Écrit par l'ingestion | Lu par le backend |
 |---|---|---|
 | Contenu | Mongo `MURPHY_DATA.documents` | documents parents par `identifier`, passage = `content[char_start:char_end]` |
-| Recherche | OpenSearch, index `OPENSEARCH_INDEX` (nom fixe, ADR-018, ADR-028) : documents, passages, vecteurs | pas encore : le backend lit la collection Qdrant écrite avant la migration, que l'ingestion ne touche plus |
+| Recherche | OpenSearch, index `OPENSEARCH_INDEX` (nom fixe, ADR-018, ADR-028) : documents, passages, vecteurs | la requête hybride du backend (ADR-028, ADR-029) |
 | Graphe | Neo4j (nœuds + arêtes typées par verbe) | pas encore câblé côté serving |
 
 Le modèle d'embedding et sa dimension (`all-mpnet-base-v2`, 768, Cosine) doivent être les

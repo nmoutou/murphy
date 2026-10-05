@@ -1,7 +1,7 @@
 # Documentation — backend
 
 Documentation technique du backend de **serving** de Murphy : l'API Express/TypeScript qui
-orchestre le pipeline RAG à la requête (embed → retrieve → fetch → stream LLM).
+orchestre le pipeline RAG à la requête (embed → recherche hybride → fetch → stream LLM).
 
 ## Quoi lire, dans quel ordre
 
@@ -36,7 +36,7 @@ les dépendances et le contrat compilé vivent dans l'image, donc changer
 
 Aucun fichier d'environnement n'est chargé : exporter les variables avant (par exemple
 `set -a; . ../.env.dev; set +a`, puis surcharger les noms d'hôtes Docker comme
-`QDRANT_URL`). Installer une fois **depuis la racine** : `npm install` (un seul lockfile
+`EMBEDDING_SERVICE_URL`). Installer une fois **depuis la racine** : `npm install` (un seul lockfile
 pour les workspaces ; le `postinstall` construit `packages/contract`). `npm run check` à
 la racine lance tout ce que lance la CI. Puis, depuis `backend/` :
 
@@ -65,15 +65,17 @@ Tout est piloté par variables d'environnement (en Docker : bloc `environment:` 
 référence** : il lit et valide l'environnement une fois au démarrage, avec ses valeurs
 par défaut, et c'est le seul fichier qui lit `process.env`. Une valeur vide vaut une
 variable absente. Un nombre invalide (`LLM_TEMPERATURE=abc`) **bloque le démarrage**,
-avec un message qui nomme la variable. `checkEnvironment` journalise ensuite les
+avec un message qui nomme la variable, comme une pagination incohérente : `PAGINATION_SIZE`
+et `PAGINATION_DEPTH` doivent être des entiers positifs, avec une profondeur entre la
+taille et 10 000 (le plafond du `k` d'un kNN). `checkEnvironment` journalise ensuite les
 variables manquantes et celles qui ont pris leur valeur par défaut.
 
 Critiques (erreur logguée si absentes, sans bloquer) : `LLM_API_ENDPOINT`, `LLM_API_KEY`, `LLM_MODEL`,
-`MONGODB_URI`, `QDRANT_COLLECTION` (le nom fixe de la collection, partagé avec l'ingestion).
+`MONGODB_URI`, `OPENSEARCH_INDEX` (le nom de l'index, partagé avec l'ingestion).
 Principales optionnelles : `PORT` (5000), `NODE_LOG_LEVEL` (`debug` en dev, `info` en prod),
 `MONGODB_DATABASE` (MURPHY_DATA),
-`QDRANT_URL`, `QDRANT_TIMEOUT` (10000 ms),
-`EMBEDDING_SERVICE_URL`, `EMBEDDING_MODEL_NAME`, `RETRIEVAL_TOP_K` (5), `RETRIEVAL_MIN_SCORE` (0.5),
+`OPENSEARCH_URL`, `OPENSEARCH_TIMEOUT` (10000 ms), `PAGINATION_SIZE` (10), `PAGINATION_DEPTH` (100),
+`EMBEDDING_SERVICE_URL`, `EMBEDDING_MODEL_NAME`,
 `LLM_TEMPERATURE`/`TIMEOUT`, `SYSTEM_PROMPT`, les rate limits et
 `CORS_ORIGIN`.
 
@@ -88,8 +90,9 @@ curl http://localhost:5000/api/v1/health   # ok | degraded (1 service down) | do
 
 | Symptôme | Piste |
 |---|---|
-| Refus de démarrer : « The Qdrant collection "…" (QDRANT_COLLECTION) does not exist » | `QDRANT_COLLECTION` est absente ou ne désigne aucune collection. Vérifier `.env.dev`, puis lancer l'ingestion : `kedro run` dans `data/`. |
-| Part `error` « Serving contract violated » | Un point Qdrant, son document Mongo ou ses offsets ne respectent pas le contrat ; le message cite le `chunk_id`. Réingérer le corpus. |
-| 0 source sur toutes les questions | Collection vide, ou `RETRIEVAL_MIN_SCORE` trop haut. |
+| Refus de démarrer : « The OpenSearch index "…" (OPENSEARCH_INDEX) does not exist » | `OPENSEARCH_INDEX` est absente ou ne désigne aucun index. Vérifier `.env.dev`, puis lancer l'ingestion : `kedro run` dans `data/`. |
+| Part `error` « Serving contract violated » | Un document OpenSearch, son document Mongo ou ses offsets ne respectent pas le contrat ; le message cite l'`identifier` ou le `chunk_id`. Réingérer le corpus. |
+| 0 source sur toutes les questions | Index vide : lancer l'ingestion. |
+| Log `LLM context capped` | Les passages dépassaient 200 000 caractères : les derniers du classement n'ont pas été lus par le LLM. Les sources sont toutes affichées. |
 | Embedding indisponible | Conteneur TEI (GPU requis) — `npm run logs` depuis la racine. |
 | LLM timeout / 4xx | `LLM_API_ENDPOINT` / `LLM_API_KEY` / `LLM_MODEL` ; augmenter `LLM_TIMEOUT` si réseau lent. |

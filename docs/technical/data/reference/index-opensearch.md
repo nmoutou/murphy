@@ -3,7 +3,7 @@
 L'index OpenSearch qui porte la recherche (ADR-028, ADR-029) : ses réglages, son mapping,
 et la requête hybride qu'il doit servir. Les analyseurs `fr_juridique` et `references`
 sont décrits à part, dans [analyseurs.md](analyseurs.md). L'ingestion crée l'index et le
-remplit (voir [L'écriture](#lécriture)) ; le backend l'interrogera.
+remplit (voir [L'écriture](#lécriture)) ; le backend l'interroge (voir [La requête](#la-requête)).
 
 Le mapping et la requête ont été vérifiés le 4 octobre 2026 sur tout le corpus de dev
 (1 121 documents, 18 023 passages), avec OpenSearch 3.9.0 et `all-mpnet-base-v2`.
@@ -39,6 +39,12 @@ rester identiques.
   saga du document, qui compense ; le run continue.
 - **Le rafraîchissement** est suspendu pendant la phase 1, puis relancé à sa fin, même
   en échec (voir [Les réglages](#les-réglages)).
+- **La fusion en un segment** : un run arrivé au bout lance un `_forcemerge` à un segment,
+  puis un `_refresh`, qui publie le segment fusionné (un shard inactif ne se rafraîchit
+  pas seul). L'index n'est plus écrit avant le run suivant : la fusion se paie une fois, et
+  chaque requête kNN ne parcourt qu'un graphe HNSW au lieu d'un par segment. Elle prend
+  quelques secondes en dev, et réécrit tout l'index (jusqu'au double de sa place sur
+  disque, le temps de la fusion). Un run en échec ne fusionne pas.
 - **L'interrupteur d'embedding coupé** (dev, ADR-012) : les passages sont écrits sans
   `embedding`, et aucun `title_embedding` n'est calculé. Seules les sous-requêtes
   lexicale et « références » trouvent alors quelque chose.
@@ -213,15 +219,19 @@ ADR-029), fusionnées par RRF :
    `expand_nested_docs` et ses `inner_hits` (les 3 passages les plus proches) ;
 4. **vectorielle sur les titres** : un kNN sur `title_embedding`.
 
-Le pipeline de recherche, que le backend créera au boot :
+Le pipeline de recherche, que le backend écrit au boot sous le nom `murphy-rrf` :
 
 ```
-PUT _search/pipeline/<nom>
+PUT _search/pipeline/murphy-rrf
 { "phase_results_processors": [
     { "score-ranker-processor": { "combination": { "technique": "rrf" } } } ] }
 ```
 
-La requête, pour une question `Q` de vecteur `V` :
+La requête, pour une question `Q` de vecteur `V`, telle que la mesure ci-dessous l'a
+envoyée (`pagination_depth` et `k` à 50). Le backend envoie la même, avec `size` =
+`PAGINATION_SIZE` (10), `pagination_depth` et `k` = `PAGINATION_DEPTH` (100), et un
+`_source` réduit à `identifier`, `document_type`, `nature` et `passages`
+(`backend/src/infra/hybridQuery.ts`, à garder identique) :
 
 ```json
 {
@@ -309,9 +319,22 @@ plus de 3·10⁻⁴ entre les vecteurs : celui de TEI d'un lot à l'autre). Les 
 tableau sont les mêmes ; les top 10 gardent 8 à 10 documents de ceux du script.
 
 L'écriture document par document laisse 3 segments au lieu de 2. Sur la même machine, la
-requête médiane passe de 80 à 106 ms. Un `_forcemerge` à un segment la ramène à 58 ms,
-mais il reconstruit le graphe HNSW, approché : les versions de `L52-8` passent alors aux
-rangs 4, 9 et 10.
+requête médiane passe de 80 à 106 ms. Un `_forcemerge` à un segment la ramène à 58 ms :
+d'où la fusion en fin de run (voir [L'écriture](#lécriture)). Le graphe HNSW reconstruit
+est approché, et les rangs vectoriels bougent un peu d'un graphe à l'autre : les versions
+de `L52-8` sont passées aux rangs 4, 9 et 10 après une première fusion manuelle.
+
+### Par le backend
+
+Le 5 octobre 2026, après un `kedro run` qui a fusionné l'index en un segment, les sept
+questions du tableau ont été posées au backend (`POST /api/v1/chat/streams`). Pour
+chacune, l'ordre des documents envoyés est celui de la requête directe à OpenSearch. Les
+trois sections sont au rang 1, le pourvoi `22-13330` au rang 1 pour ses deux formes,
+l'article 3 du décret au rang 6. Six documents titrés `L52-8` sont dans le top 10, aux
+rangs 3, 5, 7, 8, 9 et 10.
+
+À chaud, sur les onze questions, la requête prend 49 ms en médiane (75 au plus) à
+`PAGINATION_DEPTH` 50, et 87 ms (114 au plus) à 100, la valeur retenue.
 
 ### Limites connues
 
@@ -321,7 +344,7 @@ rangs 4, 9 et 10.
   liste lexicale est longue.
 - **Beaucoup de passages lexicaux par document** : une décision en renvoie jusqu'à 69 pour
   « article 3 du décret 2005-850 ». Tant que le LLM reste branché (étape 1 de l'ADR-028), ils
-  partent tous dans son contexte.
+  partent tous dans son contexte, plafonné à 200 000 caractères.
 - **Les versions d'un article remontent toutes** (les 5 `L52-8`) : un filtre sur
   `metadata.statut` reste à décider (ADR-028).
 

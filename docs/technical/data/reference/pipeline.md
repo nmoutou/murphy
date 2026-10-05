@@ -142,6 +142,10 @@ dans un `finally`, lance un `_refresh` et rend au réglage sa valeur par défaut
 run en échec laisse un index cherchable. Pendant le run, le backend ne voit donc pas les
 documents réécrits.
 
+Un run arrivé au bout fusionne ensuite l'index en un seul segment (`_forcemerge`), puis le
+rafraîchit : chaque requête kNN ne parcourt plus qu'un graphe HNSW (voir
+[index-opensearch.md](index-opensearch.md#lécriture)). Un run en échec ne fusionne pas.
+
 ### Le pool (`application/ingestion_runner.py`)
 
 - **Partition par clé document** : blake2b(identifiant) mod 4. Un identifiant donné n'est

@@ -2,7 +2,7 @@
 
 Express + TypeScript API — the RAG **serving** orchestrator for the Murphy system.
 
-Stateless by design: every request recomputes the full pipeline (embed → retrieve →
+Stateless by design: every request recomputes the full pipeline (embed → hybrid search →
 fetch → stream LLM). No conversational history, no retries.
 
 ## Develop
@@ -18,9 +18,9 @@ npm run lint
 npm test
 ```
 
-Requires reachable MongoDB, Qdrant, and a TEI embedding service (see env vars in
-`src/config.ts`). For the full stack including those services, run `npm run up` at the
-repository root.
+Requires reachable MongoDB, OpenSearch (with the index written by `data/`), and a TEI
+embedding service (see env vars in `src/config.ts`). For the full stack including those
+services, run `npm run up` at the repository root.
 
 The stream contract (`AppUIMessage`) is imported from `@murphy/contract/messages`,
 shared with the frontend: see [`docs/technical/backend/ARCHITECTURE.md`](../docs/technical/backend/ARCHITECTURE.md).

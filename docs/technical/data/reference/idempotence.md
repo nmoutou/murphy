@@ -102,13 +102,8 @@ saga ci-dessus n'existent pas.
 
 ## Ce que le serving lit
 
-Il n'y a pas d'étape de publication : le backend interrogera l'index `OPENSEARCH_INDEX`,
+Il n'y a pas d'étape de publication : le backend interroge l'index `OPENSEARCH_INDEX`,
 que le run réécrit en place (ADR-018, ADR-028). Seul le rafraîchissement est différé :
 suspendu pendant la phase 1, il est relancé à sa fin, même en échec. Un run `degraded` ou
 `failed` laisse donc un corpus incomplet **dans l'index servi** : lire le bilan (voir
 [telemetrie.md](telemetrie.md#le-statut-dun-run)) et relancer le run.
-
-Pendant la migration (ADR-028, étape 1), le backend lit encore la collection Qdrant écrite
-avant elle, que l'ingestion ne touche plus. Ses points pointent par leurs offsets dans le
-`content` des documents Mongo : elle reste juste tant que Mongo est réingéré avec le même
-corpus et la même découpe. Sinon, le backend lève `CONTRACT_VIOLATION` (ADR-015).

@@ -24,7 +24,6 @@ flowchart TB
     subgraph stores ["Les bases partagées"]
         Mongo[(MongoDB<br>MURPHY_DATA + MURPHY_META)]
         OpenSearch[(OpenSearch<br>un index, nom fixe)]
-        Qdrant[(Qdrant<br>collection figée, lue en transition)]
         Neo4j[(Neo4j<br>graphe documentaire)]
     end
 
@@ -36,8 +35,7 @@ flowchart TB
 
     Kedro --> Mongo & OpenSearch & Neo4j
     TEI -.->|même modèle| Kedro
-    Back --> Mongo & Qdrant
-    OpenSearch -.->|migration à venir, ADR-028| Back
+    Back --> Mongo & OpenSearch
     Neo4j -.->|réservé, non câblé| Back
 ```
 
@@ -45,7 +43,7 @@ flowchart TB
   de la stack Docker. Il lit le corpus XML, le parse, le découpe, l'embarque et peuple
   les trois bases. Détails : [`data/ARCHITECTURE.md`](data/ARCHITECTURE.md).
 - **Serving** (`backend/` + `frontend/` + compose) : stateless, chaque requête recompute
-  le pipeline embed → retrieve → fetch → stream LLM. Détails :
+  le pipeline embed → recherche hybride → fetch → stream LLM. Détails :
   [`backend/ARCHITECTURE.md`](backend/ARCHITECTURE.md).
 
 ## Les contrats entre les deux
@@ -54,18 +52,10 @@ C'est la seule zone où une modification d'un côté casse l'autre. Quatre contr
 
 | Contrat | Écrit par l'ingestion | Lu par le serving |
 |---|---|---|
-| **Nom de collection** | `QDRANT_COLLECTION` (`.env.dev`), un nom **fixe** : la collection n'est plus écrite depuis la migration de l'ingestion (voir ci-dessous) | La même variable. Au boot (`backend/src/infra/clients.ts`), refus de démarrer si la collection n'existe pas (ADR-018). |
-| **Vecteurs** | Payload `chunk_id`, `identifier`, `char_start`, `char_end` (ADR-015), dans la collection figée | Recherche cosine top-K dans cette collection |
+| **Nom de l'index** | `OPENSEARCH_INDEX` (`.env.dev`), créé et rempli par l'ingestion, avec son mapping et ses analyseurs | La même variable. Au boot (`backend/src/infra/opensearch.ts`), refus de démarrer si l'index n'existe pas ; le backend écrit le pipeline de recherche RRF (ADR-028 §6). |
+| **Documents et passages** | Un document OpenSearch par document Mongo : `identifier`, `document_type`, `nature`, passages (`chunk_id`, `char_start`, `char_end`) imbriqués avec leurs vecteurs ([`index-opensearch.md`](data/reference/index-opensearch.md)) | La requête hybride à quatre sous-requêtes de ce même document |
 | **Contenu** | Mongo `MURPHY_DATA.documents` : un document entier par `identifier` | Lecture des documents parents ; le texte d'un passage est `content[char_start:char_end]` (points de code). Le passage va au LLM, le document entier au client (`data-parentDocument`) |
 | **Modèle d'embedding** | `all-mpnet-base-v2`, 768 dim, Cosine — vérifié contre TEI au démarrage du run | Le même modèle via le même conteneur TEI |
-
-**La transition (ADR-028, étape 1).** L'ingestion écrit l'index OpenSearch
-(`OPENSEARCH_INDEX`, [`data/reference/index-opensearch.md`](data/reference/index-opensearch.md))
-et ne touche plus Qdrant. Le backend lit encore la collection Qdrant écrite avant la
-migration : ses offsets pointent dans le `content` des documents Mongo, elle reste donc
-juste tant que Mongo est réingéré avec le même corpus et la même découpe. Sinon, le
-backend lève `CONTRACT_VIOLATION`. La migration du backend remplacera la collection par
-l'index, et Qdrant partira.
 
 Le modèle d'embedding est le contrat le plus fragile : question et corpus doivent être
 embarqués par le **même** modèle. C'est pourquoi il n'y a qu'**un** fichier
@@ -79,8 +69,8 @@ l'enrichissement de contexte par graphe.
 ## La stack Docker (racine du repo)
 
 `docker-compose.base.yml` + overrides `.dev.yml` / `.prod.yml` : backend, frontend,
-MongoDB, Qdrant, OpenSearch (nœud unique, écrit par l'ingestion, pas encore lu par le
-backend : ADR-028) et ses Dashboards
+MongoDB, OpenSearch (nœud unique, écrit par l'ingestion, lu par le backend : ADR-028)
+et ses Dashboards
 (dev seulement), Neo4j, TEI (GPU NVIDIA requis). L'ingestion n'est **pas** dans compose —
 elle tourne sur l'hôte et parle aux bases via les ports publiés.
 
@@ -90,7 +80,7 @@ Scripts racine (`package.json`, tous exigent `.env.dev`) :
 npm run up | watch | logs | status | down | build
 ```
 
-Ports dev : frontend `3000`, backend `5000`, Qdrant `6333`, OpenSearch `9200` (plugin de
+Ports dev : frontend `3000`, backend `5000`, OpenSearch `9200` (plugin de
 sécurité désactivé), OpenSearch Dashboards `5601`, Mongo `27017`, Neo4j `7474`/`7687`, TEI
 `5001→80`.
 
@@ -109,6 +99,8 @@ avec les mêmes options).
 - **Pas de reverse proxy** tant que rien n'est déployé : ni TLS, ni `trust
   proxy` (`TRUST_PROXY` dans `backend/src/app.ts`).
 - Les images tournent en utilisateur `node` ; `NODE_ENV` vient de la cible de build.
+- **OpenSearch garde son plugin de sécurité**, mais ni le backend ni l'ingestion ne
+  s'authentifient encore : à configurer avant tout déploiement.
 - TEI met environ 4 min à être prêt après la création du conteneur (mesuré sur une RTX
   3050 : un cœur à 100 %, GPU inactif) et dépasse 4 Go de mémoire pendant ce
   chargement (1 Go ensuite). Un `mem_limit` de 2 Go l'empêchait de démarrer.

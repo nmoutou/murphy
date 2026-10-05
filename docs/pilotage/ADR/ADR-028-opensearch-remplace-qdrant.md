@@ -2,7 +2,9 @@
 
 **Statut** : ✅ Accepté (2 octobre 2026) — amende ADR-007, ADR-010, ADR-015 §2 à §5 et
 ADR-018 §1-§2 · **§2 et §6 amendés par [ADR-029](ADR-029-recherche-hybride-quatre-listes.md)**
-(une sous-requête de références, un vecteur de titre pour les documents sans passage)
+(une sous-requête de références, un vecteur de titre pour les documents sans passage) ·
+**§7, §8 et §10 amendés le 5 octobre 2026** (aucun score servi ; pagination à 10 et 100 ;
+contexte du LLM plafonné)
 
 ## Contexte
 
@@ -154,6 +156,12 @@ seuil n'y a de sens.
   a une similarité avec la question : un nombre est inévitable.
 - Les deux listes sont dédoublonnées par `chunk_id` et fusionnées par RRF sur leurs
   rangs, dans le backend.
+
+> **Amendement (5 octobre 2026)** : aucun score ne sort du backend. Le champ `score` quitte
+> le contrat du flux (`data-document`) et le frontend n'affiche plus de pourcentage : un
+> score RRF n'est pas une similarité, et la similarité d'un passage lexical n'existe pas.
+> Le frontend change donc dès l'étape 1 (§10). Les 3 passages vectoriels restent la taille
+> par défaut des `inner_hits`.
 - **Un document trouvé sans passage** (par son titre, ses métadonnées ou son texte
   parent) **est renvoyé avec tous ses passages**, lus dans son `_source`. Une section
   n'en a aucun.
@@ -169,6 +177,12 @@ Le backend refuse de démarrer si l'une n'est pas un entier positif, si
 `PAGINATION_DEPTH` est inférieure à `PAGINATION_SIZE`, ou si elle dépasse 10 000
 (`index.max_result_window`). La profondeur doit rester la même d'une page à l'autre : la
 changer change l'ensemble fusionné, donc le classement. Leurs valeurs restent à fixer.
+
+> **Amendement (5 octobre 2026)** : `PAGINATION_SIZE` vaut 10 et `PAGINATION_DEPTH` 100,
+> en attendant une méthode d'évaluation. Le plafond de 10 000 est double : le `k` d'un kNN
+> ne peut le dépasser, et `pagination_depth` ne peut dépasser `index.max_result_window`.
+> Mesurée à chaud sur le corpus de dev, la requête prend 87 ms en médiane à une profondeur
+> de 100, contre 49 ms à 50.
 
 ### 9. Le LLM est retiré
 
@@ -193,6 +207,13 @@ routes, son contrat, et le retrait du WebSocket, du SSE et de l'AI SDK.
 Pendant l'étape 1, une section produit un `data-parentDocument` sans `data-document`.
 Le frontend n'affiche que les passages : il ne la montre pas. C'est accepté, elle
 apparaîtra avec la page de résultats.
+
+> **Amendement (5 octobre 2026)** : à l'étape 1, le contexte du LLM est plafonné à
+> **200 000 caractères**. Il est rempli dans l'ordre du classement, documents puis
+> passages, et s'arrête avant le passage qui ferait dépasser le plafond ; la coupe est
+> journalisée. Toutes les sources partent quand même au frontend : les résultats de la
+> recherche ne dépendent pas du budget du LLM, comme à l'étape 2. Le frontend perd aussi
+> le score (§7).
 
 ## Alternatives rejetées
 
@@ -242,7 +263,8 @@ apparaîtra avec la page de résultats.
   logs sont désactivés par défaut ; Query Insights, qui peut conserver le corps des
   requêtes, est à vérifier et à désactiver.
 - **Étape 1** : un document trouvé par ses métadonnées envoie tous ses passages au LLM,
-  jusqu'à une décision entière (142 000 caractères). C'est transitoire.
+  jusqu'à une décision entière (142 000 caractères), dans un contexte plafonné à 200 000
+  caractères (amendement du §10). C'est transitoire.
 - **Limites connues, reportées** :
   - le modèle d'embedding **doit** être remplacé par un modèle qui couvre le français ;
     ce changement impose une réingestion complète, et la dimension des vecteurs peut

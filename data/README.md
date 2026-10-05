@@ -1,9 +1,8 @@
 # Murphy — data
 
 Python/Kedro **ingestion** pipeline for the Murphy RAG system. Ingests LEGIFRANCE XML
-and writes documents, chunks and embeddings into MongoDB / OpenSearch / Neo4j. During the
-migration (ADR-028, step 1), the backend still reads the Qdrant collection written before
-it; the pipeline no longer writes Qdrant.
+and writes documents, chunks and embeddings into MongoDB / OpenSearch / Neo4j, which the
+backend then reads.
 
 Runs **offline and out-of-band**: it is not part of the Docker serving stack and the
 backend never calls into it. The two only share databases, no code.
