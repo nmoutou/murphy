@@ -21,7 +21,6 @@ export const documentChunkSchema = z.object({
   /** Offsets UTF-16 dans le `content` du parent, comme les compte JavaScript */
   highlightStart: z.number().int().nonnegative(),
   highlightEnd: z.number().int().nonnegative(),
-  score: z.number(),
   title: z.string().optional(),
   documentType: documentTypeSchema,
   /** La nature juridique (`LOI`, `ARRET`, `QPC`…), quand la source en donne une utile */

@@ -1,9 +1,4 @@
 services:
-  qdrant:
-    ports:
-      - "6333:6333"
-    restart: "no"
-
   opensearch:
     environment:
       - DISABLE_SECURITY_PLUGIN=true

@@ -1,5 +1,5 @@
-import type { RetrievedChunk, StoredDocument } from '../../types/rag';
-import { assemblePassages, toUtf16Range } from '../../services/passages';
+import type { PassageRef, RetrievedDocument, StoredDocument } from '../../types/rag';
+import { assembleDocuments, toUtf16Range } from '../../services/passages';
 
 /** `𝔸` est hors du plan multilingue de base : un point de code, deux unités UTF-16 */
 const ASTRAL_PREFIX = '𝔸 ';
@@ -14,14 +14,17 @@ const DOCUMENT: StoredDocument = {
   content: CONTENT,
 };
 
-const chunk = (overrides: Partial<RetrievedChunk> = {}): RetrievedChunk => ({
+const passageRef = (overrides: Partial<PassageRef> = {}): PassageRef => ({
   chunkId: 'LEGIARTI000006419304_0001',
-  identifier: DOCUMENT.identifier,
   charStart: PASSAGE_CODE_POINT_START,
   charEnd: PASSAGE_CODE_POINT_START + PASSAGE.length,
-  score: 0.9,
-  documentType: 'article',
   ...overrides,
+});
+
+const retrieved = (passages: PassageRef[], identifier = DOCUMENT.identifier): RetrievedDocument => ({
+  identifier,
+  documentType: 'article',
+  passages,
 });
 
 describe('toUtf16Range', () => {
@@ -52,25 +55,34 @@ describe('toUtf16Range', () => {
   });
 });
 
-describe('assemblePassages', () => {
-  it('cuts each passage out of its parent, in ranking order', () => {
-    const second = chunk({ chunkId: 'LEGIARTI000006419304_0000', charStart: 0, charEnd: 1, score: 0.5 });
+describe('assembleDocuments', () => {
+  it('cuts each passage out of its document, in ranking order', () => {
+    const second = passageRef({ chunkId: 'LEGIARTI000006419304_0000', charStart: 0, charEnd: 1 });
 
-    const passages = assemblePassages([chunk(), second], [DOCUMENT]);
+    const [found] = assembleDocuments([retrieved([passageRef(), second])], [DOCUMENT]);
 
-    expect(passages.map((passage) => passage.text)).toEqual([PASSAGE, '𝔸']);
-    expect(passages[0]).toMatchObject({ document: DOCUMENT, highlightStart: PASSAGE_CODE_POINT_START + 1 });
-    expect(passages[1].document).toBe(passages[0].document);
+    expect(found).toMatchObject({ document: DOCUMENT, documentType: 'article' });
+    expect(found.passages.map((passage) => passage.text)).toEqual([PASSAGE, '𝔸']);
+    expect(found.passages[0]).toMatchObject({ ref: passageRef(), highlightStart: PASSAGE_CODE_POINT_START + 1 });
   });
 
-  it('reports a chunk without parent document, naming it', () => {
-    expect(() => assemblePassages([chunk({ identifier: 'LEGIARTI000000000404' })], [DOCUMENT])).toThrow(
-      expect.objectContaining({ code: 'CONTRACT_VIOLATION', message: expect.stringContaining('LEGIARTI000006419304_0001') }),
+  it('keeps the ranking of the documents, not the order MongoDB returns them in', () => {
+    const other: StoredDocument = { identifier: 'LEGISCTA000006114781', title: 'Chapitre III', content: '' };
+
+    const found = assembleDocuments([retrieved([], other.identifier), retrieved([passageRef()])], [DOCUMENT, other]);
+
+    expect(found.map(({ document }) => document.identifier)).toEqual([other.identifier, DOCUMENT.identifier]);
+    expect(found[0].passages).toEqual([]);
+  });
+
+  it('reports a document missing from MongoDB, naming it', () => {
+    expect(() => assembleDocuments([retrieved([passageRef()], 'LEGIARTI000000000404')], [DOCUMENT])).toThrow(
+      expect.objectContaining({ code: 'CONTRACT_VIOLATION', message: expect.stringContaining('LEGIARTI000000000404') }),
     );
   });
 
-  it('reports offsets outside the parent content, naming the chunk', () => {
-    expect(() => assemblePassages([chunk({ charEnd: CONTENT.length + 10 })], [DOCUMENT])).toThrow(
+  it('reports offsets outside the document content, naming the chunk', () => {
+    expect(() => assembleDocuments([retrieved([passageRef({ charEnd: CONTENT.length + 10 })])], [DOCUMENT])).toThrow(
       expect.objectContaining({ code: 'CONTRACT_VIOLATION', message: expect.stringContaining('LEGIARTI000006419304_0001') }),
     );
   });

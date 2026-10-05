@@ -2,7 +2,7 @@ import { parseChatRequest } from '../../validation/chatRequest';
 
 const QUESTION = 'Quel délai de prescription ?';
 const USER_MESSAGE = { id: 'user-1', role: 'user', parts: [{ type: 'text', text: QUESTION }] };
-const PASSAGE = { chunkId: 'c-1', identifier: 'LEGIARTI000006419280', highlightStart: 0, highlightEnd: 12, score: 0.8, documentType: 'article' };
+const PASSAGE = { chunkId: 'c-1', identifier: 'LEGIARTI000006419280', highlightStart: 0, highlightEnd: 12, documentType: 'article' };
 const PARENT = { identifier: 'LEGIARTI000006419280', title: 'Article 2224', documentType: 'article', content: 'Les actions…' };
 
 const ASSISTANT_MESSAGE = {
@@ -56,9 +56,9 @@ describe('parseChatRequest', () => {
 
   it.each([
     [
-      'a passage whose score is not a number',
-      { type: 'data-document', data: { ...PASSAGE, score: 'haut' } },
-      'messages[1].parts[0].data.score',
+      'a passage whose highlight is not a number',
+      { type: 'data-document', data: { ...PASSAGE, highlightEnd: 'fin' } },
+      'messages[1].parts[0].data.highlightEnd',
     ],
     ['a data part the contract does not declare', { type: 'data-inconnue', data: {} }, 'messages[1].parts[0].data'],
   ])('rejects %s', async (_case, part, field) => {

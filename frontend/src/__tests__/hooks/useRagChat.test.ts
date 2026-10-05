@@ -22,7 +22,6 @@ const PASSAGE = {
   identifier: PARENT.identifier,
   highlightStart: 0,
   highlightEnd: 12,
-  score: 0.8,
   documentType: 'article' as const,
 };
 const RAG_TIMING = { embeddingMs: 4, retrievalMs: 6, totalMs: 900 };
@@ -111,8 +110,8 @@ describe('useRagChat', () => {
 
   it.each<[string, UIMessageChunk[]]>([
     [
-      'a passage whose score is not a number',
-      [{ type: 'data-document', data: { ...PASSAGE, score: 'haut' } }],
+      'a passage whose highlight is not a number',
+      [{ type: 'data-document', data: { ...PASSAGE, highlightEnd: 'fin' } }],
     ],
     [
       'malformed timing metadata',

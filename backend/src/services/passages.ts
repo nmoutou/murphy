@@ -4,7 +4,7 @@
  * à connaître la différence.
  */
 
-import type { Passage, RetrievedChunk, StoredDocument } from '../types/rag';
+import type { FoundDocument, Passage, PassageRef, RetrievedDocument, StoredDocument } from '../types/rag';
 import { contractViolation } from '../types/rag';
 
 export interface Utf16Range {
@@ -32,17 +32,16 @@ export const toUtf16Range = (content: string, charStart: number, charEnd: number
   return start !== undefined && hasReachedEnd ? { start, end: units } : undefined;
 };
 
-const cutPassage = (chunk: RetrievedChunk, document: StoredDocument): Passage => {
-  const range = toUtf16Range(document.content, chunk.charStart, chunk.charEnd);
+const cutPassage = (ref: PassageRef, document: StoredDocument): Passage => {
+  const range = toUtf16Range(document.content, ref.charStart, ref.charEnd);
   if (!range) {
     throw contractViolation(
-      `chunk ${chunk.chunkId} offsets [${chunk.charStart}, ${chunk.charEnd}) fall outside ` +
-        `the content of ${chunk.identifier}`
+      `chunk ${ref.chunkId} offsets [${ref.charStart}, ${ref.charEnd}) fall outside ` +
+        `the content of ${document.identifier}`
     );
   }
   return {
-    chunk,
-    document,
+    ref,
     text: document.content.slice(range.start, range.end),
     highlightStart: range.start,
     highlightEnd: range.end,
@@ -50,20 +49,20 @@ const cutPassage = (chunk: RetrievedChunk, document: StoredDocument): Passage =>
 };
 
 /**
- * Garde l'ordre de classement de `chunks`
- * @throws RagError `CONTRACT_VIOLATION` nommant le chunk si son parent manque ou si ses
- * offsets sortent du contenu du parent
+ * Garde l'ordre de classement des documents et de leurs passages
+ * @throws RagError `CONTRACT_VIOLATION` si un document manque à MongoDB ou si les offsets
+ * d'un passage sortent de son contenu
  */
-export const assemblePassages = (
-  chunks: readonly RetrievedChunk[],
-  documents: readonly StoredDocument[]
-): Passage[] => {
-  const documentsByIdentifier = new Map(documents.map((document) => [document.identifier, document]));
-  return chunks.map((chunk) => {
-    const document = documentsByIdentifier.get(chunk.identifier);
+export const assembleDocuments = (
+  retrieved: readonly RetrievedDocument[],
+  storedDocuments: readonly StoredDocument[]
+): FoundDocument[] => {
+  const documentsByIdentifier = new Map(storedDocuments.map((document) => [document.identifier, document]));
+  return retrieved.map(({ identifier, documentType, nature, passages }) => {
+    const document = documentsByIdentifier.get(identifier);
     if (!document) {
-      throw contractViolation(`chunk ${chunk.chunkId} has no parent document ${chunk.identifier} in MongoDB`);
+      throw contractViolation(`OpenSearch document ${identifier} has no counterpart in MongoDB`);
     }
-    return cutPassage(chunk, document);
+    return { document, documentType, nature, passages: passages.map((ref) => cutPassage(ref, document)) };
   });
 };

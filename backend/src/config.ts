@@ -31,11 +31,11 @@ export interface MongoConfig {
   readonly timeoutMs: number;
 }
 
-export interface QdrantConfig {
+export interface OpenSearchConfig {
   readonly url: string;
-  /** Nom fixe, partagé avec l'ingestion via `QDRANT_COLLECTION` */
-  readonly collection: string;
-  /** Par requête ; le défaut du client est de 300 s */
+  /** Écrit par l'ingestion, qui lit la même variable `OPENSEARCH_INDEX` */
+  readonly index: string;
+  /** Par requête ; le défaut du client est de 30 s */
   readonly timeoutMs: number;
 }
 
@@ -54,19 +54,22 @@ export interface LlmConfig {
   readonly systemPrompt: string;
 }
 
-export interface RetrievalConfig {
-  readonly topK: number;
-  readonly minScore: number;
+/** Une seule page est servie tant que le LLM reste branché (ADR-028 §10) */
+export interface PaginationConfig {
+  /** Documents par page */
+  readonly size: number;
+  /** Documents classés par chaque sous-requête avant la fusion : à garder d'une page à l'autre */
+  readonly depth: number;
 }
 
 export interface AppConfig {
   readonly server: ServerConfig;
   readonly http: HttpConfig;
   readonly mongo: MongoConfig;
-  readonly qdrant: QdrantConfig;
+  readonly opensearch: OpenSearchConfig;
   readonly embedding: EmbeddingConfig;
   readonly llm: LlmConfig;
-  readonly retrieval: RetrievalConfig;
+  readonly pagination: PaginationConfig;
 }
 
 export interface EnvironmentReport {
@@ -93,15 +96,17 @@ const DEFAULT_STREAM_RATE_LIMIT_WINDOW_MS = 60_000;
 const DEFAULT_STREAM_RATE_LIMIT_MAX = 10;
 const DEFAULT_MONGODB_DATABASE = 'MURPHY_DATA';
 const DEFAULT_MONGODB_TIMEOUT_MS = 10_000;
-const DEFAULT_QDRANT_URL = 'http://qdrant:6333';
-const DEFAULT_QDRANT_TIMEOUT_MS = 10_000;
+const DEFAULT_OPENSEARCH_URL = 'http://opensearch:9200';
+const DEFAULT_OPENSEARCH_TIMEOUT_MS = 10_000;
 const DEFAULT_EMBEDDING_SERVICE_URL = 'http://embedding-service:80';
 const DEFAULT_EMBEDDING_MODEL_NAME = 'all-mpnet-base-v2';
 const DEFAULT_EMBEDDING_TIMEOUT_MS = 10_000;
 const DEFAULT_LLM_TEMPERATURE = 0.7;
 const DEFAULT_LLM_TIMEOUT_MS = 30_000;
-const DEFAULT_RETRIEVAL_TOP_K = 5;
-const DEFAULT_RETRIEVAL_MIN_SCORE = 0.5;
+const DEFAULT_PAGINATION_SIZE = 10;
+const DEFAULT_PAGINATION_DEPTH = 100;
+/** Le plafond du `k` d'un kNN, et `index.max_result_window` par défaut */
+const MAX_PAGINATION_DEPTH = 10_000;
 const DEFAULT_SYSTEM_PROMPT =
   'Vous êtes un assistant juridique intelligent spécialisé dans le droit français. ' +
   "Répondez aux questions de l'utilisateur en vous basant sur les documents juridiques fournis. " +
@@ -180,10 +185,10 @@ const readMongoConfig = (reader: EnvReader): MongoConfig => ({
   timeoutMs: reader.integer('MONGODB_TIMEOUT', DEFAULT_MONGODB_TIMEOUT_MS),
 });
 
-const readQdrantConfig = (reader: EnvReader): QdrantConfig => ({
-  url: reader.optional('QDRANT_URL') ?? DEFAULT_QDRANT_URL,
-  collection: reader.required('QDRANT_COLLECTION'),
-  timeoutMs: reader.integer('QDRANT_TIMEOUT', DEFAULT_QDRANT_TIMEOUT_MS),
+const readOpenSearchConfig = (reader: EnvReader): OpenSearchConfig => ({
+  url: reader.optional('OPENSEARCH_URL') ?? DEFAULT_OPENSEARCH_URL,
+  index: reader.required('OPENSEARCH_INDEX'),
+  timeoutMs: reader.integer('OPENSEARCH_TIMEOUT', DEFAULT_OPENSEARCH_TIMEOUT_MS),
 });
 
 const readEmbeddingConfig = (reader: EnvReader): EmbeddingConfig => ({
@@ -201,13 +206,31 @@ const readLlmConfig = (reader: EnvReader): LlmConfig => ({
   systemPrompt: reader.optional('SYSTEM_PROMPT') ?? DEFAULT_SYSTEM_PROMPT,
 });
 
-const readRetrievalConfig = (reader: EnvReader): RetrievalConfig => ({
-  topK: reader.integer('RETRIEVAL_TOP_K', DEFAULT_RETRIEVAL_TOP_K),
-  minScore: reader.number('RETRIEVAL_MIN_SCORE', DEFAULT_RETRIEVAL_MIN_SCORE),
-});
+/** @throws si une valeur n'est pas un entier positif, ou si la profondeur est hors de [taille, 10 000] */
+const assertPagination = ({ size, depth }: PaginationConfig): void => {
+  if (size < 1 || depth < 1) {
+    throw new Error(`PAGINATION_SIZE and PAGINATION_DEPTH must be positive, got ${size} and ${depth}`);
+  }
+  if (depth < size) {
+    throw new Error(`PAGINATION_DEPTH (${depth}) must be at least PAGINATION_SIZE (${size})`);
+  }
+  if (depth > MAX_PAGINATION_DEPTH) {
+    throw new Error(`PAGINATION_DEPTH (${depth}) must not exceed ${MAX_PAGINATION_DEPTH}, the OpenSearch k-NN limit`);
+  }
+};
+
+const readPaginationConfig = (reader: EnvReader): PaginationConfig => {
+  const pagination = {
+    size: reader.integer('PAGINATION_SIZE', DEFAULT_PAGINATION_SIZE),
+    depth: reader.integer('PAGINATION_DEPTH', DEFAULT_PAGINATION_DEPTH),
+  };
+  assertPagination(pagination);
+  return pagination;
+};
 
 /**
- * @throws en nommant la variable quand une variable numérique est malformée
+ * @throws en nommant la variable quand une variable numérique est malformée, ou quand
+ * la pagination est incohérente
  */
 export const loadConfig = (env: Environment): LoadedConfig => {
   const reader = createEnvReader(env);
@@ -215,10 +238,10 @@ export const loadConfig = (env: Environment): LoadedConfig => {
     server: readServerConfig(reader),
     http: readHttpConfig(reader),
     mongo: readMongoConfig(reader),
-    qdrant: readQdrantConfig(reader),
+    opensearch: readOpenSearchConfig(reader),
     embedding: readEmbeddingConfig(reader),
     llm: readLlmConfig(reader),
-    retrieval: readRetrievalConfig(reader),
+    pagination: readPaginationConfig(reader),
   };
   return { config, report: reader.report() };
 };

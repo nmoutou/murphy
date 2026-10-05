@@ -94,8 +94,8 @@ def test_un_document_sans_contenu_ne_rend_AUCUN_chunk(fixtures_dir: Path) -> Non
 
 
 def test_les_chunks_sont_numerotes_sans_trou_ni_doublon(fixtures_dir: Path) -> None:
-    """Des ordinaux distincts : un ``chunk_id`` en double écraserait l'autre dans
-    Qdrant."""
+    """Des ordinaux distincts : le backend dédoublonne les passages par ``chunk_id``,
+    et confondrait deux passages de même identifiant."""
     document = _parse(fixtures_dir, f"{ARTICLE_RICHE}.xml")
     chunks = _chunker().chunk(document)
 

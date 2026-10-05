@@ -1,12 +1,4 @@
 services:
-  qdrant:
-    container_name: qdrant
-    image: qdrant/qdrant:v1.16.3
-    networks:
-      - backend
-    volumes:
-      - qdrant_data:/qdrant/storage
-
   opensearch:
     container_name: opensearch
     image: opensearchproject/opensearch:3.9.0
@@ -65,16 +57,16 @@ services:
       - STREAM_RATE_LIMIT_WINDOW_MS=${STREAM_RATE_LIMIT_WINDOW_MS}
       - STREAM_RATE_LIMIT_MAX=${STREAM_RATE_LIMIT_MAX}
       - MONGODB_URI=mongodb://${MONGO_INITDB_ROOT_USERNAME}:${MONGO_INITDB_ROOT_PASSWORD}@mongo:27017/?authSource=admin
-      - QDRANT_URL=http://qdrant:6333
-      - QDRANT_COLLECTION=${QDRANT_COLLECTION}
-      - QDRANT_TIMEOUT=${QDRANT_TIMEOUT}
+      - OPENSEARCH_URL=http://opensearch:9200
+      - OPENSEARCH_INDEX=${OPENSEARCH_INDEX}
+      - OPENSEARCH_TIMEOUT=${OPENSEARCH_TIMEOUT}
       - EMBEDDING_SERVICE_URL=http://embedding-service:80
       - MONGODB_DATABASE=${MONGODB_DATA_DB_NAME}
       - EMBEDDING_MODEL_NAME=${EMBEDDING_MODEL}
       - MONGODB_TIMEOUT=${MONGODB_TIMEOUT}
       - EMBEDDING_SERVICE_TIMEOUT=${EMBEDDING_SERVICE_TIMEOUT}
-      - RETRIEVAL_MIN_SCORE=${RETRIEVAL_MIN_SCORE}
-      - RETRIEVAL_TOP_K=${RETRIEVAL_TOP_K}
+      - PAGINATION_SIZE=${PAGINATION_SIZE}
+      - PAGINATION_DEPTH=${PAGINATION_DEPTH}
       - LLM_API_ENDPOINT=${LLM_API_ENDPOINT}
       - LLM_API_KEY=${LLM_API_KEY}
       - LLM_MODEL=${LLM_MODEL}
@@ -83,7 +75,7 @@ services:
       - SYSTEM_PROMPT=${SYSTEM_PROMPT}
     depends_on:
       - mongo
-      - qdrant
+      - opensearch
       - embedding-service
 
   frontend:
@@ -124,6 +116,5 @@ networks:
 volumes:
   mongo_data:
   neo4j_data:
-  qdrant_data:
   opensearch_data:
   hf_cache:

@@ -17,7 +17,6 @@ const PASSAGE = {
   identifier: 'LEGIARTI000006419280',
   highlightStart: 0,
   highlightEnd: 12,
-  score: 0.8,
   documentType: 'article' as const,
 };
 const ANSWER_PARTS: UIMessageChunk[] = [
@@ -146,7 +145,7 @@ describe('webSocketChatTransport', () => {
     [
       'a data part that breaks its schema',
       (socket: FakeWebSocket) =>
-        socket.receive({ type: 'data-document', data: { ...PASSAGE, score: 'haut' } }),
+        socket.receive({ type: 'data-document', data: { ...PASSAGE, highlightEnd: 'fin' } }),
     ],
     [
       'a data part the contract does not declare',

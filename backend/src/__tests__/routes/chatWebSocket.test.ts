@@ -28,7 +28,7 @@ const ANSWER_PARTS: AppChunk[] = [
   { type: 'start', messageId: MESSAGE_ID },
   {
     type: 'data-document',
-    data: { chunkId: 'chunk-1', identifier: 'LEGIARTI1', highlightStart: 0, highlightEnd: 4, score: 0.9, documentType: 'article' },
+    data: { chunkId: 'chunk-1', identifier: 'LEGIARTI1', highlightStart: 0, highlightEnd: 4, documentType: 'article' },
   },
   { type: 'text-delta', id: MESSAGE_ID, delta: 'Cinq ans.' },
   { type: 'finish', finishReason: 'stop' },

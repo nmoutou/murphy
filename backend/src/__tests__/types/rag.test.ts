@@ -1,7 +1,7 @@
 import type { RagFailure } from '../../types/rag';
 import { RagError, toChatError, toRagError } from '../../types/rag';
 
-const SEARCH_FAILURE: RagFailure = { stage: 'retrieval', code: 'SEARCH_FAILED', operation: 'search Qdrant' };
+const SEARCH_FAILURE: RagFailure = { stage: 'retrieval', code: 'SEARCH_FAILED', operation: 'search OpenSearch' };
 
 /** Une erreur du type donné, telle que la lèverait une bibliothèque cliente */
 const errorNamed = (name: string, message: string): Error => Object.assign(new Error(message), { name });
@@ -14,11 +14,11 @@ describe('toRagError', () => {
       name: 'RagError',
       stage: 'retrieval',
       code: 'SEARCH_FAILED',
-      message: 'Failed to search Qdrant: connect ECONNREFUSED',
+      message: 'Failed to search OpenSearch: connect ECONNREFUSED',
     });
   });
 
-  it.each(['TimeoutError', 'QdrantClientTimeoutError', 'MongoNetworkTimeoutError'])(
+  it.each(['TimeoutError', 'MongoNetworkTimeoutError'])(
     'classifies a %s as a timeout',
     (name) => {
       expect(toRagError(SEARCH_FAILURE, errorNamed(name, 'too slow')).code).toBe('TIMEOUT');
@@ -30,13 +30,13 @@ describe('toRagError', () => {
   });
 
   it('accepts a thrown value that is not an Error', () => {
-    expect(toRagError(SEARCH_FAILURE, 'boom').message).toBe('Failed to search Qdrant: boom');
+    expect(toRagError(SEARCH_FAILURE, 'boom').message).toBe('Failed to search OpenSearch: boom');
   });
 });
 
 describe('toChatError', () => {
   it('keeps the stage and the code of a RagError, not its message', () => {
-    const ragError = new RagError('retrieval', 'SEARCH_FAILED', 'Failed to search Qdrant: connect ECONNREFUSED');
+    const ragError = new RagError('retrieval', 'SEARCH_FAILED', 'Failed to search OpenSearch: connect ECONNREFUSED');
 
     expect(toChatError(ragError)).toEqual({ stage: 'retrieval', code: 'SEARCH_FAILED' });
   });

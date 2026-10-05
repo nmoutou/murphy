@@ -4,12 +4,12 @@ import { getInfraClients } from '../../infra/clients';
 import { RagError } from '../../types/rag';
 import type { AppUIMessage } from '@murphy/contract/messages';
 import { serializeChatError } from '@murphy/contract/errors';
-import type { RetrievedChunk, StoredDocument } from '../../types/rag';
+import type { PassageRef, SearchHit, StoredDocument } from '../../types/rag';
 
 jest.mock('../../infra/clients', () => {
   const clients = {
     embedding: { embedText: jest.fn() },
-    qdrant: { searchVectors: jest.fn() },
+    opensearch: { search: jest.fn() },
     mongo: { fetchParentDocuments: jest.fn() },
     llm: { stream: jest.fn() },
   };
@@ -22,7 +22,7 @@ jest.mock('../../utils/logger', () => {
 
 type AppChunk = InferUIMessageChunk<AppUIMessage>;
 
-const { embedding, qdrant, mongo, llm } = getInfraClients();
+const { embedding, opensearch, mongo, llm } = getInfraClients();
 
 const EMBEDDING = [0.1, 0.2, 0.3];
 const QUESTION = 'Quel est le délai de prescription ?';
@@ -33,17 +33,26 @@ const DOCUMENT: StoredDocument = {
   title: 'Code civil, art. 2224',
   content: `${FIRST_SENTENCE} ${SECOND_SENTENCE}`,
 };
-const chunkOf = (chunkId: string, charStart: number, text: string, score: number): RetrievedChunk => ({
+const SECTION: StoredDocument = { identifier: 'LEGISCTA000006114781', title: 'Chapitre III', content: '' };
+const refOf = (chunkId: string, charStart: number, text: string): PassageRef => ({
   chunkId,
-  identifier: DOCUMENT.identifier,
   charStart,
   charEnd: charStart + text.length,
-  score,
-  documentType: 'article',
 });
 const SECOND_START = FIRST_SENTENCE.length + 1;
-/** Deux passages du même article, le second classé premier */
-const CHUNKS = [chunkOf('chunk-2', SECOND_START, SECOND_SENTENCE, 0.91), chunkOf('chunk-1', 0, FIRST_SENTENCE, 0.72)];
+const FIRST_REF = refOf('chunk-1', 0, FIRST_SENTENCE);
+const SECOND_REF = refOf('chunk-2', SECOND_START, SECOND_SENTENCE);
+/** Une section, sans passage, classée devant un article dont le second passage est classé premier */
+const HITS: SearchHit[] = [
+  { identifier: SECTION.identifier, documentType: 'section', lexicalPassages: [], vectorPassages: [], allPassages: [] },
+  {
+    identifier: DOCUMENT.identifier,
+    documentType: 'article',
+    lexicalPassages: [SECOND_REF, FIRST_REF],
+    vectorPassages: [],
+    allPassages: [FIRST_REF, SECOND_REF],
+  },
+];
 
 const userMessage = (text: string, id = 'user-1'): AppUIMessage => ({
   id,
@@ -68,8 +77,8 @@ const mockLlmTokens = (...tokens: string[]): void => {
 
 beforeEach(() => {
   jest.mocked(embedding.embedText).mockResolvedValue(EMBEDDING);
-  jest.mocked(qdrant.searchVectors).mockResolvedValue(CHUNKS);
-  jest.mocked(mongo.fetchParentDocuments).mockResolvedValue([DOCUMENT]);
+  jest.mocked(opensearch.search).mockResolvedValue(HITS);
+  jest.mocked(mongo.fetchParentDocuments).mockResolvedValue([DOCUMENT, SECTION]);
   mockLlmTokens('Cinq ', 'ans.');
 });
 
@@ -90,7 +99,7 @@ describe('extractQuestionFromMessages', () => {
       role: 'user',
       parts: [
         { type: 'text', text: 'Quel délai ' },
-        { type: 'data-document', data: { chunkId: 'chunk-1', identifier: 'LEGIARTI1', highlightStart: 0, highlightEnd: 4, score: 1 } },
+        { type: 'data-document', data: { chunkId: 'chunk-1', identifier: 'LEGIARTI1', highlightStart: 0, highlightEnd: 4, documentType: 'article' } },
         { type: 'text', text: 'pour agir ?' },
       ],
     };
@@ -114,30 +123,30 @@ describe('createChatStream', () => {
     expect(embedding.embedText).not.toHaveBeenCalled();
   });
 
-  it('streams the parent document once, then its passages, then the answer and the timing', async () => {
+  it('streams each document in ranking order, then its passages, then the answer and the timing', async () => {
     const parts = await readAllParts(await createChatStream([userMessage(QUESTION)], NOT_ABORTED));
 
     expect(parts.map((part) => part.type)).toEqual([
-      'start', 'text-start', 'data-parentDocument', 'data-document', 'data-document',
+      'start', 'text-start', 'data-parentDocument', 'data-parentDocument', 'data-document', 'data-document',
       'text-delta', 'text-delta', 'text-end', 'finish',
     ]);
-    expect(parts[2]).toEqual({
+    expect(parts[2]).toMatchObject({ type: 'data-parentDocument', data: { identifier: SECTION.identifier, documentType: 'section' } });
+    expect(parts[3]).toEqual({
       type: 'data-parentDocument',
       data: { identifier: DOCUMENT.identifier, title: DOCUMENT.title, documentType: 'article', content: DOCUMENT.content },
     });
-    expect(parts[3]).toEqual({
+    expect(parts[4]).toEqual({
       type: 'data-document',
       data: {
         chunkId: 'chunk-2',
         identifier: DOCUMENT.identifier,
         highlightStart: SECOND_START,
         highlightEnd: DOCUMENT.content.length,
-        score: 0.91,
         title: DOCUMENT.title,
         documentType: 'article',
       },
     });
-    expect(parts[4]).toMatchObject({ type: 'data-document', data: { chunkId: 'chunk-1', highlightStart: 0 } });
+    expect(parts[5]).toMatchObject({ type: 'data-document', data: { chunkId: 'chunk-1', highlightStart: 0 } });
     expect(parts.filter((part) => part.type === 'text-delta').map((part) => part.delta)).toEqual(['Cinq ', 'ans.']);
 
     const finish = parts[parts.length - 1];
@@ -149,8 +158,8 @@ describe('createChatStream', () => {
   it('feeds each passage to the LLM, not the whole document', async () => {
     await readAllParts(await createChatStream([userMessage(QUESTION)], NOT_ABORTED));
 
-    expect(qdrant.searchVectors).toHaveBeenCalledWith(EMBEDDING, 5);
-    expect(mongo.fetchParentDocuments).toHaveBeenCalledWith(CHUNKS.map((chunk) => chunk.identifier));
+    expect(opensearch.search).toHaveBeenCalledWith(QUESTION, EMBEDDING);
+    expect(mongo.fetchParentDocuments).toHaveBeenCalledWith([SECTION.identifier, DOCUMENT.identifier]);
 
     const [llmMessages] = jest.mocked(llm.stream).mock.calls[0];
     expect(llmMessages[0].role).toBe('system');

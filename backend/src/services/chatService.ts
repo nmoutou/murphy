@@ -1,11 +1,11 @@
 import type { InferUIMessageChunk, UIMessageStreamWriter } from 'ai';
 import type { AppUIMessage, AppMessageMetadata, RagTiming } from '@murphy/contract/messages';
 import type { ChatMessage } from '../infra/llm';
-import type { Passage } from '../types/rag';
+import type { FoundDocument, Passage } from '../types/rag';
 import { createUIMessageStream } from 'ai';
 import crypto from 'crypto';
 import { logger as rootLogger } from '../utils/logger';
-import { embedQuestion, retrieveChunks, fetchPassages, buildContextString } from './ragService';
+import { embedQuestion, retrieveDocuments, fetchDocuments, buildContextString } from './ragService';
 import { getInfraClients } from '../infra/clients';
 import { RagError, toChatError } from '../types/rag';
 import { serializeChatError } from '@murphy/contract/errors';
@@ -24,47 +24,41 @@ export const extractQuestionFromMessages = (messages: AppUIMessage[]): string =>
     .join('');
 };
 
-const writeParentDocument = (writer: AppWriter, { document, chunk }: Passage): void => {
+const writeParentDocument = (writer: AppWriter, { document, documentType, nature }: FoundDocument): void => {
   writer.write({
     type: 'data-parentDocument',
+    data: { identifier: document.identifier, title: document.title, documentType, nature, content: document.content },
+  });
+};
+
+const writePassage = (writer: AppWriter, { document, documentType, nature }: FoundDocument, passage: Passage): void => {
+  writer.write({
+    type: 'data-document',
     data: {
+      chunkId: passage.ref.chunkId,
       identifier: document.identifier,
+      highlightStart: passage.highlightStart,
+      highlightEnd: passage.highlightEnd,
       title: document.title,
-      documentType: chunk.documentType,
-      nature: chunk.nature,
-      content: document.content,
+      documentType,
+      nature,
     },
   });
 };
 
-/** Dans l'ordre du classement, chaque document parent une fois, avant son premier passage */
-const writeSources = (writer: AppWriter, passages: readonly Passage[]): void => {
-  const writtenDocuments = new Set<string>();
-  for (const passage of passages) {
-    const { identifier } = passage.document;
-    if (!writtenDocuments.has(identifier)) {
-      writeParentDocument(writer, passage);
-      writtenDocuments.add(identifier);
-    }
-    const { chunk, document, highlightStart, highlightEnd } = passage;
-    writer.write({
-      type: 'data-document',
-      data: {
-        chunkId: chunk.chunkId,
-        identifier: document.identifier,
-        highlightStart,
-        highlightEnd,
-        score: chunk.score,
-        title: document.title,
-        documentType: chunk.documentType,
-        nature: chunk.nature,
-      },
-    });
+/**
+ * Dans l'ordre du classement, chaque document puis ses passages. Une section n'a aucun
+ * passage : le frontend ne l'affiche pas encore (ADR-028 §10)
+ */
+const writeSources = (writer: AppWriter, documents: readonly FoundDocument[]): void => {
+  for (const found of documents) {
+    writeParentDocument(writer, found);
+    for (const passage of found.passages) writePassage(writer, found, passage);
   }
 };
 
-const buildLlmMessages = (question: string, passages: readonly Passage[]): ChatMessage[] => [
-  { role: 'system', content: `${config.llm.systemPrompt}\n\nContexte:\n${buildContextString(passages)}` },
+const buildLlmMessages = (question: string, documents: readonly FoundDocument[]): ChatMessage[] => [
+  { role: 'system', content: `${config.llm.systemPrompt}\n\nContexte:\n${buildContextString(documents)}` },
   { role: 'user', content: question },
 ];
 
@@ -72,11 +66,11 @@ const ABORTED_BY_CLIENT = 'Chat stream aborted by the client';
 
 const retrieveSources = async (writer: AppWriter, question: string) => {
   const { embedding, embeddingMs } = await embedQuestion(question);
-  const { chunks, retrievalMs } = await retrieveChunks(embedding, config.retrieval.topK);
-  // Titre et texte vivent dans les documents parents : les lire avant d'écrire les sources
-  const { passages, docFetchMs } = await fetchPassages(chunks);
-  writeSources(writer, passages);
-  return { passages, timing: { embeddingMs, retrievalMs, docFetchMs } };
+  const { documents: retrieved, retrievalMs } = await retrieveDocuments(question, embedding);
+  // Titre et texte vivent dans Mongo : les lire avant d'écrire les sources
+  const { documents, docFetchMs } = await fetchDocuments(retrieved);
+  writeSources(writer, documents);
+  return { documents, timing: { embeddingMs, retrievalMs, docFetchMs } };
 };
 
 /**
@@ -137,10 +131,10 @@ export const createChatStream = async (
       writer.write({ type: 'start', messageId });
       writer.write({ type: 'text-start', id: messageId });
 
-      const { passages, timing } = await retrieveSources(writer, question);
+      const { documents, timing } = await retrieveSources(writer, question);
       if (isAbortedByClient(abortSignal)) return;
 
-      const llmMs = await streamAnswer(writer, messageId, buildLlmMessages(question, passages), abortSignal);
+      const llmMs = await streamAnswer(writer, messageId, buildLlmMessages(question, documents), abortSignal);
       if (llmMs === undefined || isAbortedByClient(abortSignal)) return;
 
       writeFinish(writer, messageId, { ...timing, llmMs, totalMs: Date.now() - startTime });

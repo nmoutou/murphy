@@ -1,7 +1,4 @@
 services:
-  qdrant:
-    restart: always
-
   opensearch:
     restart: always
 

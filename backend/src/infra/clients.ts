@@ -4,11 +4,11 @@ import type { AppConfig } from '../config';
 import { EmbeddingClient } from './embedding';
 import { LLMProvider } from './llm';
 import { MongoDbClient } from './mongodb';
-import { QdrantVectorClient } from './qdrant';
+import { OpenSearchClient } from './opensearch';
 
 export interface InfraClients {
   readonly mongo: MongoDbClient;
-  readonly qdrant: QdrantVectorClient;
+  readonly opensearch: OpenSearchClient;
   readonly embedding: EmbeddingClient;
   readonly llm: LLMProvider;
 }
@@ -16,17 +16,17 @@ export interface InfraClients {
 let clients: InfraClients | undefined;
 
 /**
- * @throws si MongoDB est injoignable ou la collection Qdrant absente : mieux vaut
+ * @throws si MongoDB ou OpenSearch est injoignable, ou l'index absent : mieux vaut
  * arrêter le démarrage qu'échouer à la première question
  */
 export const initInfraClients = async (config: AppConfig): Promise<void> => {
   const mongo = await MongoDbClient.connect(config.mongo);
-  const qdrant = new QdrantVectorClient({ ...config.qdrant, minScore: config.retrieval.minScore });
-  await qdrant.assertCollectionExists();
+  const opensearch = new OpenSearchClient({ opensearch: config.opensearch, pagination: config.pagination });
+  await opensearch.prepareSearch();
 
   clients = {
     mongo,
-    qdrant,
+    opensearch,
     embedding: new EmbeddingClient(config.embedding),
     llm: new LLMProvider(config.llm),
   };

@@ -46,8 +46,8 @@ const checkHttpService = async (name: string, url: string): Promise<ServiceHealt
 const checkTei = () =>
   checkHttpService('tei', `${config.embedding.serviceUrl}/health`);
 
-const checkQdrant = () =>
-  checkHttpService('qdrant', `${config.qdrant.url}/healthz`);
+const checkOpenSearch = () =>
+  checkHttpService('opensearch', `${config.opensearch.url}/_cluster/health`);
 
 const pingMongoDB = async (): Promise<void> => {
   const mongoDb = getInfraClients().mongo.getDb();
@@ -95,14 +95,14 @@ const resolveGlobalHealth = (services: ServiceHealth[]): GlobalHealth => {
 router.get(
   ['/', '/services'],
   asyncHandler(async (_req: Request, res: Response) => {
-    const [tei, qdrant, mongodb] = await Promise.all([
+    const [tei, opensearch, mongodb] = await Promise.all([
       measureLatency(checkTei),
-      measureLatency(checkQdrant),
+      measureLatency(checkOpenSearch),
       measureLatency(checkMongoDB),
     ]);
-    const { globalStatus, httpStatus, statusMsg } = resolveGlobalHealth([tei, qdrant, mongodb]);
+    const { globalStatus, httpStatus, statusMsg } = resolveGlobalHealth([tei, opensearch, mongodb]);
     res.status(httpStatus).json(
-      buildApiResponse(httpStatus, statusMsg, { status: globalStatus, services: { tei, qdrant, mongodb } })
+      buildApiResponse(httpStatus, statusMsg, { status: globalStatus, services: { tei, opensearch, mongodb } })
     );
   })
 );

@@ -1,16 +1,18 @@
-import type { Passage, RetrievedChunk, StoredDocument } from '../../types/rag';
+import type { FoundDocument, Passage, RetrievedDocument, SearchHit, StoredDocument } from '../../types/rag';
 import {
+  MAX_LLM_CONTEXT_CHARS,
   buildContextString,
   embedQuestion,
-  fetchPassages,
-  retrieveChunks,
+  fetchDocuments,
+  retrieveDocuments,
 } from '../../services/ragService';
 import { getInfraClients } from '../../infra/clients';
+import { logger } from '../../utils/logger';
 
 jest.mock('../../infra/clients', () => {
   const clients = {
     embedding: { embedText: jest.fn() },
-    qdrant: { searchVectors: jest.fn() },
+    opensearch: { search: jest.fn() },
     mongo: { fetchParentDocuments: jest.fn() },
     llm: { stream: jest.fn() },
   };
@@ -27,52 +29,71 @@ const DOCUMENT: StoredDocument = {
   title: 'Code civil, art. 2224',
   content: 'Article 2224. Cinq ans.',
 };
-const CHUNK: RetrievedChunk = {
-  chunkId: 'LEGIARTI000006419304_0001',
-  identifier: DOCUMENT.identifier,
-  charStart: 14,
-  charEnd: 23,
-  score: 0.9,
-  documentType: 'article',
-};
-const PASSAGE: Passage = { chunk: CHUNK, document: DOCUMENT, text: 'Cinq ans.', highlightStart: 14, highlightEnd: 23 };
+const PASSAGE_REF = { chunkId: 'LEGIARTI000006419304_0001', charStart: 14, charEnd: 23 };
+const RETRIEVED: RetrievedDocument = { identifier: DOCUMENT.identifier, documentType: 'article', passages: [PASSAGE_REF] };
+const PASSAGE: Passage = { ref: PASSAGE_REF, text: 'Cinq ans.', highlightStart: 14, highlightEnd: 23 };
+const FOUND: FoundDocument = { document: DOCUMENT, documentType: 'article', passages: [PASSAGE] };
 
-const { embedding, qdrant, mongo } = getInfraClients();
+const { embedding, opensearch, mongo } = getInfraClients();
+
+const foundWith = (title: string, texts: string[]): FoundDocument => ({
+  document: { ...DOCUMENT, title },
+  documentType: 'article',
+  passages: texts.map((text) => ({ ...PASSAGE, text })),
+});
 
 describe('buildContextString', () => {
-  it('says so when no document was found', () => {
+  it('says so when no passage was found', () => {
     expect(buildContextString([])).toBe('Aucun document pertinent trouvé.');
+    expect(buildContextString([foundWith('Chapitre III', [])])).toBe('Aucun document pertinent trouvé.');
   });
 
-  it('numbers the passages and gives the passage alone, not its whole document', () => {
-    const second: Passage = { ...PASSAGE, document: { ...DOCUMENT, title: 'Code civil, art. 2225' }, text: 'Dix ans.' };
+  it('numbers the passages across documents and gives each passage alone', () => {
+    const second = foundWith('Code civil, art. 2225', ['Dix ans.', 'Vingt ans.']);
 
-    expect(buildContextString([PASSAGE, second])).toBe(
-      '[1] Code civil, art. 2224\nCinq ans.\n\n[2] Code civil, art. 2225\nDix ans.',
+    expect(buildContextString([FOUND, second])).toBe(
+      '[1] Code civil, art. 2224\nCinq ans.\n\n[2] Code civil, art. 2225\nDix ans.\n\n[3] Code civil, art. 2225\nVingt ans.',
     );
+  });
+
+  it('stops before the passage that would exceed the cap, and logs it', () => {
+    // Chaque bloc fait 100 000 caractères : « [n] T\n » (6) + le texte
+    const text = 'x'.repeat(MAX_LLM_CONTEXT_CHARS / 2 - 6);
+    const found = foundWith('T', [text, text, 'court']);
+
+    const context = buildContextString([found]);
+
+    expect(context).toBe(`[1] T\n${text}`);
+    expect(logger.warn).toHaveBeenCalledWith(expect.objectContaining({ kept: 1, dropped: 2 }), expect.any(String));
+  });
+
+  it('keeps a context exactly at the cap', () => {
+    const text = 'x'.repeat(MAX_LLM_CONTEXT_CHARS - '[1] T\n'.length);
+
+    expect(buildContextString([foundWith('T', [text])])).toHaveLength(MAX_LLM_CONTEXT_CHARS);
   });
 });
 
-describe('fetchPassages', () => {
-  it('skips MongoDB when there is no chunk', async () => {
-    await expect(fetchPassages([])).resolves.toEqual({ passages: [], docFetchMs: 0 });
+describe('fetchDocuments', () => {
+  it('skips MongoDB when no document was found', async () => {
+    await expect(fetchDocuments([])).resolves.toEqual({ documents: [], docFetchMs: 0 });
     expect(mongo.fetchParentDocuments).not.toHaveBeenCalled();
   });
 
-  it('reads the parents of the chunks and cuts the passages out', async () => {
+  it('reads the documents and cuts their passages out', async () => {
     jest.mocked(mongo.fetchParentDocuments).mockResolvedValue([DOCUMENT]);
 
-    const fetched = await fetchPassages([CHUNK]);
+    const fetched = await fetchDocuments([RETRIEVED]);
 
-    expect(mongo.fetchParentDocuments).toHaveBeenCalledWith([CHUNK.identifier]);
-    expect(fetched.passages).toEqual([PASSAGE]);
+    expect(mongo.fetchParentDocuments).toHaveBeenCalledWith([DOCUMENT.identifier]);
+    expect(fetched.documents).toEqual([FOUND]);
     expect(fetched.docFetchMs).toBeGreaterThanOrEqual(0);
   });
 
-  it('refuses a chunk whose parent is missing', async () => {
+  it('refuses a document missing from MongoDB', async () => {
     jest.mocked(mongo.fetchParentDocuments).mockResolvedValue([]);
 
-    await expect(fetchPassages([CHUNK])).rejects.toMatchObject({ code: 'CONTRACT_VIOLATION' });
+    await expect(fetchDocuments([RETRIEVED])).rejects.toMatchObject({ code: 'CONTRACT_VIOLATION' });
   });
 });
 
@@ -88,14 +109,21 @@ describe('embedQuestion', () => {
   });
 });
 
-describe('retrieveChunks', () => {
-  it('searches the requested number of chunks', async () => {
-    jest.mocked(qdrant.searchVectors).mockResolvedValue([CHUNK]);
+describe('retrieveDocuments', () => {
+  it('searches with the question and its vector, and ranks the passages of each document', async () => {
+    const hit: SearchHit = {
+      identifier: DOCUMENT.identifier,
+      documentType: 'article',
+      lexicalPassages: [PASSAGE_REF],
+      vectorPassages: [],
+      allPassages: [PASSAGE_REF],
+    };
+    jest.mocked(opensearch.search).mockResolvedValue([hit]);
 
-    const retrieved = await retrieveChunks(EMBEDDING, 3);
+    const retrieved = await retrieveDocuments('Quel délai ?', EMBEDDING);
 
-    expect(qdrant.searchVectors).toHaveBeenCalledWith(EMBEDDING, 3);
-    expect(retrieved.chunks).toEqual([CHUNK]);
+    expect(opensearch.search).toHaveBeenCalledWith('Quel délai ?', EMBEDDING);
+    expect(retrieved.documents).toEqual([RETRIEVED]);
     expect(retrieved.retrievalMs).toBeGreaterThanOrEqual(0);
   });
 });

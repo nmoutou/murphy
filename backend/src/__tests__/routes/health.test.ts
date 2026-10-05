@@ -16,10 +16,10 @@ const HTTP_OK = 200;
 const HTTP_SERVER_ERROR = 500;
 const HTTP_SERVICE_UNAVAILABLE = 503;
 
-/** Répond aux sondes TEI (`/health`) et Qdrant (`/healthz`) avec les statuts donnés */
-const mockHttpServices = (teiStatus: number, qdrantStatus: number): void => {
+/** Répond aux sondes TEI (`/health`) et OpenSearch (`/_cluster/health`) avec les statuts donnés */
+const mockHttpServices = (teiStatus: number, opensearchStatus: number): void => {
   jest.spyOn(global, 'fetch').mockImplementation(async (url) => {
-    const status = String(url).endsWith('/healthz') ? qdrantStatus : teiStatus;
+    const status = String(url).endsWith('/_cluster/health') ? opensearchStatus : teiStatus;
     return new Response(null, { status });
   });
 };
@@ -40,7 +40,7 @@ describe('GET /api/v1/health', () => {
 
     expect(response.status).toBe(HTTP_OK);
     expect(response.body.data.status).toBe('ok');
-    for (const service of ['tei', 'qdrant', 'mongodb']) {
+    for (const service of ['tei', 'opensearch', 'mongodb']) {
       expect(response.body.data.services[service]).toEqual({ status: 'ok', latencyMs: expect.any(Number) });
     }
   });
@@ -75,6 +75,6 @@ describe('GET /api/v1/health/services', () => {
     const response = await request(app).get('/api/v1/health/services');
 
     expect(response.status).toBe(HTTP_OK);
-    expect(Object.keys(response.body.data.services)).toEqual(['tei', 'qdrant', 'mongodb']);
+    expect(Object.keys(response.body.data.services)).toEqual(['tei', 'opensearch', 'mongodb']);
   });
 });

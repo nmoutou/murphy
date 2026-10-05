@@ -26,8 +26,8 @@ export interface RagFailure {
 
 const TIMEOUT_CODE = 'TIMEOUT';
 /**
- * `TimeoutError` (`AbortSignal.timeout`), `QdrantClientTimeoutError`,
- * `MongoNetworkTimeoutError`, `MongoOperationTimeoutError`
+ * `TimeoutError` (`AbortSignal.timeout`, client OpenSearch), `MongoNetworkTimeoutError`,
+ * `MongoOperationTimeoutError`
  */
 const TIMEOUT_ERROR_NAME_SUFFIX = 'TimeoutError';
 
@@ -66,17 +66,34 @@ const CONTRACT_VIOLATION_CODE = 'CONTRACT_VIOLATION';
 export const contractViolation = (message: string): RagError =>
   new RagError('retrieval', CONTRACT_VIOLATION_CODE, `Serving contract violated (ADR-015): ${message}`);
 
-/** `charStart`/`charEnd` comptent des points de code Unicode dans le `content` du parent */
-export interface RetrievedChunk {
+/** Un passage dans l'index : `charStart`/`charEnd` comptent des points de code Unicode dans le `content` du document */
+export interface PassageRef {
   readonly chunkId: string;
-  /** Clé du document parent dans `documents` (MongoDB) */
-  readonly identifier: string;
   readonly charStart: number;
   readonly charEnd: number;
-  readonly score: number;
+}
+
+/** Un document de la recherche hybride, tel qu'OpenSearch le rend */
+export interface SearchHit {
+  /** Clé du document dans `documents` (MongoDB) */
+  readonly identifier: string;
   readonly documentType: DocumentType;
   /** La nature juridique (`LOI`, `ARRET`…), quand la source en donne une utile */
   readonly nature?: string;
+  /** Les passages trouvés par la sous-requête lexicale, du plus pertinent au moins pertinent */
+  readonly lexicalPassages: readonly PassageRef[];
+  /** Les passages les plus proches de la question, du plus proche au moins proche */
+  readonly vectorPassages: readonly PassageRef[];
+  /** Tous les passages du document, dans l'ordre du texte */
+  readonly allPassages: readonly PassageRef[];
+}
+
+/** Un document classé et ses passages, classés eux aussi */
+export interface RetrievedDocument {
+  readonly identifier: string;
+  readonly documentType: DocumentType;
+  readonly nature?: string;
+  readonly passages: readonly PassageRef[];
 }
 
 export interface StoredDocument {
@@ -86,12 +103,19 @@ export interface StoredDocument {
 }
 
 export interface Passage {
-  readonly chunk: RetrievedChunk;
-  readonly document: StoredDocument;
+  readonly ref: PassageRef;
   readonly text: string;
-  /** Offsets UTF-16 de `text` dans `document.content` */
+  /** Offsets UTF-16 de `text` dans le `content` du document */
   readonly highlightStart: number;
   readonly highlightEnd: number;
+}
+
+/** Un document classé, lu dans Mongo, et ses passages découpés */
+export interface FoundDocument {
+  readonly document: StoredDocument;
+  readonly documentType: DocumentType;
+  readonly nature?: string;
+  readonly passages: readonly Passage[];
 }
 
 /** Sa longueur dépend du modèle configuré */

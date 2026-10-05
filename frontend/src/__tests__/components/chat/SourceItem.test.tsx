@@ -8,7 +8,6 @@ const CHUNK: DocumentChunk = {
   identifier: 'LEGITEXT000006069577',
   highlightStart: 0,
   highlightEnd: 12,
-  score: 0.8,
   title: 'Loi du 29 juillet 1881',
   documentType: 'texte',
 };
