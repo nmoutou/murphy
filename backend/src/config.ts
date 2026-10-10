@@ -22,7 +22,7 @@ export interface RateLimitConfig {
 export interface HttpConfig {
   readonly corsOrigins: readonly string[] | false;
   readonly rateLimit: RateLimitConfig;
-  readonly streamRateLimit: RateLimitConfig;
+  readonly searchRateLimit: RateLimitConfig;
 }
 
 export interface MongoConfig {
@@ -54,7 +54,6 @@ export interface LlmConfig {
   readonly systemPrompt: string;
 }
 
-/** Une seule page est servie tant que le LLM reste branché (ADR-028 §10) */
 export interface PaginationConfig {
   /** Documents par page */
   readonly size: number;
@@ -91,9 +90,9 @@ const DEFAULT_DEVELOPMENT_LOG_LEVEL = 'debug';
 const DEFAULT_PRODUCTION_LOG_LEVEL = 'info';
 const CORS_ORIGIN_SEPARATOR = ',';
 const DEFAULT_RATE_LIMIT_WINDOW_MS = 900_000;
-const DEFAULT_RATE_LIMIT_MAX = 100;
-const DEFAULT_STREAM_RATE_LIMIT_WINDOW_MS = 60_000;
-const DEFAULT_STREAM_RATE_LIMIT_MAX = 10;
+const DEFAULT_RATE_LIMIT_MAX = 600;
+const DEFAULT_SEARCH_RATE_LIMIT_WINDOW_MS = 60_000;
+const DEFAULT_SEARCH_RATE_LIMIT_MAX = 60;
 const DEFAULT_MONGODB_DATABASE = 'MURPHY_DATA';
 const DEFAULT_MONGODB_TIMEOUT_MS = 10_000;
 const DEFAULT_OPENSEARCH_URL = 'http://opensearch:9200';
@@ -173,9 +172,9 @@ const readHttpConfig = (reader: EnvReader): HttpConfig => ({
     windowMs: reader.integer('RATE_LIMIT_WINDOW_MS', DEFAULT_RATE_LIMIT_WINDOW_MS),
     limit: reader.integer('RATE_LIMIT_MAX', DEFAULT_RATE_LIMIT_MAX),
   },
-  streamRateLimit: {
-    windowMs: reader.integer('STREAM_RATE_LIMIT_WINDOW_MS', DEFAULT_STREAM_RATE_LIMIT_WINDOW_MS),
-    limit: reader.integer('STREAM_RATE_LIMIT_MAX', DEFAULT_STREAM_RATE_LIMIT_MAX),
+  searchRateLimit: {
+    windowMs: reader.integer('SEARCH_RATE_LIMIT_WINDOW_MS', DEFAULT_SEARCH_RATE_LIMIT_WINDOW_MS),
+    limit: reader.integer('SEARCH_RATE_LIMIT_MAX', DEFAULT_SEARCH_RATE_LIMIT_MAX),
   },
 });
 

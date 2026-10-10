@@ -66,7 +66,7 @@ const ABORTED_BY_CLIENT = 'Chat stream aborted by the client';
 
 const retrieveSources = async (writer: AppWriter, question: string) => {
   const { embedding, embeddingMs } = await embedQuestion(question);
-  const { documents: retrieved, retrievalMs } = await retrieveDocuments(question, embedding);
+  const { documents: retrieved, retrievalMs } = await retrieveDocuments(question, embedding, 0);
   // Titre et texte vivent dans Mongo : les lire avant d'écrire les sources
   const { documents, docFetchMs } = await fetchDocuments(retrieved);
   writeSources(writer, documents);

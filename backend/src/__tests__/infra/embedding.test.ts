@@ -31,7 +31,7 @@ describe('EmbeddingClient.embedText', () => {
     await expect(new EmbeddingClient(SETTINGS).embedText(QUESTION)).rejects.toMatchObject({
       name: 'RagError',
       stage: 'embedding',
-      code: 'NETWORK',
+      code: 'EMBEDDING_FAILED',
       message: 'Failed to generate embeddings: TEI service returned 500: Internal Server Error',
     });
   });

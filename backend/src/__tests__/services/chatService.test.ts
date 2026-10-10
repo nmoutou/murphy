@@ -44,13 +44,12 @@ const FIRST_REF = refOf('chunk-1', 0, FIRST_SENTENCE);
 const SECOND_REF = refOf('chunk-2', SECOND_START, SECOND_SENTENCE);
 /** Une section, sans passage, classée devant un article dont le second passage est classé premier */
 const HITS: SearchHit[] = [
-  { identifier: SECTION.identifier, documentType: 'section', lexicalPassages: [], vectorPassages: [], allPassages: [] },
+  { identifier: SECTION.identifier, documentType: 'section', lexicalPassages: [], vectorPassages: [] },
   {
     identifier: DOCUMENT.identifier,
     documentType: 'article',
     lexicalPassages: [SECOND_REF, FIRST_REF],
     vectorPassages: [],
-    allPassages: [FIRST_REF, SECOND_REF],
   },
 ];
 
@@ -158,7 +157,7 @@ describe('createChatStream', () => {
   it('feeds each passage to the LLM, not the whole document', async () => {
     await readAllParts(await createChatStream([userMessage(QUESTION)], NOT_ABORTED));
 
-    expect(opensearch.search).toHaveBeenCalledWith(QUESTION, EMBEDDING);
+    expect(opensearch.search).toHaveBeenCalledWith(QUESTION, EMBEDDING, 0);
     expect(mongo.fetchParentDocuments).toHaveBeenCalledWith([SECTION.identifier, DOCUMENT.identifier]);
 
     const [llmMessages] = jest.mocked(llm.stream).mock.calls[0];
@@ -200,14 +199,14 @@ describe('createChatStream', () => {
 
   it('ends with an error part when a stage before the LLM fails', async () => {
     jest.mocked(embedding.embedText).mockRejectedValue(
-      new RagError('embedding', 'NETWORK', 'Failed to generate embeddings: ECONNREFUSED'),
+      new RagError('embedding', 'EMBEDDING_FAILED', 'Failed to generate embeddings: ECONNREFUSED'),
     );
 
     const parts = await readAllParts(await createChatStream([userMessage(QUESTION)], NOT_ABORTED));
 
     expect(parts[parts.length - 1]).toEqual({
       type: 'error',
-      errorText: serializeChatError({ stage: 'embedding', code: 'NETWORK' }),
+      errorText: serializeChatError({ stage: 'embedding', code: 'EMBEDDING_FAILED' }),
     });
     expect(llm.stream).not.toHaveBeenCalled();
   });

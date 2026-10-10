@@ -6,6 +6,7 @@ import { buildApiResponse } from './utils/response';
 import { config } from './config';
 import chatRouter from './routes/chat';
 import healthRouter from './routes/health';
+import searchRouter from './routes/search';
 import { HTTP_STATUS } from './utils/httpStatus';
 import { MAX_REQUEST_BODY_BYTES } from './utils/requestLimits';
 
@@ -36,6 +37,7 @@ app.get('/api/v1', (_req, res) => {
 app.use('/api/v1/health', healthRouter);
 
 app.use('/api/v1/chat', chatRouter);
+app.use('/api/v1/search', searchRouter);
 
 // Toujours en dernier
 app.use(notFoundHandler);

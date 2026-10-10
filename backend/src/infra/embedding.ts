@@ -10,7 +10,7 @@ interface TEIEmbeddingRequest {
   input: string[];
 }
 
-const EMBEDDING_FAILURE: RagFailure = { stage: 'embedding', code: 'NETWORK', operation: 'generate embeddings' };
+const EMBEDDING_FAILURE: RagFailure = { stage: 'embedding', code: 'EMBEDDING_FAILED', operation: 'generate embeddings' };
 
 const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null;
 

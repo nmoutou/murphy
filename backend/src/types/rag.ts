@@ -1,5 +1,5 @@
 import type { ChatError, ChatErrorStage } from '@murphy/contract/errors';
-import type { DocumentType } from '@murphy/contract/messages';
+import type { DocumentType } from '@murphy/contract/search';
 
 /** `request` = l'extraction de la question, première étape du pipeline */
 export type RagStage = Exclude<ChatErrorStage, 'internal'>;
@@ -84,8 +84,6 @@ export interface SearchHit {
   readonly lexicalPassages: readonly PassageRef[];
   /** Les passages les plus proches de la question, du plus proche au moins proche */
   readonly vectorPassages: readonly PassageRef[];
-  /** Tous les passages du document, dans l'ordre du texte */
-  readonly allPassages: readonly PassageRef[];
 }
 
 /** Un document classé et ses passages, classés eux aussi */

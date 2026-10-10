@@ -36,9 +36,14 @@ export const embedQuestion = async (question: string): Promise<EmbedResult> => {
   return { embedding, embeddingMs: Date.now() - start };
 };
 
-export const retrieveDocuments = async (question: string, embedding: EmbeddingVector): Promise<RetrievalResult> => {
+/** @param from rang du premier document de la page, dans le classement fusionné */
+export const retrieveDocuments = async (
+  question: string,
+  embedding: EmbeddingVector,
+  from: number,
+): Promise<RetrievalResult> => {
   const start = Date.now();
-  const hits = await getInfraClients().opensearch.search(question, embedding);
+  const hits = await getInfraClients().opensearch.search(question, embedding, from);
   return { documents: hits.map(toRetrievedDocument), retrievalMs: Date.now() - start };
 };
 

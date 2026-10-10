@@ -13,7 +13,6 @@ const hit = (overrides: Partial<SearchHit> = {}): SearchHit => ({
   nature: 'ARRET',
   lexicalPassages: [],
   vectorPassages: [],
-  allPassages: [ref(0), ref(1), ref(2), ref(3)],
   ...overrides,
 });
 
@@ -45,11 +44,7 @@ describe('toRetrievedDocument', () => {
     expect(retrieved.passages).toEqual([ref(3), ref(0), ref(2)]);
   });
 
-  it('gives all its passages, in text order, to a document found without matching passage', () => {
-    expect(toRetrievedDocument(hit()).passages).toEqual([ref(0), ref(1), ref(2), ref(3)]);
-  });
-
-  it('gives no passage to a section', () => {
-    expect(toRetrievedDocument(hit({ documentType: 'section', allPassages: [] })).passages).toEqual([]);
+  it('gives no passage to a document found without matching passage', () => {
+    expect(toRetrievedDocument(hit()).passages).toEqual([]);
   });
 });

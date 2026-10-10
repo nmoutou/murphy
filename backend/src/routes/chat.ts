@@ -6,7 +6,7 @@ import { pipeUIMessageStreamToResponse } from 'ai';
 import { logger as rootLogger } from '../utils/logger';
 import { createChatStream } from '../services/chatService';
 import { asyncHandler } from '../middleware/errorHandler';
-import { streamRateLimiter } from '../middleware/streamRateLimiter';
+import { searchRateLimiter } from '../middleware/searchRateLimiter';
 import { buildApiResponse } from '../utils/response';
 import { parseChatRequest } from '../validation/chatRequest';
 import type { ValidationIssue } from '../validation/chatRequest';
@@ -61,7 +61,7 @@ const drainAnswer = async (stream: ReadableStream<InferUIMessageChunk<AppUIMessa
  */
 router.post(
   '/streams',
-  streamRateLimiter,
+  searchRateLimiter,
   asyncHandler(async (req: Request, res: Response) => {
     const request = await parseChatRequest(req.body);
     if (!request.isValid) {
@@ -85,7 +85,7 @@ router.post(
 /** POST /api/v1/chat/completions — le même pipeline, rendu en une seule réponse JSON */
 router.post(
   '/completions',
-  streamRateLimiter,
+  searchRateLimiter,
   asyncHandler(async (req: Request, res: Response) => {
     const request = await parseChatRequest(req.body);
     if (!request.isValid) {
