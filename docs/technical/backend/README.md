@@ -1,14 +1,15 @@
 # Documentation — backend
 
-Documentation technique du backend de **serving** de Murphy : l'API Express/TypeScript qui
-orchestre le pipeline RAG à la requête (embed → recherche hybride → fetch → stream LLM).
+Documentation technique du backend de **serving** de Murphy : l'API Express/TypeScript de
+recherche, qui recalcule le pipeline à chaque requête (embed → recherche hybride → fetch →
+page de résultats).
 
 ## Quoi lire, dans quel ordre
 
 | Document | Contenu |
 |---|---|
-| [ARCHITECTURE.md](ARCHITECTURE.md) | Vue d'ensemble : le pipeline RAG, les trois transports, les clients d'infrastructure, les conventions transverses. **Commencer ici.** |
-| `reference/` | Références détaillées (contrat de messages, API, configuration) — *à écrire ; même ossature que [`data/reference/`](../data/reference/).* |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | Vue d'ensemble : les routes, le pipeline de recherche, les erreurs, les clients d'infrastructure, les conventions transverses. **Commencer ici.** |
+| `reference/` | Références détaillées (API, configuration) — *à écrire ; même ossature que [`data/reference/`](../data/reference/).* |
 
 La vue système globale (serving + ingestion + bases partagées) est dans
 [`docs/technical/ARCHITECTURE.md`](../ARCHITECTURE.md).
@@ -64,20 +65,28 @@ Tout est piloté par variables d'environnement (en Docker : bloc `environment:` 
 `docker-compose.base.yml`, alimenté par le `.env.dev` racine). **`src/config.ts` est la
 référence** : il lit et valide l'environnement une fois au démarrage, avec ses valeurs
 par défaut, et c'est le seul fichier qui lit `process.env`. Une valeur vide vaut une
-variable absente. Un nombre invalide (`LLM_TEMPERATURE=abc`) **bloque le démarrage**,
+variable absente. Un entier invalide (`PAGINATION_SIZE=2.5`) **bloque le démarrage**,
 avec un message qui nomme la variable, comme une pagination incohérente : `PAGINATION_SIZE`
 et `PAGINATION_DEPTH` doivent être des entiers positifs, avec une profondeur entre la
 taille et 10 000 (le plafond du `k` d'un kNN). `checkEnvironment` journalise ensuite les
 variables manquantes et celles qui ont pris leur valeur par défaut.
 
-Critiques (erreur logguée si absentes, sans bloquer) : `LLM_API_ENDPOINT`, `LLM_API_KEY`, `LLM_MODEL`,
-`MONGODB_URI`, `OPENSEARCH_INDEX` (le nom de l'index, partagé avec l'ingestion).
+Critiques (erreur logguée si absentes, sans bloquer) : `MONGODB_URI`, `OPENSEARCH_INDEX`
+(le nom de l'index, partagé avec l'ingestion).
 Principales optionnelles : `PORT` (5000), `NODE_LOG_LEVEL` (`debug` en dev, `info` en prod),
 `MONGODB_DATABASE` (MURPHY_DATA),
 `OPENSEARCH_URL`, `OPENSEARCH_TIMEOUT` (10000 ms), `PAGINATION_SIZE` (10), `PAGINATION_DEPTH` (100),
-`EMBEDDING_SERVICE_URL`, `EMBEDDING_MODEL_NAME`,
-`LLM_TEMPERATURE`/`TIMEOUT`, `SYSTEM_PROMPT`, les rate limits et
-`CORS_ORIGIN`.
+`EMBEDDING_SERVICE_URL`, `EMBEDDING_MODEL_NAME`, `CORS_ORIGIN`, et les quotas par IP :
+`RATE_LIMIT_WINDOW_MS`/`RATE_LIMIT_MAX` (600 par 15 min, toutes routes),
+`SEARCH_RATE_LIMIT_WINDOW_MS`/`SEARCH_RATE_LIMIT_MAX` (60 par minute, recherche).
+
+### Interroger l'API
+
+```bash
+curl -X POST http://localhost:5000/api/v1/search -H 'Content-Type: application/json' \
+  -d '{"question": "article L52-8 du code électoral", "page": 1}'
+curl http://localhost:5000/api/v1/documents/CETATEXT000054320839
+```
 
 ### Santé
 
@@ -91,8 +100,7 @@ curl http://localhost:5000/api/v1/health   # ok | degraded (1 service down) | do
 | Symptôme | Piste |
 |---|---|
 | Refus de démarrer : « The OpenSearch index "…" (OPENSEARCH_INDEX) does not exist » | `OPENSEARCH_INDEX` est absente ou ne désigne aucun index. Vérifier `.env.dev`, puis lancer l'ingestion : `kedro run` dans `data/`. |
-| Part `error` « Serving contract violated » | Un document OpenSearch, son document Mongo ou ses offsets ne respectent pas le contrat ; le message cite l'`identifier` ou le `chunk_id`. Réingérer le corpus. |
-| 0 source sur toutes les questions | Index vide : lancer l'ingestion. |
-| Log `LLM context capped` | Les passages dépassaient 200 000 caractères : les derniers du classement n'ont pas été lus par le LLM. Les sources sont toutes affichées. |
-| Embedding indisponible | Conteneur TEI (GPU requis) — `npm run logs` depuis la racine. |
-| LLM timeout / 4xx | `LLM_API_ENDPOINT` / `LLM_API_KEY` / `LLM_MODEL` ; augmenter `LLM_TIMEOUT` si réseau lent. |
+| 500 `CONTRACT_VIOLATION`, log « Serving contract violated » | Un document OpenSearch, son document Mongo ou ses offsets ne respectent pas le contrat ; le message cite l'`identifier` ou le `chunk_id`. Réingérer le corpus. |
+| `results` vide sur toutes les questions | Index vide : lancer l'ingestion. |
+| 502 `EMBEDDING_FAILED` ou 504 `TIMEOUT` | Conteneur TEI (GPU requis, ~4 min de démarrage) — `npm run logs` depuis la racine. |
+| 429 `RATE_LIMIT_EXCEEDED` en dev | `RATE_LIMIT_MAX` de `.env.dev` remplace le défaut de 600 : le relever ou le retirer. |

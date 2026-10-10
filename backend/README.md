@@ -1,9 +1,9 @@
 # Murphy — backend
 
-Express + TypeScript API — the RAG **serving** orchestrator for the Murphy system.
+Express + TypeScript API — the **search** API of the Murphy system.
 
 Stateless by design: every request recomputes the full pipeline (embed → hybrid search →
-fetch → stream LLM). No conversational history, no retries.
+fetch → page of results). No session, no cache, no retries.
 
 ## Develop
 

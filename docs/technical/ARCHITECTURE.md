@@ -3,8 +3,8 @@
 Vue d'ensemble du système complet. **La documentation technique détaillée a un dossier
 par projet**, à côté de ce document :
 
-- [`backend/`](backend/README.md) — le serving (API RAG Express/TS)
-- [`frontend/`](frontend/README.md) — l'UI de chat (Next.js)
+- [`backend/`](backend/README.md) — le serving (API de recherche Express/TS)
+- [`frontend/`](frontend/README.md) — l'UI (Next.js), hors service jusqu'à ADR-030
 - [`data/`](data/README.md) — l'ingestion (Kedro + ragcore)
 
 Ce document ne couvre que ce qu'aucun projet ne peut dire seul : comment les deux
@@ -12,7 +12,8 @@ moitiés du système s'articulent.
 
 ## Les deux moitiés
 
-Murphy est un chatbot RAG sur les données juridiques françaises (corpus DILA/LEGIFRANCE).
+Murphy est un moteur de recherche sur les données juridiques françaises (corpus
+DILA/LEGIFRANCE) : une question donne des documents classés et leurs passages (ADR-028).
 Deux systèmes **qui ne partagent que des bases de données — aucun code, aucun appel** :
 
 ```mermaid
@@ -28,9 +29,8 @@ flowchart TB
     end
 
     subgraph serving ["SERVING — stack Docker (backend + frontend + TEI)"]
-        Front[Frontend<br>Next.js 16] <-- WebSocket --> Back[Backend<br>Express/TS]
+        Front[Frontend<br>Next.js 16] -.->|HTTP, ADR-030| Back[Backend<br>Express/TS]
         Back --> TEI[TEI<br>embeddings, GPU]
-        Back --> LLM[LLM API<br>OpenAI-compatible]
     end
 
     Kedro --> Mongo & OpenSearch & Neo4j
@@ -42,9 +42,12 @@ flowchart TB
 - **Ingestion** (`data/`) : un pipeline Kedro qui tourne à la demande, sur l'hôte, hors
   de la stack Docker. Il lit le corpus XML, le parse, le découpe, l'embarque et peuple
   les trois bases. Détails : [`data/ARCHITECTURE.md`](data/ARCHITECTURE.md).
-- **Serving** (`backend/` + `frontend/` + compose) : stateless, chaque requête recompute
-  le pipeline embed → recherche hybride → fetch → stream LLM. Détails :
-  [`backend/ARCHITECTURE.md`](backend/ARCHITECTURE.md).
+- **Serving** (`backend/` + `frontend/` + compose) : stateless, chaque requête recalcule
+  le pipeline embed → recherche hybride → fetch → page de résultats ; le texte entier
+  d'un document est servi à la demande. Détails :
+  [`backend/ARCHITECTURE.md`](backend/ARCHITECTURE.md). Le frontend parle encore l'ancien
+  flux de chat, que le backend ne sert plus : il est hors service jusqu'à ADR-030
+  (ADR-031 §8).
 
 ## Les contrats entre les deux
 
@@ -53,8 +56,8 @@ C'est la seule zone où une modification d'un côté casse l'autre. Quatre contr
 | Contrat | Écrit par l'ingestion | Lu par le serving |
 |---|---|---|
 | **Nom de l'index** | `OPENSEARCH_INDEX` (`.env.dev`), créé et rempli par l'ingestion, avec son mapping et ses analyseurs | La même variable. Au boot (`backend/src/infra/opensearch.ts`), refus de démarrer si l'index n'existe pas ; le backend écrit le pipeline de recherche RRF (ADR-028 §6). |
-| **Documents et passages** | Un document OpenSearch par document Mongo : `identifier`, `document_type`, `nature`, passages (`chunk_id`, `char_start`, `char_end`) imbriqués avec leurs vecteurs ([`index-opensearch.md`](data/reference/index-opensearch.md)) | La requête hybride à quatre sous-requêtes de ce même document |
-| **Contenu** | Mongo `MURPHY_DATA.documents` : un document entier par `identifier` | Lecture des documents parents ; le texte d'un passage est `content[char_start:char_end]` (points de code). Le passage va au LLM, le document entier au client (`data-parentDocument`) |
+| **Documents et passages** | Un document OpenSearch par document Mongo : `identifier`, `document_type`, `nature`, passages (`chunk_id`, `char_start`, `char_end`) imbriqués avec leurs vecteurs ([`index-opensearch.md`](data/reference/index-opensearch.md)) | La requête hybride à quatre sous-requêtes ; `_source` et `inner_hits` n'en rendent que l'identité et les offsets des passages |
+| **Contenu** | Mongo `MURPHY_DATA.documents` : un document entier par `identifier` | Le titre et le texte des documents trouvés ; le texte d'un passage est `content[char_start:char_end]` (points de code). Les passages partent dans la page de résultats, le document entier par `GET /documents/:identifier` |
 | **Modèle d'embedding** | `all-mpnet-base-v2`, 768 dim, Cosine — vérifié contre TEI au démarrage du run | Le même modèle via le même conteneur TEI |
 
 Le modèle d'embedding est le contrat le plus fragile : question et corpus doivent être
@@ -113,7 +116,7 @@ avec les mêmes options).
 | `docs/pilotage/WIP/` | Le travail en cours (critiques, plans) |
 | `docs/technical/` | Ce document — la vue système —, puis la documentation de chaque projet |
 | `backend/`, `frontend/`, `data/` | Les projets. `backend` et `frontend` sont des npm workspaces (un seul lockfile à la racine) ; `data` est en Python |
-| `packages/contract/` | `@murphy/contract` : le contrat du flux backend ↔ frontend (schémas zod, types déduits), compilé, partagé par les deux workspaces. Une modification casse la compilation des deux côtés à la fois |
+| `packages/contract/` | `@murphy/contract` : le contrat backend ↔ frontend (schémas zod, types déduits), compilé, partagé par les deux workspaces. `search` est celui de l'API ; `messages` et `errors`, l'ancien flux de chat, restent gelés pour le frontend jusqu'à ADR-030 |
 | `docker-compose.*.yml` | La stack de serving |
 
 Convention de documentation : chaque projet a son dossier `docs/technical/<projet>/`,

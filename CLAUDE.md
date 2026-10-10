@@ -4,7 +4,7 @@ Guidance for Claude Code in this repository.
 
 ## What this is
 
-Murphy is a RAG chatbot over French legal documents (LEGIFRANCE / DILA data). The backend embeds a question, searches legal-document chunks, reads the matching passages, and streams an LLM answer to the frontend along with its sources.
+Murphy is a search engine over French legal documents (LEGIFRANCE / DILA data). The backend embeds a question, runs a hybrid search over the legal documents and their chunks, and serves a page of ranked documents with their matching passages; a document's full text is served on demand. The LLM and the chat stream are gone (ADR-031); the frontend still speaks that stream and is out of service until ADR-030 adapts it.
 
 The backend is **stateless by design**: every request recomputes the whole pipeline, with no conversation history, no cache and no automatic retry (fail fast with a clear error). Think twice before adding caching, sessions or retries.
 
@@ -12,9 +12,9 @@ The backend is **stateless by design**: every request recomputes the whole pipel
 
 One repository (ADR-016). The TypeScript projects are **npm workspaces** (`backend`, `frontend`, `packages/*`) with a single root `package-lock.json`: run `npm install` **at the root only** (its `postinstall` builds the contract).
 
-- `backend/` — Express + TypeScript: the RAG serving pipeline.
+- `backend/` — Express + TypeScript: the search API.
 - `frontend/` — Next.js 16 (App Router), React 19, Tailwind v4.
-- `packages/contract/` — `@murphy/contract`: the zod schemas, and the types inferred from them, that backend and frontend exchange at runtime. One module per subpath (`@murphy/contract/messages`, `@murphy/contract/errors`), no barrel; compiled by `tsc` to `dist/`. Only what crosses a runtime boundary between workspaces belongs in `packages/`.
+- `packages/contract/` — `@murphy/contract`: the zod schemas, and the types inferred from them, that backend and frontend exchange at runtime. One module per subpath (`@murphy/contract/search`; `messages` and `errors`, frozen until ADR-030), no barrel; compiled by `tsc` to `dist/`. Only what crosses a runtime boundary between workspaces belongs in `packages/`.
 - `data/` — Python/Kedro ingestion (XML → chunks → Mongo/OpenSearch/Neo4j), run offline. It shares the databases with the backend, never code.
 - `docs/` — all the documentation:
   - `pilotage/`: `ADR/` (the ADRs, indexed in `INDEX.md`) and `WIP/` (work in progress);
@@ -59,35 +59,34 @@ Coverage thresholds (`jest.config.js`: lines/statements 65 %, functions 60 %, br
 
 `npm run dev` (Turbopack), `build`, `type-check`, `lint` (`--max-warnings=0`), `test` (Vitest + Testing Library, jsdom), `format` (Prettier; `format:check` runs in `check`). Path alias `@/*` → `src/*`.
 
-Tests live in `src/__tests__/`, mirroring `src/`; `vitest.config.mts` runs them on Vite, outside Next. `src/__tests__/fakeWebSocket.ts` plays the backend's side of the chat socket (`stubWebSocket()`).
+Tests live in `src/__tests__/`, mirroring `src/`; `vitest.config.mts` runs them on Vite, outside Next. `src/__tests__/fakeWebSocket.ts` plays the backend's side of the chat socket (`stubWebSocket()`), which the backend no longer serves: the frontend is frozen until ADR-030 (ADR-031 §8).
 
-## Serving: the RAG request flow
+## Serving: the search flow
 
-The pipeline is `backend/src/services/chatService.ts:createChatStream(messages, abortSignal)`:
+The backend is a search API (ADR-031), with the same pipeline behind two routes:
 
-1. **Extract the question** — the text parts of the last `user` message (requests carry an AI SDK `messages` array; the frontend sends only that last question).
+- **`POST /api/v1/search`**, body `{ question, page? }` (`routes/search.ts` → `services/searchService.ts:searchDocuments`). The question travels in the body, never in a URL: no access log keeps it (ADR-010); the logs keep its length only.
+- **`GET /api/v1/documents/:identifier`** (`routes/documents.ts` → `services/documentService.ts:readDocument`): `{ identifier, title, content }` from Mongo, the full text served on demand; 404 `DOCUMENT_NOT_FOUND` for an unknown identifier.
+
+The search pipeline:
+
+1. **Paginate** — `page` (default 1) gives `from = (page - 1) × PAGINATION_SIZE`; `pageCount = ⌊PAGINATION_DEPTH / PAGINATION_SIZE⌋` (10 by default), so `from + size` never exceeds the depth. A page beyond it is refused (`PAGE_OUT_OF_RANGE`) before any call; a page within it but past the documents found is an empty list.
 2. **Embed** → TEI.
-3. **Search** → OpenSearch: a `hybrid` query of four sub-queries (lexical, references, passage k-NN, title k-NN; `infra/hybridQuery.ts`, identical to `docs/technical/data/reference/index-opensearch.md`), fused by the `murphy-rrf` search pipeline. It returns `PAGINATION_SIZE` ranked documents (default 10, first page only), each sub-query ranking `PAGINATION_DEPTH` (default 100, also the k-NN `k`). A document's passages are its lexical and vector `inner_hits`, fused by RRF and deduplicated by `chunk_id` (`services/passageRanking.ts`), or all its passages when none matched (ADR-028 §7).
-4. **Fetch documents** → Mongo `documents`, by `identifier`. Each passage is cut out of the document's `content` between its `char_start`/`char_end` (code points, converted to UTF-16 in `services/passages.ts`). An invalid OpenSearch hit, a document missing from Mongo or out-of-range offsets raise a `CONTRACT_VIOLATION` `RagError` (ADR-015).
-5. **Stream the sources**, before the LLM, in ranking order: a `data-parentDocument` part per document, then a `data-document` part per passage (`highlightStart`/`highlightEnd`, UTF-16). A section has no passage, so no `data-document`. No score is sent.
-6. **Stream the LLM** — only the passage texts go into the system prompt (`config.llm.systemPrompt`, overridable by `SYSTEM_PROMPT`), in ranking order, up to 200 000 characters (`MAX_LLM_CONTEXT_CHARS`: the passage that would exceed it stops the filling, logged as `warn`); tokens become `text-delta` parts.
-7. **Finish** — a `finish` part with the `ragTiming` metadata.
+3. **Search** → OpenSearch: a `hybrid` query of four sub-queries (lexical, references, passage k-NN, title k-NN; `infra/hybridQuery.ts`, identical to `docs/technical/data/reference/index-opensearch.md`), fused by the `murphy-rrf` search pipeline. It returns `PAGINATION_SIZE` ranked documents from `from`, each sub-query ranking `PAGINATION_DEPTH` (default 100, also the k-NN `k`; keep it constant across pages, or the ranking changes). A document's passages are its lexical and vector `inner_hits`, fused by RRF and deduplicated by `chunk_id` (`services/passageRanking.ts`); a document found without a matching passage has none (ADR-031 §3).
+4. **Fetch documents** → Mongo `documents`, by `identifier`, for the title and the text. Each passage is cut out of the document's `content` between its `char_start`/`char_end` (code points, converted to UTF-16 in `services/passages.ts`). An invalid OpenSearch hit, a document missing from Mongo or out-of-range offsets raise a `CONTRACT_VIOLATION` `RagError` (ADR-015).
+5. **Answer** `{ page, pageCount, results }`: per document, in ranking order, `identifier`, `title`, `documentType`, `nature` and its `passages` (`chunkId`, `text`, `start`, `end`: UTF-16 offsets into the `content` served by `GET /documents`). No score, no timing: the step durations are logged (`Search completed`).
 
-The stream contract is `AppUIMessage` (`@murphy/contract/messages`): the backend compiles against it, the frontend validates incoming parts with the same zod schemas: the `data-*` parts in `lib/webSocketChatTransport.ts` (ai 6.0.x never applies `useChat`'s `dataPartSchemas`: it looks them up by part type, `data-document`, not by name), the metadata in `useChat({ messageMetadataSchema })`. A change breaks both compilations at once.
+The contract is `@murphy/contract/search`: the zod schemas of the request, the search response, the document and the error codes. `@murphy/contract/messages` and `errors` describe the old chat stream; the backend no longer imports them, and they stay frozen for the frontend until ADR-030.
 
-One stream, three transports — change `createChatStream` once:
-- **WebSocket** `/api/v1/chat/ws` (`routes/chatWebSocket.ts`), the one the frontend uses (`hooks/useRagChat.ts` plugs `lib/webSocketChatTransport.ts` into `useChat`);
-- **POST** `/api/v1/chat/streams` (SSE) and `/api/v1/chat/completions` (JSON) — `routes/chat.ts`.
-
-**Errors and abort (ADR-017)**: an `error` part's `errorText` is a serialized `ChatError` `{ stage, code }` (`@murphy/contract/errors`, built by `types/rag.ts:toChatError`), never the raw message, which stays in the logs. The frontend names the failed stage in a modal. Closing the socket or the HTTP response raises the `AbortSignal`: the pipeline stops before the LLM, or cuts the LLM request.
+**Errors (ADR-031 §4)**: an HTTP status and a code (`status.message`), never the raw message, which stays in the logs; no stage leaves the backend. `errorHandler` maps a `RagError` through `utils/errorResponse.ts:toErrorResponse`: 400 `PAGE_OUT_OF_RANGE`, 404 `DOCUMENT_NOT_FOUND`, 502 `EMBEDDING_FAILED`/`SEARCH_FAILED`/`DB_FETCH_FAILED`, 504 `TIMEOUT`, 500 `CONTRACT_VIOLATION`; anything else is 500 `INTERNAL`. A client leaving does not stop the pipeline (ADR-031 §6).
 
 ### Backend conventions
 
-- **Config**: `src/config.ts` is the only reader of `process.env`. It validates the environment once at boot into a typed `readonly` `config` (an empty value counts as unset; a malformed number stops the boot, as does a `PAGINATION_DEPTH` below `PAGINATION_SIZE` or above 10 000, the k-NN `k` limit). `utils/configWarnings.ts` logs the missing and defaulted variables. The full list is the `environment:` block of `docker-compose.base.yml` (note: Compose passes `EMBEDDING_MODEL` to the backend as `EMBEDDING_MODEL_NAME`).
-- **Infra clients** (`src/infra/`): `EmbeddingClient`, `OpenSearchClient`, `LLMProvider` (OpenAI-compatible API), `MongoDbClient`; each takes its section of `config`. `initInfraClients(config)` builds them once at boot and may refuse the boot; requests use `getInfraClients()`. Never create a client per request. Failures go through `types/rag.ts:toRagError` → `RagError { stage, code }` (`TIMEOUT` when the error's type name ends in `TimeoutError`).
+- **Config**: `src/config.ts` is the only reader of `process.env`. It validates the environment once at boot into a typed `readonly` `config` (an empty value counts as unset; a malformed integer stops the boot, as does a `PAGINATION_DEPTH` below `PAGINATION_SIZE` or above 10 000, the k-NN `k` limit). `utils/configWarnings.ts` logs the missing and defaulted variables. The full list is the `environment:` block of `docker-compose.base.yml` (note: Compose passes `EMBEDDING_MODEL` to the backend as `EMBEDDING_MODEL_NAME`).
+- **Infra clients** (`src/infra/`): `EmbeddingClient`, `OpenSearchClient`, `MongoDbClient`; each takes its section of `config`. `initInfraClients(config)` builds them once at boot and may refuse the boot; requests use `getInfraClients()`. Never create a client per request. Failures go through `types/rag.ts:toRagError` → `RagError { stage, code }` (`TIMEOUT` when the error's type name ends in `TimeoutError`); the stage is for the logs only.
 - **OpenSearch index**: `OPENSEARCH_INDEX`, the variable `data/` writes. At boot the backend refuses to start when OpenSearch is unreachable or the index does not exist, then writes the `murphy-rrf` search pipeline (idempotent `PUT`). The client has no retry and `OPENSEARCH_TIMEOUT` (10 s). No authentication yet. The embedding model must match the ingestion's (`all-mpnet-base-v2`, 768 dimensions, cosine).
-- **HTTP**: base path `/api/v1`. JSON responses go through `utils/response.ts:buildApiResponse(code, message, data?)`. Async handlers are wrapped in `asyncHandler`; `errorHandler` keeps the 4xx of the JSON body parser's exposed errors (`INVALID_JSON` 400, `PAYLOAD_TOO_LARGE` 413, logged as `warn`) and answers anything else with a 500. `notFoundHandler` and `errorHandler` come last in `app.ts`, after requestLogger → security (helmet, rate limit, CORS) → body parsing → routes.
-- **Chat requests**: validated by `validation/chatRequest.ts:parseChatRequest` (HTTP and WebSocket). Bodies and WebSocket messages share one size limit (`utils/requestLimits.ts`, 100 KiB); the socket also checks `Origin` against `CORS_ORIGIN` and closes after 10 s without a message. Every WebSocket keeps an `error` listener: `ws` throws an unheard one (invalid frame, oversized message) as an uncaught exception, which stops the server. One stream budget per IP (10/min by default, `middleware/streamRateLimiter.ts`), shared by `/streams`, `/completions` and WebSocket messages. `trust proxy` is `false` in `app.ts` until a proxy is deployed.
+- **HTTP**: base path `/api/v1`. JSON responses go through `utils/response.ts:buildApiResponse(code, message, data?)`. Async handlers are wrapped in `asyncHandler`; `errorHandler` keeps the 4xx of the JSON body parser's exposed errors (`INVALID_JSON` 400, `PAYLOAD_TOO_LARGE` 413, otherwise `INVALID_REQUEST_BODY`), gives a `RagError` the status of its code, and answers anything else with a 500 `INTERNAL`; a 4xx is logged as `warn`. Its codes are typed by the contract's `SearchErrorCode`. `notFoundHandler` and `errorHandler` come last in `app.ts`, after requestLogger → security (helmet, rate limit, CORS) → body parsing → routes.
+- **Search requests**: validated by `validation/searchRequest.ts:parseSearchRequest` (the contract's schema; 400 `VALIDATION_ERROR` with `errors: [{ field, message }]`, whose zod messages never quote the question). Bodies are capped at 100 KiB (`utils/requestLimits.ts`). Two budgets per IP: the general limiter (600 per 15 min, `RATE_LIMIT_*`) covers every route; `POST /search` adds `middleware/searchRateLimiter.ts` (60/min, `SEARCH_RATE_LIMIT_*`). `trust proxy` is `false` in `app.ts` until a proxy is deployed.
 - **Health**: `/api/v1/health` (alias `/api/v1/health/services`) probes TEI, OpenSearch (`/_cluster/health`) and Mongo: `ok`, `degraded` (1 down) or `down` (2+), 503 unless `ok`.
 - **Logging**: Pino, one child logger per module (`rootLogger.child({ context: 'moduleName' })`).
 - Neo4j is written by the ingestion but not yet read by the backend.
