@@ -12,6 +12,10 @@
     "./errors": {
       "types": "./dist/errors.d.ts",
       "default": "./dist/errors.js"
+    },
+    "./search": {
+      "types": "./dist/search.d.ts",
+      "default": "./dist/search.js"
     }
   },
   "//": "typesVersions: the same subpaths for resolvers that ignore `exports` (ts-jest forces the node10 resolution)",
@@ -22,6 +26,9 @@
       ],
       "errors": [
         "./dist/errors.d.ts"
+      ],
+      "search": [
+        "./dist/search.d.ts"
       ]
     }
   },
