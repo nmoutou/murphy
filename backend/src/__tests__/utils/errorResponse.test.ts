@@ -15,7 +15,7 @@ describe('toErrorResponse', () => {
   });
 
   it('answers a RagError whose code is not in the contract with a 500 INTERNAL', () => {
-    expect(toErrorResponse(new RagError('llm', 'API_ERROR', 'LLM down'))).toEqual({ status: 500, code: 'INTERNAL' });
+    expect(toErrorResponse(new RagError('request', 'UNLISTED', 'unlisted code'))).toEqual({ status: 500, code: 'INTERNAL' });
   });
 
   it('answers any other error with a 500 INTERNAL', () => {

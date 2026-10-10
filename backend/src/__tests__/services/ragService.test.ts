@@ -1,20 +1,12 @@
 import type { FoundDocument, Passage, RetrievedDocument, SearchHit, StoredDocument } from '../../types/rag';
-import {
-  MAX_LLM_CONTEXT_CHARS,
-  buildContextString,
-  embedQuestion,
-  fetchDocuments,
-  retrieveDocuments,
-} from '../../services/ragService';
+import { embedQuestion, fetchDocuments, retrieveDocuments } from '../../services/ragService';
 import { getInfraClients } from '../../infra/clients';
-import { logger } from '../../utils/logger';
 
 jest.mock('../../infra/clients', () => {
   const clients = {
     embedding: { embedText: jest.fn() },
     opensearch: { search: jest.fn() },
     mongo: { fetchParentDocuments: jest.fn() },
-    llm: { stream: jest.fn() },
   };
   return { getInfraClients: () => clients };
 });
@@ -36,43 +28,6 @@ const FOUND: FoundDocument = { document: DOCUMENT, documentType: 'article', pass
 
 const { embedding, opensearch, mongo } = getInfraClients();
 
-const foundWith = (title: string, texts: string[]): FoundDocument => ({
-  document: { ...DOCUMENT, title },
-  documentType: 'article',
-  passages: texts.map((text) => ({ ...PASSAGE, text })),
-});
-
-describe('buildContextString', () => {
-  it('says so when no passage was found', () => {
-    expect(buildContextString([])).toBe('Aucun document pertinent trouvé.');
-    expect(buildContextString([foundWith('Chapitre III', [])])).toBe('Aucun document pertinent trouvé.');
-  });
-
-  it('numbers the passages across documents and gives each passage alone', () => {
-    const second = foundWith('Code civil, art. 2225', ['Dix ans.', 'Vingt ans.']);
-
-    expect(buildContextString([FOUND, second])).toBe(
-      '[1] Code civil, art. 2224\nCinq ans.\n\n[2] Code civil, art. 2225\nDix ans.\n\n[3] Code civil, art. 2225\nVingt ans.',
-    );
-  });
-
-  it('stops before the passage that would exceed the cap, and logs it', () => {
-    // Chaque bloc fait 100 000 caractères : « [n] T\n » (6) + le texte
-    const text = 'x'.repeat(MAX_LLM_CONTEXT_CHARS / 2 - 6);
-    const found = foundWith('T', [text, text, 'court']);
-
-    const context = buildContextString([found]);
-
-    expect(context).toBe(`[1] T\n${text}`);
-    expect(logger.warn).toHaveBeenCalledWith(expect.objectContaining({ kept: 1, dropped: 2 }), expect.any(String));
-  });
-
-  it('keeps a context exactly at the cap', () => {
-    const text = 'x'.repeat(MAX_LLM_CONTEXT_CHARS - '[1] T\n'.length);
-
-    expect(buildContextString([foundWith('T', [text])])).toHaveLength(MAX_LLM_CONTEXT_CHARS);
-  });
-});
 
 describe('fetchDocuments', () => {
   it('skips MongoDB when no document was found', async () => {

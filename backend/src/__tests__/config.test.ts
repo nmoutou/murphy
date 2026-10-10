@@ -3,9 +3,6 @@ import { loadConfig } from '../config';
 const REQUIRED_ENV = {
   MONGODB_URI: 'mongodb://mongo:27017',
   OPENSEARCH_INDEX: 'documents',
-  LLM_API_ENDPOINT: 'http://llm.test/v1/chat/completions',
-  LLM_API_KEY: 'test-key',
-  LLM_MODEL: 'test-model',
 };
 
 describe('loadConfig', () => {
@@ -19,7 +16,6 @@ describe('loadConfig', () => {
     expect(config.mongo).toMatchObject({ database: 'MURPHY_DATA' });
     expect(config.opensearch).toEqual({ url: 'http://opensearch:9200', index: '', timeoutMs: 10_000 });
     expect(config.pagination).toEqual({ size: 10, depth: 100 });
-    expect(config.llm.systemPrompt).toContain('assistant juridique');
   });
 
   it('reads the variables that are set', () => {
@@ -30,15 +26,12 @@ describe('loadConfig', () => {
       PAGINATION_SIZE: '20',
       PAGINATION_DEPTH: '200',
       OPENSEARCH_TIMEOUT: '2500',
-      LLM_TEMPERATURE: '0.2',
-      SYSTEM_PROMPT: 'Consigne de test',
     });
 
     expect(config.server).toMatchObject({ isProduction: true, logLevel: 'info' });
     expect(config.http.corsOrigins).toEqual(['http://a.test', 'http://b.test']);
     expect(config.pagination).toEqual({ size: 20, depth: 200 });
     expect(config.opensearch).toMatchObject({ index: 'documents', timeoutMs: 2500 });
-    expect(config.llm).toMatchObject({ apiKey: 'test-key', temperature: 0.2, systemPrompt: 'Consigne de test' });
   });
 
   it('reads the log level from NODE_LOG_LEVEL', () => {
@@ -48,15 +41,14 @@ describe('loadConfig', () => {
   });
 
   it('treats an empty value as unset, as Compose passes one for a missing variable', () => {
-    const { config, report } = loadConfig({ PAGINATION_SIZE: '', LLM_API_KEY: '' });
+    const { config, report } = loadConfig({ PAGINATION_SIZE: '', OPENSEARCH_INDEX: '' });
 
     expect(config.pagination.size).toBe(10);
     expect(report.defaulted).toContain('PAGINATION_SIZE');
-    expect(report.missingRequired).toContain('LLM_API_KEY');
+    expect(report.missingRequired).toContain('OPENSEARCH_INDEX');
   });
 
   it.each([
-    ['LLM_TEMPERATURE', 'chaud', 'LLM_TEMPERATURE must be a number, got "chaud"'],
     ['PAGINATION_SIZE', '2.5', 'PAGINATION_SIZE must be an integer, got "2.5"'],
     ['PORT', '50OO', 'PORT must be an integer, got "50OO"'],
     ['OPENSEARCH_TIMEOUT', '10s', 'OPENSEARCH_TIMEOUT must be an integer, got "10s"'],
@@ -79,9 +71,9 @@ describe('loadConfig', () => {
   });
 
   it('reports the missing required variables and the defaulted optional ones', () => {
-    const { report } = loadConfig({ ...REQUIRED_ENV, LLM_API_KEY: undefined });
+    const { report } = loadConfig({ ...REQUIRED_ENV, OPENSEARCH_INDEX: undefined });
 
-    expect(report.missingRequired).toEqual(['LLM_API_KEY']);
+    expect(report.missingRequired).toEqual(['OPENSEARCH_INDEX']);
     expect(report.defaulted).toContain('MONGODB_DATABASE');
     expect(report.defaulted).not.toContain('MONGODB_URI');
   });

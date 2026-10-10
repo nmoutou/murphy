@@ -3,15 +3,12 @@ import app from './app';
 import { logger } from './utils/logger';
 import { config, environmentReport } from './config';
 import { initInfraClients, closeInfraClients } from './infra/clients';
-import { attachChatWebSocket } from './routes/chatWebSocket';
 import { checkEnvironment } from './utils/configWarnings';
 
 /** Passé ce délai, un arrêt qui attend encore des connexions est forcé */
 const FORCED_SHUTDOWN_DELAY_MS = 10_000;
 
 const server = http.createServer(app);
-
-attachChatWebSocket({ server, allowedOrigins: config.http.corsOrigins });
 
 const start = async () => {
   checkEnvironment(environmentReport);

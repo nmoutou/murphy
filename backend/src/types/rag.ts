@@ -1,8 +1,7 @@
-import type { ChatError, ChatErrorStage } from '@murphy/contract/errors';
 import type { DocumentType } from '@murphy/contract/search';
 
-/** `request` = l'extraction de la question, première étape du pipeline */
-export type RagStage = Exclude<ChatErrorStage, 'internal'>;
+/** L'étape en échec, pour les logs : le client n'en reçoit que le code (ADR-031 §4) */
+export type RagStage = 'request' | 'embedding' | 'retrieval';
 
 export class RagError extends Error {
   constructor(
@@ -48,20 +47,11 @@ export const toRagError = (failure: RagFailure, error: unknown): RagError => {
   return new RagError(failure.stage, isTimeout ? TIMEOUT_CODE : failure.code, `Failed to ${failure.operation}: ${cause}`);
 };
 
-const INTERNAL_CHAT_ERROR: ChatError = { stage: 'internal', code: 'INTERNAL' };
-
-/**
- * Ce que le client apprend d'un échec (ADR-017) : étape et code d'une `RagError`, rien
- * d'une autre erreur. Le message reste dans les logs.
- */
-export const toChatError = (error: unknown): ChatError =>
-  error instanceof RagError ? { stage: error.stage, code: error.code } : INTERNAL_CHAT_ERROR;
-
 const CONTRACT_VIOLATION_CODE = 'CONTRACT_VIOLATION';
 
 /**
  * Les bases ne respectent pas le contrat de service (ADR-015). Jamais ignoré en silence :
- * un mauvais passage dans le contexte du LLM est pire qu'une erreur visible.
+ * un passage mal découpé est pire qu'une erreur visible.
  */
 export const contractViolation = (message: string): RagError =>
   new RagError('retrieval', CONTRACT_VIOLATION_CODE, `Serving contract violated (ADR-015): ${message}`);

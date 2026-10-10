@@ -45,15 +45,6 @@ export interface EmbeddingConfig {
   readonly timeoutMs: number;
 }
 
-export interface LlmConfig {
-  readonly apiUrl: string;
-  readonly apiKey: string;
-  readonly model: string;
-  readonly temperature: number;
-  readonly timeoutMs: number;
-  readonly systemPrompt: string;
-}
-
 export interface PaginationConfig {
   /** Documents par page */
   readonly size: number;
@@ -67,7 +58,6 @@ export interface AppConfig {
   readonly mongo: MongoConfig;
   readonly opensearch: OpenSearchConfig;
   readonly embedding: EmbeddingConfig;
-  readonly llm: LlmConfig;
   readonly pagination: PaginationConfig;
 }
 
@@ -100,17 +90,10 @@ const DEFAULT_OPENSEARCH_TIMEOUT_MS = 10_000;
 const DEFAULT_EMBEDDING_SERVICE_URL = 'http://embedding-service:80';
 const DEFAULT_EMBEDDING_MODEL_NAME = 'all-mpnet-base-v2';
 const DEFAULT_EMBEDDING_TIMEOUT_MS = 10_000;
-const DEFAULT_LLM_TEMPERATURE = 0.7;
-const DEFAULT_LLM_TIMEOUT_MS = 30_000;
 const DEFAULT_PAGINATION_SIZE = 10;
 const DEFAULT_PAGINATION_DEPTH = 100;
 /** Le plafond du `k` d'un kNN, et `index.max_result_window` par défaut */
 const MAX_PAGINATION_DEPTH = 10_000;
-const DEFAULT_SYSTEM_PROMPT =
-  'Vous êtes un assistant juridique intelligent spécialisé dans le droit français. ' +
-  "Répondez aux questions de l'utilisateur en vous basant sur les documents juridiques fournis. " +
-  'Soyez précis, professionnel et citez les sources pertinentes. ' +
-  'Si la réponse ne se trouve pas dans les documents fournis, dites-le clairement.';
 
 interface EnvReader {
   /** Absente → `undefined`, notée « par défaut » */
@@ -119,8 +102,6 @@ interface EnvReader {
   readonly required: (name: string) => string;
   /** @throws si la valeur n'est pas un entier */
   readonly integer: (name: string, fallback: number) => number;
-  /** @throws si la valeur n'est pas un nombre fini */
-  readonly number: (name: string, fallback: number) => number;
   readonly report: () => EnvironmentReport;
 }
 
@@ -136,20 +117,18 @@ const createEnvReader = (env: Environment): EnvReader => {
     return undefined;
   };
 
-  const readNumeric = (name: string, fallback: number, isInteger: boolean): number => {
+  const readInteger = (name: string, fallback: number): number => {
     const raw = read(name, defaulted);
     if (raw === undefined) return fallback;
     const parsed = Number(raw);
-    const isValid = isInteger ? Number.isInteger(parsed) : Number.isFinite(parsed);
-    if (!isValid) throw new Error(`${name} must be ${isInteger ? 'an integer' : 'a number'}, got "${raw}"`);
+    if (!Number.isInteger(parsed)) throw new Error(`${name} must be an integer, got "${raw}"`);
     return parsed;
   };
 
   return {
     optional: (name) => read(name, defaulted),
     required: (name) => read(name, missingRequired) ?? '',
-    integer: (name, fallback) => readNumeric(name, fallback, true),
-    number: (name, fallback) => readNumeric(name, fallback, false),
+    integer: readInteger,
     report: () => ({ missingRequired: [...missingRequired], defaulted: [...defaulted] }),
   };
 };
@@ -196,15 +175,6 @@ const readEmbeddingConfig = (reader: EnvReader): EmbeddingConfig => ({
   timeoutMs: reader.integer('EMBEDDING_SERVICE_TIMEOUT', DEFAULT_EMBEDDING_TIMEOUT_MS),
 });
 
-const readLlmConfig = (reader: EnvReader): LlmConfig => ({
-  apiUrl: reader.required('LLM_API_ENDPOINT'),
-  apiKey: reader.required('LLM_API_KEY'),
-  model: reader.required('LLM_MODEL'),
-  temperature: reader.number('LLM_TEMPERATURE', DEFAULT_LLM_TEMPERATURE),
-  timeoutMs: reader.integer('LLM_TIMEOUT', DEFAULT_LLM_TIMEOUT_MS),
-  systemPrompt: reader.optional('SYSTEM_PROMPT') ?? DEFAULT_SYSTEM_PROMPT,
-});
-
 /** @throws si une valeur n'est pas un entier positif, ou si la profondeur est hors de [taille, 10 000] */
 const assertPagination = ({ size, depth }: PaginationConfig): void => {
   if (size < 1 || depth < 1) {
@@ -239,7 +209,6 @@ export const loadConfig = (env: Environment): LoadedConfig => {
     mongo: readMongoConfig(reader),
     opensearch: readOpenSearchConfig(reader),
     embedding: readEmbeddingConfig(reader),
-    llm: readLlmConfig(reader),
     pagination: readPaginationConfig(reader),
   };
   return { config, report: reader.report() };

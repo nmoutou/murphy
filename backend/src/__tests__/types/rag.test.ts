@@ -1,5 +1,5 @@
 import type { RagFailure } from '../../types/rag';
-import { RagError, toChatError, toRagError } from '../../types/rag';
+import { toRagError } from '../../types/rag';
 
 const SEARCH_FAILURE: RagFailure = { stage: 'retrieval', code: 'SEARCH_FAILED', operation: 'search OpenSearch' };
 
@@ -31,17 +31,5 @@ describe('toRagError', () => {
 
   it('accepts a thrown value that is not an Error', () => {
     expect(toRagError(SEARCH_FAILURE, 'boom').message).toBe('Failed to search OpenSearch: boom');
-  });
-});
-
-describe('toChatError', () => {
-  it('keeps the stage and the code of a RagError, not its message', () => {
-    const ragError = new RagError('retrieval', 'SEARCH_FAILED', 'Failed to search OpenSearch: connect ECONNREFUSED');
-
-    expect(toChatError(ragError)).toEqual({ stage: 'retrieval', code: 'SEARCH_FAILED' });
-  });
-
-  it.each([new Error('boom'), 'a thrown string', undefined])('turns any other failure (%p) into an internal one', (error) => {
-    expect(toChatError(error)).toEqual({ stage: 'internal', code: 'INTERNAL' });
   });
 });

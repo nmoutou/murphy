@@ -2,7 +2,6 @@
 
 import type { AppConfig } from '../config';
 import { EmbeddingClient } from './embedding';
-import { LLMProvider } from './llm';
 import { MongoDbClient } from './mongodb';
 import { OpenSearchClient } from './opensearch';
 
@@ -10,7 +9,6 @@ export interface InfraClients {
   readonly mongo: MongoDbClient;
   readonly opensearch: OpenSearchClient;
   readonly embedding: EmbeddingClient;
-  readonly llm: LLMProvider;
 }
 
 let clients: InfraClients | undefined;
@@ -24,12 +22,7 @@ export const initInfraClients = async (config: AppConfig): Promise<void> => {
   const opensearch = new OpenSearchClient({ opensearch: config.opensearch, pagination: config.pagination });
   await opensearch.prepareSearch();
 
-  clients = {
-    mongo,
-    opensearch,
-    embedding: new EmbeddingClient(config.embedding),
-    llm: new LLMProvider(config.llm),
-  };
+  clients = { mongo, opensearch, embedding: new EmbeddingClient(config.embedding) };
 };
 
 export const getInfraClients = (): InfraClients => {
