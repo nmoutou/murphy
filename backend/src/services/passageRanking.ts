@@ -25,14 +25,14 @@ const fuseByRank = (rankings: readonly (readonly PassageRef[])[]): PassageRef[] 
 
 /**
  * Les passages lexicaux et vectoriels, fusionnés par RRF sur leurs rangs. Un document
- * trouvé sans passage correspondant (par son titre, ses métadonnées) les garde tous.
+ * trouvé par son titre ou ses métadonnées n'en a aucun : son texte se lit à la demande
+ * (ADR-031 §3).
  */
 export const toRetrievedDocument = (hit: SearchHit): RetrievedDocument => {
-  const matched = fuseByRank([hit.lexicalPassages, hit.vectorPassages]);
   return {
     identifier: hit.identifier,
     documentType: hit.documentType,
     nature: hit.nature,
-    passages: matched.length > 0 ? matched : hit.allPassages,
+    passages: fuseByRank([hit.lexicalPassages, hit.vectorPassages]),
   };
 };

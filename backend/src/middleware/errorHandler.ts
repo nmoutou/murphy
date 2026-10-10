@@ -2,10 +2,10 @@ import { Request, Response, NextFunction } from 'express';
 import { logger as rootLogger } from '../utils/logger';
 import { buildApiResponse } from '../utils/response';
 import { HTTP_STATUS } from '../utils/httpStatus';
+import { toErrorResponse } from '../utils/errorResponse';
 
 const logger = rootLogger.child({ context: 'errorHandler' });
 
-const INTERNAL_ERROR_CODE = 'INTERNAL_ERROR';
 const DEFAULT_BODY_ERROR_CODE = 'INVALID_REQUEST_BODY';
 
 /** `type` d'erreur de body-parser → code renvoyé au client */
@@ -53,9 +53,9 @@ export const asyncHandler = (
 };
 
 /**
- * Une erreur du client marquée `expose` (JSON malformé, trop gros…) garde son 4xx et
- * n'est qu'un avertissement ; toute autre erreur est un 500. Le message brut n'atteint
- * jamais le client.
+ * Une erreur du client marquée `expose` (JSON malformé, trop gros…) garde son 4xx ; une
+ * `RagError` prend le statut de son code ; toute autre erreur est un 500. Un 4xx n'est
+ * qu'un avertissement. Le message brut n'atteint jamais le client.
  */
 export const errorHandler = (
   error: Error,
@@ -68,15 +68,12 @@ export const errorHandler = (
     return;
   }
 
-  logger.error({
-    err: error,
-    code: INTERNAL_ERROR_CODE,
-    statusCode: HTTP_STATUS.INTERNAL_SERVER_ERROR,
-    path: req.path,
-    method: req.method,
-  }, 'Request error');
+  const { status, code } = toErrorResponse(error);
+  const details = { err: error, code, statusCode: status, path: req.path, method: req.method };
+  if (isClientError(status)) logger.warn(details, 'Request refused');
+  else logger.error(details, 'Request error');
 
-  res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(buildApiResponse(HTTP_STATUS.INTERNAL_SERVER_ERROR, INTERNAL_ERROR_CODE));
+  res.status(status).json(buildApiResponse(status, code));
 };
 
 export const notFoundHandler = (_req: Request, res: Response): void => {

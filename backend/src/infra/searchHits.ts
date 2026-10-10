@@ -4,7 +4,7 @@
  */
 
 import { z } from 'zod';
-import { documentTypeSchema } from '@murphy/contract/messages';
+import { documentTypeSchema } from '@murphy/contract/search';
 import type { SearchHit } from '../types/rag';
 import { contractViolation } from '../types/rag';
 import { LEXICAL_INNER_HITS, VECTOR_INNER_HITS } from './hybridQuery';
@@ -29,7 +29,6 @@ const searchHitSchema = z
       identifier: z.string().min(1),
       document_type: documentTypeSchema,
       nature: z.string().nullish(),
-      passages: z.array(passageRefSchema),
     }),
     inner_hits: z
       .object({ [LEXICAL_INNER_HITS]: innerHitsSchema.optional(), [VECTOR_INNER_HITS]: innerHitsSchema.optional() })
@@ -41,7 +40,6 @@ const searchHitSchema = z
     nature: _source.nature ?? undefined,
     lexicalPassages: inner_hits?.[LEXICAL_INNER_HITS] ?? [],
     vectorPassages: inner_hits?.[VECTOR_INNER_HITS] ?? [],
-    allPassages: _source.passages,
   }));
 
 const readId = (hit: unknown): string => {

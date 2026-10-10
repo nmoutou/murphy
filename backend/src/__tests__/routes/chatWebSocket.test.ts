@@ -4,7 +4,7 @@ import type { ClientOptions } from 'ws';
 import type { InferUIMessageChunk } from 'ai';
 import { attachChatWebSocket, CHAT_WEBSOCKET_PATH } from '../../routes/chatWebSocket';
 import { createChatStream } from '../../services/chatService';
-import { consumeStreamQuota } from '../../middleware/streamRateLimiter';
+import { consumeSearchQuota } from '../../middleware/searchRateLimiter';
 import type { AppUIMessage } from '@murphy/contract/messages';
 import type { ChatError } from '@murphy/contract/errors';
 import { serializeChatError } from '@murphy/contract/errors';
@@ -13,7 +13,7 @@ import { MAX_REQUEST_BODY_BYTES } from '../../utils/requestLimits';
 import { logger } from '../../utils/logger';
 
 jest.mock('../../services/chatService', () => ({ createChatStream: jest.fn() }));
-jest.mock('../../middleware/streamRateLimiter', () => ({ consumeStreamQuota: jest.fn() }));
+jest.mock('../../middleware/searchRateLimiter', () => ({ consumeSearchQuota: jest.fn() }));
 jest.mock('../../utils/logger', () => {
   const silentLogger = { info: jest.fn(), debug: jest.fn(), warn: jest.fn(), error: jest.fn(), child: () => silentLogger };
   return { logger: silentLogger };
@@ -76,7 +76,7 @@ beforeAll(async () => {
 afterAll(() => stopServer(testServer));
 
 beforeEach(() => {
-  jest.mocked(consumeStreamQuota).mockResolvedValue(true);
+  jest.mocked(consumeSearchQuota).mockResolvedValue(true);
 });
 
 /** Envoie un message brut et collecte les parts reçues jusqu'à la fermeture par le serveur */
@@ -198,7 +198,7 @@ describe('chat WebSocket', () => {
   });
 
   it('refuses the question once the stream quota is spent', async () => {
-    jest.mocked(consumeStreamQuota).mockResolvedValue(false);
+    jest.mocked(consumeSearchQuota).mockResolvedValue(false);
 
     await expect(exchange(JSON.stringify(VALID_PAYLOAD))).resolves.toEqual([
       errorPart({ stage: 'request', code: 'RATE_LIMITED' }),

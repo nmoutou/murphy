@@ -14,7 +14,8 @@ describe('loadConfig', () => {
 
     expect(config.server).toEqual({ port: 5000, nodeEnv: 'development', isProduction: false, logLevel: 'debug' });
     expect(config.http.corsOrigins).toBe(false);
-    expect(config.http.streamRateLimit).toEqual({ windowMs: 60_000, limit: 10 });
+    expect(config.http.rateLimit).toEqual({ windowMs: 900_000, limit: 600 });
+    expect(config.http.searchRateLimit).toEqual({ windowMs: 60_000, limit: 60 });
     expect(config.mongo).toMatchObject({ database: 'MURPHY_DATA' });
     expect(config.opensearch).toEqual({ url: 'http://opensearch:9200', index: '', timeoutMs: 10_000 });
     expect(config.pagination).toEqual({ size: 10, depth: 100 });

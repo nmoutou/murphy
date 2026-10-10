@@ -1,16 +1,16 @@
 import { buildHybridQuery } from '../../infra/hybridQuery';
 
-const INPUT = { question: 'article L52-8 du code électoral', vector: [0.1, 0.2, 0.3], size: 10, depth: 100 };
+const INPUT = { question: 'article L52-8 du code électoral', vector: [0.1, 0.2, 0.3], from: 20, size: 10, depth: 100 };
 
 describe('buildHybridQuery', () => {
-  it('asks for the first page, at the given depth', () => {
+  it('asks for the given page, at the given depth', () => {
     const body = buildHybridQuery(INPUT);
 
-    expect(body).toMatchObject({ from: 0, size: 10, query: { hybrid: { pagination_depth: 100 } } });
+    expect(body).toMatchObject({ from: 20, size: 10, query: { hybrid: { pagination_depth: 100 } } });
   });
 
-  it('reads only the identity and the passage offsets of each document', () => {
-    expect(buildHybridQuery(INPUT)._source).toEqual({ includes: ['identifier', 'document_type', 'nature', 'passages'] });
+  it('reads only the identity of each document', () => {
+    expect(buildHybridQuery(INPUT)._source).toEqual({ includes: ['identifier', 'document_type', 'nature'] });
   });
 
   it('fuses four lists: lexical, references, passage vectors, title vectors', () => {

@@ -75,14 +75,14 @@ describe('OpenSearchClient', () => {
     );
   });
 
-  it('searches the index through the RRF pipeline, at the configured page size and depth', async () => {
-    const hits = await new OpenSearchClient(OPTIONS).search(QUESTION, VECTOR);
+  it('searches the index through the RRF pipeline, from the given rank at the configured size and depth', async () => {
+    const hits = await new OpenSearchClient(OPTIONS).search(QUESTION, VECTOR, 30);
 
     const [request] = mockSearch.mock.calls[0];
     expect(request).toMatchObject({
       index: 'documents',
       search_pipeline: 'murphy-rrf',
-      body: { from: 0, size: 10, query: { hybrid: { pagination_depth: 100 } } },
+      body: { from: 30, size: 10, query: { hybrid: { pagination_depth: 100 } } },
     });
     expect(hits).toEqual([expect.objectContaining({ identifier: 'LEGISCTA000006114781', documentType: 'section' })]);
   });
@@ -93,13 +93,13 @@ describe('OpenSearchClient', () => {
   ])('reports %s as a retrieval error', async (_case, error, code) => {
     mockSearch.mockRejectedValue(error);
 
-    await expect(new OpenSearchClient(OPTIONS).search(QUESTION, VECTOR)).rejects.toMatchObject({ stage: 'retrieval', code });
+    await expect(new OpenSearchClient(OPTIONS).search(QUESTION, VECTOR, 0)).rejects.toMatchObject({ stage: 'retrieval', code });
   });
 
   it('reports an invalid document as a contract violation, not a failed search', async () => {
     mockSearch.mockResolvedValue({ body: { hits: { hits: [{ _id: 'X', _source: { identifier: 'X' } }] } } });
 
-    await expect(new OpenSearchClient(OPTIONS).search(QUESTION, VECTOR)).rejects.toMatchObject({
+    await expect(new OpenSearchClient(OPTIONS).search(QUESTION, VECTOR, 0)).rejects.toMatchObject({
       stage: 'retrieval',
       code: 'CONTRACT_VIOLATION',
     });

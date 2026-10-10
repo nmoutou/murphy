@@ -9,7 +9,7 @@ import type { RawData, VerifyClientCallbackAsync } from 'ws';
 import type { InferUIMessageChunk } from 'ai';
 import { logger as rootLogger } from '../utils/logger';
 import { createChatStream } from '../services/chatService';
-import { consumeStreamQuota } from '../middleware/streamRateLimiter';
+import { consumeSearchQuota } from '../middleware/searchRateLimiter';
 import { parseChatRequest } from '../validation/chatRequest';
 import type { AppUIMessage } from '@murphy/contract/messages';
 import type { ChatError } from '@murphy/contract/errors';
@@ -65,7 +65,7 @@ const forwardStream = async (ws: WebSocket, stream: ReadableStream<InferUIMessag
 };
 
 const handleChatMessage = async (ws: WebSocket, raw: RawData, remoteAddress: string | undefined): Promise<void> => {
-  if (!(await consumeStreamQuota(remoteAddress))) {
+  if (!(await consumeSearchQuota(remoteAddress))) {
     logger.warn({ ip: remoteAddress }, 'Stream rate limit exceeded');
     sendErrorAndClose(ws, RATE_LIMITED_ERROR);
     return;

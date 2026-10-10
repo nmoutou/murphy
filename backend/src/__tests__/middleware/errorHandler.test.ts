@@ -44,23 +44,23 @@ describe('asyncHandler', () => {
     const response = await request(app).get('/async-failure');
 
     expect(response.status).toBe(500);
-    expect(response.body.status).toEqual({ code: 500, message: 'INTERNAL_ERROR' });
+    expect(response.body.status).toEqual({ code: 500, message: 'INTERNAL' });
   });
 });
 
 describe('errorHandler', () => {
-  it('answers any thrown error with a 500 INTERNAL_ERROR', async () => {
+  it('answers any thrown error with a 500 INTERNAL', async () => {
     const response = await request(app).get('/sync-failure');
 
     expect(response.status).toBe(500);
-    expect(response.body.status).toEqual({ code: 500, message: 'INTERNAL_ERROR' });
+    expect(response.body.status).toEqual({ code: 500, message: 'INTERNAL' });
   });
 
   it('keeps an internal error carrying a status without `expose` a 500', async () => {
     const response = await request(app).get('/status-without-expose');
 
     expect(response.status).toBe(500);
-    expect(response.body.status).toEqual({ code: 500, message: 'INTERNAL_ERROR' });
+    expect(response.body.status).toEqual({ code: 500, message: 'INTERNAL' });
   });
 });
 

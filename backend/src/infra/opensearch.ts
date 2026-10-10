@@ -54,21 +54,21 @@ export class OpenSearchClient {
   }
 
   /**
-   * La première page des documents classés (ADR-028 §10, étape 1)
+   * Une page des documents classés, `PAGINATION_SIZE` documents à partir du rang `from`
    * @throws RagError d'étape `retrieval`, ou `CONTRACT_VIOLATION` sur un document invalide
    */
-  async search(question: string, vector: EmbeddingVector): Promise<SearchHit[]> {
+  async search(question: string, vector: EmbeddingVector, from: number): Promise<SearchHit[]> {
     const startTime = Date.now();
     const { index } = this.options.opensearch;
     const { size, depth } = this.options.pagination;
-    logger.info({ vectorDim: vector.length, size, depth, index }, 'OpenSearch search started');
+    logger.info({ vectorDim: vector.length, from, size, depth, index }, 'OpenSearch search started');
 
     let hits: unknown[];
     try {
       const response = await this.client.search({
         index,
         search_pipeline: RRF_PIPELINE,
-        body: buildHybridQuery({ question, vector, size, depth }),
+        body: buildHybridQuery({ question, vector, from, size, depth }),
       });
       hits = response.body.hits.hits;
     } catch (error) {

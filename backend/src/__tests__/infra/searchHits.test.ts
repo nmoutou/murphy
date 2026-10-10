@@ -23,27 +23,25 @@ const HIT = {
     identifier: 'CETATEXT000054320839',
     document_type: 'decision',
     nature: 'ARRET',
-    passages: [passage(0), passage(1), passage(2)],
   },
   inner_hits: { lexical: innerHits(2, 0), vectoriel: innerHits(1) },
 };
 
 describe('toSearchHit', () => {
-  it('reads the document, its matching passages in rank order, and all its passages', () => {
+  it('reads the document and its matching passages in rank order', () => {
     expect(toSearchHit(HIT)).toEqual({
       identifier: 'CETATEXT000054320839',
       documentType: 'decision',
       nature: 'ARRET',
       lexicalPassages: [ref(2), ref(0)],
       vectorPassages: [ref(1)],
-      allPassages: [ref(0), ref(1), ref(2)],
     });
   });
 
   it('reads a section found by its title: no nature, no passage, no inner hit', () => {
     const section = {
       _id: 'LEGISCTA000006114781',
-      _source: { identifier: 'LEGISCTA000006114781', nature: null, passages: [], document_type: 'section' },
+      _source: { identifier: 'LEGISCTA000006114781', nature: null, document_type: 'section' },
       inner_hits: { lexical: innerHits(), vectoriel: innerHits() },
     };
 
@@ -53,7 +51,6 @@ describe('toSearchHit', () => {
       nature: undefined,
       lexicalPassages: [],
       vectorPassages: [],
-      allPassages: [],
     });
   });
 
@@ -63,7 +60,11 @@ describe('toSearchHit', () => {
 
   it.each([
     ['an unknown document type', { ...HIT, _source: { ...HIT._source, document_type: 'loi' } }, '_source.document_type'],
-    ['a passage without offsets', { ...HIT, _source: { ...HIT._source, passages: [{ chunk_id: 'c' }] } }, '_source.passages.0'],
+    [
+      'a passage without offsets',
+      { ...HIT, inner_hits: { vectoriel: { hits: { hits: [{ _source: { chunk_id: 'c' } }] } } } },
+      'inner_hits.vectoriel',
+    ],
     [
       'an inner hit with a fractional offset',
       { ...HIT, inner_hits: { lexical: { hits: { hits: [{ _source: { ...passage(0), char_end: 1.5 } }] } } } },

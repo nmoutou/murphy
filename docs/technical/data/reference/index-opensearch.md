@@ -228,10 +228,10 @@ PUT _search/pipeline/murphy-rrf
 ```
 
 La requête, pour une question `Q` de vecteur `V`, telle que la mesure ci-dessous l'a
-envoyée (`pagination_depth` et `k` à 50). Le backend envoie la même, avec `size` =
-`PAGINATION_SIZE` (10), `pagination_depth` et `k` = `PAGINATION_DEPTH` (100), et un
-`_source` réduit à `identifier`, `document_type`, `nature` et `passages`
-(`backend/src/infra/hybridQuery.ts`, à garder identique) :
+envoyée (`pagination_depth` et `k` à 50). Le backend envoie la même, avec `from` =
+`(page - 1) × PAGINATION_SIZE`, `size` = `PAGINATION_SIZE` (10), `pagination_depth` et
+`k` = `PAGINATION_DEPTH` (100), et un `_source` réduit à `identifier`, `document_type` et
+`nature` (`backend/src/infra/hybridQuery.ts`, à garder identique) :
 
 ```json
 {
@@ -268,8 +268,9 @@ envoyée (`pagination_depth` et `k` à 50). Le backend envoie la même, avec `si
 - **La liste « références » n'a pas d'`inner_hits`** : ses passages sont aussi trouvés
   par la sous-requête lexicale, qui lit déjà `passages.text.ref`. Les passages d'un
   document trouvé restent ceux de l'ADR-028 §7 : lexicaux et vectoriels.
-- **`_source`** d'un résultat porte les offsets de tous ses passages : un document trouvé
-  par son titre ou ses métadonnées est renvoyé avec tous ses passages (ADR-028 §7).
+- **Le `_source` d'un résultat ne porte pas ses passages** : un document trouvé par son
+  titre ou ses métadonnées est renvoyé sans passage, son texte se lit à la demande
+  (ADR-031 §3).
 
 ## Vérification
 

@@ -16,8 +16,7 @@ export const VECTOR_INNER_HITS = 'vectoriel';
 const MAX_LEXICAL_PASSAGES = 100;
 const PASSAGES_PATH = 'passages';
 const PASSAGE_REF_FIELDS = ['passages.chunk_id', 'passages.char_start', 'passages.char_end'];
-/** `_source` exclut déjà le texte et les vecteurs des passages */
-const DOCUMENT_FIELDS = ['identifier', 'document_type', 'nature', 'passages'];
+const DOCUMENT_FIELDS = ['identifier', 'document_type', 'nature'];
 const LEXICAL_PASSAGE_FIELDS = ['passages.text', 'passages.text.ref'];
 const LEXICAL_DOCUMENT_FIELDS = [
   'title.texte',
@@ -32,6 +31,8 @@ const REFERENCE_DOCUMENT_FIELDS = ['title.ref', 'parent_text_title.ref', 'metada
 export interface HybridQueryInput {
   readonly question: string;
   readonly vector: EmbeddingVector;
+  /** Rang du premier document de la page, dans le classement fusionné */
+  readonly from: number;
   /** Documents de la page */
   readonly size: number;
   /** Documents classés par chaque sous-requête, et `k` de chaque kNN */
@@ -76,8 +77,8 @@ const titleVectorQuery = (vector: EmbeddingVector, depth: number): QueryContaine
   knn: { title_embedding: { vector, k: depth } },
 });
 
-export const buildHybridQuery = ({ question, vector, size, depth }: HybridQueryInput): API.Search_RequestBody => ({
-  from: 0,
+export const buildHybridQuery = ({ question, vector, from, size, depth }: HybridQueryInput): API.Search_RequestBody => ({
+  from,
   size,
   _source: { includes: DOCUMENT_FIELDS },
   query: {
