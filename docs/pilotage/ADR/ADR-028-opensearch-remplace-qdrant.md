@@ -4,7 +4,8 @@
 ADR-018 §1-§2 · **§2 et §6 amendés par [ADR-029](ADR-029-recherche-hybride-quatre-listes.md)**
 (une sous-requête de références, un vecteur de titre pour les documents sans passage) ·
 **§7, §8 et §10 amendés le 5 octobre 2026** (aucun score servi ; pagination à 10 et 100 ;
-contexte du LLM plafonné)
+contexte du LLM plafonné) · **§10 amendé le 10 octobre 2026** (la page de résultats
+passe à ADR-030)
 
 ## Contexte
 
@@ -214,6 +215,12 @@ apparaîtra avec la page de résultats.
 > journalisée. Toutes les sources partent quand même au frontend : les résultats de la
 > recherche ne dépendent pas du budget du LLM, comme à l'étape 2. Le frontend perd aussi
 > le score (§7).
+
+> **Amendement (10 octobre 2026)** : la page de résultats sort de l'étape 2, qui se
+> limite au retrait du LLM et à l'arrivée de l'API de recherche ; l'ADR dédiée du §9 ne
+> décrit que cette API. Le remplacement du modèle d'embedding (Conséquences) vient
+> ensuite. Puis l'interface du frontend est adaptée au pivot du projet, page de
+> résultats comprise : un chantier à part entière, que décrira ADR-030 (à écrire).
 
 ## Alternatives rejetées
 

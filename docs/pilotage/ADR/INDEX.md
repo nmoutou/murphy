@@ -1,6 +1,6 @@
 # INDEX — Registre des décisions (ADR)
 
-> Un fichier par ADR (format Nygard). **Prochain numéro : ADR-030.**
+> Un fichier par ADR (format Nygard). **Prochain numéro : ADR-030**, réservé à l'adaptation de l'interface du frontend (ADR-028 §10).
 
 ## Registre
 
@@ -33,7 +33,7 @@
 | [ADR-025](ADR-025-collisions-de-metadonnees.md) | Collisions de métadonnées : une liste, un ordre déclaré, un refus | ✅ Accepté (1er octobre 2026) — amende ADR-023 et ADR-024, corrige ADR-011 §3 · collection `MURPHY_META.collisions` retirée · `collisions` au premier niveau du bilan · amendé par ADR-027 |
 | [ADR-026](ADR-026-titre-hors-metadonnees.md) | Le titre n'entre pas en métadonnée | ✅ Accepté (1er octobre 2026) — amende ADR-023 |
 | [ADR-027](ADR-027-url-non-ingeree.md) | L'URL n'est pas ingérée | ✅ Accepté (2 octobre 2026) — amende ADR-025 |
-| [ADR-028](ADR-028-opensearch-remplace-qdrant.md) | OpenSearch remplace Qdrant : un moteur de recherche hybride, sans LLM | ✅ Accepté (2 octobre 2026) — amende ADR-007, ADR-010, ADR-015 §1-§5 et ADR-018 §1-§2 · §2 et §6 amendés par ADR-029 · §7, §8 et §10 amendés le 5 octobre 2026 (aucun score servi ; pagination à 10 et 100 ; contexte du LLM plafonné) |
+| [ADR-028](ADR-028-opensearch-remplace-qdrant.md) | OpenSearch remplace Qdrant : un moteur de recherche hybride, sans LLM | ✅ Accepté (2 octobre 2026) — amende ADR-007, ADR-010, ADR-015 §1-§5 et ADR-018 §1-§2 · §2 et §6 amendés par ADR-029 · §7, §8 et §10 amendés le 5 octobre 2026 (aucun score servi ; pagination à 10 et 100 ; contexte du LLM plafonné) · §10 amendé le 10 octobre 2026 (la page de résultats passe à ADR-030) |
 | [ADR-029](ADR-029-recherche-hybride-quatre-listes.md) | Recherche hybride : une liste de références et un vecteur de titre | ✅ Accepté (4 octobre 2026) — amende ADR-028 §2 et §6 |
 
 ## Points ouverts rattachés
@@ -43,5 +43,6 @@
 | Contenu de la vague 2 d'ingestion (JORF + candidates KALI, CIRCULAIRES) | ADR-002 | Mini-ADR à l'issue de l'alpha |
 | `doc_id` stable au niveau article pour LEGI | ADR-003 | v0 |
 | Forme juridique · licence du code · soutenabilité | ADR-006 | Approche de la beta |
-| API de recherche paginée et page de résultats : retrait du WebSocket, du SSE et de l'AI SDK, texte servi à la demande | ADR-028 §9-§10 | ADR dédiée, étape 2 de la migration |
-| Remplacement du modèle d'embedding par un modèle qui couvre le français | ADR-028 | Après la migration vers OpenSearch |
+| API de recherche paginée : retrait du LLM, du WebSocket, du SSE et de l'AI SDK, texte servi à la demande | ADR-028 §9-§10 | ADR dédiée, étape 2 de la migration |
+| Remplacement du modèle d'embedding par un modèle qui couvre le français | ADR-028 | Après l'étape 2 de la migration |
+| Interface du frontend adaptée au pivot (moteur de recherche), page de résultats comprise | ADR-028 §9-§10 | ADR-030, après le remplacement du modèle d'embedding |
