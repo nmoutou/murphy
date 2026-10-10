@@ -5,7 +5,9 @@ ADR-018 §1-§2 · **§2 et §6 amendés par [ADR-029](ADR-029-recherche-hybride
 (une sous-requête de références, un vecteur de titre pour les documents sans passage) ·
 **§7, §8 et §10 amendés le 5 octobre 2026** (aucun score servi ; pagination à 10 et 100 ;
 contexte du LLM plafonné) · **§10 amendé le 10 octobre 2026** (la page de résultats
-passe à ADR-030)
+passe à ADR-030) · **§7 amendé, §9 et §10 réalisés par
+[ADR-031](ADR-031-api-de-recherche.md)** (API de recherche ; un document sans passage
+correspondant n'en renvoie aucun)
 
 ## Contexte
 
@@ -167,6 +169,9 @@ seuil n'y a de sens.
   parent) **est renvoyé avec tous ses passages**, lus dans son `_source`. Une section
   n'en a aucun.
 
+> **Amendement (ADR-031)** : sans LLM à nourrir, un document trouvé sans passage
+> correspondant est renvoyé sans passage ; son texte se lit à la demande.
+
 ### 8. Une pagination sans état
 
 La requête porte `from`, `size` et `pagination_depth`. Chaque sous-requête récupère au
@@ -195,7 +200,8 @@ leurs passages (ADR-007). `LLMProvider`, la section `llm` de la configuration,
 Sans LLM, il n'y a plus rien à streamer. La recherche sera servie par une API HTTP
 paginée et une page de résultats, qui affiche l'essentiel de chaque résultat et ouvre le
 texte entier au clic, chargé à la demande. **Une ADR dédiée décrira cette API** : ses
-routes, son contrat, et le retrait du WebSocket, du SSE et de l'AI SDK.
+routes, son contrat, et le retrait du WebSocket, du SSE et de l'AI SDK. C'est
+[ADR-031](ADR-031-api-de-recherche.md).
 
 ### 10. Deux étapes
 
