@@ -15,6 +15,7 @@ const DOCUMENT_FETCH_FAILURE: RagFailure = {
   code: 'DB_FETCH_FAILED',
   operation: 'fetch parent documents from MongoDB',
 };
+const SINGLE_DOCUMENT_FETCH_FAILURE: RagFailure = { ...DOCUMENT_FETCH_FAILURE, operation: 'fetch a document from MongoDB' };
 
 const hideCredentials = (uri: string): string => uri.replace(/\/\/[^@]*@/, '//<credentials>@');
 
@@ -104,5 +105,26 @@ export class MongoDbClient {
       'Parent documents fetched from MongoDB'
     );
     return records.map(toStoredDocument);
+  }
+
+  /**
+   * @returns `undefined` si aucun document ne porte cet identifiant
+   * @throws RagError d'étape `retrieval`
+   */
+  async fetchDocument(identifier: string): Promise<StoredDocument | undefined> {
+    const startTime = Date.now();
+    let record: DocumentRecord | null;
+    try {
+      record = await this.db
+        .collection(DOCUMENTS_COLLECTION)
+        .findOne<DocumentRecord>({ identifier }, { projection: DOCUMENT_PROJECTION });
+    } catch (error) {
+      const ragError = toRagError(SINGLE_DOCUMENT_FETCH_FAILURE, error);
+      logger.error({ err: error, durationMs: Date.now() - startTime }, ragError.message);
+      throw ragError;
+    }
+
+    logger.info({ identifier, isFound: record !== null, durationMs: Date.now() - startTime }, 'Document fetched from MongoDB');
+    return record ? toStoredDocument(record) : undefined;
   }
 }

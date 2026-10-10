@@ -84,8 +84,9 @@ L'étape reste sur la `RagError`, dans les logs.
 | Statut | Codes |
 |---|---|
 | 400 | `VALIDATION_ERROR` (question vide comprise), `INVALID_JSON`, `PAGE_OUT_OF_RANGE` |
-| 404 | `DOCUMENT_NOT_FOUND` |
+| 404 | `DOCUMENT_NOT_FOUND`, `NOT_FOUND` (route inconnue) |
 | 413 | `PAYLOAD_TOO_LARGE` |
+| 4xx | `INVALID_REQUEST_BODY` : toute autre erreur du corps (encodage, charset…), au statut du parseur |
 | 429 | `SEARCH_RATE_LIMIT_EXCEEDED`, `RATE_LIMIT_EXCEEDED` |
 | 502 | `EMBEDDING_FAILED`, `SEARCH_FAILED`, `DB_FETCH_FAILED` |
 | 504 | `TIMEOUT` |

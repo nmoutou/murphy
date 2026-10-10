@@ -2,6 +2,7 @@ import type { MongoConfig } from '../../config';
 import { MongoDbClient } from '../../infra/mongodb';
 
 const mockFind = jest.fn();
+const mockFindOne = jest.fn();
 const mockToArray = jest.fn();
 
 // Une classe, pas un `jest.fn` : `restoreMocks` réinitialiserait son implémentation entre les tests
@@ -13,7 +14,7 @@ jest.mock('mongodb', () => ({
     db() {
       return {
         admin: () => ({ ping: async () => ({ ok: 1 }) }),
-        collection: () => ({ find: mockFind }),
+        collection: () => ({ find: mockFind, findOne: mockFindOne }),
       };
     }
   },
@@ -61,6 +62,44 @@ describe('MongoDbClient.fetchParentDocuments', () => {
       stage: 'retrieval',
       code: 'DB_FETCH_FAILED',
       message: 'Failed to fetch parent documents from MongoDB: connection reset',
+    });
+  });
+});
+
+describe('MongoDbClient.fetchDocument', () => {
+  it('reads one document by identifier, its identity, title and text only', async () => {
+    mockFindOne.mockResolvedValue(RECORD);
+    const mongo = await MongoDbClient.connect(SETTINGS);
+
+    await expect(mongo.fetchDocument(IDENTIFIER)).resolves.toEqual(RECORD);
+    expect(mockFindOne).toHaveBeenCalledWith(
+      { identifier: IDENTIFIER },
+      { projection: { _id: 0, identifier: 1, title: 1, content: 1 } },
+    );
+  });
+
+  it('returns undefined for an unknown identifier', async () => {
+    mockFindOne.mockResolvedValue(null);
+    const mongo = await MongoDbClient.connect(SETTINGS);
+
+    await expect(mongo.fetchDocument('LEGIARTI0')).resolves.toBeUndefined();
+  });
+
+  it('reports a stored document without title as a contract violation', async () => {
+    mockFindOne.mockResolvedValue({ ...RECORD, title: null });
+    const mongo = await MongoDbClient.connect(SETTINGS);
+
+    await expect(mongo.fetchDocument(IDENTIFIER)).rejects.toMatchObject({ code: 'CONTRACT_VIOLATION' });
+  });
+
+  it('fails with a retrieval RagError when the query fails', async () => {
+    mockFindOne.mockRejectedValue(new Error('connection reset'));
+    const mongo = await MongoDbClient.connect(SETTINGS);
+
+    await expect(mongo.fetchDocument(IDENTIFIER)).rejects.toMatchObject({
+      stage: 'retrieval',
+      code: 'DB_FETCH_FAILED',
+      message: 'Failed to fetch a document from MongoDB: connection reset',
     });
   });
 });

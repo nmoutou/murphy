@@ -1,3 +1,5 @@
+import type { SearchErrorCode } from '@murphy/contract/search';
+import type { ParamsDictionary } from 'express-serve-static-core';
 import { Request, Response, NextFunction } from 'express';
 import { logger as rootLogger } from '../utils/logger';
 import { buildApiResponse } from '../utils/response';
@@ -6,10 +8,11 @@ import { toErrorResponse } from '../utils/errorResponse';
 
 const logger = rootLogger.child({ context: 'errorHandler' });
 
-const DEFAULT_BODY_ERROR_CODE = 'INVALID_REQUEST_BODY';
+const DEFAULT_BODY_ERROR_CODE: SearchErrorCode = 'INVALID_REQUEST_BODY';
+const NOT_FOUND_CODE: SearchErrorCode = 'NOT_FOUND';
 
 /** `type` d'erreur de body-parser → code renvoyé au client */
-const BODY_ERROR_CODES: Readonly<Record<string, string>> = {
+const BODY_ERROR_CODES: Readonly<Record<string, SearchErrorCode>> = {
   'entity.parse.failed': 'INVALID_JSON',
   'entity.too.large': 'PAYLOAD_TOO_LARGE',
 };
@@ -44,10 +47,11 @@ const sendClientRequestError = (error: ClientRequestError, req: Request, res: Re
   res.status(error.status).json(buildApiResponse(error.status, code));
 };
 
-export const asyncHandler = (
-  fn: (req: Request, res: Response, next: NextFunction) => Promise<void>
+/** `TParams` : les paramètres de la route, que le routeur déduit de son chemin */
+export const asyncHandler = <TParams extends ParamsDictionary = ParamsDictionary>(
+  fn: (req: Request<TParams>, res: Response, next: NextFunction) => Promise<void>
 ) => {
-  return (req: Request, res: Response, next: NextFunction) => {
+  return (req: Request<TParams>, res: Response, next: NextFunction) => {
     Promise.resolve(fn(req, res, next)).catch(next);
   };
 };
@@ -77,5 +81,5 @@ export const errorHandler = (
 };
 
 export const notFoundHandler = (_req: Request, res: Response): void => {
-  res.status(HTTP_STATUS.NOT_FOUND).json(buildApiResponse(HTTP_STATUS.NOT_FOUND, 'NOT_FOUND'));
+  res.status(HTTP_STATUS.NOT_FOUND).json(buildApiResponse(HTTP_STATUS.NOT_FOUND, NOT_FOUND_CODE));
 };

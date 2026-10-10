@@ -3,6 +3,7 @@ import request from 'supertest';
 import { asyncHandler, errorHandler, notFoundHandler } from '../../middleware/errorHandler';
 import { logger } from '../../utils/logger';
 import { MAX_REQUEST_BODY_BYTES } from '../../utils/requestLimits';
+import { RagError } from '../../types/rag';
 
 jest.mock('../../utils/logger', () => {
   const silentLogger = { info: jest.fn(), debug: jest.fn(), warn: jest.fn(), error: jest.fn(), child: () => silentLogger };
@@ -22,6 +23,12 @@ beforeEach(() => {
   app.get('/sync-failure', () => {
     throw new Error('Sync failure');
   });
+  app.get('/rag-failure', asyncHandler(async () => {
+    throw new RagError('embedding', 'TIMEOUT', 'Failed to generate embeddings: timeout');
+  }));
+  app.get('/rag-refusal', asyncHandler(async () => {
+    throw new RagError('request', 'PAGE_OUT_OF_RANGE', 'Page 11 is beyond the last page, 10');
+  }));
   app.get('/status-without-expose', () => {
     throw Object.assign(new Error('Internal failure carrying a status'), { status: 404 });
   });
@@ -54,6 +61,23 @@ describe('errorHandler', () => {
 
     expect(response.status).toBe(500);
     expect(response.body.status).toEqual({ code: 500, message: 'INTERNAL' });
+  });
+
+  it('answers a RagError with the status of its code, logged as an error', async () => {
+    const response = await request(app).get('/rag-failure');
+
+    expect(response.status).toBe(504);
+    expect(response.body.status).toEqual({ code: 504, message: 'TIMEOUT' });
+    expect(logger.error).toHaveBeenCalled();
+  });
+
+  it('logs a RagError refused with a 4xx as a warning only', async () => {
+    const response = await request(app).get('/rag-refusal');
+
+    expect(response.status).toBe(400);
+    expect(response.body.status).toEqual({ code: 400, message: 'PAGE_OUT_OF_RANGE' });
+    expect(logger.warn).toHaveBeenCalled();
+    expect(logger.error).not.toHaveBeenCalled();
   });
 
   it('keeps an internal error carrying a status without `expose` a 500', async () => {
