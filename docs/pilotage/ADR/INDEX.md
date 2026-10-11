@@ -20,7 +20,7 @@
 | [ADR-012](ADR-012-interrupteur-embedding-dev.md) | Un interrupteur d'embedding, pas trois interrupteurs de store | Acté — amende ADR-011 §5, amendé par ADR-019 |
 | [ADR-013](ADR-013-retrait-echantillonnage-corpus.md) | Retrait de l'échantillonnage de corpus | Acté — amende ADR-011 §7 |
 | [ADR-014](ADR-014-restructuration-configuration.md) | Restructuration de la configuration en partition workflow / ingestion | ❌ Remplacé par ADR-018 |
-| [ADR-015](ADR-015-contrat-ingestion-serving.md) | Contrat ingestion ↔ serving : le texte d'un passage vit dans Mongo, désigné par ses offsets | ✅ Accepté (25 septembre 2026) — s'appuie sur ADR-010 et ADR-011 §4, §3 amendé par ADR-018, §2 par ADR-022, §1 à §5 par ADR-028 |
+| [ADR-015](ADR-015-contrat-ingestion-serving.md) | Contrat ingestion ↔ serving : le texte d'un passage vit dans Mongo, désigné par ses offsets | ✅ Accepté (25 septembre 2026) — s'appuie sur ADR-010 et ADR-011 §4, §3 amendé par ADR-018, §2 par ADR-022, §1 à §5 par ADR-028, §2 par ADR-032 |
 | [ADR-016](ADR-016-depot-unique.md) | Un seul dépôt : fin des sous-modules, contrat du flux dans un paquet partagé | ✅ Accepté (25 septembre 2026) |
 | [ADR-017](ADR-017-erreurs-du-chat-en-modale.md) | Erreurs du chat : une modale, l'étape en cause, un arrêt propagé au backend | ✅ Accepté (26 septembre 2026) — étend le contrat d'ADR-016 (`@murphy/contract/errors`) · §2 et §5 amendés par ADR-031 côté backend |
 | [ADR-018](ADR-018-collection-qdrant-nom-fixe.md) | Une collection Qdrant au nom fixe : fin de l'empreinte, du pointeur et du tracking | ✅ Accepté (30 septembre 2026) — remplace ADR-014, amende ADR-015 §3, §3 amendé par ADR-019, §1-§2 par ADR-028 |
@@ -33,10 +33,10 @@
 | [ADR-025](ADR-025-collisions-de-metadonnees.md) | Collisions de métadonnées : une liste, un ordre déclaré, un refus | ✅ Accepté (1er octobre 2026) — amende ADR-023 et ADR-024, corrige ADR-011 §3 · collection `MURPHY_META.collisions` retirée · `collisions` au premier niveau du bilan · amendé par ADR-027 |
 | [ADR-026](ADR-026-titre-hors-metadonnees.md) | Le titre n'entre pas en métadonnée | ✅ Accepté (1er octobre 2026) — amende ADR-023 |
 | [ADR-027](ADR-027-url-non-ingeree.md) | L'URL n'est pas ingérée | ✅ Accepté (2 octobre 2026) — amende ADR-025 |
-| [ADR-028](ADR-028-opensearch-remplace-qdrant.md) | OpenSearch remplace Qdrant : un moteur de recherche hybride, sans LLM | ✅ Accepté (2 octobre 2026) — amende ADR-007, ADR-010, ADR-015 §1-§5 et ADR-018 §1-§2 · §2 et §6 amendés par ADR-029 · §7, §8 et §10 amendés le 5 octobre 2026 (aucun score servi ; pagination à 10 et 100 ; contexte du LLM plafonné) · §10 amendé le 10 octobre 2026 (la page de résultats passe à ADR-030) · §7 amendé, §9 et §10 réalisés par ADR-031 |
+| [ADR-028](ADR-028-opensearch-remplace-qdrant.md) | OpenSearch remplace Qdrant : un moteur de recherche hybride, sans LLM | ✅ Accepté (2 octobre 2026) — amende ADR-007, ADR-010, ADR-015 §1-§5 et ADR-018 §1-§2 · §2 et §6 amendés par ADR-029 · §7, §8 et §10 amendés le 5 octobre 2026 (aucun score servi ; pagination à 10 et 100 ; contexte du LLM plafonné) · §10 amendé le 10 octobre 2026 (la page de résultats passe à ADR-030) · §7 amendé, §9 et §10 réalisés par ADR-031 · modèle d'embedding remplacé par ADR-032 |
 | [ADR-029](ADR-029-recherche-hybride-quatre-listes.md) | Recherche hybride : une liste de références et un vecteur de titre | ✅ Accepté (4 octobre 2026) — amende ADR-028 §2 et §6 |
 | [ADR-031](ADR-031-api-de-recherche.md) | Une API de recherche paginée : le LLM et le flux partent | ✅ Accepté (10 octobre 2026) — réalise l'étape 2 d'ADR-028, amende ADR-028 §7 et ADR-017 §2 et §5 |
-| [ADR-032](ADR-032-modele-embedding-francais.md) | Un modèle d'embedding qui couvre le droit français | 🟡 Proposé (11 octobre 2026) — comparatif des candidats, modèle à trancher |
+| [ADR-032](ADR-032-modele-embedding-francais.md) | Un modèle d'embedding qui couvre le droit français | ✅ Accepté (11 octobre 2026) — `microsoft/harrier-oss-v1-0.6b`, consigne devant la question ; amende ADR-015 §2 |
 
 ## Points ouverts rattachés
 
@@ -45,5 +45,4 @@
 | Contenu de la vague 2 d'ingestion (JORF + candidates KALI, CIRCULAIRES) | ADR-002 | Mini-ADR à l'issue de l'alpha |
 | `doc_id` stable au niveau article pour LEGI | ADR-003 | v0 |
 | Forme juridique · licence du code · soutenabilité | ADR-006 | Approche de la beta |
-| Remplacement du modèle d'embedding par un modèle qui couvre le français | ADR-028, ADR-032 | Choix du modèle (ADR-032), puis réingestion |
 | Interface du frontend adaptée au pivot (moteur de recherche), page de résultats comprise | ADR-028 §9-§10 | ADR-030, après le remplacement du modèle d'embedding |

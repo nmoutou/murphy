@@ -7,7 +7,8 @@ ADR-018 §1-§2 · **§2 et §6 amendés par [ADR-029](ADR-029-recherche-hybride
 contexte du LLM plafonné) · **§10 amendé le 10 octobre 2026** (la page de résultats
 passe à ADR-030) · **§7 amendé, §9 et §10 réalisés par
 [ADR-031](ADR-031-api-de-recherche.md)** (API de recherche ; un document sans passage
-correspondant n'en renvoie aucun)
+correspondant n'en renvoie aucun) · **modèle d'embedding remplacé par
+[ADR-032](ADR-032-modele-embedding-francais.md)** (`microsoft/harrier-oss-v1-0.6b`)
 
 ## Contexte
 
