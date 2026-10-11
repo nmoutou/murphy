@@ -4,7 +4,7 @@ Vue d'ensemble du système complet. **La documentation technique détaillée a u
 par projet**, à côté de ce document :
 
 - [`backend/`](backend/README.md) — le serving (API de recherche Express/TS)
-- [`frontend/`](frontend/README.md) — l'UI (Next.js), hors service jusqu'à ADR-032
+- [`frontend/`](frontend/README.md) — l'UI (Next.js) : la recherche et ses onglets Dockview
 - [`data/`](data/README.md) — l'ingestion (Kedro + ragcore)
 
 Ce document ne couvre que ce qu'aucun projet ne peut dire seul : comment les deux
@@ -29,7 +29,7 @@ flowchart TB
     end
 
     subgraph serving ["SERVING — stack Docker (backend + frontend + TEI)"]
-        Front[Frontend<br>Next.js 16] -.->|HTTP, ADR-032| Back[Backend<br>Express/TS]
+        Front[Frontend<br>Next.js 16] -->|HTTP| Back[Backend<br>Express/TS]
         Back --> TEI[TEI<br>embeddings, GPU]
     end
 
@@ -45,9 +45,9 @@ flowchart TB
 - **Serving** (`backend/` + `frontend/` + compose) : stateless, chaque requête recalcule
   le pipeline embed → recherche hybride → fetch → page de résultats ; le texte entier
   d'un document est servi à la demande. Détails :
-  [`backend/ARCHITECTURE.md`](backend/ARCHITECTURE.md). Le frontend parle encore l'ancien
-  flux de chat, que le backend ne sert plus : il est hors service jusqu'à ADR-032
-  (ADR-030 §8).
+  [`backend/ARCHITECTURE.md`](backend/ARCHITECTURE.md). Le frontend affiche les pages de
+  résultats et ouvre chaque document dans un onglet (ADR-032) : voir
+  [`frontend/ARCHITECTURE.md`](frontend/ARCHITECTURE.md).
 
 ## Les contrats entre les deux
 
@@ -118,7 +118,7 @@ avec les mêmes options).
 | `docs/pilotage/WIP/` | Le travail en cours (critiques, plans) |
 | `docs/technical/` | Ce document — la vue système —, puis la documentation de chaque projet |
 | `backend/`, `frontend/`, `data/` | Les projets. `backend` et `frontend` sont des npm workspaces (un seul lockfile à la racine) ; `data` est en Python |
-| `packages/contract/` | `@murphy/contract` : le contrat backend ↔ frontend (schémas zod, types déduits), compilé, partagé par les deux workspaces. `search` est celui de l'API ; `messages` et `errors`, l'ancien flux de chat, restent gelés pour le frontend jusqu'à ADR-032 |
+| `packages/contract/` | `@murphy/contract` : le contrat backend ↔ frontend (schémas zod, types déduits), compilé, partagé par les deux workspaces. Un seul sous-chemin, `search` : la requête, la réponse, le document et les codes d'erreur de l'API |
 | `docker-compose.*.yml` | La stack de serving |
 
 Convention de documentation : chaque projet a son dossier `docs/technical/<projet>/`,

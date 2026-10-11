@@ -59,7 +59,7 @@ Coverage thresholds (`jest.config.js`: lines/statements 65 %, functions 60 %, br
 
 `npm run dev` (Turbopack), `build`, `type-check`, `lint` (`--max-warnings=0`), `test` (Vitest + Testing Library, jsdom), `format` (Prettier; `format:check` runs in `check`). Path alias `@/*` → `src/*`.
 
-Tests live in `src/__tests__/`, mirroring `src/`; `vitest.config.mts` runs them on Vite, outside Next. `src/__tests__/setup.ts` stubs what jsdom lacks for Dockview (`ResizeObserver`, `matchMedia`).
+Tests live in `src/__tests__/`, mirroring `src/`; `vitest.config.mts` runs them on Vite, outside Next. `src/__tests__/setup.ts` stubs what jsdom lacks (`<dialog>`, and for Dockview `ResizeObserver`, `matchMedia`, `scrollIntoView`).
 
 ## Serving: the search flow
 
@@ -93,6 +93,10 @@ The contract is `@murphy/contract/search`: the zod schemas of the request, the s
 
 ### Frontend conventions
 
+One route, two states (ADR-032): `/` shows the home screen until a first search, then the workspace; the question never goes into the URL, and nothing survives a reload.
+
+- **Layers**: components → stores (`stores/`, Zustand, no `persist`) → `lib/api` (`requestApi`: `fetch`, the `data` validated by the contract's schemas, failures turned into an `ApiError` code, `NETWORK` without a response). No component calls `fetch`. `searchStore` holds the question, page, page size, status and response; a new request aborts the previous one. `errorStore` feeds the single error modal (`features/errors/`, one message per code, a `Record` the compiler keeps exhaustive).
+- **Workspace**: `features/workspace/` is the only folder that imports Dockview. Dockview owns the layout; a document tab's params carry its own data (`{ identifier, documentType, nature, passage }`). `panelRegistry.tsx` maps each panel type to an adapter that takes Dockview's props and renders the feature panel with plain props and callbacks (`onOpenDocument`, `onError`): `results/`, `document/`, `graph/` and `explanation/` import neither Dockview nor `workspace/` nor each other. The fixed panels (`results`, `graph`, `explanation`) use their type as id; a document tab is `document:<identifier>`, so reopening it activates it.
 - Colors are Tailwind classes from the `@theme` of `styles/globals.css` (`bg-secondary`, `text-tertiary`…): no theme context, no inline styles.
 - `components/ui/Modal.tsx` is the generic modal (native `<dialog>`); `app/error.tsx` is the page's Error Boundary.
 - Icons are decorative; an icon button carries its accessible name (`ButtonIcon`, `label`).

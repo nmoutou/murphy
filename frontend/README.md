@@ -1,9 +1,8 @@
 # Murphy — frontend
 
-Next.js 16 (App Router) + React 19 + Tailwind v4 chat UI for the Murphy RAG system.
-
-Talks to the backend over a custom WebSocket transport (`@ai-sdk/react` `useChat`), which
-the backend no longer serves since ADR-030: out of service until ADR-032.
+Next.js 16 (App Router) + React 19 + Tailwind v4 search UI for Murphy: a page of ranked
+documents, each opened in a Dockview tab with its passage highlighted (ADR-032). It calls
+the backend's search API over HTTP; state lives in Zustand stores.
 
 ## Develop
 
@@ -19,8 +18,8 @@ npm test            # vitest run: src/__tests__/, Testing Library on jsdom
 npm run format      # prettier --write src (format:check runs in CI)
 ```
 
-Set `NEXT_PUBLIC_API_URL` to the backend base URL (default `http://localhost:5000`);
-the chat WebSocket URL is derived from it (`src/lib/chatSocketUrl.ts`).
+Set `NEXT_PUBLIC_API_URL` to the backend origin (default `http://localhost:5000`); the
+frontend appends `/api/v1` (`src/lib/api/apiUrl.ts`).
 
-The stream contract (`AppUIMessage`) is imported from `@murphy/contract/messages`,
-shared with the backend: see [`docs/technical/frontend/ARCHITECTURE.md`](../docs/technical/frontend/ARCHITECTURE.md).
+The API contract is imported from `@murphy/contract/search`, shared with the backend:
+see [`docs/technical/frontend/ARCHITECTURE.md`](../docs/technical/frontend/ARCHITECTURE.md).

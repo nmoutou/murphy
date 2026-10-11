@@ -1,7 +1,10 @@
 # ADR-030 — Une API de recherche paginée : le LLM et le flux partent
 
 **Statut** : ✅ Accepté (10 octobre 2026) — réalise l'étape 2 d'ADR-028 (§9-§10), amende
-ADR-028 §7 et ADR-017 §2 et §5
+ADR-028 §7 et ADR-017 §2 et §5 · **§2 et §3 amendés par
+[ADR-032](ADR-032-interface-onglets-dockview.md)** (taille de page au choix parmi
+`PAGINATION_SIZES`, `isInForce` dans un résultat) · **§7 et §8 clos par ADR-032**
+(`messages` et `errors` retirés du contrat, frontend branché sur l'API)
 
 ## Contexte
 

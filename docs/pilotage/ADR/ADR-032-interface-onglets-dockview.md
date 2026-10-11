@@ -1,6 +1,6 @@
 # ADR-032 — L'interface du moteur de recherche : un espace d'onglets Dockview
 
-**Statut** : 📝 Proposé (11 octobre 2026) — réalise ADR-028 §10 côté frontend, amende
+**Statut** : ✅ Accepté (11 octobre 2026) — réalise ADR-028 §10 côté frontend, amende
 ADR-030 §2 et §3 et ADR-017 §2 à §4 · ferme le point ouvert « Interface du frontend
 adaptée au pivot »
 
@@ -111,7 +111,7 @@ transmet la réponse (§8). En changer relance la recherche à la page 1.
 ### 5. L'onglet document
 
 - **L'ouverture** : un clic sur le titre d'un résultat ouvre un panneau `document`, dans
-  le groupe de l'onglet Résultats. Son identifiant est `document:<identifier>` : un second
+  le groupe de l'onglet Résultats, ou dans le groupe actif si Résultats est fermé. Son identifiant est `document:<identifier>` : un second
   clic active l'onglet déjà ouvert.
 - **L'onglet** porte le titre du document, tronqué (le titre complet en infobulle), et
   l'icône du §4.
@@ -138,7 +138,8 @@ Zustand entre dans le frontend, sans `persist`. La persistance côté client vie
 tard, sous la forme d'un middleware, sans réécrire le store.
 
 - **Le store de recherche** détient la question, la page, la taille de page, le statut
-  (`idle`, `loading`, `success`, `error`), la réponse et l'erreur. Ses actions sont
+  (`idle`, `loading`, `success`, `error`) et la réponse ; l'erreur va au store d'erreurs
+  (§10). Ses actions sont
   `submit(question)`, `goToPage(page)` et `setPageSize(size)`.
 - **Une requête chasse la précédente** : un `AbortController` côté client empêche une
   réponse en retard d'écraser la plus récente. Le backend n'en sait rien (ADR-030 §6).
@@ -246,16 +247,13 @@ src/
 
 - Seul `features/workspace/` importe Dockview.
 - **Le registre adapte les panneaux.** Pour chaque type, un adaptateur reçoit les props
-  de Dockview, lit le contexte de l'espace de travail et rend le panneau avec des props
-  simples : ses paramètres et ses rappels (`onOpenDocument`, `onError`). Les panneaux
+  de Dockview et rend le panneau avec des props simples : ses paramètres et ses rappels (`onOpenDocument`, `onError`). Les panneaux
   n'importent ni Dockview, ni `features/workspace/`, ni un autre panneau : les
   dépendances vont de `workspace/` vers les panneaux, jamais l'inverse.
 - **Un résultat ouvre un document** par `onOpenDocument(result)`. L'adaptateur le relie
-  à l'action `openDocument` du contexte, qui tire du résultat les paramètres du panneau
-  `document` (`{ identifier, documentType, nature, passage }`). Dockview rend ses
-  panneaux, ses actions de groupe et son `watermark` par des portails placés sous
-  `DockviewReact` : un contexte posé au-dessus leur parvient, et ils suivent ses
-  changements.
+  à `openDocument`, avec l'API de Dockview qu'il reçoit dans ses props (`containerApi`) :
+  aucun contexte React n'est nécessaire. `openDocument` tire du résultat les paramètres
+  du panneau `document` (`{ identifier, documentType, nature, passage }`).
 - Les tests suivent l'arborescence dans `src/__tests__/`. Les panneaux se testent hors de
   Dockview ; `Workspace` se teste a minima, avec un `ResizeObserver` simulé (jsdom n'en
   a pas).

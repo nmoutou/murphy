@@ -1,17 +1,14 @@
 # Documentation — frontend
 
-> **Hors service depuis ADR-030.** Le backend ne sert plus le WebSocket de chat ni le LLM :
-> ce document décrit un code gelé, qui compile et passe ses tests mais ne trouve plus de
-> backend une fois lancé. ADR-032 le branchera sur l'API de recherche.
-
-Documentation technique du frontend de Murphy : l'interface de chat Next.js 16
-(App Router) / React 19 / Tailwind v4 qui consomme le backend RAG en WebSocket.
+Documentation technique du frontend de Murphy : l'interface du moteur de recherche,
+Next.js 16 (App Router) / React 19 / Tailwind v4, avec des onglets Dockview et un état
+Zustand (ADR-032), qui appelle l'API de recherche du backend en HTTP.
 
 ## Quoi lire, dans quel ordre
 
 | Document | Contenu |
 |---|---|
-| [ARCHITECTURE.md](ARCHITECTURE.md) | Vue d'ensemble : le transport WebSocket, le contrat de messages, l'arborescence des composants. **Commencer ici.** |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | Vue d'ensemble : les deux écrans, les couches (composants → stores → `lib/api`), la modale d'erreur, l'espace Dockview et son registre, les onglets Résultats et document, l'arborescence. **Commencer ici.** |
 | `reference/` | Références détaillées — *à écrire ; même ossature que [`data/reference/`](../data/reference/).* |
 
 La vue système globale (serving + ingestion + bases partagées) est dans
@@ -53,12 +50,16 @@ fichiers `*.test.ts(x)` sont exemptés des règles de longueur de fonction et de
 magiques.
 
 Les tests (`vitest.config.mts`) tournent sur Vite, hors de Next, dans `src/__tests__/`
-qui reprend l'arborescence de `src/`. `src/__tests__/fakeWebSocket.ts` joue le backend
-côté socket : `stubWebSocket()` remplace le `WebSocket` global, puis le test ouvre le
-socket, envoie des parties, le fait échouer ou le ferme. `npm run check`, donc la CI,
-lance les tests. Pas de seuil de couverture pour l'instant. jsdom n'implémente pas
-`<dialog>` : `src/__tests__/setup.ts` simule `showModal` et `close`, qui posent et
-retirent l'attribut `open`.
+qui reprend l'arborescence de `src/`. `npm run check`, donc la CI, lance les tests. Pas
+de seuil de couverture pour l'instant.
+
+- **Le backend** n'est jamais appelé : un test simule `fetch` (`vi.stubGlobal`) pour
+  `lib/api`, ou le module `lib/api` lui-même pour un store ou un panneau.
+- **Les panneaux** se testent hors de Dockview, avec leurs props ; l'espace de travail
+  (`Workspace.test.tsx`, `documentTabs.test.tsx`) se teste dans un vrai `DockviewReact`.
+- **`src/__tests__/setup.ts`** comble ce que jsdom n'a pas : `<dialog>` (`showModal` et
+  `close` posent et retirent l'attribut `open`), et pour Dockview `ResizeObserver`,
+  `matchMedia` (un écran large par défaut) et `scrollIntoView`.
 
 **Un changement de CSS ne s'affiche pas en dev ?** Le cache de Turbopack dans le
 conteneur (`.next/dev`) peut rester périmé, même après un redémarrage. Il faut le
@@ -68,4 +69,4 @@ vider : `docker exec frontend rm -rf /app/frontend/.next/dev && docker restart f
 
 | Variable | Défaut | Rôle |
 |---|---|---|
-| `NEXT_PUBLIC_API_URL` | `http://localhost:5000` | URL de base du backend. L'adresse du WebSocket de chat en est déduite (`ws:`/`wss:` + `/api/v1/chat/ws`). Inlinée dans le bundle client : lue au démarrage par `next dev`, mais au **build** par `next build` (argument de build de l'image de production ; la changer demande de reconstruire l'image) |
+| `NEXT_PUBLIC_API_URL` | `http://localhost:5000` | Origine du backend ; le frontend y ajoute `/api/v1` (`src/lib/api/apiUrl.ts`). Inlinée dans le bundle client : lue au démarrage par `next dev`, mais au **build** par `next build` (argument de build de l'image de production ; la changer demande de reconstruire l'image) |

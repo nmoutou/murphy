@@ -8,7 +8,9 @@ contexte du LLM plafonné) · **§10 amendé le 10 octobre 2026** (la page de r�
 passe à ADR-032) · **§7 amendé, §9 et §10 réalisés par
 [ADR-030](ADR-030-api-de-recherche.md)** (API de recherche ; un document sans passage
 correspondant n'en renvoie aucun) · **modèle d'embedding remplacé par
-[ADR-031](ADR-031-modele-embedding-francais.md)** (`microsoft/harrier-oss-v1-0.6b`)
+[ADR-031](ADR-031-modele-embedding-francais.md)** (`microsoft/harrier-oss-v1-0.6b`) ·
+**§10 réalisé côté frontend par [ADR-032](ADR-032-interface-onglets-dockview.md)**
+(la page de résultats et le texte entier dans un onglet)
 
 ## Contexte
 

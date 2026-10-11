@@ -2,8 +2,10 @@
 
 **Statut** : ✅ Accepté (26 septembre 2026) — **§2 et §5 amendés par
 [ADR-030](ADR-030-api-de-recherche.md)** côté backend (une erreur de l'API de recherche
-est un statut HTTP et un code, sans étape ; plus d'abandon propagé). Le frontend garde
-ce contrat jusqu'à ADR-032.
+est un statut HTTP et un code, sans étape ; plus d'abandon propagé) · **§2 à §4 amendés
+par [ADR-032](ADR-032-interface-onglets-dockview.md)** côté frontend (la modale traduit
+le code d'erreur de l'API, un store d'erreurs l'alimente) ; le §1, la modale générique,
+reste.
 
 ## Contexte
 
