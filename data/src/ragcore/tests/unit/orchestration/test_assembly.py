@@ -98,7 +98,7 @@ def test_les_depots_s_ouvrent_sans_se_connecter(
 ) -> None:
     clients = open_clients(settings)
     try:
-        open_document_stores(clients, settings, plan)
+        open_document_stores(clients, settings, plan, vector_dimension=768)
         open_meta_stores(clients, settings)
     finally:
         _close(clients)
@@ -124,18 +124,6 @@ def test_prepare_embedder_verifie_le_modele_et_mesure_la_dimension(
     assert isinstance(embedder, TeiEmbedder)
     assert embedder.dimension == 768
     assert isinstance(embedder, ReportsTruncations)
-
-
-def test_prepare_embedder_refuse_un_modele_dune_autre_dimension_que_lindex(
-    runtime: FakeRuntime, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    async def _fake_inspect(base_url: str, expected_model: str) -> EmbeddingModel:
-        return EmbeddingModel(model_name=expected_model, dimension=384)
-
-    monkeypatch.setattr(assembly, "inspect_served_model", _fake_inspect)
-
-    with pytest.raises(ValueError, match="dimension 384"):
-        prepare_embedder(_embedding_settings(), runtime)
 
 
 # ── Le pool ────────────────────────────────────────────────────────

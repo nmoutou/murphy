@@ -15,7 +15,6 @@ from ragcore.adapters.config.settings import EmbeddingRuntimeSettings, InfraSett
 from ragcore.adapters.embedding.served_model import inspect_served_model
 from ragcore.adapters.embedding.tei_embedder import EmbeddingTransport, TeiEmbedder
 from ragcore.adapters.runtime import AsyncioRuntimeFactory
-from ragcore.adapters.storage.opensearch.search_index import check_vector_dimension
 from ragcore.adapters.telemetry.factory import WorkerTelemetryFactory
 from ragcore.application.ingest_document import IngestDocumentUseCase
 from ragcore.application.ingestion_runner import IngestionRunner
@@ -84,14 +83,12 @@ class ProcessingStack:
 def prepare_embedder(
     embedding_settings: EmbeddingRuntimeSettings, runtime: AsyncRuntime
 ) -> TeiEmbedder:
-    """Vérifie le modèle que sert TEI et que sa dimension est celle de l'index : une
-    précondition du run, vérifiée ici et non dans un worker (cf.
-    ``EmbeddingModelMismatchError``).
+    """Vérifie le modèle que sert TEI et mesure sa dimension : une précondition du run,
+    vérifiée ici et non dans un worker (cf. ``EmbeddingModelMismatchError``).
     """
     model = runtime.run(
         inspect_served_model(embedding_settings.service_url, embedding_settings.model)
     )
-    check_vector_dimension(model.dimension)
     logger.info(
         "Modèle d'embedding : %s (%d dimensions)", model.model_name, model.dimension
     )
@@ -160,7 +157,9 @@ def build_runner(
     """Le pool de la phase 1 : deux fabriques et un use case par worker."""
     workload = build_document_workload(
         steps=stack.steps,
-        use_case_factory=_use_case_factory(settings, plan),
+        use_case_factory=_use_case_factory(
+            settings, plan, stack.steps.embedder.dimension
+        ),
         context=context,
         embedding_enabled=plan.embedding_enabled,
     )
@@ -172,7 +171,9 @@ def build_runner(
     )
 
 
-def _use_case_factory(settings: InfraSettings, plan: RunPlan) -> UseCaseFactory:
+def _use_case_factory(
+    settings: InfraSettings, plan: RunPlan, vector_dimension: int
+) -> UseCaseFactory:
     def use_case_factory(
         telemetry: WorkerTelemetry, runtime: AsyncRuntime
     ) -> IngestDocumentUseCase:
@@ -180,7 +181,7 @@ def _use_case_factory(settings: InfraSettings, plan: RunPlan) -> UseCaseFactory:
         boucle du hook."""
         clients = open_clients(settings)
         runtime.defer_close(lambda: close_clients(clients))
-        stores = open_document_stores(clients, settings, plan)
+        stores = open_document_stores(clients, settings, plan, vector_dimension)
         return IngestDocumentUseCase(stores, telemetry)
 
     return use_case_factory

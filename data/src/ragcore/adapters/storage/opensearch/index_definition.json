@@ -202,7 +202,6 @@
       },
       "title_embedding": {
         "type": "knn_vector",
-        "dimension": 768,
         "method": {
           "name": "hnsw",
           "engine": "faiss",
@@ -237,7 +236,6 @@
           },
           "embedding": {
             "type": "knn_vector",
-            "dimension": 768,
             "method": {
               "name": "hnsw",
               "engine": "faiss",

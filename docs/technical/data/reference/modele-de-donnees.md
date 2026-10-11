@@ -137,8 +137,9 @@ définition que l'ingestion applique est
   Les métadonnées vivent sous `metadata` : aucune ne peut écraser un champ du contrat.
 - **Texte indexé, pas stocké** : `_source` exclut `passages.text` et `passages.embedding`.
   Mongo reste le seul stockage du texte (ADR-015).
-- **Vecteurs** : 768 dimensions, HNSW (`faiss`), `cosinesimil`. La dimension mesurée
-  auprès de TEI doit être celle du mapping, vérifiée au démarrage.
+- **Vecteurs** : HNSW (`faiss`), `cosinesimil`, de la dimension que l'ingestion mesure
+  auprès de TEI et injecte à la création de l'index (1024 avec harrier). Un index
+  existant d'une autre dimension arrête le run.
 - **Écriture** : un `PUT` du document entier, qui remplace l'ancien d'un coup, passages
   compris (voir [idempotence.md](idempotence.md#la-saga)).
 

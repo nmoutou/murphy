@@ -170,8 +170,8 @@ concurrentes : on ne coupe jamais à travers un bloc structurel, et on ne dépas
   du parser est rompu (section non littérale), le bloc est ignoré plutôt que doté d'un
   offset faux.
 - Le calibrage vit dans `.env.dev`, à côté d'`EMBEDDING_MODEL` — voir
-  [configuration.md](configuration.md#chunkingsettings-préfixe-chunking_)
-  pour le raisonnement mesuré derrière `CHUNKING_MAX_CHARS=384`.
+  [configuration.md](configuration.md#chunkingsettings-préfixe-chunking_) :
+  `CHUNKING_MAX_CHARS=384` est une valeur héritée de l'ancien modèle.
 
 ## Relations et relations non formatées (`core/links/`, `sources/generic/relations.py`)
 

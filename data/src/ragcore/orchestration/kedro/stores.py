@@ -88,7 +88,10 @@ def ensure_indexes(
 
 
 def open_document_stores(
-    clients: InfraClients, settings: InfraSettings, plan: RunPlan
+    clients: InfraClients,
+    settings: InfraSettings,
+    plan: RunPlan,
+    vector_dimension: int,
 ) -> IngestionStores:
     data_db = settings.mongodb_data_db_name
     return IngestionStores(
@@ -96,7 +99,9 @@ def open_document_stores(
             clients.mongo, data_db, include_path=plan.include_path
         ),
         graph=Neo4jGraphRepository(clients.neo4j, plan.node_hydration),
-        search_index=OpenSearchSearchIndex(clients.opensearch, plan.index),
+        search_index=OpenSearchSearchIndex(
+            clients.opensearch, plan.index, vector_dimension
+        ),
         pending=MongoPendingRelationRepository(clients.mongo, data_db),
         unformatted=MongoUnformattedRelationRepository(clients.mongo, data_db),
     )

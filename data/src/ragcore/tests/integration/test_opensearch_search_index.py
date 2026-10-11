@@ -69,7 +69,7 @@ def opensearch_url():
 async def search_index(opensearch_url):
     """Un index neuf, créé par ``ensure_index`` comme dans le pipeline."""
     client = create_opensearch_client(opensearch_url)
-    repository = OpenSearchSearchIndex(client, INDEX)
+    repository = OpenSearchSearchIndex(client, INDEX, DIM)
     await repository.drop_index()
     await repository.ensure_index()
     yield repository
@@ -93,6 +93,16 @@ async def test_ensure_index_est_idempotent(search_index) -> None:
 
     await search_index.index_document(_doc(), _content(1))
     assert await _count(search_index) == 1
+
+
+async def test_un_index_existant_dune_autre_dimension_est_REFUSE(
+    search_index,
+) -> None:
+    """Un index n'est jamais modifié : un autre modèle impose de le recréer."""
+    other_model = OpenSearchSearchIndex(search_index._client, INDEX, DIM + 1)  # noqa: SLF001
+
+    with pytest.raises(ValueError, match=f"dimension {DIM}, .* en produit {DIM + 1}"):
+        await other_model.ensure_index()
 
 
 async def test_une_reecriture_REMPLACE_le_document_et_ses_passages(

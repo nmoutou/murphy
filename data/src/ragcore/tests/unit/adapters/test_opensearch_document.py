@@ -2,15 +2,11 @@
 Ce qu'OpenSearch en fait (mapping strict, dates, remplacement) se prouve en intégration.
 """
 
+import json
 from typing import Any
 
-import pytest
-
 from ragcore.adapters.storage.opensearch.index_document import build_index_document
-from ragcore.adapters.storage.opensearch.search_index import (
-    _load_index_definition,
-    check_vector_dimension,
-)
+from ragcore.adapters.storage.opensearch.search_index import _load_index_definition
 from ragcore.core.models.chunk import Chunk
 from ragcore.core.models.document import ParsedDocument
 from ragcore.core.models.enums import DocumentType, SourceName
@@ -122,16 +118,6 @@ def test_une_metadonnee_homonyme_reste_sous_metadata() -> None:
     assert body["metadata"] == {"identifier": "faux"}
 
 
-def test_les_deux_champs_vectoriels_ont_la_MEME_dimension() -> None:
-    """``check_vector_dimension`` ne lit que celle des passages."""
-    properties = _load_index_definition()["mappings"]["properties"]
-
-    passages = properties["passages"]["properties"]["embedding"]["dimension"]
-    assert properties["title_embedding"]["dimension"] == passages
-
-
-def test_un_modele_dune_autre_dimension_est_REFUSE() -> None:
-    check_vector_dimension(768)
-
-    with pytest.raises(ValueError, match="dimension 1024"):
-        check_vector_dimension(1024)
+def test_la_definition_ne_fixe_AUCUNE_dimension() -> None:
+    """La dimension est celle que mesure TEI : le fichier ne doit pas en imposer une."""
+    assert '"dimension"' not in json.dumps(_load_index_definition())

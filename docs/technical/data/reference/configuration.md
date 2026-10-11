@@ -81,9 +81,11 @@ service.
 
 Le service TEI, seul embedder de l'ingestion : pas de fournisseur à choisir. Au
 démarrage, le hook vérifie que TEI sert `EMBEDDING_MODEL` (`GET /info`) et mesure la
-dimension des vecteurs par une requête de sonde (`served_model.inspect_served_model`),
-qui doit être celle du mapping de l'index (768). Service injoignable, autre modèle, sonde
-en échec ou autre dimension = run arrêté avant tout nœud.
+dimension des vecteurs par une requête de sonde (`served_model.inspect_served_model`).
+Service injoignable, autre modèle ou sonde en échec = run arrêté avant tout nœud. La
+dimension mesurée est injectée dans le mapping à la création de l'index ; un index
+existant d'une autre dimension arrête le run au nœud `nukeAll`, avant tout document
+(`OpenSearchSearchIndex.ensure_index`).
 
 | Variable | Défaut | Rôle |
 |---|---|---|
@@ -94,8 +96,8 @@ en échec ou autre dimension = run arrêté avant tout nœud.
 
 ### `ChunkingSettings` (préfixe `CHUNKING_`)
 
-La découpe, à côté d'`EMBEDDING_MODEL` parce qu'elle en dépend : `CHUNKING_MAX_CHARS` est
-le plus grand qui tienne dans la fenêtre du modèle, et se remesure quand il change. Les
+La découpe, à côté d'`EMBEDDING_MODEL` parce qu'elle en dépend : en changer invalide les
+vecteurs écrits. Les
 deux variables sont obligatoires, sans défaut dans le code : une variable absente, vide ou
 qui n'est pas un entier arrête le run au démarrage, comme une valeur hors bornes
 (`ChunkingConfig`, `core/models/processing.py`). Pour essayer une valeur sans toucher au
@@ -104,7 +106,7 @@ fichier : `CHUNKING_MAX_CHARS=512 kedro run` (l'environnement du shell prime sur
 
 | Variable | Valeur | Effet |
 |---|---|---|
-| `CHUNKING_MAX_CHARS` | `384` | Taille maximale d'un chunk, en **caractères** (la fenêtre du modèle est en tokens ; ratio mesuré : 3,08 car/token en moyenne, 0,33 au pire). 384 est le plus grand qui tienne pour `all-mpnet-base-v2` : ≤ 300 tokens mesurés au tokenizer du modèle sur les six sources, **zéro document perdu** (512 en perdait 1, 1024 en perdait 98). C'est aussi le levier de coût : l'embedding est ~99,9 % du temps d'un run, et 128 → 384 l'a divisé par ~5 (838 s → 173 s). |
+| `CHUNKING_MAX_CHARS` | `384` | Taille maximale d'un chunk, en **caractères**. **Valeur héritée, sans fondement actuel** (ADR-032 §5) : 384 était le plus grand qui tienne dans la fenêtre de 384 tokens d'`all-mpnet-base-v2` (≤ 300 tokens mesurés sur les six sources ; 512 perdait 1 document, 1024 en perdait 98). La fenêtre de `microsoft/harrier-oss-v1-0.6b` est de 32 768 tokens : cette contrainte ne tient plus, et la valeur se reverra avec l'affichage des passages (ADR-030) ou une méthode d'évaluation. C'est aussi le levier de coût : l'embedding est ~99,9 % du temps d'un run, et 128 → 384 l'a divisé par ~5 (838 s → 173 s, mesuré avec `all-mpnet-base-v2`). |
 | `CHUNKING_OVERLAP_CHARS` | `25` | Recouvrement de la fenêtre glissante, en caractères. Doit rester < `CHUNKING_MAX_CHARS` : sinon le curseur n'avance pas, et le run s'arrête au démarrage. Ne joue que dans un bloc plus long que `CHUNKING_MAX_CHARS`, que la fenêtre coupe en plein mot : 25 caractères (3 ou 4 mots) gardent entier un mot coupé à la frontière, pas une phrase. **Non mesuré** : aucun jeu d'évaluation du retrieval n'existe pour le régler. |
 
 ### `LoggingSettings` (préfixe `KEDRO_`)

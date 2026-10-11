@@ -125,8 +125,8 @@ class TeiEmbedder:
 
         Le service rejette tout le lot si un seul chunk dépasse la fenêtre du modèle. Aucun
         ``CHUNKING_MAX_CHARS`` n'est sûr par construction : le chunker compte en
-        caractères, le modèle en tokens, et le ratio va de 3,08 car/token en moyenne à
-        0,33 au pire.
+        caractères, le modèle en tokens, et le ratio dépend du tokenizer (mesuré avec
+        celui d'``all-mpnet-base-v2`` : 3,08 car/token en moyenne, 0,33 au pire).
         """
         response = await client.post(
             f"{self._base_url}/embeddings",

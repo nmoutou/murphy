@@ -88,6 +88,6 @@ Extras optionnels (`pyproject.toml`) : `notebooks`, `docs`, `dev`.
 | `ValidationError` sur `environment` au démarrage | `ENVIRONMENT` ne vaut ni `dev` ni `prod` (casse comprise) : corriger la valeur. |
 | Le run échoue avant d'ingérer, en nommant un modèle | La précondition TEI : le modèle servi par le conteneur (`GET /info`) n'est pas `EMBEDDING_MODEL`. Redémarrer TEI après avoir changé la variable (`npm run up`). |
 | Le run échoue avant d'ingérer sur « sonde de dimension » ou « Impossible d'interroger » | TEI n'est pas joignable à `EMBEDDING_SERVICE_URL` : le démarrer (`npm run up`, ~4 min) ou corriger l'URL. |
-| Le run échoue avant d'ingérer sur « le mapping de l'index en déclare » | Le modèle servi produit des vecteurs d'une autre dimension que celle du mapping (`index_definition.json`). Changer de modèle impose de modifier le mapping et de réingérer tout le corpus. |
+| Le run échoue au nœud `nukeAll` sur « L'index … a des vecteurs de dimension » | L'index existant a été créé pour un autre modèle d'embedding, et il n'est jamais modifié. Réingérer tout le corpus avec `nuke_all: true` (dev), qui le recrée à la dimension mesurée auprès de TEI. |
 | `chunk.truncated` non nul au bilan | Le `CHUNKING_MAX_CHARS` configuré dépasse la fenêtre du modèle d'embedding : le corpus est complet mais des fins de chunks ne sont pas indexées — baisser `CHUNKING_MAX_CHARS`. |
 | Le backend ne trouve rien après un run | Le run était-il `ok` ? Un run `degraded` a laissé un corpus incomplet dans l'index servi. Lire le bilan dans `run_summaries`, puis relancer. |

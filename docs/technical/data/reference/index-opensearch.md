@@ -108,7 +108,7 @@ rester identiques.
         "type": "text", "analyzer": "fr_juridique",
         "fields": { "ref": { "type": "text", "analyzer": "references" } } },
       "title_embedding": {
-        "type": "knn_vector", "dimension": 768,
+        "type": "knn_vector",
         "method": { "name": "hnsw", "engine": "faiss", "space_type": "cosinesimil" } },
       "metadata": { "type": "object", "dynamic": true },
       "passages": {
@@ -121,7 +121,7 @@ rester identiques.
             "type": "text", "analyzer": "fr_juridique",
             "fields": { "ref": { "type": "text", "analyzer": "references" } } },
           "embedding": {
-            "type": "knn_vector", "dimension": 768,
+            "type": "knn_vector",
             "method": { "name": "hnsw", "engine": "faiss", "space_type": "cosinesimil" } } } }
     }
   }
@@ -143,10 +143,13 @@ rester identiques.
 
 - **`dynamic: strict`** : un champ inconnu fait échouer l'écriture du document. Seul
   `metadata` accepte des clés nouvelles.
-- **Les vecteurs** : 768 dimensions, celles d'`all-mpnet-base-v2`. Au démarrage,
-  l'ingestion vérifie que la dimension mesurée auprès de TEI est celle-ci, et s'arrête
-  sinon. Moteur `faiss` (le défaut d'OpenSearch
-  3.x ; `nmslib` est déprécié), graphe HNSW, similarité cosinus.
+- **Les vecteurs** : leur dimension n'est pas dans le fichier. L'ingestion la mesure
+  auprès de TEI au démarrage du run (1024 avec `microsoft/harrier-oss-v1-0.6b`) et
+  l'injecte dans les deux champs à la création de l'index. Sur un index qui existe déjà,
+  elle compare la dimension mesurée à celle de l'index et s'arrête si elles diffèrent :
+  l'index n'est jamais modifié, changer de modèle impose de le recréer (ADR-032 §4).
+  Moteur `faiss` (le défaut d'OpenSearch 3.x ; `nmslib` est déprécié), graphe HNSW,
+  similarité cosinus.
 
 ### Les métadonnées
 

@@ -12,7 +12,7 @@ from ragcore.core.models.search_content import SearchContent
 
 from .index_document import build_index_document
 
-__all__ = ["OpenSearchSearchIndex", "check_vector_dimension"]
+__all__ = ["OpenSearchSearchIndex"]
 
 _INDEX_DEFINITION_FILE = "index_definition.json"
 # Ni exception ni log : un absent n'est pas une erreur pour une suppression
@@ -30,24 +30,28 @@ def _load_index_definition() -> dict[str, Any]:
     return loaded
 
 
-def check_vector_dimension(dimension: int) -> None:
-    """Le mapping fixe la dimension : un modèle d'une autre dimension ferait rejeter
-    chaque document, un par un. Vérifié avant le run."""
-    mapping = _load_index_definition()["mappings"]["properties"]
-    declared = mapping["passages"]["properties"]["embedding"]["dimension"]
-    if dimension != declared:
-        raise ValueError(
-            f"Le modèle d'embedding produit des vecteurs de dimension {dimension}, or "
-            f"le mapping de l'index en déclare {declared} ({_INDEX_DEFINITION_FILE}). "
-            f"Changer de modèle impose de modifier le mapping et de réingérer tout le "
-            f"corpus."
-        )
+def _vector_fields(properties: dict[str, Any]) -> tuple[dict[str, Any], ...]:
+    return (
+        properties["title_embedding"],
+        properties["passages"]["properties"]["embedding"],
+    )
+
+
+def _index_definition(vector_dimension: int) -> dict[str, Any]:
+    """Le fichier ne porte pas la dimension : elle est celle que mesure TEI."""
+    definition = _load_index_definition()
+    for field in _vector_fields(definition["mappings"]["properties"]):
+        field["dimension"] = vector_dimension
+    return definition
 
 
 class OpenSearchSearchIndex:
-    def __init__(self, client: AsyncOpenSearch, index_name: str) -> None:
+    def __init__(
+        self, client: AsyncOpenSearch, index_name: str, vector_dimension: int
+    ) -> None:
         self._client = client
         self._index_name = index_name
+        self._vector_dimension = vector_dimension
 
     async def index_document(
         self, parsed: ParsedDocument, content: SearchContent
@@ -68,9 +72,25 @@ class OpenSearchSearchIndex:
     async def ensure_index(self) -> None:
         """À appeler une seule fois, avant le pool : depuis les workers, ce
         check-then-act ferait échouer tous les créateurs sauf un."""
-        if not await self._client.indices.exists(index=self._index_name):
-            await self._client.indices.create(
-                index=self._index_name, body=_load_index_definition()
+        if await self._client.indices.exists(index=self._index_name):
+            await self._check_vector_dimension()
+            return
+        await self._client.indices.create(
+            index=self._index_name, body=_index_definition(self._vector_dimension)
+        )
+
+    async def _check_vector_dimension(self) -> None:
+        """Un index existant n'est jamais modifié : d'une autre dimension, il ferait
+        rejeter chaque document, un par un."""
+        response = await self._client.indices.get_mapping(index=self._index_name)
+        properties = next(iter(response.values()))["mappings"]["properties"]
+        indexed = {field["dimension"] for field in _vector_fields(properties)}
+        if indexed != {self._vector_dimension}:
+            raise ValueError(
+                f"L'index « {self._index_name} » a des vecteurs de dimension "
+                f"{', '.join(map(str, sorted(indexed)))}, or le modèle d'embedding en "
+                f"produit {self._vector_dimension}. Changer de modèle impose de supprimer "
+                f"l'index et de réingérer tout le corpus (`nuke_all: true` en dev)."
             )
 
     async def drop_index(self) -> None:

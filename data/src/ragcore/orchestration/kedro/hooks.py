@@ -79,7 +79,7 @@ class TelemetryHooks:
         clients = open_clients(settings)
         self._runtime.defer_close(lambda: close_clients(clients))
         ensure_indexes(clients, settings, self._runtime)
-        stores = open_document_stores(clients, settings, plan)
+        stores = open_document_stores(clients, settings, plan, embedder.dimension)
         meta = open_meta_stores(clients, settings)
         session = self._open_session(plan.sources, meta, embedder)
         stack = build_processing_stack(plan, Path(settings.xml_source_path), embedder)
