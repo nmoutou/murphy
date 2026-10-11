@@ -39,8 +39,8 @@ the only embedder: `EMBEDDING_MODEL` and `EMBEDDING_SERVICE_URL` are required.
 
 Tuning surface: `conf/base/parameters.yml` holds dev conveniences only (ignored outside
 `ENVIRONMENT=dev`). The chunking (`CHUNKING_MAX_CHARS`, `CHUNKING_OVERLAP_CHARS`) lives
-in `../.env.dev`, next to `EMBEDDING_MODEL`, since the chunk size is measured against
-the model's window. The
+in `../.env.dev`, next to `EMBEDDING_MODEL`, since changing it invalidates the vectors
+(384 is a legacy value, sized for the previous model's window). The
 OpenSearch index has a fixed name, `OPENSEARCH_INDEX` in `../.env.dev`, which the backend
 will share: after changing the mapping, the analyzers, the chunking or the embedding
 model, re-ingest the whole corpus.

@@ -58,10 +58,11 @@ C'est la seule zone où une modification d'un côté casse l'autre. Quatre contr
 | **Nom de l'index** | `OPENSEARCH_INDEX` (`.env.dev`), créé et rempli par l'ingestion, avec son mapping et ses analyseurs | La même variable. Au boot (`backend/src/infra/opensearch.ts`), refus de démarrer si l'index n'existe pas ; le backend écrit le pipeline de recherche RRF (ADR-028 §6). |
 | **Documents et passages** | Un document OpenSearch par document Mongo : `identifier`, `document_type`, `nature`, passages (`chunk_id`, `char_start`, `char_end`) imbriqués avec leurs vecteurs ([`index-opensearch.md`](data/reference/index-opensearch.md)) | La requête hybride à quatre sous-requêtes ; `_source` et `inner_hits` n'en rendent que l'identité et les offsets des passages |
 | **Contenu** | Mongo `MURPHY_DATA.documents` : un document entier par `identifier` | Le titre et le texte des documents trouvés ; le texte d'un passage est `content[char_start:char_end]` (points de code). Les passages partent dans la page de résultats, le document entier par `GET /documents/:identifier` |
-| **Modèle d'embedding** | `all-mpnet-base-v2`, 768 dim, Cosine — vérifié contre TEI au démarrage du run | Le même modèle via le même conteneur TEI |
+| **Modèle d'embedding** | `microsoft/harrier-oss-v1-0.6b`, Cosine — vérifié contre TEI au démarrage du run ; la dimension (1024) est mesurée auprès de TEI et fixée à la création de l'index. Passages et titres sans consigne | Le même modèle via le même conteneur TEI ; la question porte la consigne `EMBEDDING_QUERY_INSTRUCTION` (ADR-032) |
 
 Le modèle d'embedding est le contrat le plus fragile : question et corpus doivent être
-embarqués par le **même** modèle. C'est pourquoi il n'y a qu'**un** fichier
+embarqués par le **même** modèle. Changer de modèle impose une réingestion complète ;
+changer la consigne de la question ne touche que le backend. C'est pourquoi il n'y a qu'**un** fichier
 d'environnement (`.env.dev` à la racine, gitignoré), partagé par le conteneur TEI, le
 backend et le pipeline d'ingestion.
 
@@ -104,9 +105,10 @@ avec les mêmes options).
 - Les images tournent en utilisateur `node` ; `NODE_ENV` vient de la cible de build.
 - **OpenSearch garde son plugin de sécurité**, mais ni le backend ni l'ingestion ne
   s'authentifient encore : à configurer avant tout déploiement.
-- TEI met environ 4 min à être prêt après la création du conteneur (mesuré sur une RTX
-  3050 : un cœur à 100 %, GPU inactif) et dépasse 4 Go de mémoire pendant ce
-  chargement (1 Go ensuite). Un `mem_limit` de 2 Go l'empêchait de démarrer.
+- TEI a mis 278 s à être prêt avec `microsoft/harrier-oss-v1-0.6b` (mesuré sur une RTX
+  3050), dont 88 s de téléchargement des poids sur un cache vide. Sa mémoire monte à
+  4,1 Go pendant le chargement, puis retombe à 1,1 Go ; il occupe 1,4 Go de mémoire GPU
+  (2,1 Go pendant le préchauffage). Un `mem_limit` de 2 Go l'empêchait de démarrer.
 
 ## Où vit quoi (un seul dépôt, ADR-016)
 

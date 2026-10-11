@@ -114,6 +114,8 @@ Déroulé détaillé nœud par nœud : [reference/pipeline.md](reference/pipelin
 | Recherche | OpenSearch, index `OPENSEARCH_INDEX` (nom fixe, ADR-018, ADR-028) : documents, passages, vecteurs | la requête hybride du backend (ADR-028, ADR-029) |
 | Graphe | Neo4j (nœuds + arêtes typées par verbe) | pas encore câblé côté serving |
 
-Le modèle d'embedding et sa dimension (`all-mpnet-base-v2`, 768, Cosine) doivent être les
-mêmes des deux côtés — c'est pour ça qu'il n'y a qu'**un** `.env.dev`, à la racine du dépôt,
-partagé par le pipeline et le conteneur TEI.
+Le modèle d'embedding (`microsoft/harrier-oss-v1-0.6b`, Cosine) doit être le même des deux
+côtés — c'est pour ça qu'il n'y a qu'**un** `.env.dev`, à la racine du dépôt, partagé par
+le pipeline et le conteneur TEI. Sa dimension (1024) est mesurée auprès de TEI et fixée à
+la création de l'index. Seule la question du backend porte une consigne : les passages et
+les titres n'en ont pas (ADR-032).

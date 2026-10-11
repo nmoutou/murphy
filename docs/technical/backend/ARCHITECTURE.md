@@ -34,7 +34,10 @@ réponses gardent l'enveloppe `{ status, data, meta }` de `buildApiResponse`.
    dépasse jamais la profondeur. Une page au-delà est refusée
    (`PAGE_OUT_OF_RANGE`) avant tout appel ; une page en deçà mais au-delà des documents
    trouvés rend une liste vide.
-2. **Embedding** (`ragService.embedQuestion`) → service TEI.
+2. **Embedding** (`ragService.embedQuestion`) → service TEI. La consigne
+   `EMBEDDING_QUERY_INSTRUCTION` est collée devant la question, sans séparateur : le
+   modèle attend `Instruct: {tâche}\nQuery:` devant une question, et rien devant les
+   passages indexés (ADR-032).
 3. **Recherche** (`ragService.retrieveDocuments`) → OpenSearch, requête hybride (voir
    « La recherche ») : `PAGINATION_SIZE` documents classés à partir de `from`, avec
    leurs passages correspondants.
@@ -159,7 +162,7 @@ recherche comme pour le boot), sans relance.
 
 | Service | Rôle | Note |
 |---|---|---|
-| TEI (HuggingFace Text Embeddings Inference) | Embedding de la question | `POST /v1/embeddings`, GPU NVIDIA requis. Le modèle (`all-mpnet-base-v2`, 768, Cosine) doit être celui de l'ingestion. |
+| TEI (HuggingFace Text Embeddings Inference) | Embedding de la question | `POST /v1/embeddings`, GPU NVIDIA requis. Le modèle (`microsoft/harrier-oss-v1-0.6b`, 1024, Cosine) doit être celui de l'ingestion ; seule la question porte la consigne. |
 | OpenSearch | Recherche hybride | Index `OPENSEARCH_INDEX`, vérifié au boot ; pipeline `murphy-rrf` écrit au boot. Sonde de santé : `/_cluster/health`. |
 | MongoDB | Titre et texte des documents | Le texte des passages y est découpé ; `GET /documents` le sert entier. |
 | Neo4j | — | Provisionné, **pas encore câblé** dans le chemin de requête (réservé : enrichissement graphe). |

@@ -72,7 +72,9 @@ taille et 10 000 (le plafond du `k` d'un kNN). `checkEnvironment` journalise ens
 variables manquantes et celles qui ont pris leur valeur par défaut.
 
 Critiques (erreur logguée si absentes, sans bloquer) : `MONGODB_URI`, `OPENSEARCH_INDEX`
-(le nom de l'index, partagé avec l'ingestion).
+(le nom de l'index, partagé avec l'ingestion), `EMBEDDING_QUERY_INSTRUCTION` (la consigne
+placée devant la question ; absente, la question part sans elle et la recherche se dégrade
+en silence).
 Principales optionnelles : `PORT` (5000), `NODE_LOG_LEVEL` (`debug` en dev, `info` en prod),
 `MONGODB_DATABASE` (MURPHY_DATA),
 `OPENSEARCH_URL`, `OPENSEARCH_TIMEOUT` (10000 ms), `PAGINATION_SIZE` (10), `PAGINATION_DEPTH` (100),
@@ -102,5 +104,5 @@ curl http://localhost:5000/api/v1/health   # ok | degraded (1 service down) | do
 | Refus de démarrer : « The OpenSearch index "…" (OPENSEARCH_INDEX) does not exist » | `OPENSEARCH_INDEX` est absente ou ne désigne aucun index. Vérifier `.env.dev`, puis lancer l'ingestion : `kedro run` dans `data/`. |
 | 500 `CONTRACT_VIOLATION`, log « Serving contract violated » | Un document OpenSearch, son document Mongo ou ses offsets ne respectent pas le contrat ; le message cite l'`identifier` ou le `chunk_id`. Réingérer le corpus. |
 | `results` vide sur toutes les questions | Index vide : lancer l'ingestion. |
-| 502 `EMBEDDING_FAILED` ou 504 `TIMEOUT` | Conteneur TEI (GPU requis, ~4 min de démarrage) — `npm run logs` depuis la racine. |
+| 502 `EMBEDDING_FAILED` ou 504 `TIMEOUT` | Conteneur TEI (GPU requis, ~5 min au premier démarrage) — `npm run logs` depuis la racine. |
 | 429 `RATE_LIMIT_EXCEEDED` en dev | `RATE_LIMIT_MAX` de `.env.dev` remplace le défaut de 600 : le relever ou le retirer. |

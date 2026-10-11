@@ -35,9 +35,8 @@ Le hook est le **point d'assemblage** du run. Dans l'ordre :
    modèle servi à `EMBEDDING_MODEL`. TEI ignore le champ `model` des requêtes ; sans
    cette vérification, un conteneur pas redémarré après un changement de modèle écrirait
    les vecteurs d'un autre modèle que celui que le backend interroge — en silence. Puis
-   une requête de sonde mesure la dimension des vecteurs, comparée à celle que fixe le
-   mapping de l'index (`opensearch/index_definition.json`) : un modèle d'une autre
-   dimension ferait rejeter chaque document. Échec = run arrêté avant tout nœud ;
+   une requête de sonde mesure la dimension des vecteurs, transmise à l'index du run.
+   Échec = run arrêté avant tout nœud ;
 5. **Clients, index et dépôts du hook** (`stores.open_clients`, `ensure_indexes`,
    `open_document_stores`, `open_meta_stores`) : `ensure_data_indexes` (MURPHY_DATA :
    documents, pendantes), `ensure_meta_indexes` (MURPHY_META : bilans) et
@@ -69,7 +68,9 @@ run), le runtime du hook.
 
 - `nuke_all: false` → ne supprime rien, mais fait quand même le **setup partagé** :
   `search_index.ensure_index()`, qui crée l'index s'il est absent, avec ses analyseurs et
-  son mapping ([index-opensearch.md](index-opensearch.md)). L'index du run doit exister
+  son mapping ([index-opensearch.md](index-opensearch.md)) et la dimension mesurée. Un
+  index existant d'une autre dimension arrête le run : il n'est jamais modifié, et un
+  modèle d'une autre dimension ferait rejeter chaque document. L'index du run doit exister
   avant le pool — la laisser aux workers les mettrait en course (OpenSearch refuse toutes
   les créations sauf une).
 - `nuke_all: true` → le garde-fou a déjà joué en amont : hors `ENVIRONMENT=dev`, `plan_run`
