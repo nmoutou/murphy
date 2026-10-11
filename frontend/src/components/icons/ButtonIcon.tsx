@@ -13,6 +13,7 @@ interface ButtonIconProps {
   readonly type?: 'button' | 'submit';
   readonly variant?: ButtonIconVariant;
   readonly animatedOnHover?: boolean;
+  readonly disabled?: boolean;
 }
 
 export default function ButtonIcon({
@@ -23,6 +24,7 @@ export default function ButtonIcon({
   type = 'button',
   variant = 'secondary',
   animatedOnHover = false,
+  disabled = false,
 }: ButtonIconProps) {
   const [isHovered, setIsHovered] = useState(false);
 
@@ -35,7 +37,8 @@ export default function ButtonIcon({
     <button
       type={type}
       aria-label={label}
-      className={`p-1 rounded-full transition-all ${background} ${opacity}`}
+      disabled={disabled}
+      className={`p-1 rounded-full transition-all disabled:opacity-40 ${background} ${opacity}`}
       onPointerEnter={() => setIsHovered(true)}
       onPointerLeave={() => setIsHovered(false)}
       onClick={onClick}

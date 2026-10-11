@@ -22,5 +22,4 @@ Requires reachable MongoDB, OpenSearch (with the index written by `data/`), and 
 embedding service (see env vars in `src/config.ts`). For the full stack including those
 services, run `npm run up` at the repository root.
 
-The stream contract (`AppUIMessage`) is imported from `@murphy/contract/messages`,
-shared with the frontend: see [`docs/technical/backend/ARCHITECTURE.md`](../docs/technical/backend/ARCHITECTURE.md).
+The API contract is imported from `@murphy/contract/search`, shared with the frontend: see [`docs/technical/backend/ARCHITECTURE.md`](../docs/technical/backend/ARCHITECTURE.md).

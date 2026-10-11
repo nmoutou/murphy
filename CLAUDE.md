@@ -4,7 +4,7 @@ Guidance for Claude Code in this repository.
 
 ## What this is
 
-Murphy is a search engine over French legal documents (LEGIFRANCE / DILA data). The backend embeds a question, runs a hybrid search over the legal documents and their chunks, and serves a page of ranked documents with their matching passages; a document's full text is served on demand. The LLM and the chat stream are gone (ADR-030); the frontend still speaks that stream and is out of service until ADR-032 adapts it.
+Murphy is a search engine over French legal documents (LEGIFRANCE / DILA data). The backend embeds a question, runs a hybrid search over the legal documents and their chunks, and serves a page of ranked documents with their matching passages; a document's full text is served on demand. The LLM and the chat stream are gone (ADR-030); the frontend is a search page with Dockview tabs (ADR-032).
 
 The backend is **stateless by design**: every request recomputes the whole pipeline, with no conversation history, no cache and no automatic retry (fail fast with a clear error). Think twice before adding caching, sessions or retries.
 
@@ -14,7 +14,7 @@ One repository (ADR-016). The TypeScript projects are **npm workspaces** (`backe
 
 - `backend/` — Express + TypeScript: the search API.
 - `frontend/` — Next.js 16 (App Router), React 19, Tailwind v4.
-- `packages/contract/` — `@murphy/contract`: the zod schemas, and the types inferred from them, that backend and frontend exchange at runtime. One module per subpath (`@murphy/contract/search`; `messages` and `errors`, frozen until ADR-032), no barrel; compiled by `tsc` to `dist/`. Only what crosses a runtime boundary between workspaces belongs in `packages/`.
+- `packages/contract/` — `@murphy/contract`: the zod schemas, and the types inferred from them, that backend and frontend exchange at runtime. One module per subpath (`@murphy/contract/search`), no barrel; compiled by `tsc` to `dist/`. Only what crosses a runtime boundary between workspaces belongs in `packages/`.
 - `data/` — Python/Kedro ingestion (XML → chunks → Mongo/OpenSearch/Neo4j), run offline. It shares the databases with the backend, never code.
 - `docs/` — all the documentation:
   - `pilotage/`: `ADR/` (the ADRs, indexed in `INDEX.md`) and `WIP/` (work in progress);
@@ -59,7 +59,7 @@ Coverage thresholds (`jest.config.js`: lines/statements 65 %, functions 60 %, br
 
 `npm run dev` (Turbopack), `build`, `type-check`, `lint` (`--max-warnings=0`), `test` (Vitest + Testing Library, jsdom), `format` (Prettier; `format:check` runs in `check`). Path alias `@/*` → `src/*`.
 
-Tests live in `src/__tests__/`, mirroring `src/`; `vitest.config.mts` runs them on Vite, outside Next. `src/__tests__/fakeWebSocket.ts` plays the backend's side of the chat socket (`stubWebSocket()`), which the backend no longer serves: the frontend is frozen until ADR-032 (ADR-030 §8).
+Tests live in `src/__tests__/`, mirroring `src/`; `vitest.config.mts` runs them on Vite, outside Next. `src/__tests__/setup.ts` stubs what jsdom lacks for Dockview (`ResizeObserver`, `matchMedia`).
 
 ## Serving: the search flow
 
@@ -76,7 +76,7 @@ The search pipeline:
 4. **Fetch documents** → Mongo `documents`, by `identifier`, for the title, the text and `metadata.statut` (the DILA `ETAT`, absent from decisions and sections). Each passage is cut out of the document's `content` between its `char_start`/`char_end` (code points, converted to UTF-16 in `services/passages.ts`). An invalid OpenSearch hit, a document missing from Mongo or out-of-range offsets raise a `CONTRACT_VIOLATION` `RagError` (ADR-015).
 5. **Answer** `{ page, pageCount, pageSize, pageSizes, results }`: per document, in ranking order, `identifier`, `title`, `documentType`, `nature`, `isInForce` (`true` for `VIGUEUR` only, `false` for any other status, `VIGUEUR_DIFF` included, absent without one: ADR-032 §9) and its `passages` (`chunkId`, `text`, `start`, `end`: UTF-16 offsets into the `content` served by `GET /documents`). No score, no timing: the step durations are logged (`Search completed`).
 
-The contract is `@murphy/contract/search`: the zod schemas of the request, the search response, the document and the error codes. `@murphy/contract/messages` and `errors` describe the old chat stream; the backend no longer imports them, and they stay frozen for the frontend until ADR-032.
+The contract is `@murphy/contract/search`: the zod schemas of the request, the search response, the document and the error codes.
 
 **Errors (ADR-030 §4)**: an HTTP status and a code (`status.message`), never the raw message, which stays in the logs; no stage leaves the backend. `errorHandler` maps a `RagError` through `utils/errorResponse.ts:toErrorResponse`: 400 `PAGE_OUT_OF_RANGE`, 404 `DOCUMENT_NOT_FOUND`, 502 `EMBEDDING_FAILED`/`SEARCH_FAILED`/`DB_FETCH_FAILED`, 504 `TIMEOUT`, 500 `CONTRACT_VIOLATION`; anything else is 500 `INTERNAL`. A client leaving does not stop the pipeline (ADR-030 §6).
 

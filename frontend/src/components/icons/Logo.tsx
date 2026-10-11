@@ -17,7 +17,7 @@ export default function Logo({ width = LOGO_DEFAULT_WIDTH }: LogoProps) {
   return (
     <Link href="/">
       <Image
-        className="px-16 w-auto h-auto invert"
+        className="h-auto invert"
         src={'/img/logo.png'}
         alt={'Logo Murphy'}
         width={width}

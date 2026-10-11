@@ -1,4 +1,4 @@
-import type { DocumentType } from '@murphy/contract/messages';
+import type { DocumentType } from '@murphy/contract/search';
 
 /** Un type ajouté au contrat casse le build tant qu'il n'est pas nommé ici */
 const DOCUMENT_TYPE_LABELS: Record<DocumentType, string> = {

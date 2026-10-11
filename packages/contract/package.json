@@ -5,14 +5,6 @@
   "description": "What backend and frontend exchange at runtime: zod schemas, and the types inferred from them. One module per contract, imported by subpath (ADR-016).",
   "type": "commonjs",
   "exports": {
-    "./messages": {
-      "types": "./dist/messages.d.ts",
-      "default": "./dist/messages.js"
-    },
-    "./errors": {
-      "types": "./dist/errors.d.ts",
-      "default": "./dist/errors.js"
-    },
     "./search": {
       "types": "./dist/search.d.ts",
       "default": "./dist/search.js"
@@ -21,12 +13,6 @@
   "//": "typesVersions: the same subpaths for resolvers that ignore `exports` (ts-jest forces the node10 resolution)",
   "typesVersions": {
     "*": {
-      "messages": [
-        "./dist/messages.d.ts"
-      ],
-      "errors": [
-        "./dist/errors.d.ts"
-      ],
       "search": [
         "./dist/search.d.ts"
       ]
@@ -41,11 +27,7 @@
   "dependencies": {
     "zod": "^4.3.6"
   },
-  "peerDependencies": {
-    "ai": "^6.0.87"
-  },
   "devDependencies": {
-    "ai": "^6.0.87",
     "typescript": "^5.9.3"
   }
 }

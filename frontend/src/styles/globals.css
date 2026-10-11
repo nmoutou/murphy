@@ -1,4 +1,5 @@
 @import 'tailwindcss';
+@import 'dockview-react/dist/styles/dockview.css';
 
 @theme inline {
   --font-sans: var(--font-geist-sans);
@@ -18,61 +19,19 @@
   scrollbar-color: var(--color-tertiary) var(--color-secondary);
 }
 
-/* Mise en page du chat */
-.chat-layout {
-  @apply flex items-start gap-3;
-}
-
-.chat-content {
-  @apply flex-1 break-words;
-}
-
-/* Espace entre les blocs markdown rendus */
-.chat-content > :not(:first-child) {
-  @apply my-4;
-}
-
-.chat-bubble {
-  @apply rounded-[16px] px-4 py-2 max-w-[80%];
-}
-
-/* Variantes */
-.chat-bubble-user {
-  @apply rounded-br-none bg-secondary text-tertiary;
-}
-
-.chat-bubble-agent {
-  @apply rounded-bl-none bg-quaternary text-secondary;
-}
-
-/* Messages */
-.message-container {
-  @apply flex mb-4 px-4;
-}
-
-.message-container-user {
-  @apply justify-end;
-}
-
-.message-container-agent {
-  @apply justify-start;
-}
-
-/* Source */
-/* TODO : simplifier */
-
-.source-item {
-  @apply p-2 rounded text-xs opacity-80 border border-tertiary;
-}
-
-.sources-list-header {
-  @apply mt-3 pt-3 border-t border-tertiary;
-}
-
-.sources-list-summary {
-  @apply text-xs font-semibold hover:opacity-80;
-}
-
-.sources-list-content {
-  @apply mt-2 space-y-2;
+/* Dockview aux couleurs du @theme ; déclaré après sa feuille pour l'emporter sur le thème sombre */
+.dockview-theme-murphy {
+  --dv-group-view-background-color: var(--color-primary);
+  --dv-tabs-and-actions-container-background-color: var(--color-primary);
+  --dv-activegroup-visiblepanel-tab-background-color: var(--color-secondary);
+  --dv-activegroup-hiddenpanel-tab-background-color: var(--color-primary);
+  --dv-inactivegroup-visiblepanel-tab-background-color: var(--color-secondary);
+  --dv-inactivegroup-hiddenpanel-tab-background-color: var(--color-primary);
+  --dv-tab-divider-color: var(--color-primary);
+  --dv-activegroup-visiblepanel-tab-color: var(--color-quaternary);
+  --dv-activegroup-hiddenpanel-tab-color: var(--color-tertiary);
+  --dv-inactivegroup-visiblepanel-tab-color: var(--color-tertiary);
+  --dv-inactivegroup-hiddenpanel-tab-color: var(--color-tertiary);
+  --dv-separator-border: var(--color-secondary);
+  --dv-paneview-header-border-color: var(--color-secondary);
 }

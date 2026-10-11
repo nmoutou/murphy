@@ -1,4 +1,4 @@
-import MainPanel from '@/components/MainPanel';
+import SearchScreen from '@/features/workspace/SearchScreen';
 
 export const metadata = {
   title: 'Murphy - Application',
@@ -6,5 +6,5 @@ export const metadata = {
 };
 
 export default function App() {
-  return <MainPanel />;
+  return <SearchScreen />;
 }

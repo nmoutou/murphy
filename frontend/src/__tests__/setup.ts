@@ -12,6 +12,29 @@ if (typeof HTMLDialogElement.prototype.showModal !== 'function') {
   };
 }
 
+// Dockview mesure son conteneur ; jsdom n'a ni ResizeObserver ni mise en page
+if (typeof globalThis.ResizeObserver !== 'function') {
+  globalThis.ResizeObserver = class ResizeObserver {
+    observe(): void {}
+    unobserve(): void {}
+    disconnect(): void {}
+  };
+}
+
+// Un écran large par défaut ; un test le rétrécit en remplaçant matchMedia
+if (typeof window.matchMedia !== 'function') {
+  window.matchMedia = (query: string): MediaQueryList => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addListener: () => {},
+    removeListener: () => {},
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    dispatchEvent: () => false,
+  });
+}
+
 // Sans les globals de Vitest, Testing Library ne peut pas enregistrer son nettoyage
 afterEach(() => {
   cleanup();
