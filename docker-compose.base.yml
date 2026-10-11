@@ -88,7 +88,7 @@ services:
   embedding-service:
     container_name: embedding-service
     image: ghcr.io/huggingface/text-embeddings-inference:cuda-1.8.1
-    command: ["--model-id", "${EMBEDDING_MODEL}", "--pooling", "mean", "--dtype", "float16"]
+    command: ["--model-id", "${EMBEDDING_MODEL}"]
     networks:
       - backend
     volumes:
