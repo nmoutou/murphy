@@ -1,6 +1,6 @@
 /**
  * Budget par IP de la recherche, plus strict que le limiteur global : chaque recherche
- * appelle TEI et OpenSearch (ADR-031 §5).
+ * appelle TEI et OpenSearch (ADR-030 §5).
  */
 
 import rateLimit from 'express-rate-limit';

@@ -7,7 +7,7 @@ import { embedQuestion, retrieveDocuments, fetchDocuments } from './ragService';
 
 const logger = rootLogger.child({ context: 'searchService' });
 
-/** Arrondi par défaut : `from + size` ne dépasse jamais la profondeur (ADR-031 §2) */
+/** Arrondi par défaut : `from + size` ne dépasse jamais la profondeur (ADR-030 §2) */
 export const PAGE_COUNT = Math.floor(config.pagination.depth / config.pagination.size);
 
 const toContractPassage = ({ ref, text, highlightStart, highlightEnd }: Passage): ContractPassage => ({

@@ -1,4 +1,4 @@
-/** POST /api/v1/search — une page de la recherche hybride (ADR-031) */
+/** POST /api/v1/search — une page de la recherche hybride (ADR-030) */
 
 import express, { Request, Response } from 'express';
 import { asyncHandler } from '../middleware/errorHandler';

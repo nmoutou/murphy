@@ -1,6 +1,6 @@
 import type { DocumentType } from '@murphy/contract/search';
 
-/** L'étape en échec, pour les logs : le client n'en reçoit que le code (ADR-031 §4) */
+/** L'étape en échec, pour les logs : le client n'en reçoit que le code (ADR-030 §4) */
 export type RagStage = 'request' | 'embedding' | 'retrieval';
 
 export class RagError extends Error {

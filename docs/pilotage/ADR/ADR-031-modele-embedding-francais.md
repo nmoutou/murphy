@@ -1,4 +1,4 @@
-# ADR-032 — Un modèle d'embedding qui couvre le droit français
+# ADR-031 — Un modèle d'embedding qui couvre le droit français
 
 **Statut** : ✅ Accepté (11 octobre 2026) — amende ADR-015 §2 · ferme le point ouvert
 d'ADR-028 (Conséquences, limites connues)
@@ -7,7 +7,7 @@ d'ADR-028 (Conséquences, limites connues)
 
 ADR-028 pose que le modèle d'embedding est anglais : `all-mpnet-base-v2` est entraîné
 surtout sur de l'anglais, et le corpus est du droit français. Son remplacement suit
-l'étape 2 de la migration (ADR-031) et précède l'interface du frontend (ADR-030).
+l'étape 2 de la migration (ADR-030) et précède l'interface du frontend (ADR-032).
 
 Cette ADR compare les candidats sur leurs spécifications et sur les benchmarks publiés.
 Aucun jeu d'évaluation propre à Murphy n'est constitué : la comparaison s'appuie sur les
@@ -210,7 +210,7 @@ variable à la fois.
 La justification de 384 ne tient plus. Elle était la plus grande taille qui tenait dans
 la fenêtre de 384 tokens d'`all-mpnet-base-v2` (300 tokens au plus, mesurés). Avec les
 32 768 tokens d'harrier, 384 devient une valeur héritée, sans fondement, et la
-documentation le dit. La longueur des passages se reverra avec l'affichage (ADR-030) ou
+documentation le dit. La longueur des passages se reverra avec l'affichage (ADR-032) ou
 une méthode d'évaluation.
 
 ### 6. Le contrat ingestion ↔ serving (amende ADR-015 §2)
@@ -301,7 +301,7 @@ l'index est encore en 768. Seul le dev est touché, la prod n'est pas déployée
 - Un `kedro run` sur l'index resté en 768 doit s'arrêter avec le garde-fou du §4.
 - Puis réingestion complète (`nuke_all`) : sa durée est mesurée, à comparer aux 173 s
   d'avant (`configuration.md`).
-- Vérification par l'API, comme pour ADR-031 : recherche et pagination, document
+- Vérification par l'API, comme pour ADR-030 : recherche et pagination, document
   inconnu, découpe exacte des passages dans le `content`, aucun `CONTRACT_VIOLATION`, des
   vecteurs de 1024 dimensions dans les logs. Pas d'évaluation des résultats (§7).
 
@@ -315,8 +315,8 @@ l'index est encore en 768. Seul le dev est touché, la prod n'est pas déployée
 
 ## Références
 
-ADR-015 (contrat ingestion ↔ serving) · ADR-028 (OpenSearch, modèle anglais) · ADR-031
-(API de recherche) · ADR-030 (interface du frontend, à écrire)
+ADR-015 (contrat ingestion ↔ serving) · ADR-028 (OpenSearch, modèle anglais) · ADR-030
+(API de recherche) · ADR-032 (interface du frontend, à écrire)
 
 - [TEI v1.8.1](https://github.com/huggingface/text-embeddings-inference/tree/v1.8.1) —
   `core/src/tokenization.rs` (consigne), `router/src/lib.rs` (pooling, précision),

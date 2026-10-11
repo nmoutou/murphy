@@ -4,7 +4,7 @@
 
 Le moteur de recherche de Murphy : une API Express 5 / TypeScript qui, pour une
 question, rend des documents juridiques classés et leurs passages correspondants
-(ADR-028, ADR-031). Elle est **stateless par conception** : chaque requête recalcule
+(ADR-028, ADR-030). Elle est **stateless par conception** : chaque requête recalcule
 tout le pipeline, sans historique, sans session, sans cache et sans retry automatique
 (fail-fast avec une erreur claire). Garder cela en tête avant d'ajouter cache, sessions
 ou couches de retry.
@@ -12,7 +12,7 @@ ou couches de retry.
 Les bases sont supposées **pré-peuplées** par le pipeline d'ingestion (`data/`, hors de
 cette stack) : les deux ne partagent que les bases.
 
-## Les routes (ADR-031)
+## Les routes (ADR-030)
 
 | Route | Rôle |
 |---|---|
@@ -37,7 +37,7 @@ réponses gardent l'enveloppe `{ status, data, meta }` de `buildApiResponse`.
 2. **Embedding** (`ragService.embedQuestion`) → service TEI. La consigne
    `EMBEDDING_QUERY_INSTRUCTION` est collée devant la question, sans séparateur : le
    modèle attend `Instruct: {tâche}\nQuery:` devant une question, et rien devant les
-   passages indexés (ADR-032).
+   passages indexés (ADR-031).
 3. **Recherche** (`ragService.retrieveDocuments`) → OpenSearch, requête hybride (voir
    « La recherche ») : `PAGINATION_SIZE` documents classés à partir de `from`, avec
    leurs passages correspondants.
@@ -88,7 +88,7 @@ pipeline. Elle est décrite et mesurée dans
 doivent rester identiques. `k` et `pagination_depth` valent `PAGINATION_DEPTH`
 (défaut 100) et restent les mêmes d'une page à l'autre, sinon le classement change.
 
-**Les passages d'un document** (`services/passageRanking.ts`, ADR-028 §7, ADR-031 §3) :
+**Les passages d'un document** (`services/passageRanking.ts`, ADR-028 §7, ADR-030 §3) :
 - ceux de la sous-requête lexicale (ses `inner_hits`, 100 au plus) et les 3 plus proches
   de la sous-requête vectorielle, fusionnés par RRF sur leurs rangs (constante 60, celle
   d'OpenSearch) et dédoublonnés par `chunk_id` ;
@@ -96,7 +96,7 @@ doivent rester identiques. `k` et `pagination_depth` valent `PAGINATION_DEPTH`
   parent) n'en a aucun : son texte se lit par `GET /documents`. Une section n'a jamais de
   passage.
 
-## Erreurs (ADR-031 §4)
+## Erreurs (ADR-030 §4)
 
 Une erreur est un **statut HTTP et un code** (`status.message`), jamais le message brut,
 qui reste dans les logs. Chaque client traduit ses échecs par
@@ -119,7 +119,7 @@ OpenSearch, `MongoNetworkTimeoutError`…), sinon celui du client.
 | 500 | `CONTRACT_VIOLATION`, `INTERNAL` (toute autre erreur) |
 
 Un 4xx est journalisé en `warn`, le reste en `error`. Une recherche ne surveille pas le
-départ du client : la réponse à un client parti est perdue, sans autre effet (ADR-031 §6).
+départ du client : la réponse à un client parti est perdue, sans autre effet (ADR-030 §6).
 
 ## Clients d'infrastructure (`src/infra/`)
 

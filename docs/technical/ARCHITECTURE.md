@@ -4,7 +4,7 @@ Vue d'ensemble du système complet. **La documentation technique détaillée a u
 par projet**, à côté de ce document :
 
 - [`backend/`](backend/README.md) — le serving (API de recherche Express/TS)
-- [`frontend/`](frontend/README.md) — l'UI (Next.js), hors service jusqu'à ADR-030
+- [`frontend/`](frontend/README.md) — l'UI (Next.js), hors service jusqu'à ADR-032
 - [`data/`](data/README.md) — l'ingestion (Kedro + ragcore)
 
 Ce document ne couvre que ce qu'aucun projet ne peut dire seul : comment les deux
@@ -29,7 +29,7 @@ flowchart TB
     end
 
     subgraph serving ["SERVING — stack Docker (backend + frontend + TEI)"]
-        Front[Frontend<br>Next.js 16] -.->|HTTP, ADR-030| Back[Backend<br>Express/TS]
+        Front[Frontend<br>Next.js 16] -.->|HTTP, ADR-032| Back[Backend<br>Express/TS]
         Back --> TEI[TEI<br>embeddings, GPU]
     end
 
@@ -46,8 +46,8 @@ flowchart TB
   le pipeline embed → recherche hybride → fetch → page de résultats ; le texte entier
   d'un document est servi à la demande. Détails :
   [`backend/ARCHITECTURE.md`](backend/ARCHITECTURE.md). Le frontend parle encore l'ancien
-  flux de chat, que le backend ne sert plus : il est hors service jusqu'à ADR-030
-  (ADR-031 §8).
+  flux de chat, que le backend ne sert plus : il est hors service jusqu'à ADR-032
+  (ADR-030 §8).
 
 ## Les contrats entre les deux
 
@@ -58,7 +58,7 @@ C'est la seule zone où une modification d'un côté casse l'autre. Quatre contr
 | **Nom de l'index** | `OPENSEARCH_INDEX` (`.env.dev`), créé et rempli par l'ingestion, avec son mapping et ses analyseurs | La même variable. Au boot (`backend/src/infra/opensearch.ts`), refus de démarrer si l'index n'existe pas ; le backend écrit le pipeline de recherche RRF (ADR-028 §6). |
 | **Documents et passages** | Un document OpenSearch par document Mongo : `identifier`, `document_type`, `nature`, passages (`chunk_id`, `char_start`, `char_end`) imbriqués avec leurs vecteurs ([`index-opensearch.md`](data/reference/index-opensearch.md)) | La requête hybride à quatre sous-requêtes ; `_source` et `inner_hits` n'en rendent que l'identité et les offsets des passages |
 | **Contenu** | Mongo `MURPHY_DATA.documents` : un document entier par `identifier` | Le titre et le texte des documents trouvés ; le texte d'un passage est `content[char_start:char_end]` (points de code). Les passages partent dans la page de résultats, le document entier par `GET /documents/:identifier` |
-| **Modèle d'embedding** | `microsoft/harrier-oss-v1-0.6b`, Cosine — vérifié contre TEI au démarrage du run ; la dimension (1024) est mesurée auprès de TEI et fixée à la création de l'index. Passages et titres sans consigne | Le même modèle via le même conteneur TEI ; la question porte la consigne `EMBEDDING_QUERY_INSTRUCTION` (ADR-032) |
+| **Modèle d'embedding** | `microsoft/harrier-oss-v1-0.6b`, Cosine — vérifié contre TEI au démarrage du run ; la dimension (1024) est mesurée auprès de TEI et fixée à la création de l'index. Passages et titres sans consigne | Le même modèle via le même conteneur TEI ; la question porte la consigne `EMBEDDING_QUERY_INSTRUCTION` (ADR-031) |
 
 Le modèle d'embedding est le contrat le plus fragile : question et corpus doivent être
 embarqués par le **même** modèle. Changer de modèle impose une réingestion complète ;
@@ -118,7 +118,7 @@ avec les mêmes options).
 | `docs/pilotage/WIP/` | Le travail en cours (critiques, plans) |
 | `docs/technical/` | Ce document — la vue système —, puis la documentation de chaque projet |
 | `backend/`, `frontend/`, `data/` | Les projets. `backend` et `frontend` sont des npm workspaces (un seul lockfile à la racine) ; `data` est en Python |
-| `packages/contract/` | `@murphy/contract` : le contrat backend ↔ frontend (schémas zod, types déduits), compilé, partagé par les deux workspaces. `search` est celui de l'API ; `messages` et `errors`, l'ancien flux de chat, restent gelés pour le frontend jusqu'à ADR-030 |
+| `packages/contract/` | `@murphy/contract` : le contrat backend ↔ frontend (schémas zod, types déduits), compilé, partagé par les deux workspaces. `search` est celui de l'API ; `messages` et `errors`, l'ancien flux de chat, restent gelés pour le frontend jusqu'à ADR-032 |
 | `docker-compose.*.yml` | La stack de serving |
 
 Convention de documentation : chaque projet a son dossier `docs/technical/<projet>/`,

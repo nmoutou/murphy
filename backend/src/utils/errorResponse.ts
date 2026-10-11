@@ -10,7 +10,7 @@ export interface ErrorResponse {
 
 const INTERNAL_ERROR_RESPONSE: ErrorResponse = { status: HTTP_STATUS.INTERNAL_SERVER_ERROR, code: 'INTERNAL' };
 
-/** Un service en aval qui échoue est un 502, un 504 s'il ne répond pas à temps (ADR-031 §4) */
+/** Un service en aval qui échoue est un 502, un 504 s'il ne répond pas à temps (ADR-030 §4) */
 const STATUS_BY_RAG_ERROR_CODE: Readonly<Partial<Record<SearchErrorCode, number>>> = {
   PAGE_OUT_OF_RANGE: HTTP_STATUS.BAD_REQUEST,
   DOCUMENT_NOT_FOUND: HTTP_STATUS.NOT_FOUND,

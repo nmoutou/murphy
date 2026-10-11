@@ -1,4 +1,4 @@
-# ADR-031 — Une API de recherche paginée : le LLM et le flux partent
+# ADR-030 — Une API de recherche paginée : le LLM et le flux partent
 
 **Statut** : ✅ Accepté (10 octobre 2026) — réalise l'étape 2 d'ADR-028 (§9-§10), amende
 ADR-028 §7 et ADR-017 §2 et §5
@@ -12,7 +12,7 @@ dédiée l'API qui remplace le flux : ses routes, son contrat, et le retrait du 
 du SSE et de l'AI SDK. C'est celle-ci.
 
 Depuis l'amendement du 10 octobre d'ADR-028 §10, la page de résultats et toute
-l'interface relèvent d'ADR-030, qui suivra le remplacement du modèle d'embedding. Cette
+l'interface relèvent d'ADR-032, qui suivra le remplacement du modèle d'embedding. Cette
 ADR ne touche que le backend et le contrat.
 
 Trois traits du code actuel pèsent sur les choix :
@@ -70,7 +70,7 @@ une liste vide.
   (ADR-015) : le client surligne le texte chargé par la seconde route.
 - **Un document trouvé sans passage correspondant** (par son titre, ses métadonnées)
   **a une liste vide.** Envoyer tous ses passages servait le LLM ; son texte se lit
-  désormais au clic. Combien de passages afficher relève d'ADR-030.
+  désormais au clic. Combien de passages afficher relève d'ADR-032.
 - Ni score (ADR-028 §7), ni durées : les durées par étape restent dans les logs.
 
 Le pipeline ne change pas : embedding, recherche, lecture du titre et du texte dans
@@ -117,9 +117,9 @@ réponse de recherche, du document et la liste des codes d'erreur. `documentType
 y vit.
 
 `@murphy/contract/messages` et `@murphy/contract/errors` restent en l'état jusqu'à
-ADR-030 : le backend ne les importe plus, mais le frontend compile toujours contre eux.
+ADR-032 : le backend ne les importe plus, mais le frontend compile toujours contre eux.
 
-### 8. Le frontend est hors service jusqu'à ADR-030
+### 8. Le frontend est hors service jusqu'à ADR-032
 
 Le frontend n'est pas modifié. Il compile et ses tests passent (`npm run check` reste
 vert), mais il ne trouve plus de WebSocket une fois lancé. La prod n'est pas déployée :
@@ -136,15 +136,15 @@ remplacement du modèle d'embedding.
 - **Garder ADR-028 §7 pour les documents sans passage correspondant** : une page de dix
   décisions pèserait plus d'un mégaoctet.
 - **Plafonner les passages par document** : l'API fixerait une part de l'affichage, qui
-  relève d'ADR-030.
+  relève d'ADR-032.
 - **Un booléen `hasNextPage`**, tiré de `size + 1` documents : écarté au profit d'un
   nombre de pages connu d'avance.
 - **L'étape dans l'erreur**, comme ADR-017 : le statut et le code suffisent.
 - **Garder le WebSocket pour les seules sources**, sans texte de réponse : du code de
-  transition des deux côtés, jeté à ADR-030.
-- **Brancher le frontend sur l'API dès maintenant** : empiéterait sur ADR-030.
+  transition des deux côtés, jeté à ADR-032.
+- **Brancher le frontend sur l'API dès maintenant** : empiéterait sur ADR-032.
 - **Retirer l'ancien contrat tout de suite** : le frontend ne compilerait plus et
-  sortirait de `npm run check` jusqu'à ADR-030.
+  sortirait de `npm run check` jusqu'à ADR-032.
 
 ## Conséquences
 
@@ -162,10 +162,10 @@ remplacement du modèle d'embedding.
 - **Santé** : inchangée, elle ne sondait pas le LLM.
 - **Documentation** : `CLAUDE.md` et `docs/technical/backend/` décrivent le flux RAG ;
   ils décriront la recherche.
-- **ADR-030** retirera `messages` et `errors`, et branchera le frontend sur cette API.
+- **ADR-032** retirera `messages` et `errors`, et branchera le frontend sur cette API.
 
 ## Références
 
 ADR-010 (stateless, confidentialité) · ADR-015 (contrat ingestion ↔ serving) · ADR-017
-(erreurs du chat) · ADR-028 (OpenSearch, sans LLM) · ADR-030 (interface du frontend, à
+(erreurs du chat) · ADR-028 (OpenSearch, sans LLM) · ADR-032 (interface du frontend, à
 écrire)

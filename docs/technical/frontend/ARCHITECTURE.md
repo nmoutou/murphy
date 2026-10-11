@@ -1,8 +1,8 @@
 # Architecture — frontend
 
-> **Hors service depuis ADR-031.** Le backend ne sert plus le WebSocket de chat ni le LLM :
+> **Hors service depuis ADR-030.** Le backend ne sert plus le WebSocket de chat ni le LLM :
 > ce document décrit un code gelé, qui compile et passe ses tests mais ne trouve plus de
-> backend une fois lancé. ADR-030 le branchera sur l'API de recherche.
+> backend une fois lancé. ADR-032 le branchera sur l'API de recherche.
 
 ## Ce que c'est
 

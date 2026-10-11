@@ -1,4 +1,4 @@
-/** GET /api/v1/documents/:identifier — le texte entier d'un document (ADR-031) */
+/** GET /api/v1/documents/:identifier — le texte entier d'un document (ADR-030) */
 
 import express, { Request, Response } from 'express';
 import { asyncHandler } from '../middleware/errorHandler';

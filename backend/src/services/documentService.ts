@@ -3,7 +3,7 @@ import { getInfraClients } from '../infra/clients';
 import { RagError } from '../types/rag';
 
 /**
- * Le texte entier d'un document, servi à la demande (ADR-031 §1)
+ * Le texte entier d'un document, servi à la demande (ADR-030 §1)
  * @throws RagError `DOCUMENT_NOT_FOUND` si aucun document ne porte cet identifiant
  */
 export const readDocument = async (identifier: string): Promise<DocumentContent> => {

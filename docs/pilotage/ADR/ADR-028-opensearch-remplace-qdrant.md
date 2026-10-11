@@ -5,10 +5,10 @@ ADR-018 §1-§2 · **§2 et §6 amendés par [ADR-029](ADR-029-recherche-hybride
 (une sous-requête de références, un vecteur de titre pour les documents sans passage) ·
 **§7, §8 et §10 amendés le 5 octobre 2026** (aucun score servi ; pagination à 10 et 100 ;
 contexte du LLM plafonné) · **§10 amendé le 10 octobre 2026** (la page de résultats
-passe à ADR-030) · **§7 amendé, §9 et §10 réalisés par
-[ADR-031](ADR-031-api-de-recherche.md)** (API de recherche ; un document sans passage
+passe à ADR-032) · **§7 amendé, §9 et §10 réalisés par
+[ADR-030](ADR-030-api-de-recherche.md)** (API de recherche ; un document sans passage
 correspondant n'en renvoie aucun) · **modèle d'embedding remplacé par
-[ADR-032](ADR-032-modele-embedding-francais.md)** (`microsoft/harrier-oss-v1-0.6b`)
+[ADR-031](ADR-031-modele-embedding-francais.md)** (`microsoft/harrier-oss-v1-0.6b`)
 
 ## Contexte
 
@@ -170,7 +170,7 @@ seuil n'y a de sens.
   parent) **est renvoyé avec tous ses passages**, lus dans son `_source`. Une section
   n'en a aucun.
 
-> **Amendement (ADR-031)** : sans LLM à nourrir, un document trouvé sans passage
+> **Amendement (ADR-030)** : sans LLM à nourrir, un document trouvé sans passage
 > correspondant est renvoyé sans passage ; son texte se lit à la demande.
 
 ### 8. Une pagination sans état
@@ -202,7 +202,7 @@ Sans LLM, il n'y a plus rien à streamer. La recherche sera servie par une API H
 paginée et une page de résultats, qui affiche l'essentiel de chaque résultat et ouvre le
 texte entier au clic, chargé à la demande. **Une ADR dédiée décrira cette API** : ses
 routes, son contrat, et le retrait du WebSocket, du SSE et de l'AI SDK. C'est
-[ADR-031](ADR-031-api-de-recherche.md).
+[ADR-030](ADR-030-api-de-recherche.md).
 
 ### 10. Deux étapes
 
@@ -227,7 +227,7 @@ apparaîtra avec la page de résultats.
 > limite au retrait du LLM et à l'arrivée de l'API de recherche ; l'ADR dédiée du §9 ne
 > décrit que cette API. Le remplacement du modèle d'embedding (Conséquences) vient
 > ensuite. Puis l'interface du frontend est adaptée au pivot du projet, page de
-> résultats comprise : un chantier à part entière, que décrira ADR-030 (à écrire).
+> résultats comprise : un chantier à part entière, que décrira ADR-032 (à écrire).
 
 ## Alternatives rejetées
 

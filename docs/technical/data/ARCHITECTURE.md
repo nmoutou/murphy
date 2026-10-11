@@ -118,4 +118,4 @@ Le modèle d'embedding (`microsoft/harrier-oss-v1-0.6b`, Cosine) doit être le m
 côtés — c'est pour ça qu'il n'y a qu'**un** `.env.dev`, à la racine du dépôt, partagé par
 le pipeline et le conteneur TEI. Sa dimension (1024) est mesurée auprès de TEI et fixée à
 la création de l'index. Seule la question du backend porte une consigne : les passages et
-les titres n'en ont pas (ADR-032).
+les titres n'en ont pas (ADR-031).

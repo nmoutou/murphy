@@ -147,7 +147,7 @@ rester identiques.
   auprès de TEI au démarrage du run (1024 avec `microsoft/harrier-oss-v1-0.6b`) et
   l'injecte dans les deux champs à la création de l'index. Sur un index qui existe déjà,
   elle compare la dimension mesurée à celle de l'index et s'arrête si elles diffèrent :
-  l'index n'est jamais modifié, changer de modèle impose de le recréer (ADR-032 §4).
+  l'index n'est jamais modifié, changer de modèle impose de le recréer (ADR-031 §4).
   Moteur `faiss` (le défaut d'OpenSearch 3.x ; `nmslib` est déprécié), graphe HNSW,
   similarité cosinus.
 
@@ -273,7 +273,7 @@ envoyée (`pagination_depth` et `k` à 50). Le backend envoie la même, avec `fr
   document trouvé restent ceux de l'ADR-028 §7 : lexicaux et vectoriels.
 - **Le `_source` d'un résultat ne porte pas ses passages** : un document trouvé par son
   titre ou ses métadonnées est renvoyé sans passage, son texte se lit à la demande
-  (ADR-031 §3).
+  (ADR-030 §3).
 
 ## Vérification
 
@@ -348,7 +348,7 @@ rangs 3, 5, 7, 8, 9 et 10.
   liste lexicale est longue.
 - **Beaucoup de passages lexicaux par document** : une décision en renvoie jusqu'à 69 pour
   « article 3 du décret 2005-850 ». Ils partent tous dans la page de résultats
-  (ADR-031 §3) ; combien en afficher relève d'ADR-030.
+  (ADR-030 §3) ; combien en afficher relève d'ADR-032.
 - **Les versions d'un article remontent toutes** (les 5 `L52-8`) : un filtre sur
   `metadata.statut` reste à décider (ADR-028).
 

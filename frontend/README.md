@@ -3,7 +3,7 @@
 Next.js 16 (App Router) + React 19 + Tailwind v4 chat UI for the Murphy RAG system.
 
 Talks to the backend over a custom WebSocket transport (`@ai-sdk/react` `useChat`), which
-the backend no longer serves since ADR-031: out of service until ADR-030.
+the backend no longer serves since ADR-030: out of service until ADR-032.
 
 ## Develop
 

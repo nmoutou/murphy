@@ -2,7 +2,7 @@
 
 **Statut** : ✅ Accepté (25 septembre 2026), amendé le 30 septembre 2026 · **§2 amendé par [ADR-022](ADR-022-typage-des-documents.md)** (typage des documents)
 · **§1 à §5 amendés par [ADR-028](ADR-028-opensearch-remplace-qdrant.md)** (OpenSearch
-remplace Qdrant) · **§2 amendé par [ADR-032](ADR-032-modele-embedding-francais.md)**
+remplace Qdrant) · **§2 amendé par [ADR-031](ADR-031-modele-embedding-francais.md)**
 (une consigne devant la question, aucune devant les passages)
 
 > **Amendement du 30 septembre 2026.** `owner_id` et la version du contrat sont retirés :
@@ -27,7 +27,7 @@ remplace Qdrant) · **§2 amendé par [ADR-032](ADR-032-modele-embedding-francai
 > écartait une route servant le texte à la demande (alternatives) tombe : cette ADR
 > la rouvrira.
 >
-> **Amendement par ADR-032 (11 octobre 2026).** Le modèle d'embedding devient
+> **Amendement par ADR-031 (11 octobre 2026).** Le modèle d'embedding devient
 > `microsoft/harrier-oss-v1-0.6b`, qui attend une consigne devant la question et aucune
 > devant les documents. Le §2 gagne la règle des vecteurs.
 
@@ -93,7 +93,7 @@ côtés lisent dans `.env.dev` (ADR-018).
 `EMBEDDING_MODEL`, servi par le même TEI. La question porte la consigne
 `EMBEDDING_QUERY_INSTRUCTION`, écrite par le backend ; les passages et les titres n'en
 portent pas. Changer de modèle impose une réingestion complète ; changer la consigne ne
-touche que le backend (ADR-032).
+touche que le backend (ADR-031).
 
 ### 3. Le backend ne sert qu'un index qui existe
 

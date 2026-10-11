@@ -1,5 +1,5 @@
 /**
- * Contrat de l'API de recherche (ADR-031) : `POST /api/v1/search` et
+ * Contrat de l'API de recherche (ADR-030) : `POST /api/v1/search` et
  * `GET /api/v1/documents/:identifier`. Ces schémas décrivent le `data` de l'enveloppe
  * `{ status, data, meta }` ; une erreur n'a pas de `data`, son code est `status.message`.
  */
