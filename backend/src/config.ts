@@ -48,8 +48,8 @@ export interface EmbeddingConfig {
 }
 
 export interface PaginationConfig {
-  /** Documents par page */
-  readonly size: number;
+  /** Les tailles de page permises, la première par défaut */
+  readonly sizes: readonly number[];
   /** Documents classés par chaque sous-requête avant la fusion : à garder d'une page à l'autre */
   readonly depth: number;
 }
@@ -92,7 +92,9 @@ const DEFAULT_OPENSEARCH_TIMEOUT_MS = 10_000;
 const DEFAULT_EMBEDDING_SERVICE_URL = 'http://embedding-service:80';
 const DEFAULT_EMBEDDING_MODEL_NAME = 'microsoft/harrier-oss-v1-0.6b';
 const DEFAULT_EMBEDDING_TIMEOUT_MS = 10_000;
-const DEFAULT_PAGINATION_SIZE = 10;
+/** Sous la forme de la variable, découpé comme elle */
+const DEFAULT_PAGINATION_SIZES = '10,25,50';
+const LIST_SEPARATOR = ',';
 const DEFAULT_PAGINATION_DEPTH = 100;
 /** Le plafond du `k` d'un kNN, et `index.max_result_window` par défaut */
 const MAX_PAGINATION_DEPTH = 10_000;
@@ -104,6 +106,8 @@ interface EnvReader {
   readonly required: (name: string) => string;
   /** @throws si la valeur n'est pas un entier */
   readonly integer: (name: string, fallback: number) => number;
+  /** Entiers séparés par des virgules ; @throws si l'un d'eux n'en est pas un */
+  readonly integerList: (name: string, fallback: string) => readonly number[];
   readonly report: () => EnvironmentReport;
 }
 
@@ -119,18 +123,27 @@ const createEnvReader = (env: Environment): EnvReader => {
     return undefined;
   };
 
+  const parseInteger = (name: string, raw: string): number => {
+    const parsed = Number(raw);
+    if (raw.trim() === '' || !Number.isInteger(parsed)) throw new Error(`${name} must be an integer, got "${raw}"`);
+    return parsed;
+  };
+
   const readInteger = (name: string, fallback: number): number => {
     const raw = read(name, defaulted);
-    if (raw === undefined) return fallback;
-    const parsed = Number(raw);
-    if (!Number.isInteger(parsed)) throw new Error(`${name} must be an integer, got "${raw}"`);
-    return parsed;
+    return raw === undefined ? fallback : parseInteger(name, raw);
+  };
+
+  const readIntegerList = (name: string, fallback: string): readonly number[] => {
+    const raw = read(name, defaulted) ?? fallback;
+    return raw.split(LIST_SEPARATOR).map((value) => parseInteger(name, value));
   };
 
   return {
     optional: (name) => read(name, defaulted),
     required: (name) => read(name, missingRequired) ?? '',
     integer: readInteger,
+    integerList: readIntegerList,
     report: () => ({ missingRequired: [...missingRequired], defaulted: [...defaulted] }),
   };
 };
@@ -178,22 +191,31 @@ const readEmbeddingConfig = (reader: EnvReader): EmbeddingConfig => ({
   queryInstruction: reader.required('EMBEDDING_QUERY_INSTRUCTION'),
 });
 
-/** @throws si une valeur n'est pas un entier positif, ou si la profondeur est hors de [taille, 10 000] */
-const assertPagination = ({ size, depth }: PaginationConfig): void => {
-  if (size < 1 || depth < 1) {
-    throw new Error(`PAGINATION_SIZE and PAGINATION_DEPTH must be positive, got ${size} and ${depth}`);
+/** @throws si une taille manque, se répète, n'est pas positive ou dépasse la profondeur */
+const assertPageSizes = ({ sizes, depth }: PaginationConfig): void => {
+  if (sizes.length === 0) throw new Error('PAGINATION_SIZES must list at least one page size');
+  if (new Set(sizes).size !== sizes.length) {
+    throw new Error(`PAGINATION_SIZES must not repeat a size, got ${sizes.join(LIST_SEPARATOR)}`);
   }
-  if (depth < size) {
-    throw new Error(`PAGINATION_DEPTH (${depth}) must be at least PAGINATION_SIZE (${size})`);
+  const invalid = sizes.find((size) => size < 1 || size > depth);
+  if (invalid !== undefined) {
+    throw new Error(`Each of PAGINATION_SIZES must be between 1 and PAGINATION_DEPTH (${depth}), got ${invalid}`);
   }
+};
+
+/** @throws si la profondeur est hors de [1, 10 000], ou si une taille de page est invalide */
+const assertPagination = (pagination: PaginationConfig): void => {
+  const { depth } = pagination;
+  if (depth < 1) throw new Error(`PAGINATION_DEPTH must be positive, got ${depth}`);
   if (depth > MAX_PAGINATION_DEPTH) {
     throw new Error(`PAGINATION_DEPTH (${depth}) must not exceed ${MAX_PAGINATION_DEPTH}, the OpenSearch k-NN limit`);
   }
+  assertPageSizes(pagination);
 };
 
 const readPaginationConfig = (reader: EnvReader): PaginationConfig => {
   const pagination = {
-    size: reader.integer('PAGINATION_SIZE', DEFAULT_PAGINATION_SIZE),
+    sizes: reader.integerList('PAGINATION_SIZES', DEFAULT_PAGINATION_SIZES),
     depth: reader.integer('PAGINATION_DEPTH', DEFAULT_PAGINATION_DEPTH),
   };
   assertPagination(pagination);

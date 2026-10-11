@@ -24,7 +24,7 @@ jest.mock('../../utils/logger', () => {
 
 const OPTIONS = {
   opensearch: { url: 'http://opensearch.test:9200', index: 'documents', timeoutMs: 2500 },
-  pagination: { size: 10, depth: 100 },
+  pagination: { depth: 100 },
 };
 const VECTOR = [0.1, 0.2, 0.3];
 const QUESTION = 'affectations de recettes';
@@ -75,8 +75,8 @@ describe('OpenSearchClient', () => {
     );
   });
 
-  it('searches the index through the RRF pipeline, from the given rank at the configured size and depth', async () => {
-    const hits = await new OpenSearchClient(OPTIONS).search(QUESTION, VECTOR, 30);
+  it('searches the index through the RRF pipeline, in the given window at the configured depth', async () => {
+    const hits = await new OpenSearchClient(OPTIONS).search(QUESTION, VECTOR, { from: 30, size: 10 });
 
     const [request] = mockSearch.mock.calls[0];
     expect(request).toMatchObject({
@@ -93,13 +93,13 @@ describe('OpenSearchClient', () => {
   ])('reports %s as a retrieval error', async (_case, error, code) => {
     mockSearch.mockRejectedValue(error);
 
-    await expect(new OpenSearchClient(OPTIONS).search(QUESTION, VECTOR, 0)).rejects.toMatchObject({ stage: 'retrieval', code });
+    await expect(new OpenSearchClient(OPTIONS).search(QUESTION, VECTOR, { from: 0, size: 10 })).rejects.toMatchObject({ stage: 'retrieval', code });
   });
 
   it('reports an invalid document as a contract violation, not a failed search', async () => {
     mockSearch.mockResolvedValue({ body: { hits: { hits: [{ _id: 'X', _source: { identifier: 'X' } }] } } });
 
-    await expect(new OpenSearchClient(OPTIONS).search(QUESTION, VECTOR, 0)).rejects.toMatchObject({
+    await expect(new OpenSearchClient(OPTIONS).search(QUESTION, VECTOR, { from: 0, size: 10 })).rejects.toMatchObject({
       stage: 'retrieval',
       code: 'CONTRACT_VIOLATION',
     });

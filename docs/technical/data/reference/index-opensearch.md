@@ -232,7 +232,8 @@ PUT _search/pipeline/murphy-rrf
 
 La requête, pour une question `Q` de vecteur `V`, telle que la mesure ci-dessous l'a
 envoyée (`pagination_depth` et `k` à 50). Le backend envoie la même, avec `from` =
-`(page - 1) × PAGINATION_SIZE`, `size` = `PAGINATION_SIZE` (10), `pagination_depth` et
+`(page - 1) × pageSize`, `size` = `pageSize` (l'une des `PAGINATION_SIZES`, 10 par défaut ;
+la dernière page est tronquée à la profondeur), `pagination_depth` et
 `k` = `PAGINATION_DEPTH` (100), et un `_source` réduit à `identifier`, `document_type` et
 `nature` (`backend/src/infra/hybridQuery.ts`, à garder identique) :
 
@@ -350,7 +351,8 @@ rangs 3, 5, 7, 8, 9 et 10.
   « article 3 du décret 2005-850 ». Ils partent tous dans la page de résultats
   (ADR-030 §3) ; combien en afficher relève d'ADR-032.
 - **Les versions d'un article remontent toutes** (les 5 `L52-8`) : un filtre sur
-  `metadata.statut` reste à décider (ADR-028).
+  `metadata.statut` reste à décider (ADR-028). Le backend lit ce statut dans Mongo et
+  l'expose en `isInForce` (ADR-032 §9), sans filtrer.
 
 ## Vérifier l'index
 

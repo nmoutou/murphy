@@ -88,6 +88,14 @@ export interface StoredDocument {
   readonly identifier: string;
   readonly title: string;
   readonly content: string;
+  /** L'`ETAT` de la DILA (`VIGUEUR`, `ABROGE`…), lu par la seule recherche ; absent d'une décision */
+  readonly status?: string;
+}
+
+/** Les rangs d'une page dans le classement fusionné */
+export interface ResultWindow {
+  readonly from: number;
+  readonly size: number;
 }
 
 export interface Passage {

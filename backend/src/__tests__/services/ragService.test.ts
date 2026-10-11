@@ -65,7 +65,7 @@ describe('embedQuestion', () => {
 });
 
 describe('retrieveDocuments', () => {
-  it('searches with the question, its vector and the page offset, and ranks the passages of each document', async () => {
+  it('searches with the question, its vector and the page window, and ranks the passages of each document', async () => {
     const hit: SearchHit = {
       identifier: DOCUMENT.identifier,
       documentType: 'article',
@@ -74,9 +74,9 @@ describe('retrieveDocuments', () => {
     };
     jest.mocked(opensearch.search).mockResolvedValue([hit]);
 
-    const retrieved = await retrieveDocuments('Quel délai ?', EMBEDDING, 20);
+    const retrieved = await retrieveDocuments('Quel délai ?', EMBEDDING, { from: 20, size: 10 });
 
-    expect(opensearch.search).toHaveBeenCalledWith('Quel délai ?', EMBEDDING, 20);
+    expect(opensearch.search).toHaveBeenCalledWith('Quel délai ?', EMBEDDING, { from: 20, size: 10 });
     expect(retrieved.documents).toEqual([RETRIEVED]);
     expect(retrieved.retrievalMs).toBeGreaterThanOrEqual(0);
   });

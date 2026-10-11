@@ -11,6 +11,8 @@ export const documentTypeSchema = z.enum(['article', 'section', 'texte', 'decisi
 export const searchRequestSchema = z.object({
   question: z.string().trim().min(1),
   page: z.number().int().positive().default(1),
+  /** Absente : la première des `pageSizes` du serveur ; hors de cette liste : refusée */
+  pageSize: z.number().int().positive().optional(),
 });
 
 export const passageSchema = z.object({
@@ -28,6 +30,8 @@ export const searchResultSchema = z.object({
   documentType: documentTypeSchema,
   /** La nature juridique (`LOI`, `ARRET`, `QPC`…), quand la source en donne une utile */
   nature: z.string().optional(),
+  /** Absent quand la source ne donne pas de statut, comme pour une décision */
+  isInForce: z.boolean().optional(),
   passages: z.array(passageSchema),
 });
 
@@ -35,6 +39,9 @@ export const searchResultSchema = z.object({
 export const searchResponseSchema = z.object({
   page: z.number().int().positive(),
   pageCount: z.number().int().positive(),
+  pageSize: z.number().int().positive(),
+  /** Les tailles de page que le serveur accepte, la première par défaut */
+  pageSizes: z.array(z.number().int().positive()).min(1),
   results: z.array(searchResultSchema),
 });
 

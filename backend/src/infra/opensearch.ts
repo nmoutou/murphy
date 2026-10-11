@@ -1,6 +1,6 @@
 import { Client } from '@opensearch-project/opensearch';
 import type { OpenSearchConfig, PaginationConfig } from '../config';
-import type { EmbeddingVector, RagFailure, SearchHit } from '../types/rag';
+import type { EmbeddingVector, RagFailure, ResultWindow, SearchHit } from '../types/rag';
 import { logger as rootLogger } from '../utils/logger';
 import { toRagError } from '../types/rag';
 import { buildHybridQuery } from './hybridQuery';
@@ -19,7 +19,7 @@ const SEARCH_FAILURE: RagFailure = { stage: 'retrieval', code: 'SEARCH_FAILED', 
 
 export interface OpenSearchClientOptions {
   readonly opensearch: OpenSearchConfig;
-  readonly pagination: PaginationConfig;
+  readonly pagination: Pick<PaginationConfig, 'depth'>;
 }
 
 export class OpenSearchClient {
@@ -54,13 +54,13 @@ export class OpenSearchClient {
   }
 
   /**
-   * Une page des documents classés, `PAGINATION_SIZE` documents à partir du rang `from`
+   * Une page des documents classés, `size` documents à partir du rang `from`
    * @throws RagError d'étape `retrieval`, ou `CONTRACT_VIOLATION` sur un document invalide
    */
-  async search(question: string, vector: EmbeddingVector, from: number): Promise<SearchHit[]> {
+  async search(question: string, vector: EmbeddingVector, { from, size }: ResultWindow): Promise<SearchHit[]> {
     const startTime = Date.now();
     const { index } = this.options.opensearch;
-    const { size, depth } = this.options.pagination;
+    const { depth } = this.options.pagination;
     logger.info({ vectorDim: vector.length, from, size, depth, index }, 'OpenSearch search started');
 
     let hits: unknown[];

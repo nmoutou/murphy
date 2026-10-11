@@ -2,6 +2,7 @@
 
 import express, { Request, Response } from 'express';
 import { asyncHandler } from '../middleware/errorHandler';
+import { config } from '../config';
 import { searchRateLimiter } from '../middleware/searchRateLimiter';
 import { searchDocuments } from '../services/searchService';
 import { buildApiResponse } from '../utils/response';
@@ -14,7 +15,7 @@ router.post(
   '/',
   searchRateLimiter,
   asyncHandler(async (req: Request, res: Response) => {
-    const parsed = parseSearchRequest(req.body);
+    const parsed = parseSearchRequest(req.body, config.pagination.sizes);
     if (!parsed.isValid) {
       res
         .status(HTTP_STATUS.BAD_REQUEST)

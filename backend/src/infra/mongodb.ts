@@ -10,6 +10,7 @@ const MONGO_MAX_POOL_SIZE = 10;
 /** Écrite par l'ingestion : un document entier par `identifier` (ADR-015) */
 const DOCUMENTS_COLLECTION = 'documents';
 const DOCUMENT_PROJECTION = { _id: 0, identifier: 1, title: 1, content: 1 };
+const SEARCH_DOCUMENT_PROJECTION = { ...DOCUMENT_PROJECTION, 'metadata.statut': 1 };
 const DOCUMENT_FETCH_FAILURE: RagFailure = {
   stage: 'retrieval',
   code: 'DB_FETCH_FAILED',
@@ -32,6 +33,24 @@ const toStoredDocument = (record: DocumentRecord): StoredDocument => {
     throw contractViolation(`MongoDB document ${String(identifier)} lacks identifier, title or content`);
   }
   return { identifier, title, content };
+};
+
+const readStatus = (record: DocumentRecord): unknown => {
+  const { metadata } = record;
+  return typeof metadata === 'object' && metadata !== null && 'statut' in metadata ? metadata.statut : undefined;
+};
+
+/**
+ * @throws RagError `CONTRACT_VIOLATION` si un champ du contrat, statut compris, n'est pas une chaîne
+ */
+const toSearchedDocument = (record: DocumentRecord): StoredDocument => {
+  const document = toStoredDocument(record);
+  const status = readStatus(record);
+  if (status === undefined) return document;
+  if (typeof status !== 'string') {
+    throw contractViolation(`MongoDB document ${document.identifier} has a non-string metadata.statut`);
+  }
+  return { ...document, status };
 };
 
 export class MongoDbClient {
@@ -92,7 +111,7 @@ export class MongoDbClient {
       records = await this.db
         .collection(DOCUMENTS_COLLECTION)
         .find({ identifier: { $in: distinct } })
-        .project<DocumentRecord>(DOCUMENT_PROJECTION)
+        .project<DocumentRecord>(SEARCH_DOCUMENT_PROJECTION)
         .toArray();
     } catch (error) {
       const ragError = toRagError(DOCUMENT_FETCH_FAILURE, error);
@@ -104,7 +123,7 @@ export class MongoDbClient {
       { fetched: records.length, requested: distinct.length, durationMs: Date.now() - startTime },
       'Parent documents fetched from MongoDB'
     );
-    return records.map(toStoredDocument);
+    return records.map(toSearchedDocument);
   }
 
   /**

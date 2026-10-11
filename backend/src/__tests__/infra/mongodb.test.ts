@@ -4,6 +4,7 @@ import { MongoDbClient } from '../../infra/mongodb';
 const mockFind = jest.fn();
 const mockFindOne = jest.fn();
 const mockToArray = jest.fn();
+const mockProject = jest.fn();
 
 // Une classe, pas un `jest.fn` : `restoreMocks` réinitialiserait son implémentation entre les tests
 jest.mock('mongodb', () => ({
@@ -33,7 +34,8 @@ const RECORD = { identifier: 'LEGIARTI1', title: 'L2122-22', content: 'Le maire 
 const IDENTIFIER = 'LEGIARTI1';
 
 beforeEach(() => {
-  mockFind.mockReturnValue({ project: () => ({ toArray: mockToArray }) });
+  mockProject.mockReturnValue({ toArray: mockToArray });
+  mockFind.mockReturnValue({ project: mockProject });
   mockToArray.mockResolvedValue([RECORD]);
 });
 
@@ -45,6 +47,23 @@ describe('MongoDbClient.fetchParentDocuments', () => {
 
     expect(mockFind).toHaveBeenCalledWith({ identifier: { $in: ['LEGIARTI1', 'JURITEXT2'] } });
     expect(documents).toEqual([{ identifier: 'LEGIARTI1', title: 'L2122-22', content: 'Le maire peut…' }]);
+  });
+
+  it('reads the DILA status of a document that has one', async () => {
+    mockToArray.mockResolvedValue([{ ...RECORD, metadata: { statut: 'VIGUEUR', nature: 'Article' } }]);
+    const mongo = await MongoDbClient.connect(SETTINGS);
+
+    const [document] = await mongo.fetchParentDocuments([IDENTIFIER]);
+
+    expect(mockProject).toHaveBeenCalledWith(expect.objectContaining({ content: 1, 'metadata.statut': 1 }));
+    expect(document).toEqual({ ...RECORD, status: 'VIGUEUR' });
+  });
+
+  it('reports a status that is not a string as a contract violation', async () => {
+    mockToArray.mockResolvedValue([{ ...RECORD, metadata: { statut: ['VIGUEUR'] } }]);
+    const mongo = await MongoDbClient.connect(SETTINGS);
+
+    await expect(mongo.fetchParentDocuments([IDENTIFIER])).rejects.toMatchObject({ code: 'CONTRACT_VIOLATION' });
   });
 
   it('reports a stored document without content as a contract violation', async () => {

@@ -16,7 +16,7 @@ describe('loadConfig', () => {
     expect(config.http.searchRateLimit).toEqual({ windowMs: 60_000, limit: 60 });
     expect(config.mongo).toMatchObject({ database: 'MURPHY_DATA' });
     expect(config.opensearch).toEqual({ url: 'http://opensearch:9200', index: '', timeoutMs: 10_000 });
-    expect(config.pagination).toEqual({ size: 10, depth: 100 });
+    expect(config.pagination).toEqual({ sizes: [10, 25, 50], depth: 100 });
   });
 
   it('reads the variables that are set', () => {
@@ -24,14 +24,14 @@ describe('loadConfig', () => {
       ...REQUIRED_ENV,
       NODE_ENV: 'production',
       CORS_ORIGIN: 'http://a.test,http://b.test',
-      PAGINATION_SIZE: '20',
+      PAGINATION_SIZES: '20, 40',
       PAGINATION_DEPTH: '200',
       OPENSEARCH_TIMEOUT: '2500',
     });
 
     expect(config.server).toMatchObject({ isProduction: true, logLevel: 'info' });
     expect(config.http.corsOrigins).toEqual(['http://a.test', 'http://b.test']);
-    expect(config.pagination).toEqual({ size: 20, depth: 200 });
+    expect(config.pagination).toEqual({ sizes: [20, 40], depth: 200 });
     expect(config.opensearch).toMatchObject({ index: 'documents', timeoutMs: 2500 });
   });
 
@@ -42,15 +42,16 @@ describe('loadConfig', () => {
   });
 
   it('treats an empty value as unset, as Compose passes one for a missing variable', () => {
-    const { config, report } = loadConfig({ PAGINATION_SIZE: '', OPENSEARCH_INDEX: '' });
+    const { config, report } = loadConfig({ PAGINATION_SIZES: '', OPENSEARCH_INDEX: '' });
 
-    expect(config.pagination.size).toBe(10);
-    expect(report.defaulted).toContain('PAGINATION_SIZE');
+    expect(config.pagination.sizes).toEqual([10, 25, 50]);
+    expect(report.defaulted).toContain('PAGINATION_SIZES');
     expect(report.missingRequired).toContain('OPENSEARCH_INDEX');
   });
 
   it.each([
-    ['PAGINATION_SIZE', '2.5', 'PAGINATION_SIZE must be an integer, got "2.5"'],
+    ['PAGINATION_SIZES', '10,2.5', 'PAGINATION_SIZES must be an integer, got "2.5"'],
+    ['PAGINATION_SIZES', '10,,25', 'PAGINATION_SIZES must be an integer, got ""'],
     ['PORT', '50OO', 'PORT must be an integer, got "50OO"'],
     ['OPENSEARCH_TIMEOUT', '10s', 'OPENSEARCH_TIMEOUT must be an integer, got "10s"'],
   ])('refuses %s=%s, naming the variable', (name, value, message) => {
@@ -58,16 +59,18 @@ describe('loadConfig', () => {
   });
 
   it.each([
-    ['a zero size', '0', '100', 'must be positive'],
-    ['a negative depth', '10', '-1', 'must be positive'],
-    ['a depth below the size', '10', '5', 'PAGINATION_DEPTH (5) must be at least PAGINATION_SIZE (10)'],
+    ['a zero size', '10,0', '100', 'must be between 1 and PAGINATION_DEPTH (100), got 0'],
+    ['a size above the depth', '10,25', '20', 'must be between 1 and PAGINATION_DEPTH (20), got 25'],
+    ['a repeated size', '10,25,10', '100', 'PAGINATION_SIZES must not repeat a size, got 10,25,10'],
+    ['a negative depth', '10', '-1', 'PAGINATION_DEPTH must be positive, got -1'],
     ['a depth above the k-NN limit', '10', '10001', 'PAGINATION_DEPTH (10001) must not exceed 10000'],
-  ])('refuses %s', (_case, size, depth, message) => {
-    expect(() => loadConfig({ PAGINATION_SIZE: size, PAGINATION_DEPTH: depth })).toThrow(message);
+  ])('refuses %s', (_case, sizes, depth, message) => {
+    expect(() => loadConfig({ PAGINATION_SIZES: sizes, PAGINATION_DEPTH: depth })).toThrow(message);
   });
 
-  it('accepts a depth equal to the size, and the k-NN limit itself', () => {
-    expect(loadConfig({ PAGINATION_SIZE: '10', PAGINATION_DEPTH: '10' }).config.pagination.depth).toBe(10);
+  it('accepts a size equal to the depth, a size that does not divide it, and the k-NN limit itself', () => {
+    expect(loadConfig({ PAGINATION_SIZES: '10', PAGINATION_DEPTH: '10' }).config.pagination.depth).toBe(10);
+    expect(loadConfig({ PAGINATION_SIZES: '30' }).config.pagination.sizes).toEqual([30]);
     expect(loadConfig({ PAGINATION_DEPTH: '10000' }).config.pagination.depth).toBe(10_000);
   });
 

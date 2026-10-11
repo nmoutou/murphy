@@ -15,7 +15,7 @@ jest.mock('../../utils/logger', () => {
 });
 
 const QUESTION = 'article L1234-5 licenciement';
-const PAGE = { page: 2, pageCount: 10, results: [] };
+const PAGE = { page: 2, pageCount: 10, pageSize: 10, pageSizes: [10, 25, 50], results: [] };
 
 let app: Express;
 
@@ -32,6 +32,8 @@ describe('POST /api/v1/search, validation', () => {
     ['a blank question', { question: '   ' }, 'question'],
     ['a page below 1', { question: QUESTION, page: 0 }, 'page'],
     ['a fractional page', { question: QUESTION, page: 1.5 }, 'page'],
+    ['a page size outside the allowed ones', { question: QUESTION, pageSize: 30 }, 'pageSize'],
+    ['a page size that is not a number', { question: QUESTION, pageSize: '25' }, 'pageSize'],
     ['a body that is not an object', [QUESTION], 'body'],
   ])('rejects %s with a 400 naming the field', async (_case, body, field) => {
     const response = await request(app).post('/api/v1/search').send(body);
@@ -40,6 +42,12 @@ describe('POST /api/v1/search, validation', () => {
     expect(response.body.status.message).toBe('VALIDATION_ERROR');
     expect(response.body.errors).toEqual([expect.objectContaining({ field })]);
     expect(searchDocuments).not.toHaveBeenCalled();
+  });
+
+  it('names the allowed page sizes', async () => {
+    const response = await request(app).post('/api/v1/search').send({ question: QUESTION, pageSize: 30 });
+
+    expect(response.body.errors).toEqual([{ field: 'pageSize', message: 'must be one of 10, 25, 50' }]);
   });
 
   it('never echoes the question in a validation error', async () => {
@@ -53,19 +61,19 @@ describe('POST /api/v1/search', () => {
   it('answers the page in the response envelope', async () => {
     jest.mocked(searchDocuments).mockResolvedValue(PAGE);
 
-    const response = await request(app).post('/api/v1/search').send({ question: QUESTION, page: 2 });
+    const response = await request(app).post('/api/v1/search').send({ question: QUESTION, page: 2, pageSize: 25 });
 
     expect(response.status).toBe(200);
     expect(response.body).toMatchObject({ status: { code: 200, message: 'OK' }, data: PAGE });
-    expect(searchDocuments).toHaveBeenCalledWith({ question: QUESTION, page: 2 });
+    expect(searchDocuments).toHaveBeenCalledWith({ question: QUESTION, page: 2, pageSize: 25 });
   });
 
-  it('asks for the first page when none is given', async () => {
+  it('asks for the first page at the first allowed size when neither is given', async () => {
     jest.mocked(searchDocuments).mockResolvedValue({ ...PAGE, page: 1 });
 
     await request(app).post('/api/v1/search').send({ question: QUESTION });
 
-    expect(searchDocuments).toHaveBeenCalledWith({ question: QUESTION, page: 1 });
+    expect(searchDocuments).toHaveBeenCalledWith({ question: QUESTION, page: 1, pageSize: 10 });
   });
 
   it.each([

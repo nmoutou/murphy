@@ -16,7 +16,7 @@ cette stack) : les deux ne partagent que les bases.
 
 | Route | Rôle |
 |---|---|
-| `POST /api/v1/search`, corps `{ question, page? }` | Une page de la recherche : `{ page, pageCount, results }` |
+| `POST /api/v1/search`, corps `{ question, page?, pageSize? }` | Une page de la recherche : `{ page, pageCount, pageSize, pageSizes, results }` |
 | `GET /api/v1/documents/:identifier` | Le texte entier d'un document, chargé à la demande : `{ identifier, title, content }` |
 | `GET /api/v1/health` (alias `/health/services`) | Sonde TEI, OpenSearch et Mongo |
 
@@ -29,25 +29,31 @@ réponses gardent l'enveloppe `{ status, data, meta }` de `buildApiResponse`.
 
 ## Le pipeline de recherche (`src/services/searchService.ts:searchDocuments`)
 
-1. **Pagination** — `page` (1 par défaut) donne `from = (page - 1) × PAGINATION_SIZE`.
-   `pageCount = ⌊PAGINATION_DEPTH / PAGINATION_SIZE⌋` (10 par défaut) : `from + size` ne
-   dépasse jamais la profondeur. Une page au-delà est refusée
-   (`PAGE_OUT_OF_RANGE`) avant tout appel ; une page en deçà mais au-delà des documents
-   trouvés rend une liste vide.
+1. **Pagination** (`toPageWindow`, ADR-032 §8) — `pageSize` est l'une des tailles de
+   `PAGINATION_SIZES` (`10,25,50` par défaut) : absente, la première ; toute autre, un 400
+   `VALIDATION_ERROR` (champ `pageSize`). `page` (1 par défaut) donne
+   `from = (page - 1) × pageSize`, `pageCount = ⌈PAGINATION_DEPTH / pageSize⌉`, et la
+   dernière page est tronquée : `size = min(pageSize, PAGINATION_DEPTH − from)`.
+   `from + size` ne dépasse jamais la profondeur, et aucun document classé n'est perdu.
+   Une page au-delà de `pageCount` est refusée (`PAGE_OUT_OF_RANGE`) avant tout appel ;
+   une page en deçà mais au-delà des documents trouvés rend une liste vide.
 2. **Embedding** (`ragService.embedQuestion`) → service TEI. La consigne
    `EMBEDDING_QUERY_INSTRUCTION` est collée devant la question, sans séparateur : le
    modèle attend `Instruct: {tâche}\nQuery:` devant une question, et rien devant les
    passages indexés (ADR-031).
 3. **Recherche** (`ragService.retrieveDocuments`) → OpenSearch, requête hybride (voir
-   « La recherche ») : `PAGINATION_SIZE` documents classés à partir de `from`, avec
+   « La recherche ») : `size` documents classés à partir de `from`, avec
    leurs passages correspondants.
 4. **Lecture des documents** (`ragService.fetchDocuments`) → MongoDB `documents`, par
-   `identifier`. Le titre en vient, et le texte de chaque passage est découpé dans le
+   `identifier`. Le titre et le statut (`metadata.statut`, l'`ETAT` de la DILA) en
+   viennent, et le texte de chaque passage est découpé dans le
    `content` de son document (`services/passages.ts`, voir « Le contrat avec
    l'ingestion »). Le `content` lui-même ne part pas au client.
 5. **Réponse** — un résultat par document, dans l'ordre du classement : `identifier`,
-   `title`, `documentType`, `nature`, et ses `passages` (`chunkId`, `text`, `start`,
-   `end`). Aucun score ; les durées par étape sont journalisées (`Search completed`),
+   `title`, `documentType`, `nature`, `isInForce` et ses `passages` (`chunkId`, `text`,
+   `start`, `end`). `isInForce` vaut `true` pour le statut `VIGUEUR` seul, `false` pour
+   tout autre (`VIGUEUR_DIFF` compris), et manque sans statut, comme pour une décision
+   (ADR-032 §9). La réponse rappelle `pageSize` et les `pageSizes` permises. Aucun score ; les durées par étape sont journalisées (`Search completed`),
    pas renvoyées.
 
 `GET /documents/:identifier` (`services/documentService.ts:readDocument`) lit un seul

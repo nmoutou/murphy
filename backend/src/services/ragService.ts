@@ -1,4 +1,4 @@
-import type { EmbeddingVector, FoundDocument, RetrievedDocument } from '../types/rag';
+import type { EmbeddingVector, FoundDocument, ResultWindow, RetrievedDocument } from '../types/rag';
 import { logger as rootLogger } from '../utils/logger';
 import { getInfraClients } from '../infra/clients';
 import { assembleDocuments } from './passages';
@@ -27,14 +27,13 @@ export const embedQuestion = async (question: string): Promise<EmbedResult> => {
   return { embedding, embeddingMs: Date.now() - start };
 };
 
-/** @param from rang du premier document de la page, dans le classement fusionné */
 export const retrieveDocuments = async (
   question: string,
   embedding: EmbeddingVector,
-  from: number,
+  window: ResultWindow,
 ): Promise<RetrievalResult> => {
   const start = Date.now();
-  const hits = await getInfraClients().opensearch.search(question, embedding, from);
+  const hits = await getInfraClients().opensearch.search(question, embedding, window);
   return { documents: hits.map(toRetrievedDocument), retrievalMs: Date.now() - start };
 };
 

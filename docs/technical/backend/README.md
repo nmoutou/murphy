@@ -65,10 +65,11 @@ Tout est piloté par variables d'environnement (en Docker : bloc `environment:` 
 `docker-compose.base.yml`, alimenté par le `.env.dev` racine). **`src/config.ts` est la
 référence** : il lit et valide l'environnement une fois au démarrage, avec ses valeurs
 par défaut, et c'est le seul fichier qui lit `process.env`. Une valeur vide vaut une
-variable absente. Un entier invalide (`PAGINATION_SIZE=2.5`) **bloque le démarrage**,
-avec un message qui nomme la variable, comme une pagination incohérente : `PAGINATION_SIZE`
-et `PAGINATION_DEPTH` doivent être des entiers positifs, avec une profondeur entre la
-taille et 10 000 (le plafond du `k` d'un kNN). `checkEnvironment` journalise ensuite les
+variable absente. Un entier invalide (`PAGINATION_DEPTH=2.5`, `PAGINATION_SIZES=10,,25`)
+**bloque le démarrage**, avec un message qui nomme la variable, comme une pagination
+incohérente : `PAGINATION_DEPTH` va de 1 à 10 000 (le plafond du `k` d'un kNN), et
+`PAGINATION_SIZES` liste au moins une taille, sans doublon, chacune entre 1 et la
+profondeur. `checkEnvironment` journalise ensuite les
 variables manquantes et celles qui ont pris leur valeur par défaut.
 
 Critiques (erreur logguée si absentes, sans bloquer) : `MONGODB_URI`, `OPENSEARCH_INDEX`
@@ -77,7 +78,7 @@ placée devant la question ; absente, la question part sans elle et la recherche
 en silence).
 Principales optionnelles : `PORT` (5000), `NODE_LOG_LEVEL` (`debug` en dev, `info` en prod),
 `MONGODB_DATABASE` (MURPHY_DATA),
-`OPENSEARCH_URL`, `OPENSEARCH_TIMEOUT` (10000 ms), `PAGINATION_SIZE` (10), `PAGINATION_DEPTH` (100),
+`OPENSEARCH_URL`, `OPENSEARCH_TIMEOUT` (10000 ms), `PAGINATION_SIZES` (`10,25,50`, la première par défaut), `PAGINATION_DEPTH` (100),
 `EMBEDDING_SERVICE_URL`, `EMBEDDING_MODEL_NAME`, `CORS_ORIGIN`, et les quotas par IP :
 `RATE_LIMIT_WINDOW_MS`/`RATE_LIMIT_MAX` (600 par 15 min, toutes routes),
 `SEARCH_RATE_LIMIT_WINDOW_MS`/`SEARCH_RATE_LIMIT_MAX` (60 par minute, recherche).
@@ -86,7 +87,7 @@ Principales optionnelles : `PORT` (5000), `NODE_LOG_LEVEL` (`debug` en dev, `inf
 
 ```bash
 curl -X POST http://localhost:5000/api/v1/search -H 'Content-Type: application/json' \
-  -d '{"question": "article L52-8 du code électoral", "page": 1}'
+  -d '{"question": "article L52-8 du code électoral", "page": 1, "pageSize": 25}'
 curl http://localhost:5000/api/v1/documents/CETATEXT000054320839
 ```
 
