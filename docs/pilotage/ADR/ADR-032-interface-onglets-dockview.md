@@ -2,13 +2,15 @@
 
 **Statut** : ✅ Accepté (11 octobre 2026) — réalise ADR-028 §10 côté frontend, amende
 ADR-030 §2 et §3 et ADR-017 §2 à §4 · ferme le point ouvert « Interface du frontend
-adaptée au pivot » · §3 à §5 amendés le 11 octobre 2026
+adaptée au pivot » · §1, §3 à §5 et §12 amendés le 11 octobre 2026
 
 > **Amendement du 11 octobre 2026.** Un résultat et un onglet document perdent leur icône,
 > et avec elle la table des icônes et `documentTypeLabels`. Les paramètres d'un onglet
 > document se réduisent à `{ identifier, passage }`. Le bouton « Scinder » part : le
-> glisser-déposer de Dockview fait déjà la même chose. Le texte ci-dessous décrit
-> l'interface après cet amendement.
+> glisser-déposer de Dockview fait déjà la même chose. L'en-tête de l'espace de travail
+> part aussi : la barre de recherche et le sélecteur « Résultats par page » passent en
+> haut de l'onglet Résultats, et le logo n'est plus affiché que sur l'accueil. Le texte
+> ci-dessous décrit l'interface après cet amendement.
 
 ## Contexte
 
@@ -59,8 +61,10 @@ peut pas passer par l'URL.
   s'affiche sur une liste vide.
 - Un rechargement ramène à l'accueil. Le bouton « retour » du navigateur ne revient pas
   de l'espace de travail à l'accueil.
-- L'en-tête de l'espace de travail porte la barre de recherche ; une nouvelle question
-  remplace la précédente, sans quitter l'espace de travail.
+- L'espace de travail n'a pas d'en-tête : la barre de recherche est en haut de l'onglet
+  Résultats (§4) ; une nouvelle question remplace la précédente, sans quitter l'espace
+  de travail. Fermer Résultats retire la barre ; le menu « … » ou le `watermark` (§3) le
+  rouvre.
 - Les polices restent Geist et Geist Mono.
 
 ### 2. Dockview porte la disposition
@@ -108,8 +112,9 @@ quatre éléments :
 **La pagination** affiche la première et la dernière page, la page courante et ses
 voisines, avec une ellipse pour les trous. Changer de page relance la recherche.
 
-**Le sélecteur « Résultats par page »**, dans l'en-tête, propose les tailles que
-transmet la réponse (§8). En changer relance la recherche à la page 1.
+**L'en-tête de l'onglet**, fixe au-dessus de la liste, porte la barre de recherche et le
+sélecteur « Résultats par page ». Le sélecteur propose les tailles que transmet la
+réponse (§8). En changer relance la recherche à la page 1.
 
 ### 5. L'onglet document
 
@@ -234,11 +239,10 @@ src/
   stores/                     Zustand : searchStore (§7), errorStore (la modale, §10)
   features/
     home/                     HomeScreen
-    workspace/                WorkspaceScreen, WorkspaceHeader, Workspace (Dockview),
-                              panelRegistry, defaultLayout, onglet, actions du groupe,
+    workspace/                SearchScreen, Workspace (Dockview), panelRegistry, defaultLayout, onglet, actions du groupe,
                               watermark
-    results/                  ResultsPanel, ResultList, ResultItem, InForceDot,
-                              Pagination, PageSizeSelect
+    results/                  ResultsPanel, ResultsHeader, ResultList, ResultItem,
+                              InForceDot, Pagination, PageSizeSelect
     document/                 DocumentPanel, surlignage du passage
     graph/                    GraphPanel (vide)
     explanation/              ExplanationPanel (vide)

@@ -3,7 +3,7 @@
 import HomeScreen from '@/features/home/HomeScreen';
 import ErrorDialog from '@/features/errors/ErrorDialog';
 import { useSearchStore } from '@/stores/searchStore';
-import WorkspaceScreen from './WorkspaceScreen';
+import Workspace from './Workspace';
 
 /** Deux états d'un même écran : la question ne passe jamais par l'URL */
 export default function SearchScreen() {
@@ -12,7 +12,7 @@ export default function SearchScreen() {
 
   return (
     <>
-      {hasSearched ? <WorkspaceScreen /> : <HomeScreen />}
+      {hasSearched ? <Workspace /> : <HomeScreen />}
       <ErrorDialog />
     </>
   );

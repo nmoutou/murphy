@@ -30,10 +30,9 @@ describe('SearchScreen', () => {
     render(<SearchScreen />);
 
     expect(screen.getByRole('main')).toContainElement(screen.getByRole('search'));
-    expect(screen.queryByRole('banner')).not.toBeInTheDocument();
   });
 
-  it('opens the workspace on the first search, the question in its header', async () => {
+  it('opens the workspace on the first search, the question above the results', async () => {
     searchMock.mockResolvedValue({
       page: 1,
       pageCount: 10,
@@ -46,7 +45,7 @@ describe('SearchScreen', () => {
     await search();
 
     expect(await screen.findByText('Aucun résultat.')).toBeInTheDocument();
-    expect(screen.getByRole('banner')).toContainElement(screen.getByRole('search'));
+    expect(screen.queryByRole('main')).not.toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: 'Votre question' })).toHaveValue(QUESTION);
   });
 
@@ -76,6 +75,6 @@ describe('SearchScreen', () => {
     await search();
 
     expect(await screen.findByRole('dialog')).toHaveTextContent('Le serveur est injoignable.');
-    expect(screen.getByRole('banner')).toBeInTheDocument();
+    expect(screen.queryByRole('main')).not.toBeInTheDocument();
   });
 });

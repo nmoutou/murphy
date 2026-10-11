@@ -20,7 +20,7 @@ const handleReady = ({ api }: DockviewReadyEvent) => applyDefaultLayout(api);
 /** Le seul composant, avec ceux qu'il déclare, à connaître Dockview */
 export default function Workspace() {
   return (
-    <div className="min-h-0 flex-1">
+    <div className="min-h-0 flex-1 bg-primary">
       <DockviewReact
         theme={MURPHY_THEME}
         components={PANEL_COMPONENTS}

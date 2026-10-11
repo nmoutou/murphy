@@ -16,8 +16,8 @@ sont deux états d'un même écran, pas deux routes : la question ne passe jamai
 l'autre.
 
 La première recherche ouvre l'espace de travail, même si elle échoue : la modale
-d'erreur s'affiche sur une liste vide. L'en-tête de l'espace de travail porte la barre
-de recherche et le sélecteur « Résultats par page ».
+d'erreur s'affiche sur une liste vide. L'espace de travail n'a pas d'en-tête : la barre
+de recherche et le sélecteur « Résultats par page » sont en haut de l'onglet Résultats.
 
 ## Les couches
 
@@ -115,7 +115,8 @@ actif. Graphe et Explication sont des amorces vides, qui auront chacune leur ADR
 
 ## L'onglet Résultats
 
-`features/results/ResultsPanel.tsx` : la liste dans l'ordre du classement, puis la
+`features/results/ResultsPanel.tsx` : un en-tête fixe (`ResultsHeader.tsx` : la barre
+de recherche et le sélecteur de taille), la liste dans l'ordre du classement, puis la
 pagination. Un résultat (`ResultItem.tsx`) aligne :
 
 - un menu « … », sans option pour l'instant ;
@@ -126,7 +127,7 @@ pagination. Un résultat (`ResultItem.tsx`) aligne :
 
 **La pagination** (`Pagination.tsx`, `pageItems.ts`) affiche la première et la dernière
 page, la page courante et ses voisines, avec une ellipse pour les trous. **Le
-sélecteur** (`PageSizeSelect.tsx`, dans l'en-tête) propose les `pageSizes` de la réponse
+sélecteur** (`PageSizeSelect.tsx`) propose les `pageSizes` de la réponse
 et n'apparaît qu'après la première.
 
 ## L'onglet document
@@ -153,11 +154,11 @@ src/
 ├── stores/               # searchStore, errorStore (Zustand, en mémoire)
 ├── features/
 │   ├── home/             # HomeScreen
-│   ├── workspace/        # SearchScreen, WorkspaceScreen, WorkspaceHeader, Workspace,
-│   │                     # panelRegistry, documentTabs, defaultLayout, PanelTab,
-│   │                     # GroupActions, Watermark, FixedPanelList, useClosedFixedPanels
-│   ├── results/          # ResultsPanel, ResultList, ResultItem, InForceDot, Pagination,
-│   │                     # PageSizeSelect
+│   ├── workspace/        # SearchScreen, Workspace, panelRegistry, documentTabs,
+│   │                     # defaultLayout, PanelTab, GroupActions, Watermark,
+│   │                     # FixedPanelList, useClosedFixedPanels
+│   ├── results/          # ResultsPanel, ResultsHeader, ResultList, ResultItem,
+│   │                     # InForceDot, Pagination, PageSizeSelect
 │   ├── document/         # DocumentPanel, useDocumentContent, splitAroundPassage
 │   ├── graph/            # GraphPanel (vide)
 │   ├── explanation/      # ExplanationPanel (vide)

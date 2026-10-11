@@ -3,6 +3,7 @@
 import type { SearchResult } from '@murphy/contract/search';
 import { useSearchStore } from '@/stores/searchStore';
 import Pagination from './Pagination';
+import ResultsHeader from './ResultsHeader';
 import ResultList from './ResultList';
 
 const LOADING_MESSAGE = 'Recherche…';
@@ -31,6 +32,7 @@ export default function ResultsPanel({ onOpenDocument }: ResultsPanelProps) {
 
   return (
     <section className="flex h-full flex-col text-tertiary">
+      <ResultsHeader />
       <div className="min-h-0 flex-1 overflow-y-auto px-4 scrollbar">
         {statusMessage && (
           <p role="status" className="py-4">
