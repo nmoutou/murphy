@@ -4,6 +4,11 @@ import ResultsPanel from '@/features/results/ResultsPanel';
 import GraphPanel from '@/features/graph/GraphPanel';
 import ExplanationPanel from '@/features/explanation/ExplanationPanel';
 
+// TODO: ouvrir l'onglet du document
+const ignoreOpenDocument = (): void => {};
+
+const ResultsPanelAdapter = () => <ResultsPanel onOpenDocument={ignoreOpenDocument} />;
+
 /** Un panneau fixe a pour identifiant et pour composant Dockview son type : il est unique */
 export const FIXED_PANELS = ['results', 'graph', 'explanation'] as const;
 
@@ -16,9 +21,9 @@ interface PanelDefinition {
 }
 
 export const PANEL_DEFINITIONS: Record<FixedPanelKind, PanelDefinition> = {
-  results: { title: 'Résultats', icon: 'folder', component: ResultsPanel },
-  graph: { title: 'Graphe', icon: 'window', component: GraphPanel },
-  explanation: { title: 'Explication', icon: 'edit', component: ExplanationPanel },
+  results: { title: 'Résultats', icon: 'search', component: ResultsPanelAdapter },
+  graph: { title: 'Graphe', icon: 'graphe', component: GraphPanel },
+  explanation: { title: 'Explication', icon: 'explaining', component: ExplanationPanel },
 };
 
 export const PANEL_COMPONENTS: Record<

@@ -50,6 +50,24 @@ describe('SearchScreen', () => {
     expect(screen.getByRole('textbox', { name: 'Votre question' })).toHaveValue(QUESTION);
   });
 
+  it('offers the page sizes after the first response, and searches again from page 1', async () => {
+    searchMock.mockImplementation(({ page, pageSize = 10 }) =>
+      Promise.resolve({ page, pageCount: 3, pageSize, pageSizes: [10, 25], results: [] }),
+    );
+    render(<SearchScreen />);
+    await search();
+
+    await userEvent.selectOptions(
+      await screen.findByRole('combobox', { name: 'Résultats par page' }),
+      '25',
+    );
+
+    expect(searchMock).toHaveBeenLastCalledWith(
+      { question: QUESTION, page: 1, pageSize: 25 },
+      expect.anything(),
+    );
+  });
+
   it('opens the workspace even when the first search fails, under the error', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
     searchMock.mockRejectedValue(new ApiError('NETWORK', 'Failed to fetch'));

@@ -12,7 +12,8 @@ interface LogoProps {
 }
 
 export default function Logo({ width = LOGO_DEFAULT_WIDTH }: LogoProps) {
-  const height = width * LOGO_RATIO;
+  // Entière : next/image prend une hauteur arrondie par le navigateur pour une retouche CSS
+  const height = Math.round(width * LOGO_RATIO);
 
   return (
     <Link href="/">
