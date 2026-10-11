@@ -49,6 +49,8 @@ Cinq contraintes pèsent sur les choix :
 travail**. Les deux sont deux états d'un même écran, pas deux routes : la question ne
 peut pas passer par l'URL.
 
+- La première recherche ouvre l'espace de travail, même si elle échoue : la modale
+  s'affiche sur une liste vide.
 - Un rechargement ramène à l'accueil. Le bouton « retour » du navigateur ne revient pas
   de l'espace de travail à l'accueil.
 - L'en-tête de l'espace de travail porte la barre de recherche ; une nouvelle question
@@ -193,6 +195,7 @@ code d'erreur de l'API (ADR-030 §4) :
 - La table est un `Record<SearchErrorCode, string>` : un code ajouté au contrat casse le
   build tant qu'il n'a pas de message. Une réponse illisible, ou qui viole le schéma,
   donne `INTERNAL`.
+- Une seule modale, alimentée par un store d'erreurs, sert la recherche et les documents.
 - Le code et le détail partent dans `console.error`. Il n'y a pas de bouton
   « Réessayer » : l'utilisateur relance sa recherche.
 - **Après une erreur de recherche**, la liste est vidée et la question reste dans la
@@ -224,7 +227,7 @@ src/
     layout.tsx
     page.tsx                  écran d'accueil ou espace de travail
   lib/api/                    fetch, validation zod, code d'erreur
-  stores/searchStore.ts       Zustand (§7)
+  stores/                     Zustand : searchStore (§7), errorStore (la modale, §10)
   features/
     home/                     HomeScreen
     workspace/                WorkspaceScreen, WorkspaceHeader, Workspace (Dockview),
@@ -236,16 +239,23 @@ src/
     graph/                    GraphPanel (vide)
     explanation/              ExplanationPanel (vide)
     errors/                   ErrorDialog, messages par code
-  components/ui/              SearchBar, Modal, icônes : des briques sans métier
+  components/
+    ui/                       SearchBar, Modal : des briques sans métier
+    icons/                    Icon, ButtonIcon, AnimatedIcon, Logo (déjà en place)
 ```
 
 - Seul `features/workspace/` importe Dockview.
-- `features/results/` et `features/document/` ne s'importent pas l'un l'autre : un
-  résultat ouvre un document par une action de l'espace de travail
-  (`openDocument({ identifier, title, documentType, nature, passage })`), transmise par
-  un contexte de l'espace de travail. Dockview rend ses panneaux, ses actions de groupe
-  et son `watermark` par des portails placés sous `DockviewReact` : un contexte posé
-  au-dessus leur parvient, et ils suivent ses changements.
+- **Le registre adapte les panneaux.** Pour chaque type, un adaptateur reçoit les props
+  de Dockview, lit le contexte de l'espace de travail et rend le panneau avec des props
+  simples : ses paramètres et ses rappels (`onOpenDocument`, `onError`). Les panneaux
+  n'importent ni Dockview, ni `features/workspace/`, ni un autre panneau : les
+  dépendances vont de `workspace/` vers les panneaux, jamais l'inverse.
+- **Un résultat ouvre un document** par `onOpenDocument(result)`. L'adaptateur le relie
+  à l'action `openDocument` du contexte, qui tire du résultat les paramètres du panneau
+  `document` (`{ identifier, documentType, nature, passage }`). Dockview rend ses
+  panneaux, ses actions de groupe et son `watermark` par des portails placés sous
+  `DockviewReact` : un contexte posé au-dessus leur parvient, et ils suivent ses
+  changements.
 - Les tests suivent l'arborescence dans `src/__tests__/`. Les panneaux se testent hors de
   Dockview ; `Workspace` se teste a minima, avec un `ResizeObserver` simulé (jsdom n'en
   a pas).
