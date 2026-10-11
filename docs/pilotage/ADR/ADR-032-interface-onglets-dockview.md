@@ -2,15 +2,16 @@
 
 **Statut** : ✅ Accepté (11 octobre 2026) — réalise ADR-028 §10 côté frontend, amende
 ADR-030 §2 et §3 et ADR-017 §2 à §4 · ferme le point ouvert « Interface du frontend
-adaptée au pivot » · §1, §3 à §5 et §12 amendés le 11 octobre 2026
+adaptée au pivot » · §1 à §6 et §12 amendés le 11 octobre 2026
 
 > **Amendement du 11 octobre 2026.** Un résultat et un onglet document perdent leur icône,
 > et avec elle la table des icônes et `documentTypeLabels`. Les paramètres d'un onglet
 > document se réduisent à `{ identifier, passage }`. Le bouton « Scinder » part : le
 > glisser-déposer de Dockview fait déjà la même chose. L'en-tête de l'espace de travail
 > part aussi : la barre de recherche et le sélecteur « Résultats par page » passent en
-> haut de l'onglet Résultats, et le logo n'est plus affiché que sur l'accueil. Le texte
-> ci-dessous décrit l'interface après cet amendement.
+> haut de l'onglet Résultats, qui devient l'onglet Recherche, et le logo n'est plus affiché
+> que sur l'accueil. L'onglet Explication devient l'onglet Résumé. Le texte ci-dessous
+> décrit l'interface après cet amendement.
 
 ## Contexte
 
@@ -62,8 +63,8 @@ peut pas passer par l'URL.
 - Un rechargement ramène à l'accueil. Le bouton « retour » du navigateur ne revient pas
   de l'espace de travail à l'accueil.
 - L'espace de travail n'a pas d'en-tête : la barre de recherche est en haut de l'onglet
-  Résultats (§4) ; une nouvelle question remplace la précédente, sans quitter l'espace
-  de travail. Fermer Résultats retire la barre ; le menu « … » ou le `watermark` (§3) le
+  Recherche (§4) ; une nouvelle question remplace la précédente, sans quitter l'espace
+  de travail. Fermer Recherche retire la barre ; le menu « … » ou le `watermark` (§3) le
   rouvre.
 - Les polices restent Geist et Geist Mono.
 
@@ -77,8 +78,8 @@ n'est pas nécessaire. Son thème reprend les couleurs du `@theme` de `globals.c
 - **Un registre de types de panneaux** : `results`, `graph`, `explanation`, `document`.
   Chaque type déclare son composant, son titre et son icône. C'est le seul module, avec
   l'espace de travail, qui connaît Dockview ; les panneaux l'ignorent.
-- **La disposition par défaut** : un groupe, trois onglets (Résultats, Graphe,
-  Explication), Résultats actif.
+- **La disposition par défaut** : un groupe, trois onglets (Recherche, Graphe,
+  Résumé), Recherche actif.
 - **Chaque état a un seul détenteur** :
   - Dockview détient la disposition : les panneaux ouverts, leurs groupes, l'onglet actif ;
   - les paramètres d'un panneau portent ses propres données (pour un document :
@@ -90,13 +91,13 @@ n'est pas nécessaire. Son thème reprend les couleurs du `@theme` de `globals.c
 
 - **Scinder** : un onglet glissé au bord d'un groupe ouvre un nouveau groupe. Aucun bouton
   ne le fait.
-- **Le menu « … »** liste les panneaux fixes (Résultats, Graphe, Explication) qui ne sont
-  ouverts nulle part, et les rouvre dans ce groupe. Tous les onglets se ferment, Résultats
+- **Le menu « … »** liste les panneaux fixes (Recherche, Graphe, Résumé) qui ne sont
+  ouverts nulle part, et les rouvre dans ce groupe. Tous les onglets se ferment, Recherche
   compris.
 - **Un espace vide** : quand le dernier onglet est fermé, il ne reste plus de groupe, donc
   plus de menu. Le `watermark` de Dockview prend le relais et propose la même liste.
 
-### 4. L'onglet Résultats
+### 4. L'onglet Recherche
 
 Une liste dans l'ordre du classement, puis la pagination. Chaque résultat se compose de
 quatre éléments :
@@ -119,7 +120,7 @@ réponse (§8). En changer relance la recherche à la page 1.
 ### 5. L'onglet document
 
 - **L'ouverture** : un clic sur le titre d'un résultat ouvre un panneau `document`, dans
-  le groupe de l'onglet Résultats, ou dans le groupe actif si Résultats est fermé. Son identifiant est `document:<identifier>` : un second
+  le groupe de l'onglet Recherche, ou dans le groupe actif si Recherche est fermé. Son identifiant est `document:<identifier>` : un second
   clic active l'onglet déjà ouvert.
 - **L'onglet** porte le titre du document, tronqué (le titre complet en infobulle), sans
   icône.
@@ -130,13 +131,13 @@ réponse (§8). En changer relance la recherche à la page 1.
 - **Une erreur** (404 `DOCUMENT_NOT_FOUND`, backend injoignable…) affiche la modale (§10),
   puis l'onglet se ferme.
 
-### 6. Graphe et Explication : deux amorces vides
+### 6. Graphe et Résumé : deux amorces vides
 
 Les deux panneaux existent dans le registre et dans la disposition par défaut, mais
 n'affichent rien.
 
 - **Le Graphe** lira les relations de Neo4j, que le backend ne lit pas encore.
-- **L'Explication** réintégrera un LLM, plus contrôlé que celui qu'a retiré ADR-028 §9.
+- **Le Résumé** réintégrera un LLM, plus contrôlé que celui qu'a retiré ADR-028 §9.
 
 Chacun aura sa propre ADR.
 
@@ -334,7 +335,7 @@ après chacun.
 
 **Restent ouverts** :
 - les options du menu « … » d'un résultat ;
-- le contenu des onglets Graphe et Explication (§6).
+- le contenu des onglets Graphe et Résumé (§6).
 
 ## Références
 

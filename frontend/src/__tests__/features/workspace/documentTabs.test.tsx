@@ -59,7 +59,7 @@ beforeEach(() => {
 });
 
 describe('document tabs', () => {
-  it('opens a result in a tab next to Résultats, its passage highlighted', async () => {
+  it('opens a result in a tab next to Recherche, its passage highlighted', async () => {
     const { container } = render(<Workspace />);
 
     await userEvent.click(screen.getByRole('button', { name: RESULT.title }));
@@ -79,7 +79,7 @@ describe('document tabs', () => {
     expect(api.activePanel?.id).toBe(DOCUMENT_PANEL_ID);
   });
 
-  it('opens in the active group once Résultats is closed', () => {
+  it('opens in the active group once Recherche is closed', () => {
     const api = renderDockview();
     const graph = api.getPanel('graph');
     act(() => {

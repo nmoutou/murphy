@@ -97,8 +97,8 @@ ni Dockview, ni `workspace/`, ni un autre panneau.
 | `document` | `document:<identifier>` | `DocumentPanel` | `identifier`, `passage`, `onError(code)` → la modale, puis la fermeture de l'onglet |
 
 Les trois panneaux fixes ont pour identifiant leur type : chacun est unique. La
-disposition par défaut (`defaultLayout.ts`) les ouvre dans un seul groupe, Résultats
-actif. Graphe et Explication sont des amorces vides, qui auront chacune leur ADR.
+disposition par défaut (`defaultLayout.ts`) les ouvre dans un seul groupe, Recherche
+actif. Graphe et Résumé sont des amorces vides, qui auront chacune leur ADR.
 
 ### Les actions d'un groupe
 
@@ -106,14 +106,14 @@ actif. Graphe et Explication sont des amorces vides, qui auront chacune leur ADR
   glisser-déposer de Dockview, sans bouton).
 - **Le menu « … »** (`GroupActions.tsx`) rouvre dans ce groupe les panneaux fixes
   fermés partout (`useClosedFixedPanels.ts`, abonné aux ajouts et fermetures de
-  panneaux). Tous les onglets se ferment, Résultats compris.
+  panneaux). Tous les onglets se ferment, Recherche compris.
 - **Un espace vide** n'a plus de groupe, donc plus de menu : le `watermark`
   (`Watermark.tsx`) propose la même liste.
 - **L'onglet** (`PanelTab.tsx`) : l'icône du registre pour un panneau fixe (un document
   n'en a pas), un titre tronqué avec le titre complet en infobulle, et un bouton de
   fermeture.
 
-## L'onglet Résultats
+## L'onglet Recherche
 
 `features/results/ResultsPanel.tsx` : un en-tête fixe (`ResultsHeader.tsx` : la barre
 de recherche et le sélecteur de taille), la liste dans l'ordre du classement, puis la
@@ -134,7 +134,7 @@ et n'apparaît qu'après la première.
 
 - **L'ouverture** (`workspace/documentTabs.tsx:openDocument`) : un onglet par document,
   `document:<identifier>`. S'il est déjà ouvert, il est activé. Sinon, il s'ouvre dans le
-  groupe de Résultats, ou dans le groupe actif si Résultats est fermé. Ses paramètres :
+  groupe de Recherche, ou dans le groupe actif si Recherche est fermé. Ses paramètres :
   `{ identifier, passage }`, où `passage` est le premier du
   résultat.
 - **Le contenu** (`document/DocumentPanel.tsx`) : `GET /documents/:identifier` au

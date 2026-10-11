@@ -14,7 +14,7 @@ export default function Watermark({ containerApi }: IWatermarkPanelProps) {
 
   return (
     <div className="flex h-full flex-col items-center justify-center gap-2 text-tertiary">
-      <p>Aucun onglet ouvert. Rouvrir :</p>
+      <p>Aucun onglet ouvert.</p>
       <FixedPanelList kinds={closedKinds} onSelect={handleReopen} />
     </div>
   );

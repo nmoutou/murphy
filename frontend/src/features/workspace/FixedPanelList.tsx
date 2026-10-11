@@ -2,6 +2,7 @@ import type { FixedPanelKind } from './panelRegistry';
 import { PANEL_DEFINITIONS } from './panelRegistry';
 
 const ALL_OPEN_MESSAGE = 'Tous les onglets sont ouverts.';
+const OPEN_ACTION = 'Ouvrir';
 
 interface FixedPanelListProps {
   readonly kinds: readonly FixedPanelKind[];
@@ -22,7 +23,7 @@ export default function FixedPanelList({ kinds, onSelect }: FixedPanelListProps)
             onClick={() => onSelect(kind)}
             className="w-full px-3 py-1 text-left text-sm whitespace-nowrap hover:bg-secondary"
           >
-            {PANEL_DEFINITIONS[kind].title}
+            {OPEN_ACTION} {PANEL_DEFINITIONS[kind].title}
           </button>
         </li>
       ))}

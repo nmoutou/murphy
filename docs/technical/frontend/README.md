@@ -8,7 +8,7 @@ Zustand (ADR-032), qui appelle l'API de recherche du backend en HTTP.
 
 | Document | Contenu |
 |---|---|
-| [ARCHITECTURE.md](ARCHITECTURE.md) | Vue d'ensemble : les deux écrans, les couches (composants → stores → `lib/api`), la modale d'erreur, l'espace Dockview et son registre, les onglets Résultats et document, l'arborescence. **Commencer ici.** |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | Vue d'ensemble : les deux écrans, les couches (composants → stores → `lib/api`), la modale d'erreur, l'espace Dockview et son registre, les onglets Recherche et document, l'arborescence. **Commencer ici.** |
 | `reference/` | Références détaillées — *à écrire ; même ossature que [`data/reference/`](../data/reference/).* |
 
 La vue système globale (serving + ingestion + bases partagées) est dans

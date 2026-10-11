@@ -21,9 +21,9 @@ interface PanelDefinition {
 }
 
 export const PANEL_DEFINITIONS: Record<FixedPanelKind, PanelDefinition> = {
-  results: { title: 'Résultats', icon: 'search', component: ResultsPanelAdapter },
+  results: { title: 'Recherche', icon: 'search', component: ResultsPanelAdapter },
   graph: { title: 'Graphe', icon: 'graphe', component: GraphPanel },
-  explanation: { title: 'Explication', icon: 'explaining', component: ExplanationPanel },
+  explanation: { title: 'Résumé', icon: 'explaining', component: ExplanationPanel },
 };
 
 export const PANEL_COMPONENTS: Record<string, FunctionComponent<IDockviewPanelProps>> = {

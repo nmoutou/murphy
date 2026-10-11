@@ -37,7 +37,7 @@
 | [ADR-029](ADR-029-recherche-hybride-quatre-listes.md) | Recherche hybride : une liste de références et un vecteur de titre | ✅ Accepté (4 octobre 2026) — amende ADR-028 §2 et §6 |
 | [ADR-030](ADR-030-api-de-recherche.md) | Une API de recherche paginée : le LLM et le flux partent | ✅ Accepté (10 octobre 2026) — réalise l'étape 2 d'ADR-028, amende ADR-028 §7 et ADR-017 §2 et §5 · §2 et §3 amendés par ADR-032 (taille de page, `isInForce`), §7 et §8 clos par ADR-032 |
 | [ADR-031](ADR-031-modele-embedding-francais.md) | Un modèle d'embedding qui couvre le droit français | ✅ Accepté (11 octobre 2026) — `microsoft/harrier-oss-v1-0.6b`, consigne devant la question ; amende ADR-015 §2 |
-| [ADR-032](ADR-032-interface-onglets-dockview.md) | L'interface du moteur de recherche : un espace d'onglets Dockview | ✅ Accepté (11 octobre 2026) — réalise ADR-028 §10 côté frontend, amende ADR-030 §2 et §3 et ADR-017 §2 à §4 · ferme le point ouvert « Interface du frontend adaptée au pivot » · §1, §3 à §5 et §12 amendés le 11 octobre 2026 (ni icône de document, ni bouton Scinder ; la barre de recherche passe dans l'onglet Résultats) |
+| [ADR-032](ADR-032-interface-onglets-dockview.md) | L'interface du moteur de recherche : un espace d'onglets Dockview | ✅ Accepté (11 octobre 2026) — réalise ADR-028 §10 côté frontend, amende ADR-030 §2 et §3 et ADR-017 §2 à §4 · ferme le point ouvert « Interface du frontend adaptée au pivot » · §1 à §6 et §12 amendés le 11 octobre 2026 (ni icône de document, ni bouton Scinder ; la barre de recherche passe dans l'onglet Résultats, renommé Recherche ; Explication renommé Résumé) |
 
 ## Points ouverts rattachés
 
@@ -46,4 +46,4 @@
 | Contenu de la vague 2 d'ingestion (JORF + candidates KALI, CIRCULAIRES) | ADR-002 | Mini-ADR à l'issue de l'alpha |
 | `doc_id` stable au niveau article pour LEGI | ADR-003 | v0 |
 | Forme juridique · licence du code · soutenabilité | ADR-006 | Approche de la beta |
-| Contenu des onglets Graphe (relations Neo4j) et Explication (LLM contrôlé) | ADR-032 §6 | Une ADR chacun |
+| Contenu des onglets Graphe (relations Neo4j) et Résumé (LLM contrôlé) | ADR-032 §6 | Une ADR chacun |

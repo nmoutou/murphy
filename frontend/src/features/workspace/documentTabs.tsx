@@ -14,7 +14,7 @@ export interface DocumentPanelParams {
   readonly passage?: Passage;
 }
 
-/** Un onglet par document : le rouvrir l'active. Il s'ouvre près des Résultats, s'ils sont ouverts */
+/** Un onglet par document : le rouvrir l'active. Il s'ouvre près de Recherche, si elle est ouverte */
 export const openDocument = (api: DockviewApi, result: SearchResult): void => {
   const { identifier, title, passages } = result;
   const id = `${DOCUMENT_ID_PREFIX}${identifier}`;

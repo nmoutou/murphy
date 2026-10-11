@@ -21,20 +21,20 @@ const closeTabs = async (...titles: string[]) => {
 };
 
 describe('Workspace', () => {
-  it('opens Résultats, Graphe and Explication in one group, Résultats active', () => {
+  it('opens Recherche, Graphe and Résumé in one group, Recherche active', () => {
     const { groupCount } = renderWorkspace();
 
     expect(groupCount()).toBe(1);
-    for (const title of ['Résultats', 'Graphe', 'Explication']) {
+    for (const title of ['Recherche', 'Graphe', 'Résumé']) {
       expect(closeButton(title)).toBeInTheDocument();
     }
-    expect(screen.getByRole('region', { name: 'Résultats' })).toHaveClass('dv-active-group');
+    expect(screen.getByRole('region', { name: 'Recherche' })).toHaveClass('dv-active-group');
   });
 
   it('gives each tab its full title as a tooltip', () => {
     renderWorkspace();
 
-    expect(closeButton('Explication').closest('[title]')).toHaveAttribute('title', 'Explication');
+    expect(closeButton('Résumé').closest('[title]')).toHaveAttribute('title', 'Résumé');
   });
 
   it('reopens a closed fixed tab from the group menu', async () => {
@@ -42,7 +42,7 @@ describe('Workspace', () => {
     await closeTabs('Graphe');
 
     await userEvent.click(screen.getByRole('button', { name: 'Rouvrir un onglet' }));
-    await userEvent.click(screen.getByRole('button', { name: 'Graphe' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Ouvrir Graphe' }));
 
     expect(closeButton('Graphe')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Graphe' })).not.toBeInTheDocument();
@@ -59,11 +59,11 @@ describe('Workspace', () => {
   it('offers the closed tabs once the workspace is empty', async () => {
     renderWorkspace();
 
-    await closeTabs('Résultats', 'Graphe', 'Explication');
+    await closeTabs('Recherche', 'Graphe', 'Résumé');
     const watermark = screen.getByText(/Aucun onglet ouvert/).parentElement;
     if (!watermark) throw new Error('The watermark has no container');
-    await userEvent.click(within(watermark).getByRole('button', { name: 'Résultats' }));
+    await userEvent.click(within(watermark).getByRole('button', { name: 'Ouvrir Recherche' }));
 
-    expect(queryCloseButton('Résultats')).toBeInTheDocument();
+    expect(queryCloseButton('Recherche')).toBeInTheDocument();
   });
 });
