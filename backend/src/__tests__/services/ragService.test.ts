@@ -4,7 +4,7 @@ import { getInfraClients } from '../../infra/clients';
 
 jest.mock('../../infra/clients', () => {
   const clients = {
-    embedding: { embedText: jest.fn() },
+    embedding: { embedQuestion: jest.fn() },
     opensearch: { search: jest.fn() },
     mongo: { fetchParentDocuments: jest.fn() },
   };
@@ -54,11 +54,11 @@ describe('fetchDocuments', () => {
 
 describe('embedQuestion', () => {
   it('returns the embedding with the stage duration', async () => {
-    jest.mocked(embedding.embedText).mockResolvedValue(EMBEDDING);
+    jest.mocked(embedding.embedQuestion).mockResolvedValue(EMBEDDING);
 
     const embedded = await embedQuestion('Quel délai ?');
 
-    expect(embedding.embedText).toHaveBeenCalledWith('Quel délai ?');
+    expect(embedding.embedQuestion).toHaveBeenCalledWith('Quel délai ?');
     expect(embedded.embedding).toBe(EMBEDDING);
     expect(embedded.embeddingMs).toBeGreaterThanOrEqual(0);
   });

@@ -3,6 +3,7 @@ import { loadConfig } from '../config';
 const REQUIRED_ENV = {
   MONGODB_URI: 'mongodb://mongo:27017',
   OPENSEARCH_INDEX: 'documents',
+  EMBEDDING_QUERY_INSTRUCTION: 'Instruct: Retrieve text based on user query.\nQuery:',
 };
 
 describe('loadConfig', () => {
@@ -76,5 +77,18 @@ describe('loadConfig', () => {
     expect(report.missingRequired).toEqual(['OPENSEARCH_INDEX']);
     expect(report.defaulted).toContain('MONGODB_DATABASE');
     expect(report.defaulted).not.toContain('MONGODB_URI');
+  });
+
+  it('reads the query instruction as is, line break included', () => {
+    const { config } = loadConfig(REQUIRED_ENV);
+
+    expect(config.embedding.queryInstruction).toBe('Instruct: Retrieve text based on user query.\nQuery:');
+  });
+
+  it('reports a missing query instruction without stopping the boot: questions go without it', () => {
+    const { config, report } = loadConfig({ ...REQUIRED_ENV, EMBEDDING_QUERY_INSTRUCTION: undefined });
+
+    expect(report.missingRequired).toEqual(['EMBEDDING_QUERY_INSTRUCTION']);
+    expect(config.embedding.queryInstruction).toBe('');
   });
 });

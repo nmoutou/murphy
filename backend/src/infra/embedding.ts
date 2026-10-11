@@ -33,12 +33,13 @@ export class EmbeddingClient {
   constructor(private readonly settings: EmbeddingConfig) {}
 
   /** @throws RagError d'étape `embedding` */
-  async embedText(text: string): Promise<EmbeddingVector> {
+  async embedQuestion(question: string): Promise<EmbeddingVector> {
     const startTime = Date.now();
-    logger.info({ textLength: text.length, modelName: this.settings.modelName }, 'Embedding request started');
+    logger.info({ textLength: question.length, modelName: this.settings.modelName }, 'Embedding request started');
 
     try {
-      const embedding = await this.requestEmbedding(text);
+      // Sans séparateur : le modèle a été évalué avec la consigne collée à la question
+      const embedding = await this.requestEmbedding(`${this.settings.queryInstruction}${question}`);
       logger.info({ embeddingDim: embedding.length, durationMs: Date.now() - startTime }, 'Embedding completed');
       return embedding;
     } catch (error) {

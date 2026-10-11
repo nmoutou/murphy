@@ -23,7 +23,7 @@ export interface DocumentFetchResult {
 
 export const embedQuestion = async (question: string): Promise<EmbedResult> => {
   const start = Date.now();
-  const embedding = await getInfraClients().embedding.embedText(question);
+  const embedding = await getInfraClients().embedding.embedQuestion(question);
   return { embedding, embeddingMs: Date.now() - start };
 };
 

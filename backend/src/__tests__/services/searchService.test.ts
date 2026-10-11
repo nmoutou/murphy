@@ -5,7 +5,7 @@ import { RagError } from '../../types/rag';
 
 jest.mock('../../infra/clients', () => {
   const clients = {
-    embedding: { embedText: jest.fn() },
+    embedding: { embedQuestion: jest.fn() },
     opensearch: { search: jest.fn() },
     mongo: { fetchParentDocuments: jest.fn() },
   };
@@ -33,7 +33,7 @@ const HITS: SearchHit[] = [
 const { embedding, opensearch, mongo } = getInfraClients();
 
 beforeEach(() => {
-  jest.mocked(embedding.embedText).mockResolvedValue(EMBEDDING);
+  jest.mocked(embedding.embedQuestion).mockResolvedValue(EMBEDDING);
   jest.mocked(opensearch.search).mockResolvedValue(HITS);
   jest.mocked(mongo.fetchParentDocuments).mockResolvedValue([SECTION, ARTICLE]);
 });
@@ -65,7 +65,7 @@ describe('searchDocuments', () => {
   it('searches from the first rank of the page', async () => {
     await searchDocuments({ question: QUESTION, page: 3 });
 
-    expect(embedding.embedText).toHaveBeenCalledWith(QUESTION);
+    expect(embedding.embedQuestion).toHaveBeenCalledWith(QUESTION);
     expect(opensearch.search).toHaveBeenCalledWith(QUESTION, EMBEDDING, 20);
   });
 
@@ -81,6 +81,6 @@ describe('searchDocuments', () => {
 
     await expect(search).rejects.toBeInstanceOf(RagError);
     await expect(search).rejects.toMatchObject({ code: 'PAGE_OUT_OF_RANGE' });
-    expect(embedding.embedText).not.toHaveBeenCalled();
+    expect(embedding.embedQuestion).not.toHaveBeenCalled();
   });
 });

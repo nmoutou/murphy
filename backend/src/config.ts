@@ -43,6 +43,8 @@ export interface EmbeddingConfig {
   readonly serviceUrl: string;
   readonly modelName: string;
   readonly timeoutMs: number;
+  /** Préfixe complet, collé tel quel devant la question ; rien devant les passages indexés */
+  readonly queryInstruction: string;
 }
 
 export interface PaginationConfig {
@@ -88,7 +90,7 @@ const DEFAULT_MONGODB_TIMEOUT_MS = 10_000;
 const DEFAULT_OPENSEARCH_URL = 'http://opensearch:9200';
 const DEFAULT_OPENSEARCH_TIMEOUT_MS = 10_000;
 const DEFAULT_EMBEDDING_SERVICE_URL = 'http://embedding-service:80';
-const DEFAULT_EMBEDDING_MODEL_NAME = 'all-mpnet-base-v2';
+const DEFAULT_EMBEDDING_MODEL_NAME = 'microsoft/harrier-oss-v1-0.6b';
 const DEFAULT_EMBEDDING_TIMEOUT_MS = 10_000;
 const DEFAULT_PAGINATION_SIZE = 10;
 const DEFAULT_PAGINATION_DEPTH = 100;
@@ -173,6 +175,7 @@ const readEmbeddingConfig = (reader: EnvReader): EmbeddingConfig => ({
   serviceUrl: reader.optional('EMBEDDING_SERVICE_URL') ?? DEFAULT_EMBEDDING_SERVICE_URL,
   modelName: reader.optional('EMBEDDING_MODEL_NAME') ?? DEFAULT_EMBEDDING_MODEL_NAME,
   timeoutMs: reader.integer('EMBEDDING_SERVICE_TIMEOUT', DEFAULT_EMBEDDING_TIMEOUT_MS),
+  queryInstruction: reader.required('EMBEDDING_QUERY_INSTRUCTION'),
 });
 
 /** @throws si une valeur n'est pas un entier positif, ou si la profondeur est hors de [taille, 10 000] */
