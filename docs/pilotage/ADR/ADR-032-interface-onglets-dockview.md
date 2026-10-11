@@ -2,7 +2,13 @@
 
 **Statut** : ✅ Accepté (11 octobre 2026) — réalise ADR-028 §10 côté frontend, amende
 ADR-030 §2 et §3 et ADR-017 §2 à §4 · ferme le point ouvert « Interface du frontend
-adaptée au pivot »
+adaptée au pivot » · §3 à §5 amendés le 11 octobre 2026
+
+> **Amendement du 11 octobre 2026.** Un résultat et un onglet document perdent leur icône,
+> et avec elle la table des icônes et `documentTypeLabels`. Les paramètres d'un onglet
+> document se réduisent à `{ identifier, passage }`. Le bouton « Scinder » part : le
+> glisser-déposer de Dockview fait déjà la même chose. Le texte ci-dessous décrit
+> l'interface après cet amendement.
 
 ## Contexte
 
@@ -78,8 +84,8 @@ n'est pas nécessaire. Son thème reprend les couleurs du `@theme` de `globals.c
 
 ### 3. Les actions d'un groupe
 
-- **Scinder** déplace l'onglet actif dans un nouveau groupe, à droite, ou en dessous sur
-  un écran étroit. Le bouton est désactivé quand le groupe n'a qu'un onglet.
+- **Scinder** : un onglet glissé au bord d'un groupe ouvre un nouveau groupe. Aucun bouton
+  ne le fait.
 - **Le menu « … »** liste les panneaux fixes (Résultats, Graphe, Explication) qui ne sont
   ouverts nulle part, et les rouvre dans ce groupe. Tous les onglets se ferment, Résultats
   compris.
@@ -89,14 +95,11 @@ n'est pas nécessaire. Son thème reprend les couleurs du `@theme` de `globals.c
 ### 4. L'onglet Résultats
 
 Une liste dans l'ordre du classement, puis la pagination. Chaque résultat se compose de
-cinq éléments :
+quatre éléments :
 
 - **Un menu « … »**, sans option pour l'instant.
 - **Une pastille** : verte si `isInForce` vaut `true`, rouge s'il vaut `false`, aucune
   s'il est absent (§9).
-- **Une icône**, choisie par la nature quand elle en a une, par `documentType` sinon. La
-  table des natures est partielle et se complète au fil de l'eau ; celle des types est
-  exhaustive, et le compilateur la vérifie. Une nature inconnue prend l'icône de son type.
 - **Le titre**, qui ouvre l'onglet du document (§5).
 - **Le premier passage**, le mieux classé, coupé à quelques lignes. L'API continue
   d'envoyer tous les passages : le poids est négligeable, et le contrat ne bouge pas. Un
@@ -113,8 +116,8 @@ transmet la réponse (§8). En changer relance la recherche à la page 1.
 - **L'ouverture** : un clic sur le titre d'un résultat ouvre un panneau `document`, dans
   le groupe de l'onglet Résultats, ou dans le groupe actif si Résultats est fermé. Son identifiant est `document:<identifier>` : un second
   clic active l'onglet déjà ouvert.
-- **L'onglet** porte le titre du document, tronqué (le titre complet en infobulle), et
-  l'icône du §4.
+- **L'onglet** porte le titre du document, tronqué (le titre complet en infobulle), sans
+  icône.
 - **Le contenu** : `GET /api/v1/documents/:identifier` à chaque ouverture, sans cache.
   Le passage affiché dans le résultat est surligné, grâce à ses offsets `start`/`end`
   (UTF-16, ADR-030 §3), et l'onglet défile jusqu'à lui.
@@ -235,7 +238,7 @@ src/
                               panelRegistry, defaultLayout, onglet, actions du groupe,
                               watermark
     results/                  ResultsPanel, ResultList, ResultItem, InForceDot,
-                              DocumentIcon, Pagination, PageSizeSelect
+                              Pagination, PageSizeSelect
     document/                 DocumentPanel, surlignage du passage
     graph/                    GraphPanel (vide)
     explanation/              ExplanationPanel (vide)
@@ -253,7 +256,7 @@ src/
 - **Un résultat ouvre un document** par `onOpenDocument(result)`. L'adaptateur le relie
   à `openDocument`, avec l'API de Dockview qu'il reçoit dans ses props (`containerApi`) :
   aucun contexte React n'est nécessaire. `openDocument` tire du résultat les paramètres
-  du panneau `document` (`{ identifier, documentType, nature, passage }`).
+  du panneau `document` (`{ identifier, passage }`).
 - Les tests suivent l'arborescence dans `src/__tests__/`. Les panneaux se testent hors de
   Dockview ; `Workspace` se teste a minima, avec un `ResizeObserver` simulé (jsdom n'en
   a pas).
@@ -279,6 +282,7 @@ src/
 - **Un seul passage dans l'API** : un contrat de plus à changer, pour un gain de poids
   négligeable.
 - **Les erreurs affichées dans le panneau** : la modale reste cohérente avec ADR-017.
+- **Un bouton « Scinder »** : il doublait le glisser-déposer de Dockview.
 - **L'onglet document dans un groupe à part** : la vue scindée resterait au choix de
   l'utilisateur.
 - **Interdire la fermeture du dernier onglet** : le `watermark` laisse l'utilisateur
@@ -325,7 +329,6 @@ après chacun.
   d'un onglet, une erreur (backend arrêté).
 
 **Restent ouverts** :
-- la liste complète des icônes par nature, qui se complète au fil de l'eau ;
 - les options du menu « … » d'un résultat ;
 - le contenu des onglets Graphe et Explication (§6).
 

@@ -1,5 +1,5 @@
 import type { DockviewApi, IDockviewPanelProps } from 'dockview-react';
-import type { DocumentType, Passage, SearchResult } from '@murphy/contract/search';
+import type { Passage, SearchResult } from '@murphy/contract/search';
 import type { DisplayedErrorCode } from '@/lib/api/apiError';
 import DocumentPanel from '@/features/document/DocumentPanel';
 import { useErrorStore } from '@/stores/errorStore';
@@ -11,14 +11,12 @@ const RESULTS_PANEL: FixedPanelKind = 'results';
 
 export interface DocumentPanelParams {
   readonly identifier: string;
-  readonly documentType: DocumentType;
-  readonly nature?: string;
   readonly passage?: Passage;
 }
 
 /** Un onglet par document : le rouvrir l'active. Il s'ouvre près des Résultats, s'ils sont ouverts */
 export const openDocument = (api: DockviewApi, result: SearchResult): void => {
-  const { identifier, title, documentType, nature, passages } = result;
+  const { identifier, title, passages } = result;
   const id = `${DOCUMENT_ID_PREFIX}${identifier}`;
   const openedPanel = api.getPanel(id);
   if (openedPanel) {
@@ -26,7 +24,7 @@ export const openDocument = (api: DockviewApi, result: SearchResult): void => {
     return;
   }
   const resultsGroup = api.getPanel(RESULTS_PANEL)?.group;
-  const params: DocumentPanelParams = { identifier, documentType, nature, passage: passages[0] };
+  const params: DocumentPanelParams = { identifier, passage: passages[0] };
   api.addPanel({
     id,
     component: DOCUMENT_COMPONENT,

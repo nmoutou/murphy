@@ -1,5 +1,4 @@
 import type { SearchResult } from '@murphy/contract/search';
-import DocumentIcon from './DocumentIcon';
 import InForceDot from './InForceDot';
 
 interface ResultItemProps {
@@ -22,7 +21,7 @@ function ResultMenu({ title }: { readonly title: string }) {
 }
 
 export default function ResultItem({ result, onOpenDocument }: ResultItemProps) {
-  const { title, documentType, nature, isInForce, passages } = result;
+  const { title, isInForce, passages } = result;
   // Le mieux classé
   const passage = passages[0];
 
@@ -32,7 +31,6 @@ export default function ResultItem({ result, onOpenDocument }: ResultItemProps) 
       <article className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <InForceDot isInForce={isInForce} />
-          <DocumentIcon documentType={documentType} nature={nature} />
           <button
             type="button"
             onClick={() => onOpenDocument(result)}

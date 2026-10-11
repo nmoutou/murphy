@@ -2,9 +2,9 @@ interface InForceDotProps {
   readonly isInForce?: boolean;
 }
 
-/** Sans statut, comme pour une décision, l'emplacement reste vide pour garder les titres alignés */
+/** Sans statut, comme pour une décision, ni pastille ni emplacement : le titre s'aligne sur l'extrait */
 export default function InForceDot({ isInForce }: InForceDotProps) {
-  if (isInForce === undefined) return <span className="size-2 shrink-0" />;
+  if (isInForce === undefined) return null;
   const label = isInForce ? 'En vigueur' : 'Pas en vigueur';
   const color = isInForce ? 'bg-in-force' : 'bg-not-in-force';
 

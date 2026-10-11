@@ -102,17 +102,16 @@ actif. Graphe et Explication sont des amorces vides, qui auront chacune leur ADR
 
 ### Les actions d'un groupe
 
-- **Scinder** (`GroupActions.tsx`) déplace l'onglet actif dans un nouveau groupe, à
-  droite, ou en dessous sur un écran étroit (`max-width: 640px`). Le bouton est désactivé
-  quand le groupe n'a qu'un onglet.
-- **Le menu « … »** rouvre dans ce groupe les panneaux fixes fermés partout
-  (`useClosedFixedPanels.ts`, abonné aux ajouts et fermetures de panneaux). Tous les
-  onglets se ferment, Résultats compris.
+- **Scinder** : un onglet glissé au bord d'un groupe ouvre un nouveau groupe (le
+  glisser-déposer de Dockview, sans bouton).
+- **Le menu « … »** (`GroupActions.tsx`) rouvre dans ce groupe les panneaux fixes
+  fermés partout (`useClosedFixedPanels.ts`, abonné aux ajouts et fermetures de
+  panneaux). Tous les onglets se ferment, Résultats compris.
 - **Un espace vide** n'a plus de groupe, donc plus de menu : le `watermark`
   (`Watermark.tsx`) propose la même liste.
-- **L'onglet** (`PanelTab.tsx`) : une icône (celle du registre pour un panneau fixe,
-  celle du document sinon), un titre tronqué avec le titre complet en infobulle, et un
-  bouton de fermeture.
+- **L'onglet** (`PanelTab.tsx`) : l'icône du registre pour un panneau fixe (un document
+  n'en a pas), un titre tronqué avec le titre complet en infobulle, et un bouton de
+  fermeture.
 
 ## L'onglet Résultats
 
@@ -122,9 +121,6 @@ pagination. Un résultat (`ResultItem.tsx`) aligne :
 - un menu « … », sans option pour l'instant ;
 - une pastille (`InForceDot.tsx`) : verte si `isInForce` vaut `true`, rouge s'il vaut
   `false`, aucune s'il est absent ;
-- une icône (`documentIcons.ts`), choisie par la nature, sinon par le type. La table des
-  natures est partielle et se complète au fil de l'eau ; celle des types est exhaustive
-  et vérifiée par le compilateur ;
 - le titre, en police mono, qui ouvre le document ;
 - le premier passage, coupé à quelques lignes ; absent si le document n'en a pas.
 
@@ -138,7 +134,7 @@ et n'apparaît qu'après la première.
 - **L'ouverture** (`workspace/documentTabs.tsx:openDocument`) : un onglet par document,
   `document:<identifier>`. S'il est déjà ouvert, il est activé. Sinon, il s'ouvre dans le
   groupe de Résultats, ou dans le groupe actif si Résultats est fermé. Ses paramètres :
-  `{ identifier, documentType, nature, passage }`, où `passage` est le premier du
+  `{ identifier, passage }`, où `passage` est le premier du
   résultat.
 - **Le contenu** (`document/DocumentPanel.tsx`) : `GET /documents/:identifier` au
   montage, annulé au démontage. Le texte est affiché entier (`whitespace-pre-wrap`) ; le
@@ -153,16 +149,15 @@ et n'apparaît qu'après la première.
 src/
 ├── app/                  # layout.tsx, page.tsx (rend SearchScreen), error.tsx (Error Boundary)
 ├── lib/
-│   ├── api/              # requestApi, ApiError, search, documents, apiUrl
-│   └── documentTypeLabels.ts
+│   └── api/              # requestApi, ApiError, search, documents, apiUrl
 ├── stores/               # searchStore, errorStore (Zustand, en mémoire)
 ├── features/
 │   ├── home/             # HomeScreen
 │   ├── workspace/        # SearchScreen, WorkspaceScreen, WorkspaceHeader, Workspace,
 │   │                     # panelRegistry, documentTabs, defaultLayout, PanelTab,
 │   │                     # GroupActions, Watermark, FixedPanelList, useClosedFixedPanels
-│   ├── results/          # ResultsPanel, ResultList, ResultItem, InForceDot, DocumentIcon,
-│   │                     # Pagination, PageSizeSelect
+│   ├── results/          # ResultsPanel, ResultList, ResultItem, InForceDot, Pagination,
+│   │                     # PageSizeSelect
 │   ├── document/         # DocumentPanel, useDocumentContent, splitAroundPassage
 │   ├── graph/            # GraphPanel (vide)
 │   ├── explanation/      # ExplanationPanel (vide)

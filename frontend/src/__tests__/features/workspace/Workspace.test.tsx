@@ -1,7 +1,6 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { DockviewApi } from 'dockview-react';
 import Workspace from '@/features/workspace/Workspace';
 
 const GROUP_SELECTOR = '.dv-groupview';
@@ -21,11 +20,6 @@ const closeTabs = async (...titles: string[]) => {
   for (const title of titles) await userEvent.click(closeButton(title));
 };
 
-const narrowScreen = () => {
-  const narrowQuery = window.matchMedia('(max-width: 0px)');
-  vi.spyOn(window, 'matchMedia').mockReturnValue({ ...narrowQuery, matches: true });
-};
-
 describe('Workspace', () => {
   it('opens Résultats, Graphe and Explication in one group, Résultats active', () => {
     const { groupCount } = renderWorkspace();
@@ -41,36 +35,6 @@ describe('Workspace', () => {
     renderWorkspace();
 
     expect(closeButton('Explication').closest('[title]')).toHaveAttribute('title', 'Explication');
-  });
-
-  it('moves the active tab into a new group on the right when splitting', async () => {
-    const addGroup = vi.spyOn(DockviewApi.prototype, 'addGroup');
-    const { groupCount } = renderWorkspace();
-
-    await userEvent.click(screen.getByRole('button', { name: 'Scinder' }));
-
-    expect(groupCount()).toBe(2);
-    expect(addGroup).toHaveBeenCalledWith(expect.objectContaining({ direction: 'right' }));
-    expect(screen.getByRole('region', { name: 'Résultats' })).toHaveClass('dv-active-group');
-    expect(screen.getAllByRole('button', { name: 'Scinder' })).toHaveLength(2);
-  });
-
-  it('splits below on a narrow screen', async () => {
-    const addGroup = vi.spyOn(DockviewApi.prototype, 'addGroup');
-    narrowScreen();
-    renderWorkspace();
-
-    await userEvent.click(screen.getByRole('button', { name: 'Scinder' }));
-
-    expect(addGroup).toHaveBeenCalledWith(expect.objectContaining({ direction: 'below' }));
-  });
-
-  it('cannot split a group with a single tab', async () => {
-    renderWorkspace();
-
-    await closeTabs('Graphe', 'Explication');
-
-    expect(screen.getByRole('button', { name: 'Scinder' })).toBeDisabled();
   });
 
   it('reopens a closed fixed tab from the group menu', async () => {

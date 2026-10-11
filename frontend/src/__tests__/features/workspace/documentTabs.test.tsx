@@ -27,9 +27,6 @@ const DOCUMENT_PANEL_ID = `document:${RESULT.identifier}`;
 
 const fetchMock = vi.mocked(fetchDocument);
 
-const closeButton = (title: string) =>
-  screen.getByRole('button', { name: `Fermer l'onglet ${title}` });
-
 /** L'espace par défaut, son API à portée du test */
 const renderDockview = (): DockviewApi => {
   let readyApi: DockviewApi | undefined;
@@ -69,8 +66,6 @@ describe('document tabs', () => {
 
     expect((await screen.findByText('se prescrivent')).tagName).toBe('MARK');
     expect(container.querySelectorAll('.dv-groupview')).toHaveLength(1);
-    const tab = closeButton(RESULT.title).closest('[title]');
-    expect(tab?.querySelector('img')).toHaveAttribute('src', '/icons/static/doc.png');
   });
 
   it('activates the tab of a document already open instead of opening another', () => {
