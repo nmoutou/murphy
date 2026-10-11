@@ -31,7 +31,7 @@ function ReopenMenu({ kinds, onReopen }: ReopenMenuProps) {
         aria-label="Rouvrir un onglet"
         aria-expanded={isOpen}
         onClick={() => setIsOpen(!isOpen)}
-        className="rounded-full px-2 text-tertiary hover:bg-secondary"
+        className="rounded-full px-2 text-tertiary hover:bg-primary"
       >
         …
       </button>

@@ -25,12 +25,12 @@
 /* Dockview aux couleurs du @theme ; déclaré après sa feuille pour l'emporter sur le thème sombre */
 .dockview-theme-murphy {
   --dv-group-view-background-color: var(--color-primary);
-  --dv-tabs-and-actions-container-background-color: var(--color-primary);
-  --dv-activegroup-visiblepanel-tab-background-color: var(--color-secondary);
-  --dv-activegroup-hiddenpanel-tab-background-color: var(--color-primary);
-  --dv-inactivegroup-visiblepanel-tab-background-color: var(--color-secondary);
-  --dv-inactivegroup-hiddenpanel-tab-background-color: var(--color-primary);
-  --dv-tab-divider-color: var(--color-primary);
+  --dv-tabs-and-actions-container-background-color: var(--color-secondary);
+  --dv-activegroup-visiblepanel-tab-background-color: var(--color-primary);
+  --dv-activegroup-hiddenpanel-tab-background-color: var(--color-secondary);
+  --dv-inactivegroup-visiblepanel-tab-background-color: var(--color-primary);
+  --dv-inactivegroup-hiddenpanel-tab-background-color: var(--color-secondary);
+  --dv-tab-divider-color: var(--color-secondary);
   --dv-activegroup-visiblepanel-tab-color: var(--color-quaternary);
   --dv-activegroup-hiddenpanel-tab-color: var(--color-tertiary);
   --dv-inactivegroup-visiblepanel-tab-color: var(--color-tertiary);
