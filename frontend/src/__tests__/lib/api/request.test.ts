@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { searchResponseSchema } from '@murphy/contract/search';
 import type { SearchResponse } from '@murphy/contract/search';
 import { ApiError } from '@/lib/api/apiError';
+import { fetchDocument } from '@/lib/api/documents';
 import { requestApi } from '@/lib/api/request';
 import { searchDocuments } from '@/lib/api/search';
 
@@ -124,6 +125,22 @@ describe('searchDocuments', () => {
     expect(fetchMock).toHaveBeenCalledWith(
       'http://localhost:5000/api/v1/search',
       expect.anything(),
+    );
+  });
+});
+
+describe('fetchDocument', () => {
+  it('gets the document route, the identifier encoded', async () => {
+    vi.stubEnv('NEXT_PUBLIC_API_URL', 'https://api.murphy.test');
+    const document = { identifier: 'JURI/TEXT 1', title: 'Arrêt', content: 'Attendu que…' };
+    const fetchMock = stubFetch(jsonResponse(envelope('OK', document)));
+
+    await expect(fetchDocument('JURI/TEXT 1', new AbortController().signal)).resolves.toEqual(
+      document,
+    );
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://api.murphy.test/api/v1/documents/JURI%2FTEXT%201',
+      expect.not.objectContaining({ method: expect.anything() }),
     );
   });
 });

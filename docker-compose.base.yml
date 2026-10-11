@@ -14,6 +14,15 @@ services:
       - backend
     volumes:
       - opensearch_data:/usr/share/opensearch/data
+    # Prêt dès que le port HTTP répond, quel que soit le statut : la prod, plugin de sécurité
+    # actif, répond 401 en HTTPS
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - curl -s -o /dev/null http://localhost:9200 || curl -sk -o /dev/null https://localhost:9200
+      interval: 5s
+      timeout: 5s
+      retries: 30
 
   mongo:
     container_name: mongo
@@ -68,10 +77,14 @@ services:
       - EMBEDDING_SERVICE_TIMEOUT=${EMBEDDING_SERVICE_TIMEOUT}
       - PAGINATION_SIZES=${PAGINATION_SIZES}
       - PAGINATION_DEPTH=${PAGINATION_DEPTH}
+    # Le backend refuse de démarrer sans OpenSearch : il attend qu'il réponde
     depends_on:
-      - mongo
-      - opensearch
-      - embedding-service
+      mongo:
+        condition: service_started
+      opensearch:
+        condition: service_healthy
+      embedding-service:
+        condition: service_started
 
   frontend:
     container_name: frontend

@@ -35,6 +35,11 @@ if (typeof window.matchMedia !== 'function') {
   });
 }
 
+// jsdom ne fait pas de mise en page : il n'a rien à faire défiler
+if (typeof Element.prototype.scrollIntoView !== 'function') {
+  Element.prototype.scrollIntoView = () => {};
+}
+
 // Sans les globals de Vitest, Testing Library ne peut pas enregistrer son nettoyage
 afterEach(() => {
   cleanup();

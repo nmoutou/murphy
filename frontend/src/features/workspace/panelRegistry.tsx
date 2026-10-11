@@ -3,11 +3,11 @@ import type { DockviewApi, DockviewGroupPanel, IDockviewPanelProps } from 'dockv
 import ResultsPanel from '@/features/results/ResultsPanel';
 import GraphPanel from '@/features/graph/GraphPanel';
 import ExplanationPanel from '@/features/explanation/ExplanationPanel';
+import { DOCUMENT_COMPONENT, DocumentPanelAdapter, openDocument } from './documentTabs';
 
-// TODO: ouvrir l'onglet du document
-const ignoreOpenDocument = (): void => {};
-
-const ResultsPanelAdapter = () => <ResultsPanel onOpenDocument={ignoreOpenDocument} />;
+const ResultsPanelAdapter = ({ containerApi }: IDockviewPanelProps) => (
+  <ResultsPanel onOpenDocument={(result) => openDocument(containerApi, result)} />
+);
 
 /** Un panneau fixe a pour identifiant et pour composant Dockview son type : il est unique */
 export const FIXED_PANELS = ['results', 'graph', 'explanation'] as const;
@@ -26,10 +26,10 @@ export const PANEL_DEFINITIONS: Record<FixedPanelKind, PanelDefinition> = {
   explanation: { title: 'Explication', icon: 'explaining', component: ExplanationPanel },
 };
 
-export const PANEL_COMPONENTS: Record<
-  string,
-  FunctionComponent<IDockviewPanelProps>
-> = Object.fromEntries(FIXED_PANELS.map((kind) => [kind, PANEL_DEFINITIONS[kind].component]));
+export const PANEL_COMPONENTS: Record<string, FunctionComponent<IDockviewPanelProps>> = {
+  ...Object.fromEntries(FIXED_PANELS.map((kind) => [kind, PANEL_DEFINITIONS[kind].component])),
+  [DOCUMENT_COMPONENT]: DocumentPanelAdapter,
+};
 
 export const isFixedPanelKind = (panelId: string): panelId is FixedPanelKind =>
   FIXED_PANELS.some((kind) => kind === panelId);

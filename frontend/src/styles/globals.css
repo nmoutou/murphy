@@ -14,6 +14,7 @@
   --color-quaternary: #ffffff;
   --color-in-force: #4ade80;
   --color-not-in-force: #f87171;
+  --color-highlight: #facc15;
 }
 
 @utility scrollbar {
