@@ -73,8 +73,9 @@ identifiants de la sélection, dans son ordre, et le **segment courant** de la
 conversation, c'est-à-dire les messages depuis le dernier changement de sélection. Le
 serveur ne garde rien.
 
-1. **Validation** (`validation/explanationRequest.ts`) : au moins un document, sans
-   doublon ; au moins un message, le dernier de l'utilisateur ; rôles `user` et
+1. **Validation** (`validation/explanationRequest.ts`) : des documents sans doublon,
+   ou aucun (le contexte dit alors « Aucun document sélectionné. » et le prompt fait
+   inviter à en choisir) ; au moins un message, le dernier de l'utilisateur ; rôles `user` et
    `assistant` seulement.
 2. **Lecture** (`MongoDbClient.fetchExplainedDocuments`) : chaque document relu dans
    Mongo, jamais le texte du client, dans l'ordre de la sélection ; un absent donne

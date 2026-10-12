@@ -59,8 +59,9 @@ De haut en bas :
 
 **Un ajout qui dépasse le budget est accepté** : la jauge passe au rouge, puis
 « Résumer » et le champ de question sont désactivés. L'utilisateur choisit ce qu'il
-retire. **Une sélection vide** désactive aussi les deux, avec une invite qui renvoie à
-la recherche : sans document, il n'y a rien à expliquer.
+retire. **Une sélection vide** désactive « Résumer », avec une invite qui renvoie à la
+recherche, mais pas le champ : la question part sans document, et le LLM, sans rien à
+expliquer, rappelle son rôle et invite à choisir des documents.
 
 Retirer un document renumérote la liste.
 

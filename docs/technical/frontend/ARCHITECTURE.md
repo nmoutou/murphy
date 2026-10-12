@@ -177,9 +177,9 @@ l'ouvre en tiroir. De haut en bas (`SelectionContent.tsx`) :
 - **« Tout retirer »**.
 
 Un ajout au-delà du budget est accepté : la jauge passe au rouge, puis « Résumer » et la
-question sont bloqués. Une sélection vide les bloque aussi, avec une invite.
-`lib/selectionBudget.ts` porte ces règles (`canExplain`), partagées avec l'onglet
-Explications.
+question sont bloqués. Une sélection vide bloque « Résumer », avec une invite, mais pas
+la question : le LLM répond alors qu'il lui faut des documents. `lib/selectionBudget.ts`
+porte ces règles (`canExplain` pour « Résumer », `isOverBudget` pour la question).
 
 ## L'onglet Explications (`features/explanation/`, ADR-033)
 

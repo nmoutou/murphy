@@ -12,6 +12,7 @@ import { countCodePoints, mergeConsecutiveUserMessages } from './explanationMess
 /** Copié dans `dist/` au build ; lu une fois, au chargement : absent, le démarrage échoue */
 const EXPLANATION_PROMPT = readFileSync(join(__dirname, '..', 'prompts', 'explanation.md'), 'utf8');
 const DOCUMENTS_HEADING = '# Documents fournis';
+const NO_DOCUMENT = 'Aucun document sélectionné.';
 const SECTION_SEPARATOR = '\n\n';
 /** Le nom que `toRagError` et le client reconnaissent comme un délai dépassé */
 const TIMEOUT_ERROR_NAME = 'TimeoutError';
@@ -31,7 +32,9 @@ export interface OpenedAnswer {
 }
 
 const buildInstructions = (documents: readonly ExplainedDocument[]): string =>
-  [EXPLANATION_PROMPT.trim(), DOCUMENTS_HEADING, renderDocuments(documents)].join(SECTION_SEPARATOR);
+  [EXPLANATION_PROMPT.trim(), DOCUMENTS_HEADING, documents.length > 0 ? renderDocuments(documents) : NO_DOCUMENT].join(
+    SECTION_SEPARATOR,
+  );
 
 const measureContext = (instructions: string, messages: readonly LlmMessage[]): number =>
   messages.reduce((total, { content }) => total + countCodePoints(content), countCodePoints(instructions));

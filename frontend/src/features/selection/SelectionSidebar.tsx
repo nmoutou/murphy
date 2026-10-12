@@ -9,6 +9,12 @@ import SelectionContent from './SelectionContent';
 
 const SIDEBAR_LABEL = 'Sélection';
 
+/** Repliée, la bande est trop étroite pour « « » et le badge côte à côte */
+const COLLAPSIBLE_LAYOUT = {
+  collapsed: { aside: 'w-14 items-center', header: 'flex-col px-0', toggle: 'flex-col' },
+  expanded: { aside: 'w-80', header: 'px-3', toggle: '' },
+} as const;
+
 interface SelectionSidebarProps {
   readonly isAnswering: boolean;
   readonly onSummarize: () => void;
@@ -41,21 +47,21 @@ interface CollapsibleSidebarProps {
 function CollapsibleSidebar({ content }: CollapsibleSidebarProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const count = content.entries.length;
-  const width = isCollapsed ? 'w-14 items-center' : 'w-80';
+  const layout = COLLAPSIBLE_LAYOUT[isCollapsed ? 'collapsed' : 'expanded'];
 
   return (
     <aside
       aria-label={SIDEBAR_LABEL}
-      className={`hidden shrink-0 flex-col border-l border-secondary bg-primary text-tertiary md:flex ${width}`}
+      className={`hidden shrink-0 flex-col border-l border-secondary bg-primary text-tertiary md:flex ${layout.aside}`}
     >
-      <header className="flex items-center justify-between gap-2 px-3 py-3">
+      <header className={`flex items-center justify-between gap-2 py-3 ${layout.header}`}>
         {!isCollapsed && <h2 className="font-mono text-quaternary">{SIDEBAR_LABEL}</h2>}
         <button
           type="button"
           aria-label={isCollapsed ? `Déplier la sélection (${count})` : 'Replier la sélection'}
           aria-expanded={!isCollapsed}
           onClick={() => setIsCollapsed(!isCollapsed)}
-          className="flex items-center gap-2 rounded px-1 hover:opacity-80"
+          className={`flex items-center gap-2 rounded px-1 hover:opacity-80 ${layout.toggle}`}
         >
           {isCollapsed ? '«' : '»'}
           <CountBadge count={count} />

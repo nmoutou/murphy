@@ -3,9 +3,9 @@
  * courant de la conversation. La réponse est un flux SSE de l'AI SDK, pas une enveloppe.
  */
 
-import { z } from 'zod';
+import { z } from "zod";
 
-export const explanationRoleSchema = z.enum(['user', 'assistant']);
+export const explanationRoleSchema = z.enum(["user", "assistant"]);
 
 export const explanationMessageSchema = z.object({
   role: explanationRoleSchema,
@@ -16,17 +16,18 @@ const hasNoDuplicate = (identifiers: readonly string[]): boolean =>
   new Set(identifiers).size === identifiers.length;
 
 export const explanationRequestSchema = z.object({
-  /** Les identifiants dans l'ordre de la sélection : `[n]` désigne le n-ième */
+  /** Les identifiants dans l'ordre de la sélection : `[n]` désigne le n-ième ; vide, le LLM invite à en choisir */
   selection: z
     .array(z.string().min(1))
-    .min(1)
-    .refine(hasNoDuplicate, { message: 'A document appears twice in the selection' }),
+    .refine(hasNoDuplicate, {
+      message: "A document appears twice in the selection",
+    }),
   /** Le segment courant : les messages depuis le dernier changement de sélection */
   messages: z
     .array(explanationMessageSchema)
     .min(1)
-    .refine((messages) => messages[messages.length - 1]?.role === 'user', {
-      message: 'The last message must come from the user',
+    .refine((messages) => messages[messages.length - 1]?.role === "user", {
+      message: "The last message must come from the user",
     }),
 });
 

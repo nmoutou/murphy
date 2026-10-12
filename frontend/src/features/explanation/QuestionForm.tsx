@@ -1,9 +1,13 @@
 'use client';
 
+import AnimatedButtonIcon from '@/components/icons/AnimatedButtonIcon';
+import ButtonIcon from '@/components/icons/ButtonIcon';
 import { useQuestionInput } from './useQuestionInput';
 
+const ICON_SIZE = 24;
+
 interface QuestionFormProps {
-  /** Faux sans sélection ou au-delà du budget : le champ est alors désactivé */
+  /** Faux au-delà du budget : on peut écrire, pas envoyer */
   readonly canAsk: boolean;
   /** Le champ reste ouvert pendant une réponse ; seul l'envoi attend */
   readonly isAnswering: boolean;
@@ -26,17 +30,16 @@ export default function QuestionForm({
   );
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-1 border-t border-secondary p-3">
-      {hint && <p className="text-sm">{hint}</p>}
-      <div className="flex items-end gap-2">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-1">
+      {hint && <p className="self-start rounded-xl bg-secondary px-3 py-1 text-sm">{hint}</p>}
+      <div className="flex items-end gap-2 rounded-[25px] bg-secondary px-3 py-1">
         <textarea
           aria-label="Votre question sur les documents"
           value={question}
-          disabled={!canAsk}
-          rows={2}
+          rows={1}
           onChange={(event) => setQuestion(event.target.value)}
           onKeyDown={handleKeyDown}
-          className="min-h-0 flex-1 resize-none rounded-lg bg-secondary px-3 py-2 text-quaternary outline-none disabled:opacity-40"
+          className="field-sizing-content max-h-40 min-w-0 flex-1 resize-none self-center bg-transparent px-2 py-1 font-mono text-tertiary focus:outline-none scrollbar"
         />
         <SubmitOrStop isAnswering={isAnswering} canSend={canSend} onStop={onStop} />
       </div>
@@ -50,18 +53,21 @@ interface SubmitOrStopProps {
   readonly onStop: () => void;
 }
 
+/** L'icône d'arrêt n'a pas de version animée */
 function SubmitOrStop({ isAnswering, canSend, onStop }: SubmitOrStopProps) {
-  const style = 'rounded-full px-4 py-1 hover:opacity-80 disabled:opacity-40';
   if (isAnswering) {
     return (
-      <button type="button" onClick={onStop} className={`${style} bg-not-in-force text-primary`}>
-        Arrêter
-      </button>
+      <ButtonIcon icon="stop" label="Arrêter" size={ICON_SIZE} variant="primary" onClick={onStop} />
     );
   }
   return (
-    <button type="submit" disabled={!canSend} className={`${style} bg-quaternary text-primary`}>
-      Envoyer
-    </button>
+    <AnimatedButtonIcon
+      icon="globe"
+      label="Envoyer"
+      size={ICON_SIZE}
+      type="submit"
+      variant="primary"
+      disabled={!canSend}
+    />
   );
 }

@@ -46,10 +46,14 @@ describe('QuestionForm', () => {
     expect(screen.getByRole('textbox', { name: FIELD })).toHaveValue('Un\ndeux');
   });
 
-  it('is disabled, saying why, when the selection cannot be explained', () => {
-    renderForm({ canAsk: false, hint: 'Ajoutez des documents.' });
+  it('lets the user write but not send, saying why, when the selection cannot be explained', async () => {
+    const { onAsk } = renderForm({ canAsk: false, hint: 'Ajoutez des documents.' });
 
-    expect(screen.getByRole('textbox', { name: FIELD })).toBeDisabled();
+    await userEvent.type(screen.getByRole('textbox', { name: FIELD }), 'Que dit [[1] ?{Enter}');
+
+    expect(onAsk).not.toHaveBeenCalled();
+    expect(screen.getByRole('textbox', { name: FIELD })).toHaveValue('Que dit [1] ?');
+    expect(screen.getByRole('button', { name: 'Envoyer' })).toBeDisabled();
     expect(screen.getByText('Ajoutez des documents.')).toBeInTheDocument();
   });
 

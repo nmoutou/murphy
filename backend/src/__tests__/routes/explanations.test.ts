@@ -63,7 +63,7 @@ describe('POST /api/v1/explanations', () => {
   });
 
   it('refuses an invalid request with VALIDATION_ERROR, without calling the LLM', async () => {
-    const response = await request(app).post(PATH).send({ ...BODY, selection: [] });
+    const response = await request(app).post(PATH).send({ ...BODY, selection: ['A', 'A'] });
 
     expect(response.status).toBe(400);
     expect(response.body.status.message).toBe('VALIDATION_ERROR');

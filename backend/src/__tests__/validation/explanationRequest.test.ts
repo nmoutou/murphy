@@ -9,8 +9,13 @@ describe('parseExplanationRequest', () => {
     expect(parseExplanationRequest(body)).toEqual({ isValid: true, request: body });
   });
 
+  it('accepts an empty selection: the LLM then asks for documents', () => {
+    const body = { selection: [], messages: [{ role: 'user', content: QUESTION }] };
+
+    expect(parseExplanationRequest(body)).toEqual({ isValid: true, request: body });
+  });
+
   it.each([
-    ['an empty selection', { selection: [], messages: [{ role: 'user', content: QUESTION }] }, 'selection'],
     ['a repeated document', { selection: ['A', 'A'], messages: [{ role: 'user', content: QUESTION }] }, 'selection'],
     ['no message', { selection: ['A'], messages: [] }, 'messages'],
     ['a segment that ends with an answer', { selection: ['A'], messages: [{ role: 'assistant', content: 'x' }] }, 'messages'],
