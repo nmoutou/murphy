@@ -11,7 +11,7 @@ jest.mock('../../utils/logger', () => {
   return { logger: silentLogger };
 });
 
-const DOCUMENT = { identifier: 'JURITEXT000048123456', title: 'Cour de cassation, …', content: 'LA COUR…' };
+const DOCUMENT = { identifier: 'JURITEXT000048123456', title: 'Cour de cassation, …', content: 'LA COUR…', contentLength: 8 };
 
 let app: Express;
 

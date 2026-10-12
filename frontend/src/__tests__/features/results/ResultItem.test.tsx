@@ -9,6 +9,7 @@ const RESULT: SearchResult = {
   title: 'Article 2224',
   documentType: 'article',
   isInForce: true,
+  contentLength: 120,
   passages: [
     {
       chunkId: 'c1',
@@ -20,10 +21,24 @@ const RESULT: SearchResult = {
   ],
 };
 
-const renderItem = (result: SearchResult, onOpenDocument = vi.fn()) =>
+interface RenderOptions {
+  readonly isSelected?: boolean;
+  readonly onOpenDocument?: (result: SearchResult) => void;
+  readonly onToggleSelection?: (result: SearchResult) => void;
+}
+
+const renderItem = (
+  result: SearchResult,
+  { isSelected = false, onOpenDocument = vi.fn(), onToggleSelection = vi.fn() }: RenderOptions = {},
+) =>
   render(
     <ul>
-      <ResultItem result={result} onOpenDocument={onOpenDocument} />
+      <ResultItem
+        result={result}
+        isSelected={isSelected}
+        onOpenDocument={onOpenDocument}
+        onToggleSelection={onToggleSelection}
+      />
     </ul>,
   );
 
@@ -58,16 +73,29 @@ describe('ResultItem', () => {
 
   it('opens the document from its title', async () => {
     const onOpenDocument = vi.fn();
-    renderItem(RESULT, onOpenDocument);
+    renderItem(RESULT, { onOpenDocument });
 
     await userEvent.click(screen.getByRole('button', { name: 'Article 2224' }));
 
     expect(onOpenDocument).toHaveBeenCalledExactlyOnceWith(RESULT);
   });
 
-  it('has a menu with no option yet', () => {
-    renderItem(RESULT);
+  it('adds the result to the selection with « + »', async () => {
+    const onToggleSelection = vi.fn();
+    renderItem(RESULT, { onToggleSelection });
 
-    expect(screen.getByRole('button', { name: 'Options de Article 2224' })).toBeDisabled();
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Ajouter Article 2224 à la sélection' }),
+    );
+
+    expect(onToggleSelection).toHaveBeenCalledExactlyOnceWith(RESULT);
+  });
+
+  it('offers to remove a selected result with « − »', () => {
+    renderItem(RESULT, { isSelected: true });
+
+    expect(
+      screen.getByRole('button', { name: 'Retirer Article 2224 de la sélection' }),
+    ).toHaveTextContent('−');
   });
 });

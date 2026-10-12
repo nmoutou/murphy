@@ -8,6 +8,14 @@
     "./search": {
       "types": "./dist/search.d.ts",
       "default": "./dist/search.js"
+    },
+    "./errors": {
+      "types": "./dist/errors.d.ts",
+      "default": "./dist/errors.js"
+    },
+    "./explanations": {
+      "types": "./dist/explanations.d.ts",
+      "default": "./dist/explanations.js"
     }
   },
   "//": "typesVersions: the same subpaths for resolvers that ignore `exports` (ts-jest forces the node10 resolution)",
@@ -15,6 +23,12 @@
     "*": {
       "search": [
         "./dist/search.d.ts"
+      ],
+      "errors": [
+        "./dist/errors.d.ts"
+      ],
+      "explanations": [
+        "./dist/explanations.d.ts"
       ]
     }
   },

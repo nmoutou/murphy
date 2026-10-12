@@ -1,7 +1,7 @@
 import type { DocumentType } from '@murphy/contract/search';
 
 /** L'étape en échec, pour les logs : le client n'en reçoit que le code (ADR-030 §4) */
-export type RagStage = 'request' | 'embedding' | 'retrieval';
+export type RagStage = 'request' | 'embedding' | 'retrieval' | 'generation';
 
 export class RagError extends Error {
   constructor(
@@ -88,6 +88,8 @@ export interface StoredDocument {
   readonly identifier: string;
   readonly title: string;
   readonly content: string;
+  /** La longueur de `content` en points de code, écrite par l'ingestion */
+  readonly contentLength: number;
   /** L'`ETAT` de la DILA (`VIGUEUR`, `ABROGE`…), lu par la seule recherche ; absent d'une décision */
   readonly status?: string;
 }

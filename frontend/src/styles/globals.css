@@ -38,3 +38,30 @@
   --dv-separator-border: var(--color-secondary);
   --dv-paneview-header-border-color: var(--color-secondary);
 }
+
+/* Le Markdown des réponses : le preflight de Tailwind retire marges et puces */
+.explanation-markdown {
+  & h1,
+  & h2,
+  & h3 {
+    font-weight: 600;
+    color: var(--color-quaternary);
+  }
+  & ul {
+    list-style: disc;
+    padding-left: 1.5rem;
+  }
+  & ol {
+    list-style: decimal;
+    padding-left: 1.5rem;
+  }
+  & li + li {
+    margin-top: 0.25rem;
+  }
+  & strong {
+    color: var(--color-quaternary);
+  }
+  & code {
+    font-family: var(--font-mono);
+  }
+}

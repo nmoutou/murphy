@@ -38,6 +38,7 @@ describe('SearchScreen', () => {
       pageCount: 10,
       pageSize: 10,
       pageSizes: [10],
+      contextBudget: 100_000,
       results: [],
     });
     render(<SearchScreen />);
@@ -51,7 +52,14 @@ describe('SearchScreen', () => {
 
   it('offers the page sizes after the first response, and searches again from page 1', async () => {
     searchMock.mockImplementation(({ page, pageSize = 10 }) =>
-      Promise.resolve({ page, pageCount: 3, pageSize, pageSizes: [10, 25], results: [] }),
+      Promise.resolve({
+        page,
+        pageCount: 3,
+        pageSize,
+        pageSizes: [10, 25],
+        contextBudget: 100_000,
+        results: [],
+      }),
     );
     render(<SearchScreen />);
     await search();

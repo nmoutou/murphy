@@ -20,6 +20,7 @@ const DOCUMENT: StoredDocument = {
   identifier: 'LEGIARTI000006419304',
   title: 'Code civil, art. 2224',
   content: 'Article 2224. Cinq ans.',
+  contentLength: 23,
 };
 const PASSAGE_REF = { chunkId: 'LEGIARTI000006419304_0001', charStart: 14, charEnd: 23 };
 const RETRIEVED: RetrievedDocument = { identifier: DOCUMENT.identifier, documentType: 'article', passages: [PASSAGE_REF] };

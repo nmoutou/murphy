@@ -1,5 +1,5 @@
 import type { DockviewApi, IDockviewPanelProps } from 'dockview-react';
-import type { Passage, SearchResult } from '@murphy/contract/search';
+import type { Passage } from '@murphy/contract/search';
 import type { DisplayedErrorCode } from '@/lib/api/apiError';
 import DocumentPanel from '@/features/document/DocumentPanel';
 import { useErrorStore } from '@/stores/errorStore';
@@ -11,12 +11,19 @@ const RESULTS_PANEL: FixedPanelKind = 'results';
 
 export interface DocumentPanelParams {
   readonly identifier: string;
+  /** Le passage à surligner ; absent quand on ouvre le document depuis la sélection */
   readonly passage?: Passage;
 }
 
+export interface DocumentTarget extends DocumentPanelParams {
+  readonly title: string;
+}
+
 /** Un onglet par document : le rouvrir l'active. Il s'ouvre près de Recherche, si elle est ouverte */
-export const openDocument = (api: DockviewApi, result: SearchResult): void => {
-  const { identifier, title, passages } = result;
+export const openDocument = (
+  api: DockviewApi,
+  { identifier, title, passage }: DocumentTarget,
+): void => {
   const id = `${DOCUMENT_ID_PREFIX}${identifier}`;
   const openedPanel = api.getPanel(id);
   if (openedPanel) {
@@ -24,7 +31,7 @@ export const openDocument = (api: DockviewApi, result: SearchResult): void => {
     return;
   }
   const resultsGroup = api.getPanel(RESULTS_PANEL)?.group;
-  const params: DocumentPanelParams = { identifier, passage: passages[0] };
+  const params: DocumentPanelParams = { identifier, passage };
   api.addPanel({
     id,
     component: DOCUMENT_COMPONENT,

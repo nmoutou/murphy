@@ -1,4 +1,4 @@
-import type { SearchErrorCode } from '@murphy/contract/search';
+import type { ApiErrorCode } from '@murphy/contract/errors';
 import type { ParamsDictionary } from 'express-serve-static-core';
 import { Request, Response, NextFunction } from 'express';
 import { logger as rootLogger } from '../utils/logger';
@@ -8,11 +8,11 @@ import { toErrorResponse } from '../utils/errorResponse';
 
 const logger = rootLogger.child({ context: 'errorHandler' });
 
-const DEFAULT_BODY_ERROR_CODE: SearchErrorCode = 'INVALID_REQUEST_BODY';
-const NOT_FOUND_CODE: SearchErrorCode = 'NOT_FOUND';
+const DEFAULT_BODY_ERROR_CODE: ApiErrorCode = 'INVALID_REQUEST_BODY';
+const NOT_FOUND_CODE: ApiErrorCode = 'NOT_FOUND';
 
 /** `type` d'erreur de body-parser → code renvoyé au client */
-const BODY_ERROR_CODES: Readonly<Record<string, SearchErrorCode>> = {
+const BODY_ERROR_CODES: Readonly<Record<string, ApiErrorCode>> = {
   'entity.parse.failed': 'INVALID_JSON',
   'entity.too.large': 'PAYLOAD_TOO_LARGE',
 };

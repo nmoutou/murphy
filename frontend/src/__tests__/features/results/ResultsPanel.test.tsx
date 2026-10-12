@@ -15,17 +15,20 @@ const responseFor = ({ page }: SearchRequest): SearchResponse => ({
   pageCount: 10,
   pageSize: 10,
   pageSizes: [10, 25, 50],
+  contextBudget: 100_000,
   results: [
     {
       identifier: `first-${page}`,
       title: `Premier de la page ${page}`,
       documentType: 'article',
+      contentLength: 100,
       passages: [],
     },
     {
       identifier: `second-${page}`,
       title: `Second de la page ${page}`,
       documentType: 'decision',
+      contentLength: 200,
       passages: [],
     },
   ],

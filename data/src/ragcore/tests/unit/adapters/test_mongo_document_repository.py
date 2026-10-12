@@ -1,4 +1,5 @@
-"""Ce que le dépôt Mongo écrit d'un document : ``source_files`` seulement en dev."""
+"""Ce que le dépôt Mongo écrit d'un document : ``source_files`` seulement en dev, sa
+longueur et les titres de son texte parent."""
 
 import asyncio
 from datetime import UTC, datetime
@@ -29,25 +30,35 @@ class _RecordingCollection:
         self.written = document
 
 
-def _document() -> ParsedDocument:
+DECREE = "Décret n° 2004-374 du 29 avril 2004"
+
+
+def _document(
+    content: str = "contenu", context: list[dict[str, str]] | None = None
+) -> ParsedDocument:
+    structure: dict[str, Any] = {"sections": []}
+    if context is not None:
+        structure["context"] = context
     return ParsedDocument(
         identifier=Identifier(raw="LEGIARTI000000000001"),
         source=SourceName.LEGI,
         document_type=DocumentType.ARTICLE,
         title="Article 1",
-        content="contenu",
-        structure={"sections": []},
+        content=content,
+        structure=structure,
         metadata={},
         parsed_at=datetime.now(UTC),
         source_files=SOURCE_FILES,
     )
 
 
-def _write(include_path: bool) -> dict[str, Any]:
+def _write(
+    include_path: bool = False, document: ParsedDocument | None = None
+) -> dict[str, Any]:
     collection = _RecordingCollection()
     client = cast(MongoClient, {DB_NAME: {COLLECTION: collection}})
     repository = MongoDocumentRepository(client, DB_NAME, include_path=include_path)
-    asyncio.run(repository.upsert(_document()))
+    asyncio.run(repository.upsert(document or _document()))
     return collection.written
 
 
@@ -67,3 +78,26 @@ def test_avec_include_path_les_chemins_sont_ecrits() -> None:
 def test_la_structure_n_est_jamais_ecrite(include_path: bool) -> None:
     """ADR-011 : ``structure`` est redondante avec Neo4j et les chunks."""
     assert "structure" not in _write(include_path)
+
+
+def test_la_longueur_compte_des_points_de_code() -> None:
+    """« é » et « 📜 » comptent un chacun, comme dans le budget du serving."""
+    written = _write(document=_document(content="Arrêté 📜"))
+
+    assert written["content_length"] == len("Arrêté 📜") == 8
+
+
+def test_les_titres_du_texte_parent_sont_ecrits() -> None:
+    context = [
+        {"kind": "TITRE_TXT", "label": DECREE},
+        {"kind": "TITRE_TM", "label": "Chapitre Ier"},
+        {"kind": "TITRE_TXT", "label": DECREE},
+    ]
+
+    written = _write(document=_document(context=context))
+
+    assert written["parent_text_title"] == [DECREE]
+
+
+def test_sans_texte_parent_le_champ_est_absent() -> None:
+    assert "parent_text_title" not in _write()

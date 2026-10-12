@@ -25,9 +25,9 @@ interface GlobalHealth {
 const HEALTH_CHECK_TIMEOUT_MS = 3000;
 const MIN_DOWN_FOR_GLOBAL_DOWN = 2;
 
-const checkHttpService = async (name: string, url: string): Promise<ServiceHealth> => {
+const checkHttpService = async (name: string, url: string, headers?: Readonly<Record<string, string>>): Promise<ServiceHealth> => {
   try {
-    const response = await fetch(url, { method: 'GET', signal: AbortSignal.timeout(HEALTH_CHECK_TIMEOUT_MS) });
+    const response = await fetch(url, { method: 'GET', headers, signal: AbortSignal.timeout(HEALTH_CHECK_TIMEOUT_MS) });
 
     if (response.ok) {
       logger.debug({ service: name, url }, `${name} health check OK`);
@@ -48,6 +48,10 @@ const checkTei = () =>
 
 const checkOpenSearch = () =>
   checkHttpService('opensearch', `${config.opensearch.url}/_cluster/health`);
+
+/** La liste des modèles : un appel authentifié qui ne génère rien, donc ne coûte rien */
+const checkLlm = () =>
+  checkHttpService('llm', `${config.llm.baseUrl}/models`, { Authorization: `Bearer ${config.llm.apiKey}` });
 
 const pingMongoDB = async (): Promise<void> => {
   const mongoDb = getInfraClients().mongo.getDb();
@@ -95,14 +99,15 @@ const resolveGlobalHealth = (services: ServiceHealth[]): GlobalHealth => {
 router.get(
   ['/', '/services'],
   asyncHandler(async (_req: Request, res: Response) => {
-    const [tei, opensearch, mongodb] = await Promise.all([
+    const [tei, opensearch, mongodb, llm] = await Promise.all([
       measureLatency(checkTei),
       measureLatency(checkOpenSearch),
       measureLatency(checkMongoDB),
+      measureLatency(checkLlm),
     ]);
-    const { globalStatus, httpStatus, statusMsg } = resolveGlobalHealth([tei, opensearch, mongodb]);
+    const { globalStatus, httpStatus, statusMsg } = resolveGlobalHealth([tei, opensearch, mongodb, llm]);
     res.status(httpStatus).json(
-      buildApiResponse(httpStatus, statusMsg, { status: globalStatus, services: { tei, opensearch, mongodb } })
+      buildApiResponse(httpStatus, statusMsg, { status: globalStatus, services: { tei, opensearch, mongodb, llm } })
     );
   })
 );

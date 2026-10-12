@@ -5,8 +5,18 @@ import GraphPanel from '@/features/graph/GraphPanel';
 import ExplanationPanel from '@/features/explanation/ExplanationPanel';
 import { DOCUMENT_COMPONENT, DocumentPanelAdapter, openDocument } from './documentTabs';
 
+/** Le passage le mieux classé est surligné */
 const ResultsPanelAdapter = ({ containerApi }: IDockviewPanelProps) => (
-  <ResultsPanel onOpenDocument={(result) => openDocument(containerApi, result)} />
+  <ResultsPanel
+    onOpenDocument={({ identifier, title, passages }) =>
+      openDocument(containerApi, { identifier, title, passage: passages[0] })
+    }
+  />
+);
+
+/** Un repère cité ouvre son document, sans passage à surligner */
+const ExplanationPanelAdapter = ({ containerApi }: IDockviewPanelProps) => (
+  <ExplanationPanel onOpenDocument={(source) => openDocument(containerApi, source)} />
 );
 
 /** Un panneau fixe a pour identifiant et pour composant Dockview son type : il est unique */
@@ -23,7 +33,7 @@ interface PanelDefinition {
 export const PANEL_DEFINITIONS: Record<FixedPanelKind, PanelDefinition> = {
   results: { title: 'Recherche', icon: 'search', component: ResultsPanelAdapter },
   graph: { title: 'Graphe', icon: 'graphe', component: GraphPanel },
-  explanation: { title: 'Résumé', icon: 'explaining', component: ExplanationPanel },
+  explanation: { title: 'Explications', icon: 'explaining', component: ExplanationPanelAdapter },
 };
 
 export const PANEL_COMPONENTS: Record<string, FunctionComponent<IDockviewPanelProps>> = {
@@ -52,4 +62,11 @@ export const openFixedPanel = (
     position: group ? { referenceGroup: group } : undefined,
     inactive: isInactive,
   });
+};
+
+/** Active le panneau où qu'il soit, ou le rouvre s'il est fermé */
+export const showFixedPanel = (api: DockviewApi, kind: FixedPanelKind): void => {
+  const panel = api.getPanel(kind);
+  if (panel) panel.api.setActive();
+  else openFixedPanel(api, kind);
 };

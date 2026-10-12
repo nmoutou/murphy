@@ -14,6 +14,8 @@ moitiés du système s'articulent.
 
 Murphy est un moteur de recherche sur les données juridiques françaises (corpus
 DILA/LEGIFRANCE) : une question donne des documents classés et leurs passages (ADR-028).
+L'utilisateur peut en choisir certains, et un LLM les lui résume et les lui explique
+(ADR-033).
 Deux systèmes **qui ne partagent que des bases de données — aucun code, aucun appel** :
 
 ```mermaid
@@ -33,9 +35,12 @@ flowchart TB
         Back --> TEI[TEI<br>embeddings, GPU]
     end
 
+    LLM[LLM compatible OpenAI<br>externe pour l'instant]
+
     Kedro --> Mongo & OpenSearch & Neo4j
     TEI -.->|même modèle| Kedro
     Back --> Mongo & OpenSearch
+    Back -->|explications, SSE| LLM
     Neo4j -.->|réservé, non câblé| Back
 ```
 
@@ -57,7 +62,7 @@ C'est la seule zone où une modification d'un côté casse l'autre. Quatre contr
 |---|---|---|
 | **Nom de l'index** | `OPENSEARCH_INDEX` (`.env.dev`), créé et rempli par l'ingestion, avec son mapping et ses analyseurs | La même variable. Au boot (`backend/src/infra/opensearch.ts`), refus de démarrer si l'index n'existe pas ; le backend écrit le pipeline de recherche RRF (ADR-028 §6). |
 | **Documents et passages** | Un document OpenSearch par document Mongo : `identifier`, `document_type`, `nature`, passages (`chunk_id`, `char_start`, `char_end`) imbriqués avec leurs vecteurs ([`index-opensearch.md`](data/reference/index-opensearch.md)) | La requête hybride à quatre sous-requêtes ; `_source` et `inner_hits` n'en rendent que l'identité et les offsets des passages |
-| **Contenu** | Mongo `MURPHY_DATA.documents` : un document entier par `identifier` | Le titre et le texte des documents trouvés ; le texte d'un passage est `content[char_start:char_end]` (points de code). Les passages partent dans la page de résultats, le document entier par `GET /documents/:identifier` |
+| **Contenu** | Mongo `MURPHY_DATA.documents` : un document entier par `identifier`, avec `content_length` (sa longueur en points de code) et `parent_text_title` (ADR-033) | Le titre et le texte des documents trouvés ; le texte d'un passage est `content[char_start:char_end]` (points de code). Les passages partent dans la page de résultats, le document entier par `GET /documents/:identifier`. `content_length` alimente la jauge du budget ; les explications lisent aussi le type, la nature, `parent_text_title` et les métadonnées d'une liste blanche |
 | **Modèle d'embedding** | `microsoft/harrier-oss-v1-0.6b`, Cosine — vérifié contre TEI au démarrage du run ; la dimension (1024) est mesurée auprès de TEI et fixée à la création de l'index. Passages et titres sans consigne | Le même modèle via le même conteneur TEI ; la question porte la consigne `EMBEDDING_QUERY_INSTRUCTION` (ADR-031) |
 
 Le modèle d'embedding est le contrat le plus fragile : question et corpus doivent être
@@ -118,7 +123,7 @@ avec les mêmes options).
 | `docs/pilotage/WIP/` | Le travail en cours (critiques, plans) |
 | `docs/technical/` | Ce document — la vue système —, puis la documentation de chaque projet |
 | `backend/`, `frontend/`, `data/` | Les projets. `backend` et `frontend` sont des npm workspaces (un seul lockfile à la racine) ; `data` est en Python |
-| `packages/contract/` | `@murphy/contract` : le contrat backend ↔ frontend (schémas zod, types déduits), compilé, partagé par les deux workspaces. Un seul sous-chemin, `search` : la requête, la réponse, le document et les codes d'erreur de l'API |
+| `packages/contract/` | `@murphy/contract` : le contrat backend ↔ frontend (schémas zod, types déduits), compilé, partagé par les deux workspaces. Trois sous-chemins : `search` (la requête, la réponse, le document), `explanations` (la requête d'explication) et `errors` (les codes d'erreur de l'API) |
 | `docker-compose.*.yml` | La stack de serving |
 
 Convention de documentation : chaque projet a son dossier `docs/technical/<projet>/`,

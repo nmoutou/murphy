@@ -36,7 +36,8 @@ remplace Qdrant) · **§2 amendé par [ADR-031](ADR-031-modele-embedding-francai
 > `content_length`, la longueur de `content` en points de code, écrite par l'ingestion
 > dans le même `replace_one` que le texte. Le serving la transmet pour le budget de
 > contexte du LLM, et refuse un document qui n'en a pas. Le serving lit aussi, pour le
-> LLM, les métadonnées d'une liste blanche.
+> LLM, les métadonnées d'une liste blanche, et `parent_text_title`, les titres du texte
+> parent, que l'ingestion écrit désormais dans Mongo comme dans OpenSearch.
 
 ## Contexte
 

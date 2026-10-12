@@ -1,15 +1,18 @@
 import { MongoClient, Db, MongoClientOptions } from 'mongodb';
 import type { MongoConfig } from '../config';
 import type { RagFailure, StoredDocument } from '../types/rag';
+import type { ExplainedDocument } from '../types/explanation';
+import type { DocumentRecord } from './documentRecords';
 import { logger as rootLogger } from '../utils/logger';
-import { contractViolation, toRagError } from '../types/rag';
+import { RagError, toRagError } from '../types/rag';
+import { toExplainedDocument, toExplainedProjection, toSearchedDocument, toStoredDocument } from './documentRecords';
 
 const logger = rootLogger.child({ context: 'mongodb' });
 
 const MONGO_MAX_POOL_SIZE = 10;
 /** Écrite par l'ingestion : un document entier par `identifier` (ADR-015) */
 const DOCUMENTS_COLLECTION = 'documents';
-const DOCUMENT_PROJECTION = { _id: 0, identifier: 1, title: 1, content: 1 };
+const DOCUMENT_PROJECTION = { _id: 0, identifier: 1, title: 1, content: 1, content_length: 1 };
 const SEARCH_DOCUMENT_PROJECTION = { ...DOCUMENT_PROJECTION, 'metadata.statut': 1 };
 const DOCUMENT_FETCH_FAILURE: RagFailure = {
   stage: 'retrieval',
@@ -17,41 +20,9 @@ const DOCUMENT_FETCH_FAILURE: RagFailure = {
   operation: 'fetch parent documents from MongoDB',
 };
 const SINGLE_DOCUMENT_FETCH_FAILURE: RagFailure = { ...DOCUMENT_FETCH_FAILURE, operation: 'fetch a document from MongoDB' };
+const EXPLAINED_DOCUMENTS_FETCH_FAILURE: RagFailure = { ...DOCUMENT_FETCH_FAILURE, operation: 'fetch the selected documents from MongoDB' };
 
 const hideCredentials = (uri: string): string => uri.replace(/\/\/[^@]*@/, '//<credentials>@');
-
-/** Donnée externe, vérifiée avant usage */
-type DocumentRecord = Readonly<Record<string, unknown>>;
-
-/**
- * @throws RagError `CONTRACT_VIOLATION` si un champ du contrat n'est pas une chaîne
- */
-const toStoredDocument = (record: DocumentRecord): StoredDocument => {
-  const { identifier, title, content } = record;
-  const isValid = typeof identifier === 'string' && typeof title === 'string' && typeof content === 'string';
-  if (!isValid) {
-    throw contractViolation(`MongoDB document ${String(identifier)} lacks identifier, title or content`);
-  }
-  return { identifier, title, content };
-};
-
-const readStatus = (record: DocumentRecord): unknown => {
-  const { metadata } = record;
-  return typeof metadata === 'object' && metadata !== null && 'statut' in metadata ? metadata.statut : undefined;
-};
-
-/**
- * @throws RagError `CONTRACT_VIOLATION` si un champ du contrat, statut compris, n'est pas une chaîne
- */
-const toSearchedDocument = (record: DocumentRecord): StoredDocument => {
-  const document = toStoredDocument(record);
-  const status = readStatus(record);
-  if (status === undefined) return document;
-  if (typeof status !== 'string') {
-    throw contractViolation(`MongoDB document ${document.identifier} has a non-string metadata.statut`);
-  }
-  return { ...document, status };
-};
 
 export class MongoDbClient {
   private constructor(
@@ -145,5 +116,36 @@ export class MongoDbClient {
 
     logger.info({ identifier, isFound: record !== null, durationMs: Date.now() - startTime }, 'Document fetched from MongoDB');
     return record ? toStoredDocument(record) : undefined;
+  }
+
+  /**
+   * Les documents d'une sélection, dans son ordre, avec les seules métadonnées nommées
+   * @throws RagError `DOCUMENT_NOT_FOUND` s'il en manque un, ou d'étape `retrieval`
+   */
+  async fetchExplainedDocuments(
+    identifiers: readonly string[],
+    metadataKeys: readonly string[],
+  ): Promise<ExplainedDocument[]> {
+    const startTime = Date.now();
+    let records: DocumentRecord[];
+    try {
+      records = await this.db
+        .collection(DOCUMENTS_COLLECTION)
+        .find({ identifier: { $in: [...identifiers] } })
+        .project<DocumentRecord>(toExplainedProjection(metadataKeys))
+        .toArray();
+    } catch (error) {
+      const ragError = toRagError(EXPLAINED_DOCUMENTS_FETCH_FAILURE, error);
+      logger.error({ err: error, durationMs: Date.now() - startTime }, ragError.message);
+      throw ragError;
+    }
+
+    logger.info({ fetched: records.length, requested: identifiers.length, durationMs: Date.now() - startTime }, 'Selected documents fetched from MongoDB');
+    const byIdentifier = new Map(records.map((record) => [record.identifier, record]));
+    return identifiers.map((identifier) => {
+      const record = byIdentifier.get(identifier);
+      if (!record) throw new RagError('request', 'DOCUMENT_NOT_FOUND', `No document has the identifier ${identifier}`);
+      return toExplainedDocument(record);
+    });
   }
 }

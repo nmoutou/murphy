@@ -14,8 +14,15 @@ const responseFor = ({ page, pageSize = 10 }: SearchRequest): SearchResponse => 
   pageCount: Math.ceil(100 / pageSize),
   pageSize,
   pageSizes: [10, 25, 50],
+  contextBudget: 100_000,
   results: [
-    { identifier: `doc-${page}`, title: 'Article 2224', documentType: 'article', passages: [] },
+    {
+      identifier: `doc-${page}`,
+      title: 'Article 2224',
+      documentType: 'article',
+      contentLength: 100,
+      passages: [],
+    },
   ],
 });
 
@@ -56,7 +63,7 @@ describe('searchStore', () => {
     expect(useSearchStore.getState().status).toBe('loading');
   });
 
-  it('empties the list, keeps the question and shows the error code', async () => {
+  it('empties the list, keeps the question and the context budget, and shows the error code', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
     await useSearchStore.getState().submit(QUESTION);
     searchMock.mockRejectedValue(new ApiError('SEARCH_FAILED', 'HTTP 502 on /search'));
@@ -65,6 +72,7 @@ describe('searchStore', () => {
 
     expect(useSearchStore.getState()).toMatchObject({ status: 'error', question: QUESTION });
     expect(useSearchStore.getState().response).toBeUndefined();
+    expect(useSearchStore.getState().contextBudget).toBe(100_000);
     expect(useErrorStore.getState().errorCode).toBe('SEARCH_FAILED');
   });
 

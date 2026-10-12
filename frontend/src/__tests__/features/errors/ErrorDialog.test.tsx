@@ -25,10 +25,11 @@ describe('ErrorDialog', () => {
   });
 
   it.each<[DisplayedErrorCode, string]>([
-    ['VALIDATION_ERROR', "La recherche n'a pas pu être lancée."],
-    ['PAGE_OUT_OF_RANGE', "La recherche n'a pas pu être lancée."],
+    ['VALIDATION_ERROR', "La requête n'a pas pu être envoyée."],
+    ['PAGE_OUT_OF_RANGE', "La requête n'a pas pu être envoyée."],
     ['SEARCH_RATE_LIMIT_EXCEEDED', 'Trop de recherches : réessayez dans une minute.'],
-    ['DOCUMENT_NOT_FOUND', 'Ce document est introuvable.'],
+    ['DOCUMENT_NOT_FOUND', 'Un document est introuvable.'],
+    ['LLM_FAILED', "Le service d'explications est indisponible."],
     ['TIMEOUT', 'Le service de recherche est indisponible.'],
     ['CONTRACT_VIOLATION', 'Une erreur interne est survenue.'],
     ['NETWORK', 'Le serveur est injoignable.'],

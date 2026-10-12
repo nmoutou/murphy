@@ -4,10 +4,13 @@ import { RagError } from '../../types/rag';
 describe('toErrorResponse', () => {
   it.each([
     ['request', 'PAGE_OUT_OF_RANGE', 400],
+    ['request', 'CONTEXT_TOO_LARGE', 400],
     ['retrieval', 'DOCUMENT_NOT_FOUND', 404],
     ['embedding', 'EMBEDDING_FAILED', 502],
     ['retrieval', 'SEARCH_FAILED', 502],
     ['retrieval', 'DB_FETCH_FAILED', 502],
+    ['generation', 'LLM_FAILED', 502],
+    ['generation', 'TIMEOUT', 504],
     ['embedding', 'TIMEOUT', 504],
     ['retrieval', 'CONTRACT_VIOLATION', 500],
   ] as const)('answers a %s RagError %s with a %i', (stage, code, status) => {

@@ -22,9 +22,10 @@ const ARTICLE: StoredDocument = {
   identifier: 'LEGIARTI000006419304',
   title: 'Code civil, art. 2224',
   content: 'Article 2224. Cinq ans.',
+  contentLength: 23,
   status: 'VIGUEUR',
 };
-const SECTION: StoredDocument = { identifier: 'LEGISCTA000006114781', title: 'Chapitre III', content: '' };
+const SECTION: StoredDocument = { identifier: 'LEGISCTA000006114781', title: 'Chapitre III', content: '', contentLength: 0 };
 const PASSAGE_REF = { chunkId: 'LEGIARTI000006419304_0001', charStart: 14, charEnd: 23 };
 const HITS: SearchHit[] = [
   { identifier: ARTICLE.identifier, documentType: 'article', lexicalPassages: [PASSAGE_REF], vectorPassages: [] },
@@ -59,6 +60,7 @@ describe('searchDocuments', () => {
       pageCount: 10,
       pageSize: 10,
       pageSizes: [10, 25, 50],
+      contextBudget: 100_000,
       results: [
         {
           identifier: ARTICLE.identifier,
@@ -66,6 +68,7 @@ describe('searchDocuments', () => {
           documentType: 'article',
           nature: undefined,
           isInForce: true,
+          contentLength: 23,
           passages: [{ chunkId: PASSAGE_REF.chunkId, text: 'Cinq ans.', start: 14, end: 23 }],
         },
         {
@@ -74,6 +77,7 @@ describe('searchDocuments', () => {
           documentType: 'section',
           nature: undefined,
           isInForce: undefined,
+          contentLength: 0,
           passages: [],
         },
       ],

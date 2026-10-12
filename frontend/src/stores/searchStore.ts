@@ -16,6 +16,8 @@ interface SearchState {
   readonly pageSize?: number;
   readonly status: SearchStatus;
   readonly response?: SearchResponse;
+  /** Celui de la dernière réponse, gardé après une erreur : la sélection survit à une recherche */
+  readonly contextBudget?: number;
   /** Ne rejettent jamais : une erreur passe par la modale */
   readonly submit: (question: string) => Promise<void>;
   readonly goToPage: (page: number) => Promise<void>;
@@ -36,7 +38,8 @@ const runSearch = async (set: SetSearchState, request: SearchRequest): Promise<v
   try {
     const response = await searchDocuments(request, controller.signal);
     if (controller.signal.aborted) return;
-    set({ status: 'success', response, pageSize: response.pageSize });
+    const { pageSize, contextBudget } = response;
+    set({ status: 'success', response, pageSize, contextBudget });
   } catch (error) {
     if (controller.signal.aborted) return;
     set({ status: 'error', response: undefined });
@@ -50,6 +53,7 @@ export const useSearchStore = create<SearchState>()((set, get) => ({
   pageSize: undefined,
   status: 'idle',
   response: undefined,
+  contextBudget: undefined,
   submit: (question) => runSearch(set, { question, page: FIRST_PAGE, pageSize: get().pageSize }),
   goToPage: (page) => runSearch(set, { question: get().question, page, pageSize: get().pageSize }),
   setPageSize: (pageSize) =>

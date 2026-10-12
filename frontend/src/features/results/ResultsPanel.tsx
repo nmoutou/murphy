@@ -1,7 +1,9 @@
 'use client';
 
+import { useMemo } from 'react';
 import type { SearchResult } from '@murphy/contract/search';
 import { useSearchStore } from '@/stores/searchStore';
+import { useSelectionStore } from '@/stores/selectionStore';
 import Pagination from './Pagination';
 import ResultsHeader from './ResultsHeader';
 import ResultList from './ResultList';
@@ -18,6 +20,11 @@ function useStatusMessage(): string | undefined {
   return undefined;
 }
 
+const useSelectedIdentifiers = (): ReadonlySet<string> => {
+  const entries = useSelectionStore((state) => state.entries);
+  return useMemo(() => new Set(entries.map((entry) => entry.identifier)), [entries]);
+};
+
 interface ResultsPanelProps {
   readonly onOpenDocument: (result: SearchResult) => void;
 }
@@ -29,6 +36,8 @@ export default function ResultsPanel({ onOpenDocument }: ResultsPanelProps) {
   const response = useSearchStore((state) => state.response);
   const page = useSearchStore((state) => state.page);
   const goToPage = useSearchStore((state) => state.goToPage);
+  const selectedIdentifiers = useSelectedIdentifiers();
+  const toggleSelection = useSelectionStore((state) => state.toggle);
 
   return (
     <section className="flex h-full flex-col text-tertiary">
@@ -40,7 +49,12 @@ export default function ResultsPanel({ onOpenDocument }: ResultsPanelProps) {
           </p>
         )}
         {response && !isLoading && (
-          <ResultList results={response.results} onOpenDocument={onOpenDocument} />
+          <ResultList
+            results={response.results}
+            selectedIdentifiers={selectedIdentifiers}
+            onOpenDocument={onOpenDocument}
+            onToggleSelection={toggleSelection}
+          />
         )}
       </div>
       {response && <Pagination page={page} pageCount={response.pageCount} onGoToPage={goToPage} />}

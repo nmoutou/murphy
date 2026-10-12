@@ -1,7 +1,8 @@
 /**
  * Contrat de l'API de recherche (ADR-030) : `POST /api/v1/search` et
  * `GET /api/v1/documents/:identifier`. Ces schémas décrivent le `data` de l'enveloppe
- * `{ status, data, meta }` ; une erreur n'a pas de `data`, son code est `status.message`.
+ * `{ status, data, meta }` ; une erreur n'a pas de `data`, son code est `status.message`
+ * (`@murphy/contract/errors`).
  */
 
 import { z } from 'zod';
@@ -14,6 +15,9 @@ export const searchRequestSchema = z.object({
   /** Absente : la première des `pageSizes` du serveur ; hors de cette liste : refusée */
   pageSize: z.number().int().positive().optional(),
 });
+
+/** La longueur de `content` en points de code, écrite à l'ingestion : rapportée au budget de contexte */
+const contentLengthSchema = z.number().int().nonnegative();
 
 export const passageSchema = z.object({
   chunkId: z.string(),
@@ -32,6 +36,7 @@ export const searchResultSchema = z.object({
   nature: z.string().optional(),
   /** Absent quand la source ne donne pas de statut, comme pour une décision */
   isInForce: z.boolean().optional(),
+  contentLength: contentLengthSchema,
   passages: z.array(passageSchema),
 });
 
@@ -42,6 +47,8 @@ export const searchResponseSchema = z.object({
   pageSize: z.number().int().positive(),
   /** Les tailles de page que le serveur accepte, la première par défaut */
   pageSizes: z.array(z.number().int().positive()).min(1),
+  /** Le budget de contexte du LLM, en points de code, comparé à la somme des `contentLength` */
+  contextBudget: z.number().int().positive(),
   results: z.array(searchResultSchema),
 });
 
@@ -49,27 +56,8 @@ export const documentContentSchema = z.object({
   identifier: z.string(),
   title: z.string(),
   content: z.string(),
+  contentLength: contentLengthSchema,
 });
-
-export const SEARCH_ERROR_CODES = [
-  'VALIDATION_ERROR',
-  'INVALID_JSON',
-  'INVALID_REQUEST_BODY',
-  'PAGE_OUT_OF_RANGE',
-  'DOCUMENT_NOT_FOUND',
-  'NOT_FOUND',
-  'PAYLOAD_TOO_LARGE',
-  'SEARCH_RATE_LIMIT_EXCEEDED',
-  'RATE_LIMIT_EXCEEDED',
-  'EMBEDDING_FAILED',
-  'SEARCH_FAILED',
-  'DB_FETCH_FAILED',
-  'TIMEOUT',
-  'CONTRACT_VIOLATION',
-  'INTERNAL',
-] as const;
-
-export const searchErrorCodeSchema = z.enum(SEARCH_ERROR_CODES);
 
 export type DocumentType = z.infer<typeof documentTypeSchema>;
 export type SearchRequest = z.infer<typeof searchRequestSchema>;
@@ -77,4 +65,3 @@ export type Passage = z.infer<typeof passageSchema>;
 export type SearchResult = z.infer<typeof searchResultSchema>;
 export type SearchResponse = z.infer<typeof searchResponseSchema>;
 export type DocumentContent = z.infer<typeof documentContentSchema>;
-export type SearchErrorCode = z.infer<typeof searchErrorCodeSchema>;

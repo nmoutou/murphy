@@ -7,7 +7,7 @@ jest.mock('../../infra/clients', () => {
   return { getInfraClients: () => clients };
 });
 
-const DOCUMENT = { identifier: 'LEGIARTI000006419304', title: 'Code civil, art. 2224', content: 'Article 2224. Cinq ans.' };
+const DOCUMENT = { identifier: 'LEGIARTI000006419304', title: 'Code civil, art. 2224', content: 'Article 2224. Cinq ans.', contentLength: 23 };
 
 const { mongo } = getInfraClients();
 

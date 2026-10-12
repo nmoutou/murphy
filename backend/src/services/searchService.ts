@@ -40,6 +40,7 @@ const toSearchResult = ({ document, documentType, nature, passages }: FoundDocum
   documentType,
   nature,
   isInForce: toInForce(document.status),
+  contentLength: document.contentLength,
   passages: passages.map(toContractPassage),
 });
 
@@ -64,5 +65,6 @@ export const searchDocuments = async ({ question, page, pageSize }: PagedSearchR
     'Search completed',
   );
   const results = documents.map(toSearchResult);
-  return { page, pageCount, pageSize, pageSizes: [...config.pagination.sizes], results };
+  const pageSizes = [...config.pagination.sizes];
+  return { page, pageCount, pageSize, pageSizes, contextBudget: config.llm.contextMaxChars, results };
 };

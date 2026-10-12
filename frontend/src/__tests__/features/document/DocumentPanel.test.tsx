@@ -12,6 +12,7 @@ const DOCUMENT: DocumentContent = {
   identifier: IDENTIFIER,
   title: 'Article 2224',
   content: 'Les actions personnelles se prescrivent par cinq ans.',
+  contentLength: 53,
 };
 const PASSAGE: Passage = { chunkId: 'chunk-1', text: 'se prescrivent', start: 25, end: 39 };
 

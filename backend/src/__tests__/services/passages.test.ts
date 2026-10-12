@@ -12,6 +12,7 @@ const DOCUMENT: StoredDocument = {
   identifier: 'LEGIARTI000006419304',
   title: '2224',
   content: CONTENT,
+  contentLength: [...CONTENT].length,
 };
 
 const passageRef = (overrides: Partial<PassageRef> = {}): PassageRef => ({
@@ -67,7 +68,7 @@ describe('assembleDocuments', () => {
   });
 
   it('keeps the ranking of the documents, not the order MongoDB returns them in', () => {
-    const other: StoredDocument = { identifier: 'LEGISCTA000006114781', title: 'Chapitre III', content: '' };
+    const other: StoredDocument = { identifier: 'LEGISCTA000006114781', title: 'Chapitre III', content: '', contentLength: 0 };
 
     const found = assembleDocuments([retrieved([], other.identifier), retrieved([passageRef()])], [DOCUMENT, other]);
 

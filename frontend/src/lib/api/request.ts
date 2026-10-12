@@ -1,9 +1,9 @@
-import type { SearchErrorCode } from '@murphy/contract/search';
-import { searchErrorCodeSchema } from '@murphy/contract/search';
+import type { ApiErrorCode } from '@murphy/contract/errors';
+import { apiErrorCodeSchema } from '@murphy/contract/errors';
 import { ApiError } from './apiError';
 import { buildApiUrl } from './apiUrl';
 
-const UNREADABLE_ERROR_CODE: SearchErrorCode = 'INTERNAL';
+const UNREADABLE_ERROR_CODE: ApiErrorCode = 'INTERNAL';
 
 type ParseResult<T> =
   | { readonly success: true; readonly data: T }
@@ -24,7 +24,7 @@ const sendRequest = async (path: string, init: RequestInit): Promise<Response> =
   }
 };
 
-const readJson = async (response: Response): Promise<unknown> => {
+export const readJson = async (response: Response): Promise<unknown> => {
   try {
     return await response.json();
   } catch {
@@ -33,14 +33,14 @@ const readJson = async (response: Response): Promise<unknown> => {
 };
 
 /** L'enveloppe `{ status: { code, message }, data?, meta }` : sur un échec, `status.message` est le code */
-const readErrorCode = (body: unknown): SearchErrorCode => {
+export const readErrorCode = (body: unknown): ApiErrorCode => {
   const status =
     typeof body === 'object' && body !== null && 'status' in body ? body.status : undefined;
   const message =
     typeof status === 'object' && status !== null && 'message' in status
       ? status.message
       : undefined;
-  const parsed = searchErrorCodeSchema.safeParse(message);
+  const parsed = apiErrorCodeSchema.safeParse(message);
   return parsed.success ? parsed.data : UNREADABLE_ERROR_CODE;
 };
 

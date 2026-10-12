@@ -15,7 +15,7 @@ jest.mock('../../utils/logger', () => {
 });
 
 const QUESTION = 'article L1234-5 licenciement';
-const PAGE = { page: 2, pageCount: 10, pageSize: 10, pageSizes: [10, 25, 50], results: [] };
+const PAGE = { page: 2, pageCount: 10, pageSize: 10, pageSizes: [10, 25, 50], contextBudget: 100_000, results: [] };
 
 let app: Express;
 

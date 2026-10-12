@@ -1,11 +1,13 @@
 'use client';
 
+import { useState } from 'react';
 import { DockviewReact, themeDark } from 'dockview-react';
-import type { DockviewReadyEvent, DockviewTheme } from 'dockview-react';
+import type { DockviewApi, DockviewReadyEvent, DockviewTheme } from 'dockview-react';
 import { applyDefaultLayout } from './defaultLayout';
 import GroupActions from './GroupActions';
 import PanelTab from './PanelTab';
 import { PANEL_COMPONENTS } from './panelRegistry';
+import SelectionSidebarAdapter from './SelectionSidebarAdapter';
 import Watermark from './Watermark';
 
 /** Le thème sombre de Dockview, recoloré par `.dockview-theme-murphy` dans globals.css */
@@ -15,20 +17,29 @@ const MURPHY_THEME: DockviewTheme = {
   className: `${themeDark.className} dockview-theme-murphy`,
 };
 
-const handleReady = ({ api }: DockviewReadyEvent) => applyDefaultLayout(api);
-
 /** Le seul composant, avec ceux qu'il déclare, à connaître Dockview */
 export default function Workspace() {
+  // La sidebar, hors de Dockview, agit sur ses onglets
+  const [api, setApi] = useState<DockviewApi>();
+
+  const handleReady = ({ api: readyApi }: DockviewReadyEvent) => {
+    applyDefaultLayout(readyApi);
+    setApi(readyApi);
+  };
+
   return (
-    <div className="min-h-0 flex-1 bg-primary">
-      <DockviewReact
-        theme={MURPHY_THEME}
-        components={PANEL_COMPONENTS}
-        onReady={handleReady}
-        defaultTabComponent={PanelTab}
-        rightHeaderActionsComponent={GroupActions}
-        watermarkComponent={Watermark}
-      />
+    <div className="flex min-h-0 flex-1 bg-primary">
+      <div className="min-w-0 flex-1">
+        <DockviewReact
+          theme={MURPHY_THEME}
+          components={PANEL_COMPONENTS}
+          onReady={handleReady}
+          defaultTabComponent={PanelTab}
+          rightHeaderActionsComponent={GroupActions}
+          watermarkComponent={Watermark}
+        />
+      </div>
+      {api && <SelectionSidebarAdapter api={api} />}
     </div>
   );
 }

@@ -11,6 +11,7 @@ const SEARCH_RESPONSE: SearchResponse = {
   pageCount: 10,
   pageSize: 10,
   pageSizes: [10, 25, 50],
+  contextBudget: 100_000,
   results: [],
 };
 
@@ -132,7 +133,12 @@ describe('searchDocuments', () => {
 describe('fetchDocument', () => {
   it('gets the document route, the identifier encoded', async () => {
     vi.stubEnv('NEXT_PUBLIC_API_URL', 'https://api.murphy.test');
-    const document = { identifier: 'JURI/TEXT 1', title: 'Arrêt', content: 'Attendu que…' };
+    const document = {
+      identifier: 'JURI/TEXT 1',
+      title: 'Arrêt',
+      content: 'Attendu que…',
+      contentLength: 12,
+    };
     const fetchMock = stubFetch(jsonResponse(envelope('OK', document)));
 
     await expect(fetchDocument('JURI/TEXT 1', new AbortController().signal)).resolves.toEqual(

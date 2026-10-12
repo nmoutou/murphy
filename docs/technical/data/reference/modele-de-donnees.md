@@ -71,8 +71,15 @@ Contenu : le dump JSON du `ParsedDocument`, **sauf** :
   donnée d'arête (elles vivent dans Neo4j), et `sections` est `content` re-découpé — son
   seul apport propre (`path`) survit sur les chunks (`tag_path` + offsets).
 
+Et deux champs dérivés s'y ajoutent, pour le serving (ADR-033) :
+
+- `content_length` : la longueur de `content` en points de code, que le backend
+  rapporte au budget de contexte du LLM ;
+- `parent_text_title` : les titres (`TITRE_TXT`) du texte parent, sans doublon, dans
+  l'ordre du XML, comme dans OpenSearch ; absent sans texte parent.
+
 Donc : `identifier` (sérialisé), `source`, `document_type`, `nature`, `title`, `content`,
-`metadata`.
+`metadata`, `content_length`, `parent_text_title`.
 
 ### `pending_relations`
 

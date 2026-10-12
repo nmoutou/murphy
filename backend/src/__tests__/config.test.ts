@@ -4,6 +4,9 @@ const REQUIRED_ENV = {
   MONGODB_URI: 'mongodb://mongo:27017',
   OPENSEARCH_INDEX: 'documents',
   EMBEDDING_QUERY_INSTRUCTION: 'Instruct: Retrieve text based on user query.\nQuery:',
+  LLM_BASE_URL: 'https://llm.test/v1',
+  LLM_API_KEY: 'secret',
+  LLM_MODEL: 'some-model',
 };
 
 describe('loadConfig', () => {
@@ -88,10 +91,34 @@ describe('loadConfig', () => {
     expect(config.embedding.queryInstruction).toBe('Instruct: Retrieve text based on user query.\nQuery:');
   });
 
-  it('reports a missing query instruction without stopping the boot: questions go without it', () => {
-    const { config, report } = loadConfig({ ...REQUIRED_ENV, EMBEDDING_QUERY_INSTRUCTION: undefined });
+  it('reports a missing query instruction as a missing required variable', () => {
+    const { report } = loadConfig({ ...REQUIRED_ENV, EMBEDDING_QUERY_INSTRUCTION: undefined });
 
     expect(report.missingRequired).toEqual(['EMBEDDING_QUERY_INSTRUCTION']);
-    expect(config.embedding.queryInstruction).toBe('');
+  });
+
+  it('reads the LLM and the explanation limits, with their defaults', () => {
+    const { config } = loadConfig(REQUIRED_ENV);
+
+    expect(config.llm).toEqual({
+      baseUrl: 'https://llm.test/v1',
+      apiKey: 'secret',
+      model: 'some-model',
+      timeoutMs: 30_000,
+      contextMaxChars: 100_000,
+      maxOutputTokens: 2_000,
+    });
+    expect(config.http.explanationRateLimit).toEqual({ windowMs: 60_000, limit: 10 });
+    expect(config.http.explanationDailyLimit).toBe(200);
+  });
+
+  it('reports each missing LLM variable as required', () => {
+    const { report } = loadConfig({ ...REQUIRED_ENV, LLM_BASE_URL: '', LLM_API_KEY: undefined, LLM_MODEL: undefined });
+
+    expect(report.missingRequired).toEqual(['LLM_BASE_URL', 'LLM_API_KEY', 'LLM_MODEL']);
+  });
+
+  it.each(['LLM_TIMEOUT', 'LLM_CONTEXT_MAX_CHARS', 'LLM_MAX_OUTPUT_TOKENS'])('refuses a %s that is not positive', (name) => {
+    expect(() => loadConfig({ ...REQUIRED_ENV, [name]: '0' })).toThrow(`${name} must be positive, got 0`);
   });
 });

@@ -1,15 +1,12 @@
 """Le corps d'un document OpenSearch, construit depuis le document parsé."""
 
-from collections.abc import Iterable, Mapping
 from typing import Any
 
 from ragcore.core.models.document import ParsedDocument
 from ragcore.core.models.search_content import IndexedPassage, SearchContent
+from ragcore.core.services.parent_text_titles import parent_text_titles
 
 __all__ = ["build_index_document"]
-
-# Les `TITRE_TM` du même `<CONTEXTE>` titrent des subdivisions du texte, pas le texte
-_PARENT_TEXT_KIND = "TITRE_TXT"
 
 
 def build_index_document(
@@ -23,7 +20,7 @@ def build_index_document(
         "metadata": parsed.metadata,
         "passages": [_passage(passage) for passage in content.passages],
     }
-    parent_titles = _parent_text_titles(parsed.structure.get("context", []))
+    parent_titles = parent_text_titles(parsed)
     if parent_titles:
         body["parent_text_title"] = parent_titles
     if content.title_embedding is not None:
@@ -42,13 +39,3 @@ def _passage(passage: IndexedPassage) -> dict[str, Any]:
     if passage.embedding is not None:
         body["embedding"] = passage.embedding
     return body
-
-
-def _parent_text_titles(context: Iterable[Mapping[str, Any]]) -> list[str]:
-    """Un titre par période, souvent le même : sans doublon, dans l'ordre du XML."""
-    labels = (
-        ancestor.get("label", "")
-        for ancestor in context
-        if ancestor.get("kind") == _PARENT_TEXT_KIND
-    )
-    return list(dict.fromkeys(label for label in labels if label))

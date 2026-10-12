@@ -15,7 +15,8 @@ conversation ; le LLM entre dans le fail-fast)
 > conversation sans état serveur : le client renvoie à chaque question les messages du
 > segment courant, et le serveur ne garde rien. « Seule la dernière question compte »
 > vaut pour la recherche. Le LLM est une dépendance obligatoire, vérifiée au démarrage
-> par sa configuration seule. Aucune question, réponse ni texte envoyé au LLM n'est
+> par sa configuration seule. Plus largement, toute variable obligatoire absente arrête
+> désormais le démarrage ; jusqu'ici, elle n'était que journalisée. Aucune question, réponse ni texte envoyé au LLM n'est
 > journalisé. L'analyse du contenu des requêtes, qu'exigeront les garde-fous de
 > l'onglet, relève d'une ADR à venir.
 

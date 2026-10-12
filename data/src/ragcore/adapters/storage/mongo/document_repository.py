@@ -3,9 +3,12 @@
 from ragcore.adapters.storage.mongo.client import MongoClient, MongoDatabase
 from ragcore.core.models.document import ParsedDocument
 from ragcore.core.models.identifiers import Identifier
+from ragcore.core.services.parent_text_titles import parent_text_titles
 
 _STRUCTURE_FIELD = "structure"
 _SOURCE_FILES_FIELD = "source_files"
+_CONTENT_LENGTH_FIELD = "content_length"
+_PARENT_TEXT_TITLE_FIELD = "parent_text_title"
 
 
 def _serialize_identifier(identifier: Identifier) -> str:
@@ -50,6 +53,11 @@ class MongoDocumentRepository:
         # sections répètent `content`. Le chunker et l'extracteur le lisent en mémoire.
         data = document.model_dump(mode="json", exclude=self._excluded_fields)
         data["identifier"] = identifier_key
+        # Le budget de contexte du serving : des points de code, comme `len` les compte
+        data[_CONTENT_LENGTH_FIELD] = len(document.content)
+        parent_titles = parent_text_titles(document)
+        if parent_titles:
+            data[_PARENT_TEXT_TITLE_FIELD] = parent_titles
         await self._collection.replace_one(filter_, data, upsert=True)
 
     async def delete(self, identifier: Identifier) -> None:

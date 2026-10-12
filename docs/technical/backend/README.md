@@ -69,19 +69,24 @@ variable absente. Un entier invalide (`PAGINATION_DEPTH=2.5`, `PAGINATION_SIZES=
 **bloque le démarrage**, avec un message qui nomme la variable, comme une pagination
 incohérente : `PAGINATION_DEPTH` va de 1 à 10 000 (le plafond du `k` d'un kNN), et
 `PAGINATION_SIZES` liste au moins une taille, sans doublon, chacune entre 1 et la
-profondeur. `checkEnvironment` journalise ensuite les
-variables manquantes et celles qui ont pris leur valeur par défaut.
+profondeur, ou toute valeur LLM nulle ou négative. `checkEnvironment` journalise ensuite
+les variables qui ont pris leur valeur par défaut, et **refuse le démarrage** si une
+variable obligatoire manque, en les nommant.
 
-Critiques (erreur logguée si absentes, sans bloquer) : `MONGODB_URI`, `OPENSEARCH_INDEX`
-(le nom de l'index, partagé avec l'ingestion), `EMBEDDING_QUERY_INSTRUCTION` (la consigne
-placée devant la question ; absente, la question part sans elle et la recherche se dégrade
-en silence).
+Obligatoires : `MONGODB_URI`, `OPENSEARCH_INDEX` (le nom de l'index, partagé avec
+l'ingestion), `EMBEDDING_QUERY_INSTRUCTION` (la consigne placée devant la question),
+`LLM_BASE_URL` (l'URL de base d'un serveur compatible OpenAI, sans
+`/chat/completions`), `LLM_API_KEY` et `LLM_MODEL`.
 Principales optionnelles : `PORT` (5000), `NODE_LOG_LEVEL` (`debug` en dev, `info` en prod),
 `MONGODB_DATABASE` (MURPHY_DATA),
 `OPENSEARCH_URL`, `OPENSEARCH_TIMEOUT` (10000 ms), `PAGINATION_SIZES` (`10,25,50`, la première par défaut), `PAGINATION_DEPTH` (100),
 `EMBEDDING_SERVICE_URL`, `EMBEDDING_MODEL_NAME`, `CORS_ORIGIN`, et les quotas par IP :
 `RATE_LIMIT_WINDOW_MS`/`RATE_LIMIT_MAX` (600 par 15 min, toutes routes),
-`SEARCH_RATE_LIMIT_WINDOW_MS`/`SEARCH_RATE_LIMIT_MAX` (60 par minute, recherche).
+`SEARCH_RATE_LIMIT_WINDOW_MS`/`SEARCH_RATE_LIMIT_MAX` (60 par minute, recherche),
+`EXPLANATION_RATE_LIMIT_WINDOW_MS`/`EXPLANATION_RATE_LIMIT_MAX` (10 par minute,
+explications), et le plafond global `EXPLANATION_DAILY_LIMIT` (200 appels par jour). Le
+LLM : `LLM_TIMEOUT` (30000 ms jusqu'au premier fragment), `LLM_CONTEXT_MAX_CHARS`
+(100000 points de code) et `LLM_MAX_OUTPUT_TOKENS` (2000).
 
 ### Interroger l'API
 
@@ -89,6 +94,9 @@ Principales optionnelles : `PORT` (5000), `NODE_LOG_LEVEL` (`debug` en dev, `inf
 curl -X POST http://localhost:5000/api/v1/search -H 'Content-Type: application/json' \
   -d '{"question": "article L52-8 du code électoral", "page": 1, "pageSize": 25}'
 curl http://localhost:5000/api/v1/documents/CETATEXT000054320839
+# Un flux SSE : -N pour l'afficher au fil de l'eau
+curl -N -X POST http://localhost:5000/api/v1/explanations -H 'Content-Type: application/json' \
+  -d '{"selection": ["CETATEXT000054320839"], "messages": [{"role": "user", "content": "Veuillez résumer les documents fournis."}]}'
 ```
 
 ### Santé
@@ -106,4 +114,8 @@ curl http://localhost:5000/api/v1/health   # ok | degraded (1 service down) | do
 | 500 `CONTRACT_VIOLATION`, log « Serving contract violated » | Un document OpenSearch, son document Mongo ou ses offsets ne respectent pas le contrat ; le message cite l'`identifier` ou le `chunk_id`. Réingérer le corpus. |
 | `results` vide sur toutes les questions | Index vide : lancer l'ingestion. |
 | 502 `EMBEDDING_FAILED` ou 504 `TIMEOUT` | Conteneur TEI (GPU requis, ~5 min au premier démarrage) — `npm run logs` depuis la racine. |
+| Refus de démarrer : « Critical env vars missing: … » | Une variable obligatoire manque à `.env.dev`, souvent une `LLM_*`. La renseigner, puis `npm run up` (un simple `restart` garde l'ancien environnement). |
+| 500 `CONTRACT_VIOLATION`, « lacks a valid content_length: re-ingest the corpus » | Le corpus a été ingéré avant ADR-033 : relancer `kedro run` dans `data/`. |
+| 502 `LLM_FAILED` sur `/explanations`, santé `degraded` (`llm: down`) | Le serveur du LLM refuse ou ne répond pas : vérifier `LLM_BASE_URL`, `LLM_API_KEY` et `LLM_MODEL`. Le log `LLM call failed` donne le statut HTTP. |
+| 429 `EXPLANATION_QUOTA_EXCEEDED` | Le plafond du jour (`EXPLANATION_DAILY_LIMIT`) est atteint ; il se remet à zéro au redémarrage du backend. |
 | 429 `RATE_LIMIT_EXCEEDED` en dev | `RATE_LIMIT_MAX` de `.env.dev` remplace le défaut de 600 : le relever ou le retirer. |

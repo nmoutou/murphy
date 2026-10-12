@@ -119,6 +119,10 @@ ne fait jamais confiance à un texte envoyé par le client. Pour chacun : son re
 titre, son type, sa nature, `parent_text_title` s'il en a un, son texte entier, et les
 métadonnées d'une **liste blanche**.
 
+> **Précision (12 octobre 2026, mise en œuvre).** `parent_text_title` n'était écrit que
+> dans OpenSearch. L'ingestion l'écrit aussi dans Mongo, dans le même `replace_one` que
+> `content_length` : le backend lit tout dans Mongo.
+
 | Source | Métadonnées transmises |
 |---|---|
 | Législatif | `statut`, `date_debut`, `date_fin`, `versions_a_venir`, `date_texte`, `date_publication`, `nor`, `titre_full` |
@@ -165,7 +169,11 @@ l'ordre de la sélection, puis les messages du segment. La réponse est un flux 
   lit donc le flux avec `fetch`, pas avec `EventSource`, qui n'accepte que `GET`.
 - **L'AI SDK revient** des deux côtés : `useChat` côté frontend, `streamText` et
   `@ai-sdk/openai-compatible` côté backend. Son transport par défaut est un SSE en
-  `POST` ; le WebSocket de `main` exigeait un transport sur mesure.
+  `POST` ; le WebSocket de `main` exigeait un transport sur mesure. *Précision (12 octobre
+  2026)* : la version majeure retenue est `ai` 6 (`@ai-sdk/react` 3,
+  `@ai-sdk/openai-compatible` 2), comme sur `main`. `ai` 7 n'est publié qu'en ESM, que
+  le backend, en CommonJS, et ses tests (ts-jest) ne chargent pas. Les deux côtés gardent
+  la même version majeure, donc le même protocole de flux.
 - **Des messages utilisateur consécutifs** (§11) sont fusionnés par le backend avant
   l'appel : certains modèles refusent deux messages du même rôle à la suite.
 
@@ -179,7 +187,10 @@ l'ordre de la sélection, puis les messages du segment. La réponse est un flux 
 - **Après un arrêt**, la réponse partielle reste, marquée « interrompue », et part avec
   le segment.
 - **Une erreur avant le flux** a son statut HTTP et son code, comme ailleurs (ADR-030
-  §4).
+  §4). *Précision (12 octobre 2026)* : le backend attend le premier fragment du LLM,
+  pendant `LLM_TIMEOUT` au plus, avant d'ouvrir le flux. Un fournisseur injoignable, une
+  clé refusée ou un délai dépassé donnent donc encore un vrai 502 `LLM_FAILED` ou 504
+  `TIMEOUT`.
 - **Une erreur pendant le flux** arrive comme un événement d'erreur, le statut 200 étant
   déjà parti. La réponse partielle est effacée, le message de l'utilisateur reste. La
   modale affiche le message du code (ADR-032 §10). Le message resté sans réponse part
@@ -223,7 +234,9 @@ fournisseur, s'il existe, s'ajoute à celui-ci.
   délai jusqu'au premier fragment), `LLM_CONTEXT_MAX_CHARS` et `LLM_MAX_OUTPUT_TOKENS`.
 - **Le LLM est obligatoire** (fail-fast, ADR-010). Sans `LLM_BASE_URL`, `LLM_API_KEY`
   ou `LLM_MODEL`, le backend refuse de démarrer, comme pour toute variable critique :
-  la recherche ne démarre pas non plus. La récupération reste un composant autonome
+  la recherche ne démarre pas non plus. *Précision (12 octobre 2026)* : une variable
+  critique absente n'était jusqu'ici que journalisée. `checkEnvironment` arrête
+  désormais le démarrage pour toutes, `EMBEDDING_QUERY_INSTRUCTION` comprise. La récupération reste un composant autonome
   dans le code (ADR-007), mais aucun déploiement ne la sert sans le LLM.
 - **Le démarrage ne sonde pas le LLM**, à l'inverse d'OpenSearch : seule sa
   configuration est vérifiée. Un fournisseur injoignable ne se révèle qu'à l'appel, par

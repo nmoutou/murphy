@@ -21,6 +21,7 @@ const RESULT: SearchResult = {
   identifier: 'LEGIARTI000049431213',
   title: 'Article 2224',
   documentType: 'article',
+  contentLength: 53,
   passages: [{ chunkId: 'chunk-1', text: 'se prescrivent', start: 25, end: 39 }],
 };
 const DOCUMENT_PANEL_ID = `document:${RESULT.identifier}`;
@@ -50,11 +51,19 @@ beforeEach(() => {
     identifier: RESULT.identifier,
     title: RESULT.title,
     content: CONTENT,
+    contentLength: CONTENT.length,
   });
   useErrorStore.setState(useErrorStore.getInitialState(), true);
   useSearchStore.setState({
     status: 'success',
-    response: { page: 1, pageCount: 1, pageSize: 10, pageSizes: [10], results: [RESULT] },
+    response: {
+      page: 1,
+      pageCount: 1,
+      pageSize: 10,
+      pageSizes: [10],
+      contextBudget: 100_000,
+      results: [RESULT],
+    },
   });
 });
 

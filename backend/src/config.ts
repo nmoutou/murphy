@@ -2,10 +2,11 @@
  * Seul lecteur de `process.env`, une fois au démarrage. Le lecteur note les variables
  * absentes ou par défaut : `checkEnvironment` rend compte de ce qui a vraiment été lu.
  *
- * Aucun import interne ici : `utils/logger.ts` dépend de ce module.
+ * Aucun import interne hors `envReader` : `utils/logger.ts` dépend de ce module.
  */
 
-type Environment = Readonly<Record<string, string | undefined>>;
+import type { EnvReader, Environment, EnvironmentReport } from './envReader';
+import { createEnvReader } from './envReader';
 
 export interface ServerConfig {
   readonly port: number;
@@ -23,6 +24,10 @@ export interface HttpConfig {
   readonly corsOrigins: readonly string[] | false;
   readonly rateLimit: RateLimitConfig;
   readonly searchRateLimit: RateLimitConfig;
+  /** Par IP, en plus du limiteur général */
+  readonly explanationRateLimit: RateLimitConfig;
+  /** Tous clients confondus, sur 24 h : borne la dépense en LLM */
+  readonly explanationDailyLimit: number;
 }
 
 export interface MongoConfig {
@@ -54,6 +59,18 @@ export interface PaginationConfig {
   readonly depth: number;
 }
 
+/** Un serveur compatible OpenAI ; le code ne nomme aucun fournisseur */
+export interface LlmConfig {
+  readonly baseUrl: string;
+  readonly apiKey: string;
+  readonly model: string;
+  /** Jusqu'au premier fragment de la réponse, pas jusqu'à sa fin */
+  readonly timeoutMs: number;
+  /** En points de code : textes, métadonnées, prompt et segment de conversation */
+  readonly contextMaxChars: number;
+  readonly maxOutputTokens: number;
+}
+
 export interface AppConfig {
   readonly server: ServerConfig;
   readonly http: HttpConfig;
@@ -61,13 +78,7 @@ export interface AppConfig {
   readonly opensearch: OpenSearchConfig;
   readonly embedding: EmbeddingConfig;
   readonly pagination: PaginationConfig;
-}
-
-export interface EnvironmentReport {
-  /** Variables obligatoires absentes : la fonctionnalité correspondante ne marche pas */
-  readonly missingRequired: readonly string[];
-  /** Variables facultatives absentes : leur défaut s'applique */
-  readonly defaulted: readonly string[];
+  readonly llm: LlmConfig;
 }
 
 export interface LoadedConfig {
@@ -94,59 +105,15 @@ const DEFAULT_EMBEDDING_MODEL_NAME = 'microsoft/harrier-oss-v1-0.6b';
 const DEFAULT_EMBEDDING_TIMEOUT_MS = 10_000;
 /** Sous la forme de la variable, découpé comme elle */
 const DEFAULT_PAGINATION_SIZES = '10,25,50';
-const LIST_SEPARATOR = ',';
 const DEFAULT_PAGINATION_DEPTH = 100;
 /** Le plafond du `k` d'un kNN, et `index.max_result_window` par défaut */
 const MAX_PAGINATION_DEPTH = 10_000;
-
-interface EnvReader {
-  /** Absente → `undefined`, notée « par défaut » */
-  readonly optional: (name: string) => string | undefined;
-  /** Absente → `''`, notée « manquante » */
-  readonly required: (name: string) => string;
-  /** @throws si la valeur n'est pas un entier */
-  readonly integer: (name: string, fallback: number) => number;
-  /** Entiers séparés par des virgules ; @throws si l'un d'eux n'en est pas un */
-  readonly integerList: (name: string, fallback: string) => readonly number[];
-  readonly report: () => EnvironmentReport;
-}
-
-const createEnvReader = (env: Environment): EnvReader => {
-  const missingRequired: string[] = [];
-  const defaulted: string[] = [];
-
-  // Compose passe `VAR=` quand la variable manque à `.env.dev` : vide = absente
-  const read = (name: string, unsetList: string[]): string | undefined => {
-    const raw = env[name];
-    if (raw !== undefined && raw !== '') return raw;
-    unsetList.push(name);
-    return undefined;
-  };
-
-  const parseInteger = (name: string, raw: string): number => {
-    const parsed = Number(raw);
-    if (raw.trim() === '' || !Number.isInteger(parsed)) throw new Error(`${name} must be an integer, got "${raw}"`);
-    return parsed;
-  };
-
-  const readInteger = (name: string, fallback: number): number => {
-    const raw = read(name, defaulted);
-    return raw === undefined ? fallback : parseInteger(name, raw);
-  };
-
-  const readIntegerList = (name: string, fallback: string): readonly number[] => {
-    const raw = read(name, defaulted) ?? fallback;
-    return raw.split(LIST_SEPARATOR).map((value) => parseInteger(name, value));
-  };
-
-  return {
-    optional: (name) => read(name, defaulted),
-    required: (name) => read(name, missingRequired) ?? '',
-    integer: readInteger,
-    integerList: readIntegerList,
-    report: () => ({ missingRequired: [...missingRequired], defaulted: [...defaulted] }),
-  };
-};
+const DEFAULT_EXPLANATION_RATE_LIMIT_WINDOW_MS = 60_000;
+const DEFAULT_EXPLANATION_RATE_LIMIT_MAX = 10;
+const DEFAULT_EXPLANATION_DAILY_LIMIT = 200;
+const DEFAULT_LLM_TIMEOUT_MS = 30_000;
+const DEFAULT_LLM_CONTEXT_MAX_CHARS = 100_000;
+const DEFAULT_LLM_MAX_OUTPUT_TOKENS = 2_000;
 
 const readServerConfig = (reader: EnvReader): ServerConfig => {
   const nodeEnv = reader.optional('NODE_ENV') ?? DEFAULT_NODE_ENV;
@@ -170,6 +137,11 @@ const readHttpConfig = (reader: EnvReader): HttpConfig => ({
     windowMs: reader.integer('SEARCH_RATE_LIMIT_WINDOW_MS', DEFAULT_SEARCH_RATE_LIMIT_WINDOW_MS),
     limit: reader.integer('SEARCH_RATE_LIMIT_MAX', DEFAULT_SEARCH_RATE_LIMIT_MAX),
   },
+  explanationRateLimit: {
+    windowMs: reader.integer('EXPLANATION_RATE_LIMIT_WINDOW_MS', DEFAULT_EXPLANATION_RATE_LIMIT_WINDOW_MS),
+    limit: reader.integer('EXPLANATION_RATE_LIMIT_MAX', DEFAULT_EXPLANATION_RATE_LIMIT_MAX),
+  },
+  explanationDailyLimit: reader.integer('EXPLANATION_DAILY_LIMIT', DEFAULT_EXPLANATION_DAILY_LIMIT),
 });
 
 const readMongoConfig = (reader: EnvReader): MongoConfig => ({
@@ -195,7 +167,7 @@ const readEmbeddingConfig = (reader: EnvReader): EmbeddingConfig => ({
 const assertPageSizes = ({ sizes, depth }: PaginationConfig): void => {
   if (sizes.length === 0) throw new Error('PAGINATION_SIZES must list at least one page size');
   if (new Set(sizes).size !== sizes.length) {
-    throw new Error(`PAGINATION_SIZES must not repeat a size, got ${sizes.join(LIST_SEPARATOR)}`);
+    throw new Error(`PAGINATION_SIZES must not repeat a size, got ${sizes.join(',')}`);
   }
   const invalid = sizes.find((size) => size < 1 || size > depth);
   if (invalid !== undefined) {
@@ -222,9 +194,19 @@ const readPaginationConfig = (reader: EnvReader): PaginationConfig => {
   return pagination;
 };
 
+/** @throws en nommant la variable si l'une d'elles n'est pas strictement positive */
+const readLlmConfig = (reader: EnvReader): LlmConfig => ({
+  baseUrl: reader.required('LLM_BASE_URL'),
+  apiKey: reader.required('LLM_API_KEY'),
+  model: reader.required('LLM_MODEL'),
+  timeoutMs: reader.positiveInteger('LLM_TIMEOUT', DEFAULT_LLM_TIMEOUT_MS),
+  contextMaxChars: reader.positiveInteger('LLM_CONTEXT_MAX_CHARS', DEFAULT_LLM_CONTEXT_MAX_CHARS),
+  maxOutputTokens: reader.positiveInteger('LLM_MAX_OUTPUT_TOKENS', DEFAULT_LLM_MAX_OUTPUT_TOKENS),
+});
+
 /**
  * @throws en nommant la variable quand une variable numérique est malformée, ou quand
- * la pagination est incohérente
+ * la pagination ou le LLM sont incohérents
  */
 export const loadConfig = (env: Environment): LoadedConfig => {
   const reader = createEnvReader(env);
@@ -235,6 +217,7 @@ export const loadConfig = (env: Environment): LoadedConfig => {
     opensearch: readOpenSearchConfig(reader),
     embedding: readEmbeddingConfig(reader),
     pagination: readPaginationConfig(reader),
+    llm: readLlmConfig(reader),
   };
   return { config, report: reader.report() };
 };
@@ -243,3 +226,5 @@ const loaded = loadConfig(process.env);
 
 export const config: AppConfig = loaded.config;
 export const environmentReport: EnvironmentReport = loaded.report;
+
+export type { EnvironmentReport };
