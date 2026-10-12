@@ -3,7 +3,8 @@
 **Statut** : ✅ Accepté (25 septembre 2026), amendé le 30 septembre 2026 · **§2 amendé par [ADR-022](ADR-022-typage-des-documents.md)** (typage des documents)
 · **§1 à §5 amendés par [ADR-028](ADR-028-opensearch-remplace-qdrant.md)** (OpenSearch
 remplace Qdrant) · **§2 amendé par [ADR-031](ADR-031-modele-embedding-francais.md)**
-(une consigne devant la question, aucune devant les passages)
+(une consigne devant la question, aucune devant les passages) · **§2 amendé par
+[ADR-033](ADR-033-onglet-explications.md)** (`content_length` dans Mongo)
 
 > **Amendement du 30 septembre 2026.** `owner_id` et la version du contrat sont retirés :
 > le projet est mono-utilisateur et en développement, aucun des deux n'avait d'usage. Un
@@ -30,6 +31,12 @@ remplace Qdrant) · **§2 amendé par [ADR-031](ADR-031-modele-embedding-francai
 > **Amendement par ADR-031 (11 octobre 2026).** Le modèle d'embedding devient
 > `microsoft/harrier-oss-v1-0.6b`, qui attend une consigne devant la question et aucune
 > devant les documents. Le §2 gagne la règle des vecteurs.
+>
+> **Amendement par ADR-033 (12 octobre 2026).** Mongo `documents` gagne
+> `content_length`, la longueur de `content` en points de code, écrite par l'ingestion
+> dans le même `replace_one` que le texte. Le serving la transmet pour le budget de
+> contexte du LLM, et refuse un document qui n'en a pas. Le serving lit aussi, pour le
+> LLM, les métadonnées d'une liste blanche.
 
 ## Contexte
 

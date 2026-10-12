@@ -2,13 +2,22 @@
 
 **Statut** : rétro-documenté (décision implicite antérieure au 17 juillet 2026) ·
 **amendé par [ADR-028](ADR-028-opensearch-remplace-qdrant.md)** (OpenSearch remplace
-Qdrant ; le LLM est retiré)
+Qdrant ; le LLM est retiré) · **amendé par [ADR-033](ADR-033-onglet-explications.md)** (le client renvoie le segment de
+conversation ; le LLM entre dans le fail-fast)
 
 > **Amendement par ADR-028 (2 octobre 2026).** Qdrant ne faisait qu'une recherche
 > vectorielle : OpenSearch le remplace et porte la recherche hybride (BM25 et
 > vecteurs). Le LLM est retiré : le fail-fast vaut pour le pipeline de recherche, et
 > « stateless » couvre aussi la pagination, chaque page recalculant tout. La décision
 > ci-dessous décrit la répartition après cet amendement.
+>
+> **Amendement par ADR-033 (12 octobre 2026).** L'onglet Explications rend une
+> conversation sans état serveur : le client renvoie à chaque question les messages du
+> segment courant, et le serveur ne garde rien. « Seule la dernière question compte »
+> vaut pour la recherche. Le LLM est une dépendance obligatoire, vérifiée au démarrage
+> par sa configuration seule. Aucune question, réponse ni texte envoyé au LLM n'est
+> journalisé. L'analyse du contenu des requêtes, qu'exigeront les garde-fous de
+> l'onglet, relève d'une ADR à venir.
 
 ## Contexte
 

@@ -4,7 +4,16 @@
 ADR-028 §7 et ADR-017 §2 et §5 · **§2 et §3 amendés par
 [ADR-032](ADR-032-interface-onglets-dockview.md)** (taille de page au choix parmi
 `PAGINATION_SIZES`, `isInForce` dans un résultat) · **§7 et §8 clos par ADR-032**
-(`messages` et `errors` retirés du contrat, frontend branché sur l'API)
+(`messages` et `errors` retirés du contrat, frontend branché sur l'API) · **§1, §4, §5
+et §6 amendés par [ADR-033](ADR-033-onglet-explications.md)** (route `POST /explanations` en SSE, ses codes d'erreur et ses
+plafonds, l'arrêt propagé jusqu'au LLM)
+
+> **Amendement par ADR-033 (12 octobre 2026).** Une troisième route,
+> `POST /api/v1/explanations`, répond par un flux SSE. Elle ajoute ses codes d'erreur
+> (§4) et deux plafonds : 10 questions par minute et par IP, 200 appels par jour au
+> total (§5). Pour elle seule, l'arrêt du client se propage jusqu'au LLM (§6). Le
+> résultat de recherche et le document gagnent `contentLength`, la réponse de recherche
+> `contextBudget`. L'AI SDK revient au backend.
 
 ## Contexte
 

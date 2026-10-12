@@ -2,7 +2,9 @@
 
 **Statut** : ✅ Accepté (11 octobre 2026) — réalise ADR-028 §10 côté frontend, amende
 ADR-030 §2 et §3 et ADR-017 §2 à §4 · ferme le point ouvert « Interface du frontend
-adaptée au pivot » · §1 à §6 et §12 amendés le 11 octobre 2026
+adaptée au pivot » · §1 à §6 et §12 amendés le 11 octobre 2026 · **§2, §4, §6, §11 et
+§12 amendés par [ADR-033](ADR-033-onglet-explications.md)** (sidebar de sélection, bouton « Ajouter » / « Retirer », onglet
+Explications)
 
 > **Amendement du 11 octobre 2026.** Un résultat et un onglet document perdent leur icône,
 > et avec elle la table des icônes et `documentTypeLabels`. Les paramètres d'un onglet
@@ -12,6 +14,13 @@ adaptée au pivot » · §1 à §6 et §12 amendés le 11 octobre 2026
 > haut de l'onglet Résultats, qui devient l'onglet Recherche, et le logo n'est plus affiché
 > que sur l'accueil. L'onglet Explication devient l'onglet Résumé. Le texte ci-dessous
 > décrit l'interface après cet amendement.
+>
+> **Amendement par ADR-033 (12 octobre 2026).** Le menu « … » d'un résultat devient un
+> bouton à bascule « Ajouter » / « Retirer » (§4). Une sidebar, hors de Dockview,
+> affiche la sélection (§2). L'onglet Résumé devient l'onglet Explications, une
+> conversation sur les documents choisis (§6). `ai`, `@ai-sdk/react` et
+> `react-markdown` reviennent (§11) ; `features/selection/` rejoint l'arborescence
+> (§12). Un onglet document peut s'ouvrir sans passage à surligner.
 
 ## Contexte
 
