@@ -9,13 +9,17 @@ import pytest
 
 from ragcore.application.document_parsing import DocumentParsing
 from ragcore.application.run_context import PipelineContext
-from ragcore.core.exceptions import ParseError
+from ragcore.core.exceptions import ParseError, ValidationError
 from ragcore.core.models.collision_tally import CollisionTally
 from ragcore.core.models.document import RawDocument
 from ragcore.core.models.enums import SourceName
 from ragcore.core.models.unknown_tally import UnknownExample, UnknownTally
 from ragcore.core.ports.parser import ParseResult
-from ragcore.core.services.exclusion_reasons import REASON_COLLISION, REASON_PARSE_ERROR
+from ragcore.core.services.exclusion_reasons import (
+    REASON_COLLISION,
+    REASON_FACET_ROOT_DUPLICATED,
+    REASON_PARSE_ERROR,
+)
 from ragcore.core.services.unknown_categories import CATEGORY_TAG
 from ragcore.core.statistics_measures import STEP_PARSE, step_measure
 from ragcore.core.telemetry_events import DOCUMENT_INVALIDATED
@@ -110,6 +114,32 @@ def test_une_ParseError_exclut_le_document_et_le_compte() -> None:
     assert to_skip == ["doc-1"]
     invalidated = telemetry.events_of(DOCUMENT_INVALIDATED)
     assert [e.payload["reason"] for e in invalidated] == [REASON_PARSE_ERROR]
+
+
+def test_une_ValidationError_est_rejetee_sous_SA_raison() -> None:
+    telemetry = RecordingTelemetry()
+    error = ValidationError(REASON_FACET_ROOT_DUPLICATED, "racines en double")
+
+    to_skip = _run(_FailingParser(error), telemetry)
+
+    assert to_skip == ["doc-1"]
+    (event,) = telemetry.events_of(DOCUMENT_INVALIDATED)
+    assert event.payload["reason"] == REASON_FACET_ROOT_DUPLICATED
+    assert event.payload["error"] == "racines en double"
+
+
+def test_le_warning_de_rejet_dit_la_raison_et_le_detail(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Sans le détail, un rejet ne se diagnostique qu'en relisant le fichier."""
+    error = ValidationError(REASON_FACET_ROOT_DUPLICATED, "racines en double")
+
+    _run(_FailingParser(error), RecordingTelemetry())
+
+    (record,) = [r for r in caplog.records if r.levelname == "WARNING"]
+    assert record.getMessage() == (
+        "Document doc-1 rejeté (facet_root_duplicated) : racines en double"
+    )
 
 
 def test_une_exception_HORS_contrat_arrete_le_run() -> None:

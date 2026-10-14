@@ -10,10 +10,16 @@ from ragcore.core.models.enums import SourceName, TargetStore
 from ragcore.core.models.identifiers import Identifier
 from ragcore.core.models.relation import Relation
 from ragcore.core.services.exclusion_reasons import (
+    REASON_COLLISION,
     REASON_EXPORT_ARTIFACT,
+    REASON_FACET_ROOT_DUPLICATED,
+    REASON_FACET_ROOT_UNDECLARED,
+    REASON_ID_MISMATCH,
+    REASON_IDENTIFIER_MALFORMED,
+    REASON_IDENTIFIER_MISSING,
     REASON_PARSE_ERROR,
+    REASON_UNDECLARED_PREFIX,
     REASON_UNREADABLE,
-    REASON_VALIDATION_ERROR,
 )
 from ragcore.core.services.unknown_categories import (
     CATEGORY_LINK,
@@ -34,10 +40,17 @@ SOURCE_NAMES = {
 TARGET_STORES = {"mongo", "neo4j", "opensearch"}
 EXCLUSION_REASONS = {
     "parse_error",
-    "validation_error",
+    # Rejets métier au parse, un par règle
+    "identifier_missing",
+    "identifier_malformed",
+    "undeclared_prefix",
+    "facet_root_duplicated",
+    "facet_root_undeclared",
+    "collision",
     "export_artifact",
     # Exclusion de lecture, distincte du `parse_error`, échec d'interprétation
     "unreadable",
+    "id_mismatch",
 }
 # Trois catégories plates (ADR-024). Un lien qu'on ne sait pas écrire n'est pas un type :
 # il est compté par `relation.unknown`.
@@ -60,9 +73,15 @@ def test_target_stores_are_frozen() -> None:
 def test_exclusion_reasons_are_frozen() -> None:
     declared = {
         REASON_PARSE_ERROR,
-        REASON_VALIDATION_ERROR,
+        REASON_IDENTIFIER_MISSING,
+        REASON_IDENTIFIER_MALFORMED,
+        REASON_UNDECLARED_PREFIX,
+        REASON_FACET_ROOT_DUPLICATED,
+        REASON_FACET_ROOT_UNDECLARED,
+        REASON_COLLISION,
         REASON_EXPORT_ARTIFACT,
         REASON_UNREADABLE,
+        REASON_ID_MISMATCH,
     }
     assert declared == EXCLUSION_REASONS
 

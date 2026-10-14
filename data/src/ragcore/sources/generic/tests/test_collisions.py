@@ -13,6 +13,10 @@ from ragcore.core.exceptions import CollisionError, ValidationError
 from ragcore.core.models.document import RawDocument
 from ragcore.core.models.enums import DocumentType, SourceName
 from ragcore.core.ports.parser import ParseResult
+from ragcore.core.services.exclusion_reasons import (
+    REASON_FACET_ROOT_DUPLICATED,
+    REASON_FACET_ROOT_UNDECLARED,
+)
 from ragcore.sources.generic import GenericParser, Role, RoleTable, to_tree
 
 _ID = "LEGITEXT000000000001"
@@ -106,13 +110,22 @@ def test_une_cle_NON_renommee_en_collision_devient_une_liste() -> None:
 
 
 def test_une_racine_non_declaree_rend_l_ordre_indetermine() -> None:
-    with pytest.raises(ValidationError, match="Ordre des facettes"):
+    with pytest.raises(ValidationError) as refused:
         _parse(_facet("VERSION", ""), _facet("AUTRE", ""))
+
+    assert refused.value.reason == REASON_FACET_ROOT_UNDECLARED
+    assert "racines non déclarées ['AUTRE']" in str(refused.value)
 
 
 def test_deux_facettes_de_meme_racine_rendent_l_ordre_indetermine() -> None:
-    with pytest.raises(ValidationError, match="Ordre des facettes"):
+    """Le message nomme les fichiers : c'est par eux qu'on retrouve le doublon."""
+    with pytest.raises(ValidationError) as refused:
         _parse(_facet("VERSION", ""), _facet("VERSION", ""))
+
+    assert refused.value.reason == REASON_FACET_ROOT_DUPLICATED
+    assert "racines en double ['VERSION'], fichiers ['0.xml', '1.xml']" in str(
+        refused.value
+    )
 
 
 def test_une_facette_seule_de_racine_inconnue_reste_un_signal() -> None:

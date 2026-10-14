@@ -18,11 +18,7 @@ from ragcore.core.models.document import ParsedDocument, RawDocument
 from ragcore.core.models.unknown_tally import UnknownExample
 from ragcore.core.ports.parser import BaseParser, ParseResult
 from ragcore.core.ports.telemetry import WorkerTelemetry
-from ragcore.core.services.exclusion_reasons import (
-    REASON_COLLISION,
-    REASON_PARSE_ERROR,
-    REASON_VALIDATION_ERROR,
-)
+from ragcore.core.services.exclusion_reasons import REASON_PARSE_ERROR
 from ragcore.core.services.unknown_categories import (
     CATEGORY_LINK,
     CATEGORY_ROOT,
@@ -40,21 +36,6 @@ from .run_context import PipelineContext
 __all__ = ["DocumentParsing"]
 
 logger = logging.getLogger(__name__)
-
-
-@dataclass(frozen=True)
-class _Rejection:
-    reason: str
-    log_message: str
-
-
-_VALIDATION_REJECTION = _Rejection(
-    REASON_VALIDATION_ERROR, "Document invalidé %s — rejeté"
-)
-_PARSE_REJECTION = _Rejection(REASON_PARSE_ERROR, "Erreur parsing document %s — rejeté")
-_COLLISION_REJECTION = _Rejection(
-    REASON_COLLISION, "Collision non configurée dans le document %s — rejeté"
-)
 
 
 class DocumentParsing:
@@ -115,12 +96,12 @@ def _parse(
         return parser.parse(raw)
     except CollisionError as exc:
         site.declare_collisions(exc.collisions)
-        site.exclude(raw, exc, _COLLISION_REJECTION)
+        site.exclude(raw, exc, exc.reason)
     except ValidationError as exc:
-        site.exclude(raw, exc, _VALIDATION_REJECTION)
+        site.exclude(raw, exc, exc.reason)
     except ParseError as exc:
         # Toute autre exception sort du contrat de BaseParser : un bug, qui arrête le run
-        site.exclude(raw, exc, _PARSE_REJECTION)
+        site.exclude(raw, exc, REASON_PARSE_ERROR)
     return None
 
 
@@ -152,15 +133,17 @@ class _ParseSite:
     context: PipelineContext
     telemetry: WorkerTelemetry
 
-    def exclude(self, raw: RawDocument, exc: Exception, rejection: _Rejection) -> None:
-        logger.warning(rejection.log_message, raw.source_document_id)
+    def exclude(self, raw: RawDocument, exc: Exception, reason: str) -> None:
+        logger.warning(
+            "Document %s rejeté (%s) : %s", raw.source_document_id, reason, exc
+        )
         self.telemetry.emit(
             build_event(
                 event_type=DOCUMENT_INVALIDATED,
                 run_id=self.context.run_id,
                 source=raw.source,
                 payload={
-                    "reason": rejection.reason,
+                    "reason": reason,
                     "uid": raw.source_document_id,
                     "error": str(exc),
                 },

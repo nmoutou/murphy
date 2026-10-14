@@ -12,6 +12,11 @@ from ragcore.core.models.document import RawDocument
 from ragcore.core.models.enums import DocumentType, SourceName
 from ragcore.core.models.enums import SourceName as _SN
 from ragcore.core.ports.parser import BaseParser
+from ragcore.core.services.exclusion_reasons import (
+    REASON_IDENTIFIER_MALFORMED,
+    REASON_IDENTIFIER_MISSING,
+    REASON_UNDECLARED_PREFIX,
+)
 from ragcore.sources.generic import GenericParser, to_tree
 from ragcore.sources.legislatif.table import LEGI_ROLE_TABLE
 
@@ -323,7 +328,7 @@ def test_un_document_sans_identifiant_leve_ValidationError() -> None:
     """Lisible, mais irrecevable : c'est un rejet métier."""
     tree = to_tree(ET.fromstring("<ARTICLE><META/></ARTICLE>"))
 
-    with pytest.raises(ValidationError, match="Identifiant absent"):
+    with pytest.raises(ValidationError, match="Identifiant absent") as refused:
         GenericParser(LEGI_ROLE_TABLE, _SN.LEGI).parse(
             RawDocument(
                 source=SourceName.LEGI,
@@ -332,13 +337,15 @@ def test_un_document_sans_identifiant_leve_ValidationError() -> None:
                 fetched_at=datetime.now(UTC),
             )
         )
+
+    assert refused.value.reason == REASON_IDENTIFIER_MISSING
 
 
 def test_un_identifiant_mal_forme_leve_ValidationError() -> None:
     """Sans relais, l'erreur pydantic serait comptée en panne de lecture."""
     tree = to_tree(ET.fromstring("<ARTICLE><ID>PAS_UN_ELI</ID></ARTICLE>"))
 
-    with pytest.raises(ValidationError, match="Identifiant invalide"):
+    with pytest.raises(ValidationError, match="Identifiant invalide") as refused:
         GenericParser(LEGI_ROLE_TABLE, _SN.LEGI).parse(
             RawDocument(
                 source=SourceName.LEGI,
@@ -347,6 +354,8 @@ def test_un_identifiant_mal_forme_leve_ValidationError() -> None:
                 fetched_at=datetime.now(UTC),
             )
         )
+
+    assert refused.value.reason == REASON_IDENTIFIER_MALFORMED
 
 
 @pytest.mark.parametrize(
@@ -388,7 +397,7 @@ def test_un_prefixe_sans_type_declare_leve_ValidationError() -> None:
     """Aucun document n'entre sans type : un préfixe que la table ignore est refusé."""
     tree = to_tree(ET.fromstring("<ARTICLE><ID>JORFARTI000000000001</ID></ARTICLE>"))
 
-    with pytest.raises(ValidationError, match="sans type de document"):
+    with pytest.raises(ValidationError, match="sans type de document") as refused:
         GenericParser(LEGI_ROLE_TABLE, _SN.LEGI).parse(
             RawDocument(
                 source=SourceName.LEGI,
@@ -397,6 +406,8 @@ def test_un_prefixe_sans_type_declare_leve_ValidationError() -> None:
                 fetched_at=datetime.now(UTC),
             )
         )
+
+    assert refused.value.reason == REASON_UNDECLARED_PREFIX
 
 
 def _kinds(references: list[dict[str, Any]]) -> set[str]:

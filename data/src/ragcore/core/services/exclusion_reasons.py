@@ -2,11 +2,18 @@
 pas ici n'existe pas.
 """
 
-# Rejets au parse : lecture impossible, ou document lisible mais irrecevable
+# Rejet au parse : lecture impossible
 REASON_PARSE_ERROR = "parse_error"
-REASON_VALIDATION_ERROR = "validation_error"
-# Une clé renommée, non déclarée `list`, a reçu plusieurs valeurs distinctes (ADR-025) :
-# un refus métier, nommé à part pour se lire au bilan.
+
+# Rejets au parse : document lisible mais irrecevable, une raison par règle métier
+REASON_IDENTIFIER_MISSING = "identifier_missing"
+REASON_IDENTIFIER_MALFORMED = "identifier_malformed"
+REASON_UNDECLARED_PREFIX = "undeclared_prefix"
+# Les facettes ne s'ordonnent que par `table.roots` (ADR-025) : sans ordre, pas de
+# document.
+REASON_FACET_ROOT_DUPLICATED = "facet_root_duplicated"
+REASON_FACET_ROOT_UNDECLARED = "facet_root_undeclared"
+# Une clé renommée, non déclarée `list`, a reçu plusieurs valeurs distinctes (ADR-025)
 REASON_COLLISION = "collision"
 
 # Un fichier livré qui n'est pas un document (LEGI : les `versions.xml`, un ID nu). Le

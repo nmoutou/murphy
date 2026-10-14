@@ -1,6 +1,15 @@
 import pytest
 
-from ragcore.core.exceptions import ParseError, RagCoreError, ValidationError
+from ragcore.core.exceptions import (
+    CollisionError,
+    ParseError,
+    RagCoreError,
+    ValidationError,
+)
+from ragcore.core.services.exclusion_reasons import (
+    REASON_COLLISION,
+    REASON_IDENTIFIER_MISSING,
+)
 
 
 def test_parse_error_is_not_caught_as_a_validation_error() -> None:
@@ -20,6 +29,11 @@ def test_both_are_domain_errors() -> None:
 
 def test_message_survives_str() -> None:
     """Les sites d'émission écrivent str(exc) dans l'audit."""
-    assert str(ValidationError("ELI absent du document LEGI")) == (
-        "ELI absent du document LEGI"
-    )
+    error = ValidationError(REASON_IDENTIFIER_MISSING, "ELI absent du document LEGI")
+
+    assert str(error) == "ELI absent du document LEGI"
+    assert error.reason == REASON_IDENTIFIER_MISSING
+
+
+def test_une_collision_porte_sa_raison() -> None:
+    assert CollisionError("num en collision", ()).reason == REASON_COLLISION

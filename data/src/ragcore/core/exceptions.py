@@ -1,6 +1,7 @@
 """Exceptions du domaine."""
 
 from .models.collision import Collision
+from .services.exclusion_reasons import REASON_COLLISION
 
 __all__ = [
     "CollisionError",
@@ -28,8 +29,15 @@ class EmbeddingModelMismatchError(RagCoreError):
 
 
 class ValidationError(RagCoreError):
-    """Le document est lisible, mais il ne satisfait pas une règle métier
-    (identifiant absent, identifiant mal formé, contenu manquant)."""
+    """Le document est lisible, mais il ne satisfait pas une règle métier.
+
+    ``reason`` est l'une des raisons de ``exclusion_reasons`` : obligatoire, pour qu'aucun
+    rejet ne finisse dans un fourre-tout.
+    """
+
+    def __init__(self, reason: str, message: str) -> None:
+        super().__init__(message)
+        self.reason = reason
 
 
 class CollisionError(ValidationError):
@@ -40,7 +48,7 @@ class CollisionError(ValidationError):
     """
 
     def __init__(self, message: str, collisions: tuple[Collision, ...]) -> None:
-        super().__init__(message)
+        super().__init__(REASON_COLLISION, message)
         self.collisions = collisions
 
 

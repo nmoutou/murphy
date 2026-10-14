@@ -5,6 +5,7 @@ validée partout) et sa nature (sa qualification juridique, facultative).
 from ragcore.core.exceptions import ValidationError
 from ragcore.core.models.enums import DocumentType
 from ragcore.core.models.identifiers import Identifier
+from ragcore.core.services.exclusion_reasons import REASON_UNDECLARED_PREFIX
 
 from .role_table import RoleTable
 from .tree import Node, first
@@ -22,7 +23,7 @@ def document_type_of(identifier: Identifier, table: RoleTable) -> DocumentType:
             f"Préfixe d'identifiant sans type de document : {identifier.prefix!r} "
             f"({identifier.raw}). Préfixes déclarés : {declared}."
         )
-        raise ValidationError(msg)
+        raise ValidationError(REASON_UNDECLARED_PREFIX, msg)
     return document_type
 
 

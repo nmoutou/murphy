@@ -19,6 +19,12 @@ from ragcore.core.exceptions import CollisionError, ParseError, ValidationError
 from ragcore.core.models import ParsedDocument, RawDocument, SourceName
 from ragcore.core.models.identifiers import Identifier
 from ragcore.core.ports.parser import ParseResult
+from ragcore.core.services.exclusion_reasons import (
+    REASON_FACET_ROOT_DUPLICATED,
+    REASON_FACET_ROOT_UNDECLARED,
+    REASON_IDENTIFIER_MALFORMED,
+    REASON_IDENTIFIER_MISSING,
+)
 
 from .classification import document_type_of, nature_of
 from .metadata import collect_metadata
@@ -133,9 +139,15 @@ class GenericParser:
                 return Identifier(raw=raw_id)
             except PydanticValidationError as exc:
                 # Sinon l'erreur pydantic serait comptée en panne de lecture
-                raise ValidationError(f"Identifiant invalide : {raw_id!r}") from exc
+                raise ValidationError(
+                    REASON_IDENTIFIER_MALFORMED, f"Identifiant invalide : {raw_id!r}"
+                ) from exc
 
-        raise ValidationError("Identifiant absent du document")
+        raise ValidationError(
+            REASON_IDENTIFIER_MISSING,
+            f"Identifiant absent du document : aucune balise "
+            f"<{self._table.identifier_tag}> non vide",
+        )
 
     def _title(self, facets: list[Node]) -> str:
         """Le premier titre trouvé, dans l'ordre de préférence de la table."""
@@ -184,10 +196,19 @@ def _ordered(sourced: list[SourcedFacet], table: RoleTable) -> list[SourcedFacet
     if len(sourced) <= 1:
         return sourced
     roots = [facet["tag"] for facet, _ in sourced]
-    if len(set(roots)) < len(roots) or not set(roots) <= set(table.roots):
+    duplicated = sorted({root for root in roots if roots.count(root) > 1})
+    if duplicated:
         raise ValidationError(
-            f"Ordre des facettes indéterminé : racines {roots}, "
-            f"ordre déclaré {list(table.roots)}"
+            REASON_FACET_ROOT_DUPLICATED,
+            f"Ordre des facettes indéterminé : racines en double {duplicated}, "
+            f"fichiers {[source_file for _, source_file in sourced]}",
+        )
+    undeclared = sorted(set(roots) - set(table.roots))
+    if undeclared:
+        raise ValidationError(
+            REASON_FACET_ROOT_UNDECLARED,
+            f"Ordre des facettes indéterminé : racines non déclarées {undeclared}, "
+            f"ordre déclaré {list(table.roots)}",
         )
     return sorted(sourced, key=lambda pair: table.roots.index(pair[0]["tag"]))
 
