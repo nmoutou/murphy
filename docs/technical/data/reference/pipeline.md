@@ -228,39 +228,55 @@ remise à `run_sink`), `written_node_ids` (le delta du run, qui borne le rejeu c
 ## 3. `resolveRelations` — la phase 2
 
 Entrées : `ingestion_outcome` (LA barrière), `resolve_service`, runtime du hook, contexte,
-`stage_clock` (`stages_s.phase2_write`).
-Non parallélisé : un batch, sur la boucle du hook (`application/resolve_relations.py`).
-Les relations sont lues dans `transit_relations`, pour ce run ; une fois écrites, mises en
-attente ou réduites, elles en sont supprimées. Si la collection n'est pas vide ensuite, le
-run échoue (`TransitNotDrainedError`, ADR-034 §6) : c'est un bug, pas un état dégradé.
-Quatre temps :
+`stage_clock`. Non parallélisé, sur la boucle du hook (`application/resolve_relations.py`,
+`application/relation_writer.py`). Les relations sont lues dans `transit_relations`, pour
+ce run, et la mémoire est bornée par la plus grande composante connexe (ADR-034 §5).
 
-0. **Réduction transitive** (`reduce_transitively`, networkx) — à l'échelle du corpus, et
-   ici seulement : la hiérarchie d'un article se déclare des deux côtés (sa fermeture
-   d'ancêtres, et l'arbre des sections dans d'autres fichiers), donc réduire par document
-   était impossible. Ne touche que la **contenance** (type `titre`) : réduire une
-   citation détruirait un fait. Les arêtes réduites sont comptées à part
-   (`reduced_count`) — redondantes, pas absentes.
-1. **Écriture par lots** (`graph_repo.upsert_relations(relations, run_id)`) : une requête
-   `UNWIND` par lot de 5 000 arêtes d'un même verbe (`_RELATION_BATCH_SIZE`), jamais une
-   par arête. Un `MATCH` sans résultat retire la ligne du lot sans erreur : seuls les
-   indices rendus distinguent l'arête écrite de la différée. Chaque arête
-   écrite est taguée du `run_id` : c'est ce qui la rend compensable à la maille du run
-   sans emporter les arêtes d'autres runs. `relation.upserted` porte le compte des arêtes
-   **réussies** (pas « tentées »).
-2. **Les trous vont au cache** : chaque relation dont la cible manque devient une
+1. **Les composantes** (`find_components`, `stages_s.components`) — la **réduction
+   transitive** ne touche que la **contenance** (`REDUCIBLE_TYPES`) : réduire une
+   citation détruirait un fait. Elle se fait ici, à l'échelle du corpus : la hiérarchie
+   d'un article se déclare des deux côtés (sa fermeture d'ancêtres, et l'arbre des
+   sections dans d'autres fichiers), donc réduire par document était impossible. Deux
+   composantes connexes n'ont aucun chemin commun : réduire composante par composante
+   donne la réduction du graphe entier. Les couples (source, cible) `contient` sont lus
+   en flux, et un union-find (`core/services/connected_components.py`) en tire les
+   composantes : une entrée par nœud, et leur taille (nœuds, relations), jamais les
+   arêtes. Chaque composante est mesurée (`components.nodes`, `components.relations`).
+2. **La réduction** (`stages_s.phase2_write`, comme la suite) — les composantes sont
+   lues par groupes (`_COMPONENT_READ_BUDGET`, 10 000 nœuds : les petites partagent un
+   aller-retour, une grande le prend seule ; le `$in` est découpé par le dépôt), puis
+   **chacune réduite seule** par `reduce_transitively` (networkx). **Aucun plafond** :
+   couper une composante rendrait la réduction approximative. Un cycle rend la réduction
+   indéfinie : sa composante est gardée telle quelle, et elle seule. Les arêtes réduites
+   sont comptées à part (`reduced_count`) — redondantes, pas absentes.
+3. **Les autres verbes** traversent sans réduction, par lots de 5 000 lignes, paginés
+   sur `_id`.
+4. **Écriture par lots** (`RelationWriter`, `graph_repo.upsert_relations`) : les arêtes
+   conservées vont dans un tampon de 5 000, qui peut mêler plusieurs composantes et
+   plusieurs verbes. Neo4j les reçoit en requêtes `UNWIND` de 5 000 arêtes d'un même
+   verbe (`_RELATION_BATCH_SIZE`), jamais une par arête. Un `MATCH` sans résultat retire
+   la ligne du lot sans erreur : seuls les indices rendus distinguent l'arête écrite de
+   la différée. Chaque arête écrite est taguée du `run_id` : c'est ce qui la rend
+   compensable à la maille du run sans emporter les arêtes d'autres runs.
+   `relation.upserted` porte le compte des arêtes **réussies** (pas « tentées »).
+5. **Les trous vont au cache** : chaque relation dont la cible manque devient une
    `PendingRelation` (`MURPHY_DATA.pending_relations`, upsert-union sur la clé
    source/target/type) + événement `relation.pending`. Une pendante peut rester
    pendante indéfiniment — un arrêt qui cite une directive jamais ingérée est un lien
    légitime vers l'extérieur, pas une erreur.
-3. **Promotion ciblée** : on ne retente QUE les pendantes dont la cible figure dans
+6. **Suppression au fil de l'eau** : les lignes de transit d'un groupe de composantes ou
+   d'un lot ne sont supprimées qu'une fois le tampon qui porte leurs arêtes vidé —
+   écrites, en attente ou réduites. Si la collection n'est pas vide en fin de phase, le
+   run échoue (`TransitNotDrainedError`, ADR-034 §6) : c'est un bug, pas un état
+   dégradé.
+7. **Promotion ciblée** : on ne retente QUE les pendantes dont la cible figure dans
    `written_node_ids` (le delta de CE run) — le rejeu est borné par le delta, jamais par
    la taille du backlog. Les promues sont écrites, supprimées du cache et émises en
    `relation.promoted`.
 
-Invariant de lisibilité : `written + pending == entrée réduite`.
+Invariant : `written + pending + reduced == extracted`, les lignes lues en transit.
 
-Sortie : `ResolutionOutcome` (stats, written/pending/promoted/reduced counts).
+Sortie : `ResolutionOutcome` (extracted/written/pending/reduced/promoted counts).
 
 ## 4. `report` — le nœud terminal
 

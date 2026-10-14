@@ -24,7 +24,7 @@ from ragcore.core.ports.embedder import BaseEmbedder
 from ragcore.core.ports.run_summary_repository import RunSummaryRepository
 from ragcore.core.ports.runtime import AsyncRuntime
 from ragcore.core.ports.statistics_repository import StatisticsRepository
-from ragcore.core.ports.telemetry import TelemetryPort
+from ragcore.core.ports.telemetry import WorkerTelemetry
 from ragcore.core.telemetry_events import CHUNK_TRUNCATED
 from ragcore.orchestration.kedro.assembly import ReportsTruncations
 from ragcore.orchestration.kedro.stage_clock import StageClock
@@ -74,7 +74,7 @@ def start_telemetry(
 @dataclass(frozen=True)
 class RunSession:
     context: PipelineContext
-    telemetry: TelemetryPort
+    telemetry: WorkerTelemetry
     aggregates: RunAggregates
     summaries: RunSummaryRepository
     statistics: StatisticsRepository

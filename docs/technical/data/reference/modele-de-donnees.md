@@ -122,7 +122,8 @@ Index **non unique** `idx_transit_run_type_source` (run_id, relation_type, sourc
 une arête déclarée par deux documents donne deux lignes, la réduction dédoublonne.
 
 **Temporaire** : vidée au démarrage de chaque run (`nukeAll`, quel que soit `nuke_all`),
-avant la phase 1, puis par la phase 2. Chaque run relit et réextrait tout le corpus : les
+avant la phase 1, puis par la phase 2, composante par composante et lot par lot, une
+fois leurs arêtes écrites, en attente ou réduites. Chaque run relit et réextrait tout le corpus : les
 restes d'un run en échec ne contiennent rien que le suivant ne reproduise. Non vide en
 fin de phase 2, elle fait échouer le run (`TransitNotDrainedError`, ADR-034 §6). De
 l'ordre de 5 à 6 Go sur disque pendant un run complet.

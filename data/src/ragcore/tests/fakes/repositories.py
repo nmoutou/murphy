@@ -1,6 +1,6 @@
 """Dépôts en mémoire — la sémantique des vraies bases, sans les bases."""
 
-from collections.abc import Sequence
+from collections.abc import AsyncIterator, Callable, Collection, Sequence
 from dataclasses import dataclass
 
 from ragcore.core.models.document import ParsedDocument
@@ -10,6 +10,7 @@ from ragcore.core.models.relation import Relation
 from ragcore.core.models.search_content import SearchContent
 from ragcore.core.models.unformatted_relation import UnformattedRelation
 from ragcore.core.ports.graph_repository import RelationWriteResult
+from ragcore.core.ports.transit_repository import TransitBatch
 
 
 class InMemoryDocumentRepository:
@@ -166,32 +167,89 @@ class InMemoryUnformattedRepository:
 
 
 class InMemoryTransitRepository:
-    """Une ligne par relation, sans dédoublonnage."""
+    """Une ligne par relation, sans dédoublonnage, identifiée par son rang
+    d'insertion."""
 
     def __init__(self) -> None:
-        self.rows: list[tuple[Relation, RunId]] = []
+        self._rows: dict[int, tuple[Relation, RunId]] = {}
+        self._next_id = 0
+
+    @property
+    def rows(self) -> list[tuple[Relation, RunId]]:
+        return list(self._rows.values())
 
     async def clear(self) -> None:
-        self.rows = []
+        self._rows = {}
 
     async def insert_many(self, relations: Sequence[Relation], run_id: RunId) -> None:
-        self.rows.extend((relation, run_id) for relation in relations)
+        for relation in relations:
+            self._rows[self._next_id] = (relation, run_id)
+            self._next_id += 1
 
     async def delete_for_source(
         self, source_identifier: Identifier, run_id: RunId
     ) -> None:
         key = source_identifier.serialize()
-        self.rows = [
-            (relation, rid)
+        self._drop(lambda r, rid: rid == run_id and _source(r) == key)
+
+    async def pairs(
+        self, run_id: RunId, relation_type: str
+    ) -> AsyncIterator[tuple[str, str]]:
+        for relation, rid in self.rows:
+            if rid == run_id and relation.relation_type == relation_type:
+                yield _source(relation), relation.target_identifier.serialize()
+
+    async def read_by_sources(
+        self, run_id: RunId, relation_type: str, source_ids: Collection[str]
+    ) -> list[Relation]:
+        wanted = set(source_ids)
+        return [
+            relation
             for relation, rid in self.rows
-            if not (rid == run_id and relation.source_identifier.serialize() == key)
+            if rid == run_id
+            and relation.relation_type == relation_type
+            and _source(relation) in wanted
         ]
 
-    async def read_run(self, run_id: RunId) -> list[Relation]:
-        return [relation for relation, rid in self.rows if rid == run_id]
+    async def delete_by_sources(
+        self, run_id: RunId, relation_type: str, source_ids: Collection[str]
+    ) -> None:
+        wanted = set(source_ids)
+        self._drop(
+            lambda r, rid: rid == run_id
+            and r.relation_type == relation_type
+            and _source(r) in wanted
+        )
 
-    async def delete_run(self, run_id: RunId) -> None:
-        self.rows = [(relation, rid) for relation, rid in self.rows if rid != run_id]
+    async def batches_excluding(
+        self, run_id: RunId, relation_types: Collection[str], size: int
+    ) -> AsyncIterator[TransitBatch]:
+        selected = [
+            (row_id, relation)
+            for row_id, (relation, rid) in sorted(self._rows.items())
+            if rid == run_id and relation.relation_type not in relation_types
+        ]
+        for start in range(0, len(selected), size):
+            chunk = selected[start : start + size]
+            yield TransitBatch(
+                row_ids=tuple(row_id for row_id, _ in chunk),
+                relations=tuple(relation for _, relation in chunk),
+            )
+
+    async def delete_rows(self, batch: TransitBatch) -> None:
+        for row_id in batch.row_ids:
+            self._rows.pop(row_id, None)  # type: ignore[call-overload]
 
     async def count(self) -> int:
-        return len(self.rows)
+        return len(self._rows)
+
+    def _drop(self, matches: Callable[[Relation, RunId], bool]) -> None:
+        self._rows = {
+            row_id: (relation, rid)
+            for row_id, (relation, rid) in self._rows.items()
+            if not matches(relation, rid)
+        }
+
+
+def _source(relation: Relation) -> str:
+    return relation.source_identifier.serialize()

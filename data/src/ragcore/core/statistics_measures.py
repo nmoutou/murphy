@@ -9,11 +9,14 @@ from ragcore.core.models.run_measures import MeasurePath
 
 __all__ = [
     "CHUNKS",
+    "COMPONENT_NODES",
+    "COMPONENT_RELATIONS",
     "QUEUE_PRODUCER_BLOCKED",
     "QUEUE_WORKER_IDLE",
     "CONTENT_CHARS",
     "FACETS",
     "RELATIONS",
+    "STAGE_COMPONENTS",
     "STAGE_DISCOVERY",
     "STAGE_PHASE1",
     "STAGE_PHASE2_WRITE",
@@ -34,6 +37,7 @@ _MS_PER_S = 1000
 _DOCUMENTS = "documents"
 _STEP_MS = "step_ms"
 _QUEUES = "queues"
+_COMPONENTS = "components"
 
 QUEUE_PRODUCER_BLOCKED: MeasurePath = (_QUEUES, "producer_blocked_s")
 """L'attente de la lecture devant une file pleine : souvent bloquée, elle désigne les
@@ -41,6 +45,11 @@ workers."""
 QUEUE_WORKER_IDLE: MeasurePath = (_QUEUES, "worker_idle_s")
 """L'attente d'un worker devant une file vide : souvent inactifs, ils désignent la
 lecture."""
+
+COMPONENT_NODES: MeasurePath = (_COMPONENTS, "nodes")
+"""Une par composante connexe : ``count`` est leur nombre, ``max_ref`` la plus grande,
+qui borne la mémoire de la phase 2."""
+COMPONENT_RELATIONS: MeasurePath = (_COMPONENTS, "relations")
 
 XML_BYTES = "xml_bytes"
 FACETS = "facets"
@@ -57,6 +66,7 @@ STEP_NEO4J = "neo4j"
 
 STAGE_DISCOVERY = "discovery"
 STAGE_PHASE1 = "phase1"
+STAGE_COMPONENTS = "components"
 STAGE_PHASE2_WRITE = "phase2_write"
 
 

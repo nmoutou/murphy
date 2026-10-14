@@ -1,7 +1,8 @@
 """Nœud de la phase 2 : il consomme l'``IngestionOutcome``, donc ne tourne qu'une fois
 tous les nœuds du run écrits, et leurs relations en transit.
 
-Non parallélisé : il traite l'union en un batch, sur le runtime du hook.
+Non parallélisé, sur le runtime du hook : une passe trouve les composantes connexes,
+une seconde les réduit et écrit les arêtes.
 """
 
 from __future__ import annotations
@@ -13,7 +14,7 @@ from ragcore.application.resolve_relations import (
 )
 from ragcore.application.run_context import PipelineContext
 from ragcore.core.ports.runtime import AsyncRuntime
-from ragcore.core.statistics_measures import STAGE_PHASE2_WRITE
+from ragcore.core.statistics_measures import STAGE_COMPONENTS, STAGE_PHASE2_WRITE
 from ragcore.orchestration.kedro.stage_clock import StageClock
 
 __all__ = ["resolve_relations_node"]
@@ -26,9 +27,13 @@ def resolve_relations_node(
     pipeline_context: PipelineContext,
     stage_clock: StageClock,
 ) -> ResolutionOutcome:
+    with stage_clock.stage(STAGE_COMPONENTS):
+        components = pipeline_runtime.run(
+            resolve_service.find_components(pipeline_context)
+        )
     with stage_clock.stage(STAGE_PHASE2_WRITE):
         return pipeline_runtime.run(
             resolve_service.execute(
-                ingestion_outcome.written_node_ids, pipeline_context
+                components, ingestion_outcome.written_node_ids, pipeline_context
             )
         )

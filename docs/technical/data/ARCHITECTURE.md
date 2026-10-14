@@ -72,7 +72,8 @@ Déroulé détaillé nœud par nœud : [reference/pipeline.md](reference/pipelin
   formatées `MURPHY_DATA.unformatted_relations` → relations en transit
   `MURPHY_DATA.transit_relations` → OpenSearch → nœud Neo4j).
 - **Phase 2 — relations** (`resolveRelations`) : après la barrière, un service unique
-  lit les relations en transit, écrit les arêtes en batch, met en attente celles dont la cible n'est pas dans le corpus
+  lit les relations en transit, réduit la contenance composante connexe par
+  composante connexe (la plus grande borne la mémoire), écrit les arêtes par lots, met en attente celles dont la cible n'est pas dans le corpus
   (`MURPHY_DATA.pending_relations`) et **promeut** les pendantes de runs passés dont la cible
   vient d'arriver.
 

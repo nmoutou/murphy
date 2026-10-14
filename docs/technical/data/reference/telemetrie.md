@@ -172,8 +172,10 @@ Le vocabulaire est `core/statistics_measures.py` :
 
 ```json
 { "run_id": "…", "started_at": ISODate("…"),
-  "stages_s": { "discovery": 95.2, "phase1": 812.4, "phase2_write": 41.0 },
+  "stages_s": { "discovery": 95.2, "phase1": 812.4, "components": 12.0,
+                "phase2_write": 41.0 },
   "queues": { "producer_blocked_s": {…}, "worker_idle_s": {…} },
+  "components": { "nodes": {…}, "relations": {…} },
   "documents": {
     "legi": {
       "xml_bytes": {…}, "facets": {…}, "content_chars": {…}, "chunks": {…},
@@ -184,8 +186,12 @@ Le vocabulaire est `core/statistics_measures.py` :
 
 - `stages_s` : la durée de chaque étape, en secondes (`StageClock`, une étape mesurée
   plusieurs fois s'additionne). `discovery` est la passe 1 des connecteurs ; `phase1`
-  couvre leur passe 2, le parse et le pool de `ingest` ; `phase2_write`,
+  couvre leur passe 2, le parse et le pool de `ingest` ; `components`, la passe de la
+  phase 2 qui trouve les composantes connexes ; `phase2_write`, le reste de
   `resolveRelations`.
+- `components` : une valeur par composante connexe de la contenance (ADR-034 §5), en
+  nœuds et en relations lues. `components.nodes.count` est leur nombre, et `max_ref`
+  nomme la plus grande (par son plus petit nœud) : elle borne la mémoire de la phase 2.
 - `queues` : les attentes devant la file de la phase 1, en secondes.
   `producer_blocked_s`, une par document déposé : une lecture souvent bloquée désigne
   les workers ; `worker_idle_s`, une par document pris (et une par fin de flux) : des

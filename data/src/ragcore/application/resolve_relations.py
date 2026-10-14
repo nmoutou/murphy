@@ -1,56 +1,75 @@
-"""La phase 2 : les arêtes, en batch, lues dans ``transit_relations``.
+"""La phase 2 : les arêtes, lues dans ``transit_relations`` (ADR-034 §5).
 
 Suppose que tous les nœuds du run existent : c'est l'arête du DAG entre les phases 1
 et 2 qui le garantit. Seul ce service touche au registre des pendantes.
+
+- Les verbes réductibles se réduisent composante connexe par composante connexe : la
+  plus grande borne la mémoire. Aucun plafond : couper une composante rendrait la
+  réduction approximative.
+- Les autres verbes traversent par lots, sans réduction.
+- Une ligne de transit n'est supprimée qu'une fois tout ce qu'elle porte écrit, mis en
+  attente ou réduit ; la collection doit être vide en fin de phase (§6).
 """
 
+import logging
+from collections.abc import Iterator, Mapping
 from dataclasses import dataclass
+from functools import partial
 
 from ragcore.core.exceptions import TransitNotDrainedError
-from ragcore.core.models import PendingRelation, Relation, RunStats
+from ragcore.core.models import PendingRelation, Relation
 from ragcore.core.models.audit import build_event
 from ragcore.core.models.pending import PendingKey
 from ragcore.core.ports.graph_repository import GraphRepository
 from ragcore.core.ports.pending_repository import PendingRelationRepository
-from ragcore.core.ports.telemetry import TelemetryPort
+from ragcore.core.ports.telemetry import WorkerTelemetry
 from ragcore.core.ports.transit_repository import TransitRelationRepository
-from ragcore.core.services.relation_reduction import reduce_transitively
-from ragcore.core.telemetry_events import (
-    RELATION_PENDING,
-    RELATION_PROMOTED,
-    RELATION_UPSERTED,
+from ragcore.core.services.connected_components import Component, ConnectedComponents
+from ragcore.core.services.relation_reduction import (
+    REDUCIBLE_TYPES,
+    reduce_transitively,
 )
+from ragcore.core.statistics_measures import COMPONENT_NODES, COMPONENT_RELATIONS
+from ragcore.core.telemetry_events import RELATION_PROMOTED
 
+from .relation_writer import RelationWriter, WriterStores
 from .run_context import PipelineContext
 
-__all__ = ["ResolutionOutcome", "ResolveRelationsService"]
+__all__ = ["ComponentsByVerb", "ResolutionOutcome", "ResolveRelationsService"]
+
+logger = logging.getLogger(__name__)
+
+_COMPONENT_READ_BUDGET = 10_000
+"""Les nœuds dont les arêtes sont lues ensemble : les petites composantes partagent un
+aller-retour, une grande le prend seule."""
+
+_OTHERS_BATCH_SIZE = 5_000
+
+ComponentsByVerb = Mapping[str, list[Component]]
 
 
 @dataclass(frozen=True)
 class ResolutionOutcome:
-    """La sortie du nœud de phase 2."""
+    """La sortie du nœud de phase 2. ``extracted == written + pending + reduced``."""
 
-    stats: RunStats
     written_count: int
     """Réellement écrites, pas tentées."""
     pending_count: int
     """Différées : leur cible n'est pas (encore) dans le corpus."""
     promoted_count: int
     """Pendantes de runs passés, résolues parce que leur cible vient d'arriver."""
-
-    reduced_count: int = 0
+    reduced_count: int
     """Redondantes, éliminées par la réduction transitive : ni écrites ni pendantes."""
-
-    extracted_count: int = 0
+    extracted_count: int
     """Lues en transit : une par déclaration, doublons compris."""
 
 
-@dataclass(frozen=True)
-class _Written:
-    stats: RunStats
-    written_count: int
-    pending_count: int
-    reduced_count: int
+@dataclass
+class _Run:
+    context: PipelineContext
+    writer: RelationWriter
+    read: int = 0
+    reduced: int = 0
 
 
 class ResolveRelationsService:
@@ -59,59 +78,98 @@ class ResolveRelationsService:
         graph_repo: GraphRepository,
         pending_repo: PendingRelationRepository,
         transit_repo: TransitRelationRepository,
-        telemetry: TelemetryPort,
+        telemetry: WorkerTelemetry,
     ) -> None:
         self._graph_repo = graph_repo
         self._pending_repo = pending_repo
         self._transit_repo = transit_repo
         self._telemetry = telemetry
 
+    async def find_components(self, context: PipelineContext) -> ComponentsByVerb:
+        """La première passe : les couples de chaque verbe réductible, lus en flux."""
+        found: dict[str, list[Component]] = {}
+        for verb in sorted(REDUCIBLE_TYPES):
+            components = ConnectedComponents()
+            async for source, target in self._transit_repo.pairs(context.run_id, verb):
+                components.add_edge(source, target)
+            found[verb] = components.components()
+            logger.info("Phase 2 : %d composantes « %s »", len(found[verb]), verb)
+        return found
+
     async def execute(
-        self, written_node_ids: set[str], context: PipelineContext
+        self,
+        components: ComponentsByVerb,
+        written_node_ids: set[str],
+        context: PipelineContext,
     ) -> ResolutionOutcome:
         """Lève ``TransitNotDrainedError`` si une relation reste en transit."""
-        relations = await self._transit_repo.read_run(context.run_id)
-        written = await self._write(relations, context)
-        await self._transit_repo.delete_run(context.run_id)
+        stores = WriterStores(self._graph_repo, self._pending_repo)
+        run = _Run(context, RelationWriter(stores, self._telemetry, context))
+        for verb, found in components.items():
+            await self._reduce_verb(verb, found, run)
+        await self._write_others(run)
+        await run.writer.flush()
         await self._ensure_drained()
 
         # Ne retente que les pendantes dont la cible vient d'arriver : le coût suit le
         # delta du run, jamais la taille du backlog
         promoted_count = await self._promote(written_node_ids, context)
-        stats = written.stats
-        if promoted_count:
-            stats = stats.with_count(RELATION_PROMOTED, promoted_count)
-
         return ResolutionOutcome(
-            stats=stats,
-            written_count=written.written_count,
-            pending_count=written.pending_count,
+            written_count=run.writer.written_count,
+            pending_count=run.writer.pending_count,
             promoted_count=promoted_count,
-            reduced_count=written.reduced_count,
-            extracted_count=len(relations),
+            reduced_count=run.reduced,
+            extracted_count=run.read,
         )
 
-    async def _write(
-        self, relations: list[Relation], context: PipelineContext
-    ) -> _Written:
-        # À l'échelle du corpus : la hiérarchie d'un article se déclare aussi dans
-        # d'autres fichiers
-        reduced = reduce_transitively(relations)
-        result = await self._graph_repo.upsert_relations(reduced, context.run_id)
+    async def _reduce_verb(
+        self, verb: str, components: list[Component], run: _Run
+    ) -> None:
+        run_id = run.context.run_id
+        for group in _read_groups(components):
+            sources = [node for component in group for node in component.nodes]
+            relations = await self._transit_repo.read_by_sources(run_id, verb, sources)
+            kept = self._reduce_group(group, relations)
+            run.read += len(relations)
+            run.reduced += len(relations) - len(kept)
+            release = partial(
+                self._transit_repo.delete_by_sources, run_id, verb, sources
+            )
+            await run.writer.add(kept, release)
 
-        stats = RunStats.empty()
-        await self._record_pending(result.pending, context)
-        if result.pending:
-            stats = stats.with_count(RELATION_PENDING, len(result.pending))
-        if result.written:
-            self._announce_written(result.written, context)
-            stats = stats.with_count(RELATION_UPSERTED)
+    def _reduce_group(
+        self, group: list[Component], relations: list[Relation]
+    ) -> list[Relation]:
+        """Chaque composante seule : ses arêtes partent toutes d'un de ses nœuds."""
+        position = {
+            node: i for i, component in enumerate(group) for node in component.nodes
+        }
+        by_component: list[list[Relation]] = [[] for _ in group]
+        for relation in relations:
+            by_component[position[relation.source_identifier.serialize()]].append(
+                relation
+            )
+        kept: list[Relation] = []
+        for component, own in zip(group, by_component, strict=True):
+            self._measure(component)
+            kept.extend(reduce_transitively(own))
+        return kept
 
-        return _Written(
-            stats=stats,
-            written_count=len(result.written),
-            pending_count=len(result.pending),
-            reduced_count=len(relations) - len(reduced),
+    async def _write_others(self, run: _Run) -> None:
+        batches = self._transit_repo.batches_excluding(
+            run.context.run_id, REDUCIBLE_TYPES, _OTHERS_BATCH_SIZE
+        )
+        async for batch in batches:
+            run.read += len(batch.relations)
+            release = partial(self._transit_repo.delete_rows, batch)
+            await run.writer.add(batch.relations, release)
+
+    def _measure(self, component: Component) -> None:
+        self._telemetry.record_measure(
+            COMPONENT_NODES, len(component.nodes), component.name
+        )
+        self._telemetry.record_measure(
+            COMPONENT_RELATIONS, component.relations, component.name
         )
 
     async def _ensure_drained(self) -> None:
@@ -152,33 +210,6 @@ class ResolveRelationsService:
             self._emit_promoted(candidate, context)
         return len(promoted)
 
-    async def _record_pending(
-        self, pending: list[Relation], context: PipelineContext
-    ) -> None:
-        if not pending:
-            return
-        await self._pending_repo.upsert_many(
-            [
-                PendingRelation.from_relation(relation, context.run_id)
-                for relation in pending
-            ]
-        )
-        for relation in pending:
-            self._emit_relation(RELATION_PENDING, relation, context)
-
-    def _announce_written(
-        self, written: list[Relation], context: PipelineContext
-    ) -> None:
-        """`count` porte les arêtes réussies, pas tentées."""
-        self._telemetry.emit(
-            build_event(
-                event_type=RELATION_UPSERTED,
-                run_id=context.run_id,
-                source=context.source,
-                payload={"count": len(written)},
-            )
-        )
-
     def _emit_promoted(
         self, candidate: PendingRelation, context: PipelineContext
     ) -> None:
@@ -196,18 +227,16 @@ class ResolveRelationsService:
             )
         )
 
-    def _emit_relation(
-        self, event_type: str, relation: Relation, context: PipelineContext
-    ) -> None:
-        self._telemetry.emit(
-            build_event(
-                event_type=event_type,
-                run_id=context.run_id,
-                source=relation.source,
-                document_id=relation.source_identifier.serialize(),
-                payload={
-                    "target_id": relation.target_identifier.serialize(),
-                    "relation_type": relation.relation_type,
-                },
-            )
-        )
+
+def _read_groups(components: list[Component]) -> Iterator[list[Component]]:
+    """Des composantes consécutives, jusqu'au budget de nœuds."""
+    group: list[Component] = []
+    size = 0
+    for component in components:
+        if group and size + len(component.nodes) > _COMPONENT_READ_BUDGET:
+            yield group
+            group, size = [], 0
+        group.append(component)
+        size += len(component.nodes)
+    if group:
+        yield group
