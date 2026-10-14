@@ -4,6 +4,9 @@ L'union est idempotente grâce à l'index unique sur le triplet : ``$setOnInsert
 ``first_seen_run``, ``$set`` fait avancer ``last_seen_run``.
 """
 
+from collections.abc import Iterator, Sequence
+from typing import TypeVar
+
 from pymongo import UpdateOne
 
 from ragcore.adapters.storage.mongo.client import MongoClient
@@ -13,6 +16,17 @@ __all__ = ["PENDING_RELATIONS_COLLECTION", "MongoPendingRelationRepository"]
 
 PENDING_RELATIONS_COLLECTION = "pending_relations"
 """Dans la base de données, pas la méta."""
+
+_QUERY_CHUNK = 10_000
+"""Les valeurs d'un ``$in`` ou d'un ``$or`` : une requête Mongo ne dépasse pas 16 Mo, et
+le delta d'un run complet compte ~2,1 M identifiants (ADR-034 §7)."""
+
+_T = TypeVar("_T")
+
+
+def _chunks(values: Sequence[_T]) -> Iterator[Sequence[_T]]:
+    for start in range(0, len(values), _QUERY_CHUNK):
+        yield values[start : start + _QUERY_CHUNK]
 
 
 def _key_filter(key: PendingKey) -> dict[str, object]:
@@ -56,19 +70,21 @@ class MongoPendingRelationRepository:
         await self._collection.bulk_write(operations, ordered=False)
 
     async def promotable_for(self, written_node_ids: set[str]) -> list[PendingRelation]:
-        if not written_node_ids:
-            return []
-
-        cursor = self._collection.find({"target_id": {"$in": list(written_node_ids)}})
-        return [
-            PendingRelation.model_validate({k: v for k, v in doc.items() if k != "_id"})
-            async for doc in cursor
-        ]
+        promotable: list[PendingRelation] = []
+        for chunk in _chunks(list(written_node_ids)):
+            cursor = self._collection.find(
+                {"target_id": {"$in": list(chunk)}}, {"_id": 0}
+            )
+            promotable.extend(
+                [PendingRelation.model_validate(doc) async for doc in cursor]
+            )
+        return promotable
 
     async def delete_many(self, keys: list[PendingKey]) -> None:
-        if not keys:
-            return
-        await self._collection.delete_many({"$or": [_key_filter(k) for k in keys]})
+        for chunk in _chunks(keys):
+            await self._collection.delete_many(
+                {"$or": [_key_filter(key) for key in chunk]}
+            )
 
     async def count(self) -> int:
         return await self._collection.count_documents({})

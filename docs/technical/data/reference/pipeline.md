@@ -271,7 +271,10 @@ ce run, et la mémoire est bornée par la plus grande composante connexe (ADR-03
    dégradé.
 7. **Promotion ciblée** : on ne retente QUE les pendantes dont la cible figure dans
    `written_node_ids` (le delta de CE run) — le rejeu est borné par le delta, jamais par
-   la taille du backlog. Les promues sont écrites, supprimées du cache et émises en
+   la taille du backlog. `written_node_ids` reste en mémoire (~2,1 M identifiants,
+   ~200 Mo pour LEGI) ; seuls le `$in` qui le porte et la suppression des promues sont
+   découpés, par tranches de 10 000 (`_QUERY_CHUNK`) : une requête Mongo ne dépasse pas
+   16 Mo (ADR-034 §7). Les promues sont écrites, supprimées du cache et émises en
    `relation.promoted`.
 
 Invariant : `written + pending + reduced == extracted`, les lignes lues en transit.

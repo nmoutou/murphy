@@ -9,6 +9,7 @@ import pytest
 from pymongo.errors import DuplicateKeyError
 from testcontainers.mongodb import MongoDbContainer
 
+from ragcore.adapters.storage.mongo import pending_repository
 from ragcore.adapters.storage.mongo.client import create_mongo_client
 from ragcore.adapters.storage.mongo.pending_repository import (
     MongoPendingRelationRepository,
@@ -130,6 +131,34 @@ async def test_an_empty_delta_promotes_nothing(repo) -> None:
     await repo.upsert_many([_pending("A", "B", "run-1")])
 
     assert await repo.promotable_for(set()) == []
+
+
+async def test_the_delta_is_queried_by_chunks(
+    repo, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Le delta d'un run complet dépasserait les 16 Mo d'une requête : le ``$in`` est
+    découpé, et la promotion voit chaque tranche (ADR-034 §7)."""
+    monkeypatch.setattr(pending_repository, "_QUERY_CHUNK", 2)
+    targets = ["B", "D", "F", "H", "J"]
+    await repo.upsert_many([_pending(f"S{t}", t, "run-1") for t in targets])
+    await repo.upsert_many([_pending("X", "Z", "run-1")])
+
+    promotable = await repo.promotable_for(set(targets))
+
+    assert sorted(p.target_id for p in promotable) == targets
+
+
+async def test_the_promoted_are_deleted_by_chunks(
+    repo, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(pending_repository, "_QUERY_CHUNK", 2)
+    targets = ["B", "D", "F", "H", "J"]
+    await repo.upsert_many([_pending(f"S{t}", t, "run-1") for t in targets])
+    await repo.upsert_many([_pending("X", "Z", "run-1")])
+
+    await repo.delete_many([p.key for p in await repo.promotable_for(set(targets))])
+
+    assert await repo.count() == 1
 
 
 async def test_the_nuke_empties_the_backlog_and_restores_the_unique_index(repo) -> None:

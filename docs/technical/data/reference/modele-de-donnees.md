@@ -89,7 +89,7 @@ Ni TTL ni retry_count : écrite une fois, promue une fois — ou jamais.
 
 Index **unique** `uq_pending_source_target_type` (source_id, target_id, relation_type) —
 c'est lui qui fait de l'upsert une union ; `idx_pending_target` (target_id) pour le
-rejeu ciblé.
+rejeu ciblé, interrogé par tranches de 10 000 cibles (ADR-034 §7).
 
 Une pendante dérive des documents : elle vit dans leur base et `nuke_all` l'efface avec
 eux.
