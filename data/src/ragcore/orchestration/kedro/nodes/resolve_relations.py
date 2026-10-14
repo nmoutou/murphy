@@ -13,6 +13,8 @@ from ragcore.application.resolve_relations import (
 )
 from ragcore.application.run_context import PipelineContext
 from ragcore.core.ports.runtime import AsyncRuntime
+from ragcore.core.statistics_measures import STAGE_PHASE2_WRITE
+from ragcore.orchestration.kedro.stage_clock import StageClock
 
 __all__ = ["resolve_relations_node"]
 
@@ -22,11 +24,13 @@ def resolve_relations_node(
     resolve_service: ResolveRelationsService,
     pipeline_runtime: AsyncRuntime,
     pipeline_context: PipelineContext,
+    stage_clock: StageClock,
 ) -> ResolutionOutcome:
-    return pipeline_runtime.run(
-        resolve_service.execute(
-            ingestion_outcome.relations,
-            ingestion_outcome.written_node_ids,
-            pipeline_context,
+    with stage_clock.stage(STAGE_PHASE2_WRITE):
+        return pipeline_runtime.run(
+            resolve_service.execute(
+                ingestion_outcome.relations,
+                ingestion_outcome.written_node_ids,
+                pipeline_context,
+            )
         )
-    )

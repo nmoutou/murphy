@@ -17,6 +17,9 @@ from ragcore.adapters.storage.mongo.pending_repository import (
 from ragcore.adapters.storage.mongo.run_summary_repository import (
     MongoRunSummaryRepository,
 )
+from ragcore.adapters.storage.mongo.statistics_repository import (
+    MongoStatisticsRepository,
+)
 from ragcore.adapters.storage.mongo.unformatted_repository import (
     MongoUnformattedRelationRepository,
 )
@@ -31,6 +34,7 @@ from ragcore.adapters.telemetry import (
 from ragcore.core.models.collision_tally import CollisionTally
 from ragcore.core.models.enums import SourceName
 from ragcore.core.models.processing import EmbeddingModel
+from ragcore.core.models.run_stats import RunStats
 from ragcore.core.models.unknown_tally import UnknownExample, UnknownTally
 from ragcore.core.ports.document_repository import DocumentRepository
 from ragcore.core.ports.embedder import BaseEmbedder
@@ -39,6 +43,7 @@ from ragcore.core.ports.pending_repository import PendingRelationRepository
 from ragcore.core.ports.run_summary_repository import RunSummaryRepository
 from ragcore.core.ports.runtime import AsyncRuntime, AsyncRuntimeFactory
 from ragcore.core.ports.search_index_repository import SearchIndexRepository
+from ragcore.core.ports.statistics_repository import StatisticsRepository
 from ragcore.core.ports.telemetry import (
     TelemetryFactory,
     TelemetryPort,
@@ -63,6 +68,10 @@ class TestStorageAdapters:
     def test_mongo_document_repository(self) -> None:
         repo = MongoDocumentRepository.__new__(MongoDocumentRepository)
         assert isinstance(repo, DocumentRepository)
+
+    def test_mongo_statistics_repository(self) -> None:
+        repo = MongoStatisticsRepository.__new__(MongoStatisticsRepository)
+        assert isinstance(repo, StatisticsRepository)
 
     def test_mongo_run_summary_repository(self) -> None:
         repo = MongoRunSummaryRepository.__new__(MongoRunSummaryRepository)
@@ -188,13 +197,13 @@ class TestTelemetry:
         assert isinstance(NoopTelemetry(), TelemetryPort)
         assert isinstance(ConsoleLogTelemetry(), TelemetryPort)
 
-    def test_the_aggregator_is_a_worker_telemetry(self) -> None:
+    def test_the_aggregator_is_a_telemetry_backend(self) -> None:
         aggregator = RunStatsAggregator(
             run_id=RUN_ID,
             sources=(SourceName.LEGI,),
             started_at=datetime.now(UTC),
         )
-        assert isinstance(aggregator, WorkerTelemetry)
+        assert isinstance(aggregator, TelemetryPort)
 
     def test_the_factory_and_the_stack_it_builds(self) -> None:
         """La pile du pool expose bien ``snapshot`` et ``close``."""
@@ -238,6 +247,19 @@ class TestTelemetry:
             assert stack.snapshot().unknowns == {
                 "balise": {"TRUC_INCONNU": UnknownTally(count=1, example=example)}
             }
+        finally:
+            runtime.close()
+
+    def test_a_measure_reaches_its_own_aggregate(self) -> None:
+        """Une mesure va aux statistiques, jamais au bilan."""
+        runtime = AsyncioRuntimeFactory().build(0)
+        try:
+            stack = _telemetry_factory().build(0, runtime)
+            stack.record_measure(("documents", "legi", "chunks"), 3, "LEGIARTI1")
+
+            measures = stack.snapshot_measures().distributions
+            assert measures[("documents", "legi", "chunks")].count == 1
+            assert stack.snapshot() == RunStats.empty()
         finally:
             runtime.close()
 

@@ -3,6 +3,8 @@ hors `document.fetched`, donc hors équation de complétude.
 """
 
 from collections.abc import AsyncIterator
+from datetime import UTC, datetime
+from pathlib import Path
 
 import pytest
 
@@ -13,28 +15,40 @@ from ragcore.core.services.exclusion_reasons import (
     REASON_EXPORT_ARTIFACT,
     REASON_UNREADABLE,
 )
+from ragcore.core.statistics_measures import (
+    FACETS,
+    STAGE_PHASE1,
+    XML_BYTES,
+    document_measure,
+)
 from ragcore.core.telemetry_events import (
     DOCUMENT_FETCHED,
     DOCUMENT_UNREADABLE,
     DOCUMENT_VERSION_SKIPPED,
 )
 from ragcore.orchestration.kedro.nodes.connect import connect_node
+from ragcore.orchestration.kedro.stage_clock import StageClock
 from ragcore.tests.fakes.runtime import FakeRuntime
 from ragcore.tests.fakes.telemetry import RecordingTelemetry
 
 
 class _ConnectorWithSkips:
-    """Ne rend aucun document, mais déclare ses écarts."""
+    """Rend les documents donnés, et déclare ses écarts."""
 
-    def __init__(self, skipped: dict[str, int]) -> None:
+    def __init__(
+        self, skipped: dict[str, int], documents: tuple[RawDocument, ...] = ()
+    ) -> None:
         self.skipped = skipped
+        self._documents = documents
 
     async def fetch_all(self) -> AsyncIterator[RawDocument]:
-        return
-        yield  # pragma: no cover — fait de fetch_all un générateur vide
+        for document in self._documents:
+            yield document
 
 
-def _run(connector: _ConnectorWithSkips) -> RecordingTelemetry:
+def _run(
+    connector: _ConnectorWithSkips, stage_clock: StageClock | None = None
+) -> RecordingTelemetry:
     telemetry = RecordingTelemetry()
     context = PipelineContext.create(sources=(SourceName.LEGI,))
     connect_node(
@@ -42,9 +56,40 @@ def _run(connector: _ConnectorWithSkips) -> RecordingTelemetry:
         pipeline_context=context,
         telemetry=telemetry,
         pipeline_runtime=FakeRuntime(worker_id=0),
+        stage_clock=stage_clock or StageClock(),
         nuke_done={},
     )
     return telemetry
+
+
+def _raw(files: list[Path]) -> RawDocument:
+    return RawDocument(
+        source=SourceName.LEGI,
+        source_document_id="LEGIARTI000000000001",
+        payload={"content": [], "files": [str(file) for file in files]},
+        fetched_at=datetime.now(UTC),
+    )
+
+
+def test_la_taille_et_les_facettes_de_chaque_document_sont_mesurees(
+    tmp_path: Path,
+) -> None:
+    facets = [tmp_path / "a.xml", tmp_path / "b.xml"]
+    facets[0].write_bytes(b"x" * 10)
+    facets[1].write_bytes(b"x" * 5)
+
+    telemetry = _run(_ConnectorWithSkips({}, (_raw(facets),)))
+
+    assert telemetry.values_of(document_measure(SourceName.LEGI, XML_BYTES)) == [15]
+    assert telemetry.values_of(document_measure(SourceName.LEGI, FACETS)) == [2]
+
+
+def test_la_lecture_compte_dans_la_phase_1() -> None:
+    stage_clock = StageClock()
+
+    _run(_ConnectorWithSkips({}), stage_clock)
+
+    assert STAGE_PHASE1 in stage_clock.durations()
 
 
 def test_chaque_raison_d_ecart_emet_son_propre_compteur() -> None:

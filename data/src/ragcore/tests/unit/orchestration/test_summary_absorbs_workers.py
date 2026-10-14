@@ -11,8 +11,8 @@ import pytest
 from kedro.io import DataCatalog, MemoryDataset
 
 from ragcore.adapters.telemetry.aggregator import RunStatsAggregator
-from ragcore.application.ingestion_runner import IngestionOutcome
-from ragcore.application.resolve_relations import ResolutionOutcome
+from ragcore.adapters.telemetry.measures import MeasuresAggregator
+from ragcore.application.run_context import PipelineContext
 from ragcore.core.models.audit import build_event
 from ragcore.core.models.identifiers import RunId
 from ragcore.core.models.run_stats import RunStats
@@ -22,9 +22,8 @@ from ragcore.core.telemetry_events import (
     DOCUMENT_FETCHED,
     DOCUMENT_INVALIDATED,
     DOCUMENT_PERSISTED,
-    RELATION_PENDING,
 )
-from ragcore.orchestration.kedro.nodes.report import report_node
+from ragcore.orchestration.kedro.run_session import start_telemetry
 
 
 def _aggregator() -> RunStatsAggregator:
@@ -217,76 +216,30 @@ def test_a_stray_count_on_a_unitary_event_is_IGNORED() -> None:
 
 
 # --------------------------------------------------------------------------------------
-# Le fil : `report` pousse-t-il vraiment dans l'agrégat du run ?
+# Le fil : les agrégats des workers arrivent-ils dans ceux du run ?
 #
-# Kedro libère un MemoryDataset dès son dernier lecteur : `report` est le seul point du
-# DAG où les stats des workers existent encore.
+# Kedro libère un MemoryDataset dès son dernier lecteur : `ingest` les remet au
+# `run_sink` du catalogue, que le hook clôt.
 # --------------------------------------------------------------------------------------
 
 
-def _ingestion(stats: RunStats) -> IngestionOutcome:
-    return IngestionOutcome(
-        stats=stats, relations=[], written_node_ids=set(), failures=[]
-    )
+def test_run_aggregates_absorb_the_counters_and_the_measures() -> None:
+    _, aggregates = start_telemetry(PipelineContext.create())
+    measured = MeasuresAggregator()
+    measured.record(("documents", "legi", "chunks"), 3, "LEGIARTI1")
+
+    aggregates.absorb(RunStats(counts={DOCUMENT_PERSISTED: 2}), measured.snapshot())
+
+    assert aggregates.stats.snapshot().counts[DOCUMENT_PERSISTED] == 2
+    assert aggregates.measures.snapshot() == measured.snapshot()
 
 
-def _resolution(stats: RunStats) -> ResolutionOutcome:
-    return ResolutionOutcome(
-        stats=stats,
-        written_count=0,
-        pending_count=0,
-        reduced_count=0,
-        promoted_count=0,
-    )
-
-
-def test_report_node_pushes_the_worker_stats_into_the_run_aggregator() -> None:
-    """Le nœud terminal pousse, le hook n'a rien à tirer : la remontée de bout en
-    bout."""
-    aggregator = _aggregator()
-
-    report_node(
-        ingestion_outcome=_ingestion(
-            RunStats(
-                counts={
-                    DOCUMENT_FETCHED: 1124,
-                    DOCUMENT_PERSISTED: 1121,
-                    DOCUMENT_FAILED: 3,
-                }
-            )
-        ),
-        resolution_outcome=_resolution(RunStats(counts={RELATION_PENDING: 19032})),
-        to_skip=[],
-        run_stats_sink=aggregator,
-    )
-    summary = aggregator.finalize(status=RunStatus.OK)
-
-    assert summary.counts[DOCUMENT_PERSISTED] == 1121
-    # 3 documents perdus dans les workers : pas de `ok`
-    assert summary.status is RunStatus.DEGRADED
-
-
-def test_the_phase_two_stats_are_not_double_counted() -> None:
-    """La phase 2 émet déjà sur la télémétrie du hook : la pousser la compterait deux
-    fois."""
-    aggregator = _aggregator()
-
-    report_node(
-        ingestion_outcome=_ingestion(RunStats.empty()),
-        resolution_outcome=_resolution(RunStats(counts={RELATION_PENDING: 19032})),
-        to_skip=[],
-        run_stats_sink=aggregator,
-    )
-
-    assert RELATION_PENDING not in aggregator.snapshot().counts
-
-
-def test_the_sink_is_the_run_aggregator_itself_not_a_copy() -> None:
-    """`copy_mode: assign` au catalogue, sinon `report` pousse dans un clone que
+def test_the_sink_is_the_run_aggregates_itself_not_a_copy() -> None:
+    """`copy_mode: assign` au catalogue, sinon `ingest` pousse dans un clone que
     personne ne finalise."""
-    aggregator = _aggregator()
+    _, aggregates = start_telemetry(PipelineContext.create())
 
-    catalog = DataCatalog({"run_stats_sink": MemoryDataset(copy_mode="assign")})
-    catalog.save("run_stats_sink", aggregator)
+    catalog = DataCatalog({"run_sink": MemoryDataset(copy_mode="assign")})
+    catalog.save("run_sink", aggregates)
 
-    assert catalog.load("run_stats_sink") is aggregator
+    assert catalog.load("run_sink") is aggregates

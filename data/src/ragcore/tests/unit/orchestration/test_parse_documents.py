@@ -16,8 +16,10 @@ from ragcore.core.models.unknown_tally import UnknownExample, UnknownTally
 from ragcore.core.ports.parser import ParseResult
 from ragcore.core.services.exclusion_reasons import REASON_COLLISION, REASON_PARSE_ERROR
 from ragcore.core.services.unknown_categories import CATEGORY_TAG
+from ragcore.core.statistics_measures import STEP_PARSE, step_measure
 from ragcore.core.telemetry_events import DOCUMENT_INVALIDATED
 from ragcore.orchestration.kedro.nodes.parse_documents import parse_documents_node
+from ragcore.orchestration.kedro.stage_clock import StageClock
 from ragcore.sources.generic import GenericParser, to_tree
 from ragcore.sources.legislatif.table import LEGI_ROLE_TABLE
 from ragcore.tests.fakes.telemetry import RecordingTelemetry
@@ -61,6 +63,7 @@ def _run(parser: _FailingParser, telemetry: RecordingTelemetry) -> list[str]:
         pipeline_context=PipelineContext.create(),
         telemetry=telemetry,
         skip_unconfigured=False,
+        stage_clock=StageClock(),
     )
     return to_skip
 
@@ -104,6 +107,7 @@ def _parse_article(skip_unconfigured: bool, telemetry: RecordingTelemetry):
         pipeline_context=PipelineContext.create(),
         telemetry=telemetry,
         skip_unconfigured=skip_unconfigured,
+        stage_clock=StageClock(),
     )
     return to_process[0]
 
@@ -137,6 +141,15 @@ def test_sans_skip_la_metadonnee_sans_renommage_est_INGEREE() -> None:
     assert parsed.metadata[_UNRENAMED_KEY] == "Justice"
 
 
+def test_la_duree_du_parse_est_mesuree_par_document() -> None:
+    telemetry = RecordingTelemetry()
+
+    _parse_article(skip_unconfigured=True, telemetry=telemetry)
+
+    (duration,) = telemetry.values_of(step_measure(SourceName.LEGI, STEP_PARSE))
+    assert duration >= 0
+
+
 # ── Collisions de métadonnées (ADR-025) ───────────────────────────────────────
 
 
@@ -167,6 +180,7 @@ def _parse_collisions(telemetry: RecordingTelemetry) -> tuple[list[str], list[st
         pipeline_context=PipelineContext.create(),
         telemetry=telemetry,
         skip_unconfigured=True,
+        stage_clock=StageClock(),
     )
     return [parsed.identifier.raw for parsed in to_process], to_skip
 

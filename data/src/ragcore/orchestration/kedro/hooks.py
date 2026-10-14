@@ -97,8 +97,9 @@ class TelemetryHooks:
             ),
             "pipeline_context": session.context,
             "telemetry": session.telemetry,
-            # `report` y pousse les stats des workers, que le hook ne peut pas relire
-            "run_stats_sink": session.aggregator,
+            # `ingest` y pousse les agrégats des workers, que le hook ne peut pas relire
+            "run_sink": session.aggregates,
+            "stage_clock": session.aggregates.stages,
             "pipeline_runtime": self._runtime,
             "skip_unconfigured": plan.skip_unconfigured,
             "nuke_all": plan.nuke_all,
@@ -111,12 +112,13 @@ class TelemetryHooks:
         embedder: BaseEmbedder,
     ) -> RunSession:
         context = PipelineContext.create(sources=sources)
-        telemetry, aggregator = start_telemetry(context)
+        telemetry, aggregates = start_telemetry(context)
         self._session = RunSession(
             context=context,
             telemetry=telemetry,
-            aggregator=aggregator,
+            aggregates=aggregates,
             summaries=meta.summaries,
+            statistics=meta.statistics,
             embedder=embedder,
             runtime=self._runtime,
         )
@@ -131,7 +133,6 @@ class TelemetryHooks:
     @hook_impl
     def on_pipeline_error(self, error: Exception) -> None:
         if self._session is not None:
-            # Bilan pauvre : les stats des workers ne remontent que par `report`
             self._session.close(RunStatus.FAILED, error_message=str(error))
         self._close_runtime()
 

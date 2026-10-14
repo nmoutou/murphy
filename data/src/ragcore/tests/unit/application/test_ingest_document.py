@@ -13,6 +13,7 @@ from ragcore.core.models.enums import DocumentType, SourceName
 from ragcore.core.models.identifiers import Identifier
 from ragcore.core.models.search_content import SearchContent
 from ragcore.core.models.unformatted_relation import UnformattedRelation
+from ragcore.core.statistics_measures import STEP_MONGO, STEP_NEO4J, STEP_OPENSEARCH
 from ragcore.core.telemetry_events import (
     DOCUMENT_PERSISTED,
     RELATION_UPSERTED,
@@ -95,6 +96,14 @@ async def test_phase_one_writes_the_node_and_never_an_edge(stores, context) -> N
     assert stores["graph_repo"].edges == []
     assert stores["telemetry"].events_of(RELATION_UPSERTED) == []
     assert len(stores["telemetry"].events_of(DOCUMENT_PERSISTED)) == 1
+
+
+async def test_the_write_durations_come_back_one_per_store(stores, context) -> None:  # noqa: ANN001
+    """Les deux étapes Mongo s'additionnent sous une seule mesure."""
+    durations = await _use_case(stores).execute(_doc(), SearchContent(), context)
+
+    assert set(durations) == {STEP_MONGO, STEP_OPENSEARCH, STEP_NEO4J}
+    assert all(milliseconds >= 0 for milliseconds in durations.values())
 
 
 async def test_a_failed_saga_is_not_counted_persisted(stores, context) -> None:  # noqa: ANN001

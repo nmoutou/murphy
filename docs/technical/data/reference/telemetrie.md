@@ -45,6 +45,8 @@ Assemblés par `adapters/telemetry/factory.py:assemble_telemetry` dans une
    aucun événement.
 2. **Agrégateur** (`aggregator.py:RunStatsAggregator`) — reçoit chaque événement ; les
    compteurs dont le bilan sortira.
+3. **Mesures** (`measures.py:MeasuresAggregator`) — reçoit les `record_measure` ; les
+   distributions dont `statistics` sortira. Il ne reçoit aucun événement.
 
 Il n'y a pas de trace événement par événement : le bilan ne garde que des compteurs.
 Le détail d'un échec (quel document, quelle erreur) est dans les logs console — un
@@ -89,11 +91,13 @@ commutative ferait dépendre le bilan de l'ordonnancement). Trois champs :
   documents, distincts, dans l'ordre déclaré des facettes : deux pour une collision entre
   facettes, un pour une balise répétée dans une facette. Fusion : comme `unknowns`.
 
-**La remontée passe par le DAG, pas par le hook** : le node terminal `report` pousse
-`ingestion_outcome.stats` dans l'agrégat du run (`run_stats_sink`, que le hook finalise) — Kedro libère un `MemoryDataset` dès
-son dernier lecteur, un `catalog.load()` d'après-run tomberait sur du vide. La phase 2
-n'est pas poussée (elle a tourné sur la télémétrie du hook, ses compteurs y sont déjà —
-les pousser les compterait deux fois).
+**La remontée passe par le DAG, pas par le hook** : le nœud `ingest` remet les agrégats
+des workers (compteurs et mesures) aux `RunAggregates` du run (`run_sink`, que le hook
+clôt) — Kedro libère un `MemoryDataset` dès son dernier lecteur, un `catalog.load()`
+d'après-run tomberait sur du vide. Chaque worker dépose les siens en sortant, dans un
+`finally` : un run qui casse, en phase 1 comme plus loin, les garde. La phase 2 n'est pas
+poussée (elle a tourné sur la télémétrie du hook, ses compteurs y sont déjà — les pousser
+les compterait deux fois).
 
 ## Le statut d'un run
 
@@ -111,7 +115,7 @@ les pousser les compterait deux fois).
 |---|---|
 | `ok` | Tout ce qui a été vu a été ingéré ou écarté sciemment. |
 | `degraded` | Le run est allé au bout mais ne peut pas se déclarer complet (une des trois propriétés a cassé). |
-| `failed` | Le pipeline a levé ; rien ne garantit l'état des stores. Si la casse précède le node `report`, le bilan est pauvre (les stats des workers ne remontent que par lui) — le statut reste vrai. |
+| `failed` | Le pipeline a levé ; rien ne garantit l'état des stores. Si la casse précède la phase 1, le bilan est pauvre — le statut reste vrai. |
 
 Le référentiel est `document.fetched`, jamais `document.parsed` (un invalidé n'est pas
 parsé — le prendre pour total exclurait du dénominateur ceux qu'il faut compter). Et le
@@ -139,3 +143,44 @@ document est plat :
 `sources` est toujours une liste, même pour un run mono-source. `error_message` n'est
 écrit que sur un run `failed` : un `degraded` n'a pas d'exception, il se lit dans les
 compteurs.
+
+## Les statistiques d'un run
+
+`MURPHY_META.statistics` mesure ce que le bilan compte (ADR-034 §8) : un document par
+run, unique par `run_id`, écrit à la clôture de la session, **même en cas d'échec**.
+
+| | `run_summaries` | `statistics` |
+|---|---|---|
+| Question | Le run a-t-il tout fait, et sinon, quoi ? | Combien ça pèse, combien de temps ça prend ? |
+| Contenu | Une comptabilité : ce qui est arrivé aux objets | Des mesures : tailles et durées, en distributions |
+| Usage | Le statut du run s'en dérive | Le diagnostic et le réglage ; jamais lue pour décider |
+
+Toute mesure est une `Distribution` (`core/models/distribution.py`) :
+`{count, sum, min, max, mean, max_ref, histogram}`. `max_ref` nomme ce qui a donné le
+maximum (un identifiant de document) ; `histogram` compte les valeurs par classe en
+puissance de 2 (`{"2^k": n}`, `2^k <= v < 2^(k+1)`, `"0"` pour zéro, `k` négatif sous 1).
+Comme `RunStats`, les mesures (`RunMeasures`) se fusionnent dans n'importe quel ordre :
+à maximum égal, `max_ref` est la plus petite référence.
+
+Le vocabulaire est `core/statistics_measures.py` :
+
+```json
+{ "run_id": "…", "started_at": ISODate("…"),
+  "stages_s": { "phase1": 812.4, "phase2_write": 41.0 },
+  "documents": {
+    "legi": {
+      "xml_bytes": {…}, "facets": {…}, "content_chars": {…}, "chunks": {…},
+      "relations": {…},
+      "step_ms": { "parse": {…}, "embed": {…}, "mongo": {…}, "opensearch": {…},
+                   "neo4j": {…} } } } }
+```
+
+- `stages_s` : la durée de chaque étape, en secondes (`StageClock`, une étape mesurée
+  plusieurs fois s'additionne). `phase1` couvre `connect`, `parseDocuments` et `ingest` ;
+  `phase2_write`, `resolveRelations`.
+- `documents.<source>` : par document, sa taille XML (facettes sommées), son nombre de
+  facettes, de caractères, de chunks et de relations, et la durée de chaque étape en
+  millisecondes. `mongo` additionne l'écriture du document et celle de ses relations non
+  formatées. `embed` est absent quand l'embedding est coupé (ADR-012).
+
+Une section n'apparaît que si une mesure l'a remplie.

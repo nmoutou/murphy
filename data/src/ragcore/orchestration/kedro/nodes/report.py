@@ -1,41 +1,25 @@
 """Nœud terminal : le bilan du run, composé des deux phases, sans I/O.
 
-C'est aussi le seul point de remontée des stats des workers vers l'agrégateur du run :
-Kedro libère ``ingestion_outcome`` dès son dernier lecteur, ce nœud, et le hook ne
-pourrait plus le relire. Limite : si le pipeline casse avant lui, le bilan du run
-``failed`` n'a que les compteurs du processus principal.
-
 Un échec partiel ne fait pas échouer le run : le document est compté et nommé dans
 ``failures``.
 """
 
 from __future__ import annotations
 
-from typing import Any, Protocol
+from typing import Any
 
 from ragcore.application.ingestion_runner import IngestionOutcome
 from ragcore.application.resolve_relations import ResolutionOutcome
-from ragcore.core.models.run_stats import RunStats
 
-__all__ = ["RunStatsSink", "report_node"]
-
-
-class RunStatsSink(Protocol):
-    """L'agrégateur du run, posé au catalogue par le hook."""
-
-    def absorb(self, stats: RunStats) -> None: ...
+__all__ = ["report_node"]
 
 
 def report_node(
     ingestion_outcome: IngestionOutcome,
     resolution_outcome: ResolutionOutcome,
     to_skip: list[str],
-    run_stats_sink: RunStatsSink,
 ) -> dict[str, Any]:
     stats = ingestion_outcome.stats
-
-    # Pas la phase 2 : elle émet déjà sur la télémétrie du hook, elle compterait double
-    run_stats_sink.absorb(ingestion_outcome.stats)
 
     return {
         "documents_written": len(ingestion_outcome.written_node_ids),

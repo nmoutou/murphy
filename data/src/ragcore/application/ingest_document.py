@@ -22,10 +22,24 @@ from ragcore.core.ports.pending_repository import PendingRelationRepository
 from ragcore.core.ports.search_index_repository import SearchIndexRepository
 from ragcore.core.ports.telemetry import TelemetryPort
 from ragcore.core.ports.unformatted_repository import UnformattedRelationRepository
+from ragcore.core.statistics_measures import STEP_MONGO, STEP_NEO4J, STEP_OPENSEARCH
 from ragcore.core.telemetry_events import DOCUMENT_PERSISTED
 
 from .run_context import PipelineContext
 from .saga import SagaExecutor, SagaStep
+
+_MONGO_UPSERT = "mongo_upsert"
+_MONGO_UNFORMATTED_UPSERT = "mongo_unformatted_upsert"
+_OPENSEARCH_INDEX = "opensearch_index"
+_NEO4J_MERGE_NODE = "neo4j_merge_node"
+
+_STEP_MEASURES = {
+    _MONGO_UPSERT: STEP_MONGO,
+    _MONGO_UNFORMATTED_UPSERT: STEP_MONGO,
+    _OPENSEARCH_INDEX: STEP_OPENSEARCH,
+    _NEO4J_MERGE_NODE: STEP_NEO4J,
+}
+"""Une base, une mesure : les étapes Mongo s'additionnent."""
 
 
 @dataclass(frozen=True)
@@ -61,13 +75,15 @@ class IngestDocumentUseCase:
         content: SearchContent,
         context: PipelineContext,
         unformatted_relations: Sequence[UnformattedRelation] = (),
-    ) -> None:
+    ) -> dict[str, float]:
+        """Rend la durée d'écriture dans chaque base, en millisecondes."""
         unformatted_step = self._unformatted_step(
             parsed.identifier, unformatted_relations, context.run_id
         )
         steps = self._saga_steps(parsed, content, unformatted_step)
-        await SagaExecutor(self._telemetry).execute(steps, context)
+        durations = await SagaExecutor(self._telemetry).execute(steps, context)
         self._emit_persisted(parsed, context)
+        return _by_store(durations)
 
     def _saga_steps(
         self,
@@ -87,20 +103,20 @@ class IngestDocumentUseCase:
         """
         return [
             SagaStep(
-                name="mongo_upsert",
+                name=_MONGO_UPSERT,
                 forward=lambda: self._document_repo.upsert(parsed),
                 compensate=lambda: self._document_repo.delete(parsed.identifier),
             ),
             unformatted_step,
             SagaStep(
-                name="opensearch_index",
+                name=_OPENSEARCH_INDEX,
                 forward=lambda: self._search_index.index_document(parsed, content),
                 compensate=lambda: self._search_index.delete_document(
                     parsed.identifier
                 ),
             ),
             SagaStep(
-                name="neo4j_merge_node",
+                name=_NEO4J_MERGE_NODE,
                 forward=lambda: self._graph_repo.merge_document_node(parsed),
                 compensate=_nothing_to_compensate,
             ),
@@ -115,7 +131,7 @@ class IngestDocumentUseCase:
         """Elles s'accumulent de run en run : la compensation ne retire que celles nées
         dans ce run."""
         return SagaStep(
-            name="mongo_unformatted_upsert",
+            name=_MONGO_UNFORMATTED_UPSERT,
             forward=lambda: self._unformatted_repo.upsert_many(
                 unformatted_relations, run_id
             ),
@@ -134,3 +150,11 @@ class IngestDocumentUseCase:
                 document_id=parsed.identifier.serialize(),
             )
         )
+
+
+def _by_store(durations: dict[str, float]) -> dict[str, float]:
+    by_store: dict[str, float] = {}
+    for step, milliseconds in durations.items():
+        store = _STEP_MEASURES[step]
+        by_store[store] = by_store.get(store, 0.0) + milliseconds
+    return by_store

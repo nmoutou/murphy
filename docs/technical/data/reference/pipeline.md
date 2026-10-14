@@ -39,12 +39,14 @@ Le hook est le **point d'assemblage** du run. Dans l'ordre :
    Échec = run arrêté avant tout nœud ;
 5. **Clients, index et dépôts du hook** (`stores.open_clients`, `ensure_indexes`,
    `open_document_stores`, `open_meta_stores`) : `ensure_data_indexes` (MURPHY_DATA :
-   documents, pendantes), `ensure_meta_indexes` (MURPHY_META : bilans) et
+   documents, pendantes), `ensure_meta_indexes` (MURPHY_META : bilans, statistiques) et
    `ensure_graph_constraints` (Neo4j : unicité de `(:Document).identifier`).
 6. **La session du run** (`run_session.RunSession`) : le `PipelineContext` (run_id
    uuid4-hex, `sources` résolues par le plan, started_at ; sa propriété `source` vaut la
    source unique, ou `None` si multi-source), la pile de
-   télémétrie (`WorkerTelemetryStack` : backends console et agrégateur `RunStats`).
+   télémétrie (`WorkerTelemetryStack` : backends console, agrégateur `RunStats` et
+   agrégateur de mesures) et les `RunAggregates` du run (compteurs, mesures, horloge
+   des étapes), posés au catalogue sous `run_sink` et `stage_clock`.
 7. **Briques de traitement** (`assembly.build_processing_stack`) : `CompositeConnector`
    (un connecteur par source, routé), `RoutingParser` (un `GenericParser` par source,
    chacun avec sa table de rôles), `StructuralChunker` (`CHUNKING_MAX_CHARS` / `CHUNKING_OVERLAP_CHARS`),
@@ -83,7 +85,7 @@ run), le runtime du hook.
   - Neo4j : le graphe entier ;
   - OpenSearch : **seulement** l'index du run, recréé aussitôt par `ensure_index()`. Les
     index système (Dashboards, plugins) vivent dans le même cluster ;
-  - **préservé** : la base méta `MURPHY_META` (bilans de run) — un nuke ne doit
+  - **préservé** : la base méta `MURPHY_META` (bilans et statistiques de run) — un nuke ne doit
     jamais emporter la mémoire de ce qu'on a fait.
 
 Chaque effacement est annoncé en `logger.warning`. Sortie : `nuke_done` — consommé par `connect`
@@ -91,21 +93,23 @@ uniquement comme **signal d'ordre** (arête du DAG).
 
 ## 2. `connect`
 
-Entrées : `connector`, le contexte, la télémétrie, le runtime du hook, `nuke_done`
-(signal). Draine `connector.fetch_all()` → `list[RawDocument]`.
+Entrées : `connector`, le contexte, la télémétrie, le runtime du hook, `stage_clock`,
+`nuke_done` (signal). Draine `connector.fetch_all()` → `list[RawDocument]`. `connect`,
+`parseDocuments` et `ingest` additionnent leur durée sous `stages_s.phase1`.
 
 - Émet `document.fetched` **une fois**, avec `count` = le nombre de documents vus. Ce
   compte est le **dénominateur** de l'équation de complétude.
 - Ce que le connecteur a écarté en amont est émis en un compteur par raison,
   `document.version_skipped` (artefacts d'export) et `document.unreadable` (fichiers
   illisibles), **hors équation** : un fichier écarté n'est pas un document vu.
+- Mesure chaque document (`xml_bytes`, `facets`) pour `statistics`.
 
 Sortie : `raw_documents`.
 
 ## 3. `parseDocuments`
 
 Entrées : `raw_documents`, `parser`, contexte, télémétrie (de type `WorkerTelemetry` : ce
-nœud *déclare* des inconnus), `skip_unconfigured` (du plan du run).
+nœud *déclare* des inconnus), `skip_unconfigured` (du plan du run), `stage_clock`.
 
 Pour chaque `RawDocument` :
 
@@ -129,14 +133,22 @@ Pour chaque `RawDocument` :
    non : la saga le réécrit en place (voir [idempotence.md](idempotence.md)).
 
 La source de chaque événement est `raw.source` (la vraie origine du
-fichier), jamais `context.source` — qui vaut `None` en run multi-source.
+fichier), jamais `context.source` — qui vaut `None` en run multi-source. La durée de
+chaque parse est mesurée (`step_ms.parse`), document rejeté compris.
 
 Sorties : `to_process` (`list[ParsedDocument]`) et `to_skip` (`list[str]`).
 
 ## 4. `ingest` — la phase 1
 
-Entrées : `to_process`, `runner`, l'index OpenSearch, contexte, le runtime du hook. Le
-nœud est mince : il lance `IngestionRunner.run()` et rend son `IngestionOutcome`.
+Entrées : `to_process`, `runner`, l'index OpenSearch, contexte, le runtime du hook,
+`run_sink`, `stage_clock`. Le nœud est mince : il lance `IngestionRunner.run()` et rend
+son `IngestionOutcome`.
+
+Le runner remet les agrégats des workers (compteurs et mesures) à `run_sink`, **même
+quand le pool lève** : chaque worker dépose les siens en sortant, dans un `finally`. Un
+run qui casse plus loin garde donc dans son bilan et ses statistiques ce que la phase 1 a
+fait. Une ligne de progression (documents traités, total, débit) part au log toutes les
+30 s au plus (`application/progress.py`).
 
 Autour du pool, il suspend le rafraîchissement de l'index (`refresh_interval: -1`), puis,
 dans un `finally`, lance un `_refresh` et rend au réglage sa valeur par défaut : même un
@@ -154,8 +166,8 @@ rafraîchit : chaque requête kNN ne parcourt plus qu'un graphe HNSW (voir
   sagas ne peuvent pas se toucher — la garantie vient de la partition, pas d'un mutex.
   (Jamais `hash()` natif : randomisé par `PYTHONHASHSEED`, il rendrait la partition non
   reproductible.)
-- **Un worker = une boucle + ses clients + sa télémétrie + son agrégat local.** Rien de
-  partagé, donc rien à verrouiller. 4 workers (`_WORKER_COUNT`, assembly.py) — mesuré : en
+- **Un worker = une boucle + ses clients + sa télémétrie + ses agrégats locaux.** Seule
+  la progression est partagée, sous un verrou. 4 workers (`_WORKER_COUNT`, assembly.py) — mesuré : en
   augmenter le nombre ne gagne rien, ~99,9 % du temps d'un document part dans l'embedding
   et le mur est le GPU (parse 0,9 ms, chunk 0,1 ms, embed ~1 364 ms).
 - **Un échec de document ne casse pas le run** : l'exception est attrapée, comptée
@@ -186,14 +198,19 @@ rafraîchit : chaque requête kNN ne parcourt plus qu'un graphe HNSW (voir
    trois clients ; l'appeler par document en créerait 1 121 jeux au lieu de 4).
 5. Les relations extraites **ne sont pas écrites ici** : elles remontent dans
    `WorkloadResult.relations` vers la phase 2.
+6. **Mesures** : `content_chars`, `chunks`, `relations`, et la durée de l'embedding et
+   de l'écriture dans chaque base (`step_ms.embed|mongo|opensearch|neo4j`, rendues par
+   la saga).
 
-Sortie : `IngestionOutcome` — `stats` (réduction monoïde des N agrégats locaux),
+Sortie : `IngestionOutcome` — `stats` (réduction monoïde des N agrégats locaux, déjà
+remise à `run_sink`),
 `relations` (l'union), `written_node_ids` (le delta du run, qui borne le rejeu ciblé),
 `failures`.
 
 ## 5. `resolveRelations` — la phase 2
 
-Entrées : `ingestion_outcome` (LA barrière), `resolve_service`, runtime du hook, contexte.
+Entrées : `ingestion_outcome` (LA barrière), `resolve_service`, runtime du hook, contexte,
+`stage_clock` (`stages_s.phase2_write`).
 Non parallélisé : un batch, sur la boucle du hook. Quatre temps
 (`application/resolve_relations.py`) :
 
@@ -223,20 +240,12 @@ Sortie : `ResolutionOutcome` (stats, written/pending/promoted/reduced counts).
 
 ## 6. `report` — le nœud terminal
 
-Entrées : les deux outcomes, `to_skip`, `run_stats_sink` (le hook lui-même, vu comme un
-protocole).
+Entrées : les deux outcomes, `to_skip`. Sans I/O.
 
-- **Pousse** `ingestion_outcome.stats` dans l'agrégat du run (`run_stats_sink.absorb`). C'est le seul point de
-  remontée des stats des workers : Kedro **libère** un `MemoryDataset` dès son dernier
-  lecteur, donc le hook ne pourrait pas le relire après le run — le DAG pousse, le hook ne
-  tire pas. La phase 2 n'est PAS poussée : elle a tourné sur la télémétrie du hook, ses
-  compteurs y sont déjà (les pousser les compterait deux fois).
-- Compose le bilan : documents écrits/écartés/échoués (avec la liste nommée des
-  `failures`), relations extraites/écrites/pendantes/réduites/promues, `unknowns`
-  (vide = le vocabulaire de la source a tout couvert).
-
-Limite assumée : si le pipeline casse **avant** ce nœud, les stats des workers ne
-remontent pas — le run est `failed` (vrai), mais son bilan est pauvre.
+Compose le bilan : documents écrits/écartés/échoués (avec la liste nommée des
+`failures`), relations extraites/écrites/pendantes/réduites/promues, `unknowns` (vide =
+le vocabulaire de la source a tout couvert). Il ne pousse rien : `ingest` a déjà remis les
+agrégats des workers, et la phase 2 a émis sur la télémétrie du hook.
 
 ## Après le dernier nœud : `after_pipeline_run` / `on_pipeline_error`
 
@@ -250,9 +259,12 @@ nominal (`after_pipeline_run`), dans l'ordre — et l'ordre est l'enjeu :
    **re-dérivé des compteurs** (`RunSummary.of` → `_status_from`) — voir
    [telemetrie.md](telemetrie.md#le-statut-dun-run). Upsert Mongo
    (`run_summaries`).
-3. Le hook ferme son runtime.
+3. **Persistance des statistiques** (`statistics`) : la durée des étapes et les mesures
+   réduites, voir [telemetrie.md](telemetrie.md#les-statistiques-dun-run).
+4. Le hook ferme son runtime.
 
-Chemin d'erreur (`on_pipeline_error`) : la **même clôture** (les troncatures valent aussi sur un run cassé), bilan persisté en
-`failed` (avec le message d'erreur), runtime fermé.
+Chemin d'erreur (`on_pipeline_error`) : la **même clôture** (les troncatures valent aussi
+sur un run cassé), bilan persisté en `failed` (avec le message d'erreur), statistiques
+persistées, runtime fermé.
 Si l'assemblage a échoué avant que la session existe, le hook ne fait que fermer son
 runtime.

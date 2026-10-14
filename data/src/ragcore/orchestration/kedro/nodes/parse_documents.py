@@ -9,6 +9,7 @@ from __future__ import annotations
 import logging
 from collections.abc import Sequence
 from dataclasses import dataclass
+from time import perf_counter
 
 from ragcore.application.run_context import PipelineContext
 from ragcore.core.exceptions import CollisionError, ParseError, ValidationError
@@ -28,7 +29,14 @@ from ragcore.core.services.unknown_categories import (
     CATEGORY_ROOT,
     CATEGORY_TAG,
 )
+from ragcore.core.statistics_measures import (
+    STAGE_PHASE1,
+    STEP_PARSE,
+    milliseconds_since,
+    step_measure,
+)
 from ragcore.core.telemetry_events import DOCUMENT_INVALIDATED, DOCUMENT_PARSED
+from ragcore.orchestration.kedro.stage_clock import StageClock
 
 logger = logging.getLogger(__name__)
 
@@ -55,17 +63,32 @@ def parse_documents_node(
     # WorkerTelemetry, pas TelemetryPort : ce nœud déclare aussi (`record_unknown`)
     telemetry: WorkerTelemetry,
     skip_unconfigured: bool,
+    stage_clock: StageClock,
 ) -> tuple[list[ParsedDocument], list[str]]:
     """Le site de parse : déclare toujours les signaux non configurés (``tags``,
     ``links``, ``roots``), puis applique ``skip_unconfigured``, qui retire les
     métadonnées non configurées. Les liens non configurés sont retirés à l'extraction.
     """
-    site = _ParseSite(pipeline_context, telemetry)
+    with stage_clock.stage(STAGE_PHASE1):
+        return _parse_all(
+            raw_documents,
+            parser,
+            _ParseSite(pipeline_context, telemetry),
+            skip_unconfigured,
+        )
+
+
+def _parse_all(
+    raw_documents: list[RawDocument],
+    parser: BaseParser,
+    site: _ParseSite,
+    skip_unconfigured: bool,
+) -> tuple[list[ParsedDocument], list[str]]:
     to_process: list[ParsedDocument] = []
     to_skip: list[str] = []
 
     for raw in raw_documents:
-        result = _parse(raw, parser, site)
+        result = _timed_parse(raw, parser, site)
         if result is None:
             to_skip.append(raw.source_document_id)
             continue
@@ -76,6 +99,19 @@ def parse_documents_node(
         to_process.append(parsed)
 
     return to_process, to_skip
+
+
+def _timed_parse(
+    raw: RawDocument, parser: BaseParser, site: _ParseSite
+) -> ParseResult | None:
+    started = perf_counter()
+    result = _parse(raw, parser, site)
+    site.telemetry.record_measure(
+        step_measure(raw.source, STEP_PARSE),
+        milliseconds_since(started),
+        raw.source_document_id,
+    )
+    return result
 
 
 def _parse(

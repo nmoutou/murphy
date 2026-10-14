@@ -23,6 +23,15 @@ from ragcore.core.models.unformatted_relation import UnformattedRelation
 from ragcore.core.models.unknown_tally import UnknownExample, UnknownTally
 from ragcore.core.ports.relation_extractor import ExtractionResult
 from ragcore.core.services.unknown_categories import CATEGORY_LINK
+from ragcore.core.statistics_measures import (
+    CHUNKS,
+    CONTENT_CHARS,
+    RELATIONS,
+    STEP_EMBED,
+    STEP_MONGO,
+    document_measure,
+    step_measure,
+)
 from ragcore.core.telemetry_events import PAYLOAD_COUNT_KEY, RELATION_UNKNOWN
 from ragcore.orchestration.kedro.workload import WorkloadSteps, build_document_workload
 from ragcore.tests.fakes import (
@@ -292,3 +301,22 @@ def test_embedding_coupe_nembarque_pas_le_titre_dun_document_sans_passage() -> N
     )
 
     assert search_index.documents[SELF.serialize()].title_embedding is None
+
+
+def test_les_tailles_et_les_durees_du_document_sont_MESUREES() -> None:
+    _result, _graph, _search_index, telemetry = _run(_doc(), embedding_enabled=True)
+
+    measured = {path for path, _value, _ref in telemetry.measured}
+    steps = {step_measure(SourceName.LEGI, step) for step in (STEP_EMBED, STEP_MONGO)}
+    assert steps <= measured
+    assert telemetry.values_of(document_measure(SourceName.LEGI, CHUNKS)) == [1]
+    assert telemetry.values_of(document_measure(SourceName.LEGI, RELATIONS)) == [1]
+    assert telemetry.values_of(document_measure(SourceName.LEGI, CONTENT_CHARS)) == [
+        len(_doc().content)
+    ]
+
+
+def test_embedding_coupe_ne_mesure_PAS_d_embedding() -> None:
+    _result, _graph, _search_index, telemetry = _run(_doc(), embedding_enabled=False)
+
+    assert telemetry.values_of(step_measure(SourceName.LEGI, STEP_EMBED)) == []

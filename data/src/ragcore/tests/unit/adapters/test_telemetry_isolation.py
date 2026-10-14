@@ -6,6 +6,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 from ragcore.adapters.telemetry.aggregator import RunStatsAggregator
+from ragcore.adapters.telemetry.measures import MeasuresAggregator
 from ragcore.adapters.telemetry.worker_backends import WorkerBackends
 from ragcore.adapters.telemetry.worker_stack import WorkerTelemetryStack
 from ragcore.core.models.audit import AuditEvent, build_event
@@ -37,7 +38,13 @@ class ExplodingLog:
 
 
 def _telemetry(aggregate: RunStatsAggregator) -> WorkerTelemetryStack:
-    return WorkerTelemetryStack(WorkerBackends(log=ExplodingLog(), aggregate=aggregate))
+    return WorkerTelemetryStack(_backends(aggregate))
+
+
+def _backends(aggregate: RunStatsAggregator) -> WorkerBackends:
+    return WorkerBackends(
+        log=ExplodingLog(), aggregate=aggregate, measures=MeasuresAggregator()
+    )
 
 
 def _aggregator(cls: type[RunStatsAggregator] = RunStatsAggregator) -> Any:
@@ -57,7 +64,7 @@ def test_a_backend_that_fails_to_close_does_not_stop_the_others() -> None:
 
 def test_the_aggregate_is_closed_last() -> None:
     """L'agrégat rend le bilan : il doit survivre aux autres backends."""
-    backends = WorkerBackends(log=ExplodingLog(), aggregate=_aggregator())
+    backends = _backends(_aggregator())
 
     names = [name for name, _ in backends.closable_in_order()]
 

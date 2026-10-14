@@ -1,10 +1,12 @@
 import logging
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
+from time import perf_counter
 from typing import Any
 
 from ragcore.core.models.audit import build_event
 from ragcore.core.ports.telemetry import TelemetryPort
+from ragcore.core.statistics_measures import milliseconds_since
 from ragcore.core.telemetry_events import (
     SAGA_COMPENSATION_COMPLETED,
     SAGA_COMPENSATION_FAILED,
@@ -27,12 +29,18 @@ class SagaExecutor:
     def __init__(self, telemetry: TelemetryPort) -> None:
         self._telemetry = telemetry
 
-    async def execute(self, steps: list[SagaStep], context: PipelineContext) -> None:
+    async def execute(
+        self, steps: list[SagaStep], context: PipelineContext
+    ) -> dict[str, float]:
+        """Rend la durée de chaque étape, en millisecondes, par nom d'étape."""
         completed: list[SagaStep] = []
+        durations: dict[str, float] = {}
 
         try:
             for step in steps:
+                started = perf_counter()
                 await step.forward()
+                durations[step.name] = milliseconds_since(started)
                 completed.append(step)
         except Exception as original_exc:
             failed_index = len(completed)
@@ -43,6 +51,7 @@ class SagaExecutor:
             failures = await self._compensate_all(completed, context, failed_name)
             self._report(context, failed_name, completed, failures)
             raise
+        return durations
 
     def _announce(
         self, context: PipelineContext, failed_name: str, exc: Exception

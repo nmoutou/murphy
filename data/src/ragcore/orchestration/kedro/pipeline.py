@@ -60,6 +60,7 @@ def _connect() -> Node:
             "pipeline_context",
             "telemetry",
             "pipeline_runtime",
+            "stage_clock",
             # Simple signal : nukeAll avant connect
             "nuke_done",
         ],
@@ -77,6 +78,7 @@ def _parse_documents() -> Node:
             "pipeline_context",
             "telemetry",
             "skip_unconfigured",
+            "stage_clock",
         ],
         outputs=["to_process", "to_skip"],
         name="parseDocuments",
@@ -92,6 +94,8 @@ def _ingest() -> Node:
             "search_index",
             "pipeline_context",
             "pipeline_runtime",
+            "run_sink",
+            "stage_clock",
         ],
         outputs="ingestion_outcome",
         name="ingest",
@@ -107,6 +111,7 @@ def _resolve_relations() -> Node:
             "resolve_service",
             "pipeline_runtime",
             "pipeline_context",
+            "stage_clock",
         ],
         outputs="resolution_outcome",
         name="resolveRelations",
@@ -120,9 +125,6 @@ def _report() -> Node:
             "ingestion_outcome",
             "resolution_outcome",
             "to_skip",
-            # Reçoit les stats des workers : après ce nœud, Kedro libère
-            # `ingestion_outcome`
-            "run_stats_sink",
         ],
         outputs="run_report",
         name="report",

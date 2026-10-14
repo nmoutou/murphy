@@ -4,6 +4,7 @@ from ragcore.adapters.storage.mongo.client import MongoDatabase
 from ragcore.adapters.storage.mongo.pending_repository import (
     PENDING_RELATIONS_COLLECTION,
 )
+from ragcore.adapters.storage.mongo.statistics_repository import STATISTICS_COLLECTION
 from ragcore.adapters.storage.mongo.unformatted_repository import (
     UNFORMATTED_RELATIONS_COLLECTION,
 )
@@ -58,6 +59,13 @@ _META_INDEXES: dict[str, list[IndexModel]] = {
             name="uq_run_summary_run_id",
         ),
         IndexModel([("started_at", ASCENDING)], name="idx_run_summary_started_at"),
+    ],
+    STATISTICS_COLLECTION: [
+        IndexModel(
+            [("run_id", ASCENDING)],
+            unique=True,
+            name="uq_statistics_run_id",
+        ),
     ],
 }
 """Par collection, dans la base méta."""

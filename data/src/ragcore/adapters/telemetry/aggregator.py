@@ -35,8 +35,8 @@ def _weight_of(event_type: str, payload: dict[str, Any]) -> int:
 
 
 class RunStatsAggregator:
-    """Satisfait ``WorkerTelemetry``. ``finalize()`` produit le ``RunSummary`` ; sa
-    persistance reste à l'orchestrateur.
+    """Le backend des compteurs d'une ``WorkerTelemetryStack``. ``finalize()`` produit
+    le ``RunSummary`` ; sa persistance reste à l'orchestrateur.
     """
 
     def __init__(

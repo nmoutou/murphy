@@ -44,9 +44,13 @@ telemetry:
   type: MemoryDataset
   copy_mode: assign
 
-# L'agrégateur du run. Sans `copy_mode: assign`, Kedro le copierait et `report`
+# Les agrégats du run. Sans `copy_mode: assign`, Kedro les copierait et `ingest`
 # pousserait les stats des workers dans un clone que personne ne finalise.
-run_stats_sink:
+run_sink:
+  type: MemoryDataset
+  copy_mode: assign
+
+stage_clock:
   type: MemoryDataset
   copy_mode: assign
 

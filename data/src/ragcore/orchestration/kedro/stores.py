@@ -24,6 +24,9 @@ from ragcore.adapters.storage.mongo.schemas import (
     ensure_data_indexes,
     ensure_meta_indexes,
 )
+from ragcore.adapters.storage.mongo.statistics_repository import (
+    MongoStatisticsRepository,
+)
 from ragcore.adapters.storage.mongo.unformatted_repository import (
     MongoUnformattedRelationRepository,
 )
@@ -57,6 +60,7 @@ class InfraClients:
 @dataclass(frozen=True)
 class MetaStores:
     summaries: MongoRunSummaryRepository
+    statistics: MongoStatisticsRepository
 
 
 def open_clients(settings: InfraSettings) -> InfraClients:
@@ -108,8 +112,8 @@ def open_document_stores(
 
 
 def open_meta_stores(clients: InfraClients, settings: InfraSettings) -> MetaStores:
+    meta_db = settings.mongodb_meta_db_name
     return MetaStores(
-        summaries=MongoRunSummaryRepository(
-            clients.mongo, settings.mongodb_meta_db_name
-        ),
+        summaries=MongoRunSummaryRepository(clients.mongo, meta_db),
+        statistics=MongoStatisticsRepository(clients.mongo, meta_db),
     )

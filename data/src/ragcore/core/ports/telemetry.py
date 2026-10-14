@@ -1,6 +1,7 @@
 from typing import Any, Protocol, runtime_checkable
 
 from ..models.audit import AuditEvent
+from ..models.run_measures import MeasurePath, RunMeasures
 from ..models.run_stats import RunStats
 from ..models.unknown_tally import UnknownExample
 from .runtime import AsyncRuntime
@@ -25,6 +26,15 @@ class WorkerTelemetry(TelemetryPort, Protocol):
 
     def snapshot(self) -> RunStats:
         """À fusionner avec celui des autres workers."""
+        ...
+
+    def record_measure(self, path: MeasurePath, value: float, ref: str) -> None:
+        """Une taille ou une durée pour ``statistics`` (ADR-034 §8), jamais pour le
+        bilan. ``ref`` nomme ce qui est mesuré, un document le plus souvent."""
+        ...
+
+    def snapshot_measures(self) -> RunMeasures:
+        """À fusionner avec celles des autres workers."""
         ...
 
     def close(self) -> None: ...

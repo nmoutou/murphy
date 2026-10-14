@@ -2,7 +2,9 @@
 
 from typing import Any
 
+from ragcore.adapters.telemetry.measures import MeasuresAggregator
 from ragcore.core.models.audit import AuditEvent
+from ragcore.core.models.run_measures import MeasurePath, RunMeasures
 from ragcore.core.models.run_stats import RunStats
 from ragcore.core.models.unknown_tally import UnknownExample
 from ragcore.core.ports.runtime import AsyncRuntime
@@ -15,6 +17,7 @@ class RecordingTelemetry:
         self.logs: list[tuple[str, str]] = []
         self.closed = False
         self._declared = RunStats.empty()
+        self.measured: list[tuple[MeasurePath, float, str]] = []
 
     def emit(self, event: AuditEvent) -> None:
         self.events.append(event)
@@ -36,6 +39,18 @@ class RecordingTelemetry:
         for event in self.events:
             stats = stats.with_count(event.event_type)
         return stats
+
+    def record_measure(self, path: MeasurePath, value: float, ref: str) -> None:
+        self.measured.append((path, value, ref))
+
+    def snapshot_measures(self) -> RunMeasures:
+        aggregator = MeasuresAggregator()
+        for path, value, ref in self.measured:
+            aggregator.record(path, value, ref)
+        return aggregator.snapshot()
+
+    def values_of(self, path: MeasurePath) -> list[float]:
+        return [value for measured, value, _ in self.measured if measured == path]
 
     def events_of(self, event_type: str) -> list[AuditEvent]:
         return [e for e in self.events if e.event_type == event_type]

@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
+from time import perf_counter
 
 from ragcore.application.ingest_document import IngestDocumentUseCase
 from ragcore.application.ingestion_runner import DocumentWorkload, WorkloadResult
@@ -28,6 +29,15 @@ from ragcore.core.ports.relation_extractor import (
 )
 from ragcore.core.ports.runtime import AsyncRuntime
 from ragcore.core.ports.telemetry import WorkerTelemetry
+from ragcore.core.statistics_measures import (
+    CHUNKS,
+    CONTENT_CHARS,
+    RELATIONS,
+    STEP_EMBED,
+    document_measure,
+    milliseconds_since,
+    step_measure,
+)
 from ragcore.core.telemetry_events import PAYLOAD_COUNT_KEY, RELATION_UNKNOWN
 
 __all__ = ["UseCaseFactory", "WorkloadSteps", "build_document_workload"]
@@ -70,20 +80,57 @@ def build_document_workload(
         extraction = _extract(steps.extractor, parsed, telemetry, context)
 
         chunks = steps.chunker.chunk(parsed)
-        content = (
-            runtime.run(_embed(steps.embedder, parsed.title, chunks))
+        content, durations = (
+            _timed_embed(steps.embedder, parsed, chunks, runtime)
             if embedding_enabled
-            else _without_vectors(chunks)
+            else (_without_vectors(chunks), {})
         )
 
         use_case = use_cases.for_worker(telemetry, runtime)
-        runtime.run(
+        durations |= runtime.run(
             use_case.execute(parsed, content, context, extraction.unformatted_relations)
         )
 
+        _record_document(telemetry, parsed, len(chunks), len(extraction.relations))
+        _record_steps(telemetry, parsed, durations)
         return WorkloadResult(relations=extraction.relations)
 
     return workload
+
+
+def _timed_embed(
+    embedder: BaseEmbedder,
+    parsed: ParsedDocument,
+    chunks: list[Chunk],
+    runtime: AsyncRuntime,
+) -> tuple[SearchContent, dict[str, float]]:
+    started = perf_counter()
+    content = runtime.run(_embed(embedder, parsed.title, chunks))
+    return content, {STEP_EMBED: milliseconds_since(started)}
+
+
+def _record_steps(
+    telemetry: WorkerTelemetry, parsed: ParsedDocument, durations: dict[str, float]
+) -> None:
+    ref = parsed.identifier.serialize()
+    for step, milliseconds in durations.items():
+        telemetry.record_measure(step_measure(parsed.source, step), milliseconds, ref)
+
+
+def _record_document(
+    telemetry: WorkerTelemetry,
+    parsed: ParsedDocument,
+    chunk_count: int,
+    relation_count: int,
+) -> None:
+    ref = parsed.identifier.serialize()
+    sizes = {
+        CONTENT_CHARS: len(parsed.content),
+        CHUNKS: chunk_count,
+        RELATIONS: relation_count,
+    }
+    for name, size in sizes.items():
+        telemetry.record_measure(document_measure(parsed.source, name), size, ref)
 
 
 async def _embed(

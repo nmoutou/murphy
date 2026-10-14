@@ -5,6 +5,7 @@ import logging
 from typing import Any
 
 from ragcore.core.models.audit import AuditEvent
+from ragcore.core.models.run_measures import MeasurePath, RunMeasures
 from ragcore.core.models.run_stats import RunStats
 from ragcore.core.models.unknown_tally import UnknownExample
 
@@ -47,8 +48,14 @@ class WorkerTelemetryStack:
     def record_collision(self, key: str, source_files: tuple[str, ...]) -> None:
         self._backends.aggregate.record_collision(key, source_files)
 
+    def record_measure(self, path: MeasurePath, value: float, ref: str) -> None:
+        self._backends.measures.record(path, value, ref)
+
     def snapshot(self) -> RunStats:
         return self._backends.aggregate.snapshot()
+
+    def snapshot_measures(self) -> RunMeasures:
+        return self._backends.measures.snapshot()
 
     def close(self) -> None:
         """Un backend qui échoue à se fermer n'empêche pas les suivants ; l'échec est
