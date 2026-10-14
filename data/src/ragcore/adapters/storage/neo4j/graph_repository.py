@@ -4,6 +4,10 @@ Un nœud est identifié par son seul ``identifier`` sérialisé et porte deux la
 ``Document``, qui porte la contrainte d'unicité, et celui de son ``document_type``.
 """
 
+from collections import defaultdict
+from collections.abc import Iterator
+from typing import Any
+
 import neo4j
 
 from ragcore.core.models.document import ParsedDocument
@@ -21,6 +25,49 @@ _MERGE_NODE = (
     f"MERGE (d:{DOCUMENT_LABEL} {{identifier: $identifier}})"
     " SET d:$($label) SET d += $props RETURN d"
 )
+
+
+_RELATION_BATCH_SIZE = 5_000
+"""Les arêtes d'une requête : assez pour amortir l'aller-retour, assez peu pour une
+transaction légère."""
+
+_UPSERT_RELATIONS = (
+    "UNWIND $rows AS row"
+    f" MATCH (a:{DOCUMENT_LABEL} {{identifier: row.source}})"
+    f" MATCH (b:{DOCUMENT_LABEL} {{identifier: row.target}})"
+    " MERGE (a)-[r:$($relation_type)]->(b)"
+    " SET r += row.props SET r.run_id = $run_id"
+    " RETURN row.index AS index"
+)
+
+Row = dict[str, Any]
+
+
+def _batches(relations: list[Relation]) -> Iterator[tuple[str, list[Row]]]:
+    """Les lignes d'un verbe, par lots. ``index`` est la position dans l'entrée."""
+    by_type: dict[str, list[Row]] = defaultdict(list)
+    for index, relation in enumerate(relations):
+        by_type[relation.relation_type].append(
+            {
+                "index": index,
+                "source": relation.source_identifier.serialize(),
+                "target": relation.target_identifier.serialize(),
+                "props": dict(relation.metadata),
+            }
+        )
+    for relation_type, rows in by_type.items():
+        for start in range(0, len(rows), _RELATION_BATCH_SIZE):
+            yield relation_type, rows[start : start + _RELATION_BATCH_SIZE]
+
+
+async def _write_batch(
+    session: neo4j.AsyncSession, relation_type: str, rows: list[Row], run_id: RunId
+) -> set[int]:
+    """Rend les indices des arêtes écrites."""
+    result = await session.run(
+        _UPSERT_RELATIONS, rows=rows, relation_type=relation_type, run_id=run_id
+    )
+    return {record["index"] async for record in result}
 
 
 class Neo4jGraphRepository:
@@ -47,40 +94,25 @@ class Neo4jGraphRepository:
     async def upsert_relations(
         self, relations: list[Relation], run_id: RunId
     ) -> RelationWriteResult:
-        """Le type d'arête est le verbe, pour une traversée native
+        """Par lots ``UNWIND`` d'un seul verbe : une requête par lot, pas par arête.
+
+        Le type d'arête est le verbe, pour une traversée native
         (``MATCH (a)-[:cite]->(b)``). Le paramétrer (``$(...)``, Cypher 5.26+) est sûr :
         un ``ValidatedVerb`` n'a rien à injecter.
 
-        Un ``MATCH`` sans résultat réussit sans rien écrire : seul le ``RETURN r``
-        distingue l'arête écrite de la différée.
+        Une ligne dont un ``MATCH`` échoue disparaît du lot sans erreur : seuls les
+        indices rendus distinguent l'arête écrite de la différée.
         """
-        written: list[Relation] = []
-        pending: list[Relation] = []
-
-        matched = (
-            f"MATCH (a:{DOCUMENT_LABEL} {{identifier: $source_identifier}})"
-            f" MATCH (b:{DOCUMENT_LABEL} {{identifier: $target_identifier}})"
-            " MERGE (a)-[r:$($relation_type)]->(b)"
-            " SET r += $props SET r.run_id = $run_id RETURN r"
-        )
-
+        written_indices: set[int] = set()
         async with self._driver.session() as session:
-            for relation in relations:
-                result = await session.run(
-                    matched,
-                    source_identifier=relation.source_identifier.serialize(),
-                    target_identifier=relation.target_identifier.serialize(),
-                    relation_type=relation.relation_type,
-                    props=dict(relation.metadata),
-                    run_id=run_id,
+            for relation_type, rows in _batches(relations):
+                written_indices |= await _write_batch(
+                    session, relation_type, rows, run_id
                 )
-                record = await result.single()
-                if record is None:
-                    pending.append(relation)
-                else:
-                    written.append(relation)
-
-        return RelationWriteResult(written=written, pending=pending)
+        return RelationWriteResult(
+            written=[r for i, r in enumerate(relations) if i in written_indices],
+            pending=[r for i, r in enumerate(relations) if i not in written_indices],
+        )
 
     async def existing_node_ids(self, identifiers: list[Identifier]) -> set[str]:
         if not identifiers:

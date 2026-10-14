@@ -241,7 +241,10 @@ Quatre temps :
    était impossible. Ne touche que la **contenance** (type `titre`) : réduire une
    citation détruirait un fait. Les arêtes réduites sont comptées à part
    (`reduced_count`) — redondantes, pas absentes.
-1. **Écriture en batch** (`graph_repo.upsert_relations(relations, run_id)`). Chaque arête
+1. **Écriture par lots** (`graph_repo.upsert_relations(relations, run_id)`) : une requête
+   `UNWIND` par lot de 5 000 arêtes d'un même verbe (`_RELATION_BATCH_SIZE`), jamais une
+   par arête. Un `MATCH` sans résultat retire la ligne du lot sans erreur : seuls les
+   indices rendus distinguent l'arête écrite de la différée. Chaque arête
    écrite est taguée du `run_id` : c'est ce qui la rend compensable à la maille du run
    sans emporter les arêtes d'autres runs. `relation.upserted` porte le compte des arêtes
    **réussies** (pas « tentées »).

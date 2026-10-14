@@ -183,6 +183,7 @@ définition que l'ingestion applique est
   d'inspection de la v0.
 - **Arêtes** : écrites en phase 2 uniquement, `MERGE (a)-[r:TYPE]->(b)` avec le **verbe
   comme type d'arête** (type paramétré natif), taguées du `run_id` qui les a posées
-  (compensabilité à la maille du run). Une cible absente ne crée pas de nœud fantôme :
+  (compensabilité à la maille du run), par lots `UNWIND` d'un même verbe (ADR-034 §5).
+  Une cible absente ne crée pas de nœud fantôme :
   la relation part en pendante. Une cible décrite est une ligne
   d'`unformatted_relations`, pas un nœud.

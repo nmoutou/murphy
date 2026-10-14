@@ -2,7 +2,7 @@
 de Cypher.
 
 L'affirmation à prouver : un ``MATCH`` sans résultat réussit sans rien écrire, et
-``result.single()`` rend ``None``, donc l'arête ressort en ``pending``.
+retire la ligne du lot ``UNWIND`` sans erreur, donc l'arête ressort en ``pending``.
 """
 
 from datetime import UTC, datetime
@@ -11,10 +11,11 @@ import pytest
 from neo4j.exceptions import ConstraintError
 from testcontainers.neo4j import Neo4jContainer
 
+from ragcore.adapters.storage.neo4j import graph_repository
 from ragcore.adapters.storage.neo4j.client import create_neo4j_driver
 from ragcore.adapters.storage.neo4j.graph_repository import Neo4jGraphRepository
 from ragcore.adapters.storage.neo4j.schema import ensure_graph_constraints
-from ragcore.core.links import CITE
+from ragcore.core.links import CITE, CONTIENT
 from ragcore.core.models.document import ParsedDocument
 from ragcore.core.models.enums import DocumentType, SourceName
 from ragcore.core.models.identifiers import Identifier, RunId
@@ -163,6 +164,77 @@ async def test_upserting_the_same_edge_twice_creates_one_edge(repo) -> None:
     await repo.upsert_relations([_relation(1, 2)], RUN)
 
     assert await _edge_types(repo) == ["cite"], "une seule arête, pas deux"
+
+
+# ── Par lots UNWIND (ADR-034 §5) ─────────────────────────────────────────────
+
+
+def _verb(source: int, target: int, verb: str) -> Relation:
+    return _relation(source, target).model_copy(update={"relation_type": verb})
+
+
+async def test_a_batch_mixing_verbs_and_missing_targets_keeps_the_input_order(
+    repo,
+) -> None:
+    """Un lot par verbe ; ce qu'un ``MATCH`` écarte revient en ``pending``, dans
+    l'ordre de l'entrée."""
+    for n in (1, 2, 3):
+        await repo.merge_document_node(_doc(n))
+    relations = [
+        _relation(1, 2),
+        _verb(1, 99, CONTIENT),
+        _verb(2, 3, CONTIENT),
+        _relation(3, 98),
+        _relation(2, 1),
+    ]
+
+    result = await repo.upsert_relations(relations, RUN)
+
+    assert result.written == [relations[0], relations[2], relations[4]]
+    assert result.pending == [relations[1], relations[3]]
+    assert await _edge_types(repo) == ["cite", "cite", "contient"]
+
+
+async def test_the_batches_cover_every_relation_across_their_boundary(
+    repo, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(graph_repository, "_RELATION_BATCH_SIZE", 2)
+    for n in range(1, 7):
+        await repo.merge_document_node(_doc(n))
+    relations = [_relation(n, n + 1) for n in range(1, 6)] + [_relation(6, 99)]
+
+    result = await repo.upsert_relations(relations, RUN)
+
+    assert result.written == relations[:5]
+    assert result.pending == [relations[5]]
+    assert await _edge_count(repo) == 5
+
+
+async def test_a_relation_declared_twice_in_a_batch_is_one_edge(repo) -> None:
+    """Deux documents déclarent la même arête : ``MERGE`` n'en garde qu'une, et les
+    deux déclarations sont écrites."""
+    await repo.merge_document_node(_doc(1))
+    await repo.merge_document_node(_doc(2))
+
+    result = await repo.upsert_relations([_relation(1, 2), _relation(1, 2)], RUN)
+
+    assert len(result.written) == 2
+    assert await _edge_count(repo) == 1
+
+
+async def test_a_batched_edge_carries_its_metadata_and_its_run(repo) -> None:
+    await repo.merge_document_node(_doc(1))
+    await repo.merge_document_node(_doc(2))
+    relation = _relation(1, 2).model_copy(update={"metadata": {"typelien": "CITATION"}})
+
+    await repo.upsert_relations([relation], RUN)
+
+    async with repo._driver.session() as session:  # noqa: SLF001 — on inspecte le graphe
+        result = await session.run(
+            "MATCH ()-[r]->() RETURN r.typelien AS t, r.run_id AS run"
+        )
+        record = await result.single()
+    assert (record["t"], record["run"]) == ("CITATION", RUN)
 
 
 async def test_existing_node_ids_returns_only_what_exists(repo) -> None:
