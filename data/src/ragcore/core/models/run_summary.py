@@ -8,7 +8,7 @@ donc après la réduction, une seule fois, par ``RunSummary.of()``.
 from datetime import UTC, datetime
 from enum import StrEnum
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from ragcore.core.telemetry_events import (
     DOCUMENT_FAILED,
@@ -20,10 +20,11 @@ from ragcore.core.telemetry_events import (
 from .collision_tally import CollisionTally
 from .enums import SourceName
 from .identifiers import RunId
+from .inventory import FULL_RATIO, SourceInventory
 from .run_stats import RunStats
 from .unknown_tally import UnknownTally
 
-__all__ = ["RunStatus", "RunSummary"]
+__all__ = ["RunSampling", "RunStatus", "RunSummary"]
 
 
 class RunStatus(StrEnum):
@@ -32,6 +33,18 @@ class RunStatus(StrEnum):
     """Le run est allé au bout sans tout ingérer. La complétude se lit dans les
     compteurs, elle ne se déduit pas de l'absence d'exception."""
     FAILED = "failed"
+
+
+class RunSampling(BaseModel):
+    """La part du corpus que le run a lue (ADR-034 §9) : de la comptabilité, un run
+    ``ok`` à 10 % ne doit pas passer pour un run complet."""
+
+    model_config = ConfigDict(frozen=True)
+
+    ingestion_ratio: float = FULL_RATIO
+    sources: dict[SourceName, SourceInventory] = Field(default_factory=dict)
+    """Par source, les documents retenus sur le total de la passe 1. Vide si le run a
+    cassé avant elle."""
 
 
 class RunSummary(BaseModel):
@@ -55,6 +68,10 @@ class RunSummary(BaseModel):
     collisions: dict[str, CollisionTally]
     """Les clés de métadonnée qui ont reçu plusieurs valeurs distinctes (ADR-025)."""
 
+    ingestion_ratio: float = FULL_RATIO
+    sampling: dict[SourceName, SourceInventory] = Field(default_factory=dict)
+    """Voir ``RunSampling``. Des défauts : les bilans écrits avant eux se relisent."""
+
     error_message: str | None = None
     """Seulement sur un run ``failed`` : un ``degraded`` n'a pas d'exception, il se lit
     dans les compteurs."""
@@ -70,12 +87,14 @@ class RunSummary(BaseModel):
         status: RunStatus,
         error_message: str | None = None,
         ended_at: datetime | None = None,
+        sampling: RunSampling | None = None,
     ) -> "RunSummary":
         """Un statut « ok » est vérifié contre les compteurs : l'appelant sait seulement
         si Kedro a levé, pas si des documents ont été perdus en route.
         """
         if status is RunStatus.OK:
             status = _status_from(stats)
+        sampling = sampling or RunSampling()
         return cls(
             run_id=context_run_id,
             sources=sources,
@@ -85,6 +104,8 @@ class RunSummary(BaseModel):
             counts=stats.counts,
             unknowns=stats.unknowns,
             collisions=stats.collisions,
+            ingestion_ratio=sampling.ingestion_ratio,
+            sampling=sampling.sources,
             error_message=error_message,
         )
 

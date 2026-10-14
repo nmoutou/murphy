@@ -4,8 +4,10 @@ liste."""
 from __future__ import annotations
 
 import logging
+from collections.abc import Mapping
 from pathlib import Path
 from time import perf_counter
+from typing import Protocol
 
 from ragcore.application.run_context import PipelineContext
 from ragcore.core.models.audit import build_event
@@ -47,17 +49,27 @@ _SKIP_EVENT_BY_REASON = {
 }
 
 
+class InventorySink(Protocol):
+    """Le bilan du run, qui porte le nombre de documents retenus par source."""
+
+    def record_inventories(
+        self, inventories: Mapping[SourceName, SourceInventory]
+    ) -> None: ...
+
+
 def connect_node(
     connector: BaseConnector,
     pipeline_context: PipelineContext,
     telemetry: WorkerTelemetry,
     stage_clock: StageClock,
+    run_sink: InventorySink,
     nuke_done: dict[str, bool],
 ) -> list[RawDocument]:
     del nuke_done  # simple signal : nukeAll tourne avant connect
 
     with stage_clock.stage(STAGE_DISCOVERY):
         inventories = connector.discover()
+    run_sink.record_inventories(inventories)
     _announce(inventories)
 
     with stage_clock.stage(STAGE_PHASE1):
@@ -76,9 +88,17 @@ def connect_node(
     return documents
 
 
-def _announce(inventories: dict[SourceName, SourceInventory]) -> None:
+def _announce(inventories: Mapping[SourceName, SourceInventory]) -> None:
     for source, inventory in inventories.items():
-        logger.info("Passe 1 : %s, %d documents", source.value, inventory.documents)
+        if inventory.retained < inventory.total:
+            logger.warning(
+                "Passe 1 : %s, %d documents retenus sur %d (ingestion_ratio)",
+                source.value,
+                inventory.retained,
+                inventory.total,
+            )
+        else:
+            logger.info("Passe 1 : %s, %d documents", source.value, inventory.total)
 
 
 def _read_all(

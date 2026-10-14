@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from pydantic_core import ErrorDetails
 
 __all__ = [
@@ -36,6 +36,8 @@ class DevParameters(_StrictParameters):
     """Écrits dans Mongo et Neo4j."""
     include_content_neo4j: bool
     """Sous ``_text_content``."""
+    ingestion_ratio: float = Field(gt=0, le=1)
+    """La part de chaque source ingérée, dans ]0, 1] (ADR-034 §9)."""
 
 
 class RunParameters(_StrictParameters):

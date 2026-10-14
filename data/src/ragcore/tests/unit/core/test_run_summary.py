@@ -12,6 +12,7 @@ from ragcore.core.models.audit import build_event
 from ragcore.core.models.collision_tally import CollisionTally
 from ragcore.core.models.enums import SourceName
 from ragcore.core.models.identifiers import RunId
+from ragcore.core.models.inventory import SourceInventory
 from ragcore.core.models.run_stats import RunStats
 from ragcore.core.models.run_summary import RunStatus, RunSummary
 from ragcore.core.models.unknown_tally import UnknownExample, UnknownTally
@@ -204,3 +205,31 @@ def test_the_summary_projects_the_reduction_of_n_workers() -> None:
     assert summary.counts[DOCUMENT_PERSISTED] == 5
     assert summary.unknowns["field"] == {"NOTA": UnknownTally(count=5, example=DOC_1)}
     assert summary.run_id == RUN  # l'identité vient du contexte, pas des workers
+
+
+def test_a_partial_run_says_how_much_it_read() -> None:
+    """Un run `ok` à 10 % ne doit pas passer pour un run complet (ADR-034 §9)."""
+    aggregator = RunStatsAggregator(
+        RUN, (SourceName.LEGI,), datetime.now(UTC), ingestion_ratio=0.1
+    )
+    aggregator.record_inventories(
+        {SourceName.LEGI: SourceInventory(total=2116313, retained=211632)}
+    )
+
+    document = json.loads(aggregator.finalize(RunStatus.OK).model_dump_json())
+
+    assert document["ingestion_ratio"] == 0.1
+    assert document["sampling"] == {"legi": {"total": 2116313, "retained": 211632}}
+
+
+def test_a_summary_written_before_the_sampling_still_reads() -> None:
+    document = json.loads(
+        RunStatsAggregator(RUN, (), datetime.now(UTC))
+        .finalize(RunStatus.OK)
+        .model_dump_json()
+    )
+    del document["ingestion_ratio"], document["sampling"]
+
+    summary = RunSummary.model_validate(document)
+
+    assert (summary.ingestion_ratio, summary.sampling) == (1, {})

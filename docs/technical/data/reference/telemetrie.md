@@ -103,7 +103,10 @@ les compterait deux fois).
 ## Le statut d'un run
 
 `RunSummary` = l'identité du run (run_id, `sources`, dates) + les `counts`, les
-`unknowns` et les `collisions` de l'agrégat, recopiés à plat + le `status`. Le statut annoncé « ok » par le hook est **re-dérivé des compteurs**
+`unknowns` et les `collisions` de l'agrégat, recopiés à plat + le `status` + la part du
+corpus lue : `ingestion_ratio` et, par source, `sampling` (`{total, retained}`, de la
+passe 1 ; vide si le run a cassé avant elle). Un run `ok` à 10 % ne doit pas passer pour
+un run complet (ADR-034 §9). Le statut annoncé « ok » par le hook est **re-dérivé des compteurs**
 (`_status_from`) — deux propriétés :
 
 1. **Complet ?** `fetched == persisted + invalidated + failed` — **l'équation de
@@ -138,7 +141,9 @@ document est plat :
     "links": { "ZORGLUB": { "count": 1, "example": { … } } } },
   "collisions": {
     "versions_a_venir": { "count": 14, "example": [
-      "/…/texte/version/LEGITEXT….xml" ] } } }
+      "/…/texte/version/LEGITEXT….xml" ] } },
+  "ingestion_ratio": 0.1,
+  "sampling": { "legi": { "total": 2116313, "retained": 211632 } } }
 ```
 
 `sources` est toujours une liste, même pour un run mono-source. `error_message` n'est

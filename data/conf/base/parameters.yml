@@ -23,3 +23,8 @@ include_path: true
 # Le texte du document sur son nœud Neo4j (`_text_content`), en plus des métadonnées,
 # toujours présentes en dev (ADR-011). Même remarque sans `nuke_all`.
 include_content_neo4j: true
+
+# La part de chaque source ingérée, dans ]0, 1] : les ⌈ratio × n⌉ fichiers de plus petit
+# hash, les mêmes d'un run à l'autre. Un run partiel laisse la plupart des arêtes
+# pendantes : son graphe n'est pas représentatif (ADR-034).
+ingestion_ratio: 1

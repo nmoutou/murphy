@@ -60,6 +60,7 @@ def _connect() -> Node:
             "pipeline_context",
             "telemetry",
             "stage_clock",
+            "run_sink",
             # Simple signal : nukeAll avant connect
             "nuke_done",
         ],

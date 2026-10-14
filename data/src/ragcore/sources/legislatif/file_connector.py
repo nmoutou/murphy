@@ -2,7 +2,7 @@
 d'export.
 
 Les ``versions.xml`` partagent tous la clé ``versions`` : la passe 1 les met à part, et
-ils sont lus un par un après les documents. Un ``<VERSIONS>`` ou un ``<ID>`` nu est un
+ils sont lus un par un après les documents, quel que soit ``ingestion_ratio``. Un ``<VERSIONS>`` ou un ``<ID>`` nu est un
 artefact, écarté et compté pour ne pas noyer les vrais rejets. Tout autre
 ``versions.xml`` est rejeté : son ``<ID>`` n'est pas son nom.
 """
@@ -12,7 +12,7 @@ from pathlib import Path
 
 from ragcore.core.models.document import RawDocument
 from ragcore.core.models.enums import SourceName
-from ragcore.core.models.inventory import SourceInventory
+from ragcore.core.models.inventory import FULL_RATIO, SourceInventory
 from ragcore.core.services.exclusion_reasons import REASON_EXPORT_ARTIFACT
 from ragcore.sources.generic import KeyedFileConnector, locate_id
 
@@ -27,9 +27,9 @@ _EXPORT_ARTIFACT_ROOTS = frozenset({"VERSIONS", "ID"})
 class LegiFileConnector:
     source_name = SourceName.LEGI
 
-    def __init__(self, root: Path | str) -> None:
+    def __init__(self, root: Path | str, ingestion_ratio: float = FULL_RATIO) -> None:
         self._files = KeyedFileConnector(
-            root, SourceName.LEGI, set_aside=(_EXPORT_ARTIFACT_KEY,)
+            root, SourceName.LEGI, ingestion_ratio, set_aside=(_EXPORT_ARTIFACT_KEY,)
         )
 
     @property

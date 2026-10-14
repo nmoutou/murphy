@@ -26,8 +26,9 @@ __all__ = ["SOURCES", "SourceDefinition", "definition_for"]
 class SourceDefinition:
     """Tout ce que ragcore doit savoir d'une source."""
 
-    connector: Callable[[Path], Any]
-    """Une fabrique : le chemin racine n'est connu qu'à l'exécution."""
+    connector: Callable[[Path, float], Any]
+    """Une fabrique : le chemin racine et ``ingestion_ratio`` ne sont connus qu'à
+    l'exécution."""
 
     table: RoleTable
     subdirectory: str
@@ -37,7 +38,7 @@ class SourceDefinition:
 
 SOURCES: Mapping[SourceName, SourceDefinition] = {
     SourceName.LEGI: SourceDefinition(
-        connector=lambda root: LegiFileConnector(root),
+        connector=lambda root, ratio: LegiFileConnector(root, ratio),
         table=LEGI_ROLE_TABLE,
         subdirectory="LEGI",
     ),
@@ -46,27 +47,29 @@ SOURCES: Mapping[SourceName, SourceDefinition] = {
     # Le connecteur générique : un fichier par décision, aucun artefact d'export. CAPP,
     # CASS et INCA partagent la même table : même racine, `TEXTE_JURI_JUDI`.
     SourceName.CAPP: SourceDefinition(
-        connector=lambda root: KeyedFileConnector(root, SourceName.CAPP),
+        connector=lambda root, ratio: KeyedFileConnector(root, SourceName.CAPP, ratio),
         table=JURI_JUDI_ROLE_TABLE,
         subdirectory="CAPP",
     ),
     SourceName.CASS: SourceDefinition(
-        connector=lambda root: KeyedFileConnector(root, SourceName.CASS),
+        connector=lambda root, ratio: KeyedFileConnector(root, SourceName.CASS, ratio),
         table=JURI_JUDI_ROLE_TABLE,
         subdirectory="CASS",
     ),
     SourceName.INCA: SourceDefinition(
-        connector=lambda root: KeyedFileConnector(root, SourceName.INCA),
+        connector=lambda root, ratio: KeyedFileConnector(root, SourceName.INCA, ratio),
         table=JURI_JUDI_ROLE_TABLE,
         subdirectory="INCA",
     ),
     SourceName.JADE: SourceDefinition(
-        connector=lambda root: KeyedFileConnector(root, SourceName.JADE),
+        connector=lambda root, ratio: KeyedFileConnector(root, SourceName.JADE, ratio),
         table=JURI_ADMIN_ROLE_TABLE,
         subdirectory="JADE",
     ),
     SourceName.CONSTIT: SourceDefinition(
-        connector=lambda root: KeyedFileConnector(root, SourceName.CONSTIT),
+        connector=lambda root, ratio: KeyedFileConnector(
+            root, SourceName.CONSTIT, ratio
+        ),
         table=JURI_CONSTIT_ROLE_TABLE,
         subdirectory="CONSTIT",
     ),

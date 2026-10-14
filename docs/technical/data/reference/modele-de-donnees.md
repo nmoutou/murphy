@@ -117,7 +117,7 @@ données.
 
 | Collection | Contenu | Index |
 |---|---|---|
-| `run_summaries` | Un `RunSummary` par run, à plat : run_id, `sources` (liste), dates, `status` (`ok`/`degraded`/`failed`), `counts`, `unknowns` (`tags` / `roots` / `links` → clé → `{count, example: {identifier, source_file}}`, ADR-024), `collisions` (clé → `{count, example: [fichiers]}`, ADR-025), et `error_message` sur un run `failed` seulement. | unique (run_id), (started_at) |
+| `run_summaries` | Un `RunSummary` par run, à plat : run_id, `sources` (liste), dates, `status` (`ok`/`degraded`/`failed`), `counts`, `unknowns` (`tags` / `roots` / `links` → clé → `{count, example: {identifier, source_file}}`, ADR-024), `collisions` (clé → `{count, example: [fichiers]}`, ADR-025), `ingestion_ratio` et `sampling` (par source, `{total, retained}`, ADR-034 §9), et `error_message` sur un run `failed` seulement. | unique (run_id), (started_at) |
 | `statistics` | Les mesures d'un run (ADR-034 §8) : run_id, `started_at`, `stages_s` (durée de chaque étape, en secondes), `documents` (par source, des `Distribution` de tailles et de durées). Écrit même pour un run `failed`. Voir [telemetrie.md](telemetrie.md#les-statistiques-dun-run). | unique (run_id) |
 
 ## OpenSearch

@@ -51,7 +51,23 @@ def test_la_passe_1_compte_les_cles_sans_les_artefacts(corpus: Path) -> None:
     part."""
     inventory = LegiFileConnector(corpus).discover()
 
-    assert inventory == {SourceName.LEGI: SourceInventory(documents=len(DOCUMENTS))}
+    assert inventory == {
+        SourceName.LEGI: SourceInventory(total=len(DOCUMENTS), retained=len(DOCUMENTS))
+    }
+
+
+def test_un_ratio_reduit_n_emet_que_les_cles_retenues(corpus: Path) -> None:
+    """Choisies avant toute lecture ; les facettes d'une clé retenue voyagent
+    ensemble, et les artefacts d'export sont toujours écartés."""
+    connector = LegiFileConnector(corpus, ingestion_ratio=0.5)
+
+    (inventory,) = connector.discover().values()
+    docs = {doc.source_document_id: doc for doc in connector.fetch_all()}
+
+    assert inventory == SourceInventory(total=9, retained=5)
+    assert len(docs) == 5
+    assert set(docs) < DOCUMENTS
+    assert connector.skipped == {REASON_EXPORT_ARTIFACT: 1}
 
 
 def test_fetch_all_est_un_generateur(corpus: Path) -> None:

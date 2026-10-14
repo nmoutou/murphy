@@ -2,7 +2,8 @@
 hors `document.fetched`, donc hors équation de complétude.
 """
 
-from collections.abc import Iterator
+import logging
+from collections.abc import Iterator, Mapping
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -47,14 +48,17 @@ class _ConnectorWithSkips:
         self._documents = documents
 
     def discover(self) -> dict[SourceName, SourceInventory]:
-        return {SourceName.LEGI: SourceInventory(documents=len(self._documents))}
+        count = len(self._documents)
+        return {SourceName.LEGI: SourceInventory(total=count * 2, retained=count)}
 
     def fetch_all(self) -> Iterator[RawDocument]:
         yield from self._documents
 
 
 def _run(
-    connector: _ConnectorWithSkips, stage_clock: StageClock | None = None
+    connector: _ConnectorWithSkips,
+    stage_clock: StageClock | None = None,
+    sink: "_SpySink | None" = None,
 ) -> RecordingTelemetry:
     telemetry = RecordingTelemetry()
     context = PipelineContext.create(sources=(SourceName.LEGI,))
@@ -63,9 +67,32 @@ def _run(
         pipeline_context=context,
         telemetry=telemetry,
         stage_clock=stage_clock or StageClock(),
+        run_sink=sink or _SpySink(),
         nuke_done={},
     )
     return telemetry
+
+
+class _SpySink:
+    def __init__(self) -> None:
+        self.inventories: dict[SourceName, SourceInventory] = {}
+
+    def record_inventories(
+        self, inventories: Mapping[SourceName, SourceInventory]
+    ) -> None:
+        self.inventories.update(inventories)
+
+
+def test_l_inventaire_rejoint_le_bilan_et_un_run_partiel_est_annonce(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    sink = _SpySink()
+
+    with caplog.at_level(logging.WARNING):
+        _run(_ConnectorWithSkips({}, (_raw([]),)), sink=sink)
+
+    assert sink.inventories == {SourceName.LEGI: SourceInventory(total=2, retained=1)}
+    assert "1 documents retenus sur 2" in caplog.text
 
 
 def _raw(files: list[Path]) -> RawDocument:

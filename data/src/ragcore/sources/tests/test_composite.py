@@ -39,7 +39,7 @@ class _FakeConnector:
         self.skipped = skipped or {}
 
     def discover(self) -> dict[SourceName, SourceInventory]:
-        return {self._source: SourceInventory(documents=self._count)}
+        return {self._source: SourceInventory(total=self._count, retained=self._count)}
 
     def fetch_all(self) -> Iterator[RawDocument]:
         for i in range(self._count):
@@ -70,8 +70,8 @@ def test_composite_discovers_every_source() -> None:
     )
 
     assert composite.discover() == {
-        SourceName.LEGI: SourceInventory(documents=2),
-        SourceName.CASS: SourceInventory(documents=3),
+        SourceName.LEGI: SourceInventory(total=2, retained=2),
+        SourceName.CASS: SourceInventory(total=3, retained=3),
     }
 
 

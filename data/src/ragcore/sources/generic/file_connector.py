@@ -17,11 +17,12 @@ from xml.etree import ElementTree as ET
 
 from ragcore.core.models.document import RawDocument
 from ragcore.core.models.enums import SourceName
-from ragcore.core.models.inventory import SourceInventory
+from ragcore.core.models.inventory import FULL_RATIO, SourceInventory
 from ragcore.core.services.exclusion_reasons import (
     REASON_ID_MISMATCH,
     REASON_UNREADABLE,
 )
+from ragcore.core.services.key_sampling import select_keys
 
 from .xml_tree import locate_id, read_root, to_tree
 
@@ -38,19 +39,23 @@ Facet = tuple[str, dict[str, Any]]
 class KeyedFileConnector:
     """Un document par clé, de une ou plusieurs facettes.
 
-    ``set_aside`` nomme des clés que la passe 1 met à part, sans les émettre : celles
-    d'un nom de fichier partagé par des fichiers sans rapport (LEGI : ``versions``).
-    L'appelant les traite (``set_aside_paths``).
+    ``ingestion_ratio`` (ADR-034 §9) choisit les clés émises avant toute lecture : un
+    document écarté ne coûte rien. ``set_aside`` nomme des clés que la passe 1 met à
+    part, sans les émettre ni les échantillonner : celles d'un nom de fichier partagé
+    par des fichiers sans rapport (LEGI : ``versions``). L'appelant les traite
+    (``set_aside_paths``).
     """
 
     def __init__(
         self,
         root: Path | str,
         source: SourceName,
+        ingestion_ratio: float = FULL_RATIO,
         set_aside: Collection[str] = (),
     ) -> None:
         self._root = Path(root)
         self._source = source
+        self._ratio = ingestion_ratio
         self._set_aside_keys = frozenset(set_aside)
         self._index: dict[str, list[str]] | None = None
         self.set_aside_paths: list[str] = []
@@ -70,8 +75,10 @@ class KeyedFileConnector:
         self.set_aside_paths = sorted(
             path for key in self._set_aside_keys for path in index.pop(key, [])
         )
-        self._index = index
-        return {self._source: SourceInventory(documents=len(index))}
+        self._index = self._sample(index)
+        return {
+            self._source: SourceInventory(total=len(index), retained=len(self._index))
+        }
 
     def fetch_all(self) -> Iterator[RawDocument]:
         """Les clés dans l'ordre, pour un run reproductible. Chacune quitte l'index une
@@ -98,6 +105,12 @@ class KeyedFileConnector:
 
     def skip(self, reason: str) -> None:
         self.skipped[reason] = self.skipped.get(reason, 0) + 1
+
+    def _sample(self, index: dict[str, list[str]]) -> dict[str, list[str]]:
+        """Sans copie à 1 : l'index tient tout le stock."""
+        if self._ratio >= FULL_RATIO:
+            return index
+        return {key: index[key] for key in select_keys(index.keys(), self._ratio)}
 
     def _discovered_index(self) -> dict[str, list[str]]:
         if self._index is None:

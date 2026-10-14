@@ -19,7 +19,6 @@ from ragcore.adapters.config.settings import (
 from ragcore.adapters.runtime import AsyncioRuntime, AsyncioRuntimeFactory
 from ragcore.application.resolve_relations import ResolveRelationsService
 from ragcore.application.run_context import PipelineContext
-from ragcore.core.models.enums import SourceName
 from ragcore.core.models.run_summary import RunStatus
 from ragcore.core.ports.embedder import BaseEmbedder
 from ragcore.orchestration.kedro.assembly import (
@@ -81,7 +80,7 @@ class TelemetryHooks:
         ensure_indexes(clients, settings, self._runtime)
         stores = open_document_stores(clients, settings, plan, embedder.dimension)
         meta = open_meta_stores(clients, settings)
-        session = self._open_session(plan.sources, meta, embedder)
+        session = self._open_session(plan, meta, embedder)
         stack = build_processing_stack(plan, Path(settings.xml_source_path), embedder)
         return {
             "connector": stack.connector,
@@ -107,12 +106,12 @@ class TelemetryHooks:
 
     def _open_session(
         self,
-        sources: tuple[SourceName, ...],
+        plan: RunPlan,
         meta: MetaStores,
         embedder: BaseEmbedder,
     ) -> RunSession:
-        context = PipelineContext.create(sources=sources)
-        telemetry, aggregates = start_telemetry(context)
+        context = PipelineContext.create(sources=plan.sources)
+        telemetry, aggregates = start_telemetry(context, plan.ingestion_ratio)
         self._session = RunSession(
             context=context,
             telemetry=telemetry,

@@ -11,6 +11,7 @@ from typing import Any
 from ragcore.adapters.config.settings import Environment, InfraSettings
 from ragcore.adapters.storage.neo4j.node_properties import NodeHydration
 from ragcore.core.models.enums import SourceName
+from ragcore.core.models.inventory import FULL_RATIO
 from ragcore.core.models.processing import ChunkingConfig
 from ragcore.orchestration.kedro.parameters_model import (
     DevParameters,
@@ -42,6 +43,8 @@ class RunPlan:
     """``True`` retire les métadonnées non configurées (ADR-011). ``True`` hors ``dev``."""
     nuke_all: bool
     """``False`` hors ``dev``."""
+    ingestion_ratio: float
+    """La part de chaque source ingérée (ADR-034 §9). ``1`` hors ``dev``."""
 
 
 def plan_run(
@@ -65,6 +68,7 @@ def plan_run(
         embedding_enabled=dev.embedding_enabled,
         skip_unconfigured=dev.skip_unconfigured,
         nuke_all=dev.nuke_all,
+        ingestion_ratio=dev.ingestion_ratio,
     )
     if not is_dev:
         _warn_dev_ignored(settings.environment)
@@ -84,9 +88,9 @@ def _node_hydration(dev: DevParameters, is_dev: bool) -> NodeHydration:
 def _warn_dev_ignored(environment: Environment) -> None:
     logger.warning(
         "ENVIRONMENT=%s : parameters.yml est ignoré. Rien n'est "
-        "effacé, l'embedding est calculé, les métadonnées des balises non configurées "
-        "sont retirées, aucun chemin de fichier n'est écrit et les nœuds Neo4j restent "
-        "maigres.",
+        "effacé, tout le corpus est ingéré, l'embedding est calculé, les métadonnées "
+        "des balises non configurées sont retirées, aucun chemin de fichier n'est "
+        "écrit et les nœuds Neo4j restent maigres.",
         environment,
     )
 
@@ -107,6 +111,13 @@ def _log_plan(plan: RunPlan) -> None:
         "Balises non configurées : %s",
         "métadonnées retirées" if plan.skip_unconfigured else "métadonnées ingérées",
     )
+    if plan.ingestion_ratio < FULL_RATIO:
+        logger.warning(
+            "INGESTION PARTIELLE (dev, ADR-034) : ingestion_ratio=%s. Seule cette part "
+            "de chaque source est lue, et la plupart des arêtes deviendront pendantes : "
+            "le graphe n'est pas représentatif.",
+            plan.ingestion_ratio,
+        )
     if not plan.embedding_enabled:
         logger.warning(
             "EMBEDDING COUPÉ (dev, ADR-012) : aucun vecteur ne sera calculé. Les "

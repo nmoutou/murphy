@@ -6,6 +6,7 @@ tout : jamais de ``None``.
 from __future__ import annotations
 
 import logging
+from collections.abc import Mapping
 from dataclasses import dataclass
 
 from ragcore.adapters.telemetry import MeasuresAggregator, RunStatsAggregator
@@ -13,6 +14,8 @@ from ragcore.adapters.telemetry.factory import assemble_telemetry
 from ragcore.adapters.telemetry.worker_stack import WorkerTelemetryStack
 from ragcore.application.run_context import PipelineContext
 from ragcore.core.models.audit import build_event
+from ragcore.core.models.enums import SourceName
+from ragcore.core.models.inventory import FULL_RATIO, SourceInventory
 from ragcore.core.models.run_measures import RunMeasures
 from ragcore.core.models.run_statistics import RunStatistics
 from ragcore.core.models.run_stats import RunStats
@@ -45,15 +48,21 @@ class RunAggregates:
         self.stats.absorb(stats)
         self.measures.absorb(measures)
 
+    def record_inventories(
+        self, inventories: Mapping[SourceName, SourceInventory]
+    ) -> None:
+        self.stats.record_inventories(inventories)
+
 
 def start_telemetry(
-    context: PipelineContext,
+    context: PipelineContext, ingestion_ratio: float = FULL_RATIO
 ) -> tuple[WorkerTelemetryStack, RunAggregates]:
     aggregates = RunAggregates(
         stats=RunStatsAggregator(
             run_id=context.run_id,
             sources=context.sources,
             started_at=context.started_at,
+            ingestion_ratio=ingestion_ratio,
         ),
         measures=MeasuresAggregator(),
         stages=StageClock(),

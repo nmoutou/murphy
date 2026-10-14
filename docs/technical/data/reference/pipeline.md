@@ -93,11 +93,14 @@ uniquement comme **signal d'ordre** (arête du DAG).
 
 ## 2. `connect`
 
-Entrées : `connector`, le contexte, la télémétrie, `stage_clock`, `nuke_done` (signal).
+Entrées : `connector`, le contexte, la télémétrie, `stage_clock`, `run_sink`,
+`nuke_done` (signal).
 
 1. **Passe 1** (`connector.discover()`, `stages_s.discovery`) : chaque connecteur indexe
-   son arborescence sans ouvrir un fichier ; le nombre de documents de chaque source part
-   au log.
+   son arborescence sans ouvrir un fichier, et garde les clés que retient
+   `ingestion_ratio` ([configuration.md](configuration.md)). L'inventaire de chaque
+   source (documents retenus sur le total) rejoint le bilan (`run_sink`) et part au
+   log, en avertissement pour un run partiel.
 2. **Passe 2** (`connector.fetch_all()`, `stages_s.phase1`) : drainée dans une
    `list[RawDocument]`. Chaque document est mesuré (`xml_bytes`, `facets`, et
    `step_ms.read`, le temps écoulé depuis le document précédent). `connect`,

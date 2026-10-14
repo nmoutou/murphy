@@ -4,14 +4,16 @@ donc rien à verrouiller.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from datetime import UTC, datetime
 from typing import Any
 
 from ragcore.core.models.audit import AuditEvent
 from ragcore.core.models.enums import SourceName
 from ragcore.core.models.identifiers import RunId
+from ragcore.core.models.inventory import FULL_RATIO, SourceInventory
 from ragcore.core.models.run_stats import RunStats
-from ragcore.core.models.run_summary import RunStatus, RunSummary
+from ragcore.core.models.run_summary import RunSampling, RunStatus, RunSummary
 from ragcore.core.models.unknown_tally import UnknownExample
 from ragcore.core.services.unknown_categories import UNKNOWN_CATEGORIES
 from ragcore.core.telemetry_events import COUNT_CARRYING_EVENTS, PAYLOAD_COUNT_KEY
@@ -44,11 +46,14 @@ class RunStatsAggregator:
         run_id: RunId,
         sources: tuple[SourceName, ...],
         started_at: datetime,
+        ingestion_ratio: float = FULL_RATIO,
     ) -> None:
+        """``ingestion_ratio`` ne sert qu'au bilan : un worker ne finalise pas."""
         self._run_id = run_id
         self._sources = sources
         self._started_at = started_at
         self._stats = RunStats.empty()
+        self._sampling = RunSampling(ingestion_ratio=ingestion_ratio)
 
     @property
     def counts(self) -> dict[str, int]:
@@ -71,6 +76,13 @@ class RunStatsAggregator:
     def record_collision(self, key: str, source_files: tuple[str, ...]) -> None:
         """Rangée en liste ou refusée, une clé en collision se compte."""
         self._stats = self._stats.with_collision(key, source_files)
+
+    def record_inventories(
+        self, inventories: Mapping[SourceName, SourceInventory]
+    ) -> None:
+        self._sampling = self._sampling.model_copy(
+            update={"sources": {**self._sampling.sources, **inventories}}
+        )
 
     def snapshot(self) -> RunStats:
         return self._stats
@@ -95,4 +107,5 @@ class RunStatsAggregator:
             status=RunStatus(status),
             error_message=error_message,
             ended_at=datetime.now(UTC),
+            sampling=self._sampling,
         )
