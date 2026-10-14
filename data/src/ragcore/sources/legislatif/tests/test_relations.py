@@ -23,7 +23,7 @@ from ragcore.core.services.unknown_categories import CATEGORY_LINK
 from ragcore.sources.generic import GenericParser, GenericRelationExtractor, to_tree
 from ragcore.sources.legislatif.table import LEGI_ROLE_TABLE
 
-from .conftest import ARTICLE_RICHE, ARTICLE_SIMPLE, SECTION_ARTICLES
+from .conftest import ARTICLE_INCONNU, ARTICLE_RICHE, ARTICLE_SIMPLE, SECTION_ARTICLES
 
 
 def _parse(fixtures_dir: Path, *names: str) -> ParsedDocument:
@@ -206,7 +206,7 @@ def test_un_verbe_inconnu_ENTRE_mais_un_sens_inconnu_NON(
     - ``sens="lateral"`` : l'orienter serait inventer, et une arête mal orientée ne se
       distingue pas d'une juste. Elle n'entre pas, et compte en ``relation.unknown``.
     """
-    document = _parse(fixtures_dir, "unknown_vocabulary.xml")
+    document = _parse(fixtures_dir, f"{ARTICLE_INCONNU}.xml")
     result = GenericRelationExtractor(LEGI_ROLE_TABLE, SourceName.LEGI).extract(
         document
     )

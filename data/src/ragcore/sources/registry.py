@@ -10,12 +10,11 @@ from pathlib import Path
 from typing import Any
 
 from ragcore.core.models.enums import SourceName
-from ragcore.sources.generic import RoleTable
+from ragcore.sources.generic import KeyedFileConnector, RoleTable
 from ragcore.sources.jurisprudence import (
     JURI_ADMIN_ROLE_TABLE,
     JURI_CONSTIT_ROLE_TABLE,
     JURI_JUDI_ROLE_TABLE,
-    JuriFileConnector,
 )
 from ragcore.sources.legislatif.file_connector import LegiFileConnector
 from ragcore.sources.legislatif.table import LEGI_ROLE_TABLE
@@ -44,29 +43,30 @@ SOURCES: Mapping[SourceName, SourceDefinition] = {
     ),
     # ── Les cinq sources de jurisprudence ──────────────────────────────────────
     #
-    # CAPP, CASS et INCA partagent la même table : même racine, `TEXTE_JURI_JUDI`.
+    # Le connecteur générique : un fichier par décision, aucun artefact d'export. CAPP,
+    # CASS et INCA partagent la même table : même racine, `TEXTE_JURI_JUDI`.
     SourceName.CAPP: SourceDefinition(
-        connector=lambda root: JuriFileConnector(root, SourceName.CAPP),
+        connector=lambda root: KeyedFileConnector(root, SourceName.CAPP),
         table=JURI_JUDI_ROLE_TABLE,
         subdirectory="CAPP",
     ),
     SourceName.CASS: SourceDefinition(
-        connector=lambda root: JuriFileConnector(root, SourceName.CASS),
+        connector=lambda root: KeyedFileConnector(root, SourceName.CASS),
         table=JURI_JUDI_ROLE_TABLE,
         subdirectory="CASS",
     ),
     SourceName.INCA: SourceDefinition(
-        connector=lambda root: JuriFileConnector(root, SourceName.INCA),
+        connector=lambda root: KeyedFileConnector(root, SourceName.INCA),
         table=JURI_JUDI_ROLE_TABLE,
         subdirectory="INCA",
     ),
     SourceName.JADE: SourceDefinition(
-        connector=lambda root: JuriFileConnector(root, SourceName.JADE),
+        connector=lambda root: KeyedFileConnector(root, SourceName.JADE),
         table=JURI_ADMIN_ROLE_TABLE,
         subdirectory="JADE",
     ),
     SourceName.CONSTIT: SourceDefinition(
-        connector=lambda root: JuriFileConnector(root, SourceName.CONSTIT),
+        connector=lambda root: KeyedFileConnector(root, SourceName.CONSTIT),
         table=JURI_CONSTIT_ROLE_TABLE,
         subdirectory="CONSTIT",
     ),

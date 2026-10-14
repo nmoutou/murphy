@@ -4,7 +4,6 @@ corpus n'est jamais une dépendance de test.
 
 from __future__ import annotations
 
-import asyncio
 from pathlib import Path
 
 import pytest
@@ -13,7 +12,7 @@ from ragcore.core.links import CITE, LinkSubject, extract_links
 from ragcore.core.models.document import RawDocument
 from ragcore.core.models.enums import DocumentType, SourceName
 from ragcore.core.ports.parser import ParseResult
-from ragcore.sources.generic import GenericParser
+from ragcore.sources.generic import GenericParser, KeyedFileConnector
 from ragcore.sources.generic.tree import walk
 from ragcore.sources.jurisprudence import (
     JURI_ADMIN_ROLE_TABLE,
@@ -21,21 +20,22 @@ from ragcore.sources.jurisprudence import (
     JURI_JUDI_ROLE_TABLE,
     JURI_LINK_TABLE,
     ROLE_TABLE_BY_ROOT,
-    JuriFileConnector,
 )
+from ragcore.tests.fakes import read_source
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
+# Chaque fixture porte le nom de son <ID>, comme dans le dump : c'est la clé du connecteur
+CASS_AVEC_LIENS = "JURITEXT000047700641"
+JADE = "CETATEXT000053020685"
+CONSTIT = "CONSTEXT000054300058"
 
-def _raw(name: str, source: SourceName) -> RawDocument:
-    async def run() -> RawDocument:
-        connector = JuriFileConnector(FIXTURES, source)
-        async for raw in connector.fetch_all():
-            if Path(raw.payload["files"][0]).name == name:
-                return raw
-        pytest.fail(f"Fixture introuvable : {name}")
 
-    return asyncio.run(run())
+def _raw(identifier: str, source: SourceName) -> RawDocument:
+    for raw in read_source(KeyedFileConnector(FIXTURES, source)):
+        if raw.source_document_id == identifier:
+            return raw
+    pytest.fail(f"Fixture introuvable : {identifier}")
 
 
 def _parse_result(raw: RawDocument, source: SourceName) -> ParseResult:
@@ -53,7 +53,7 @@ def test_une_citation_decrite_devient_une_RELATION_NON_FORMATEE_jamais_une_arete
     """Les ``<LIEN>`` juri n'ont aucun attribut, seulement un texte (« Articles 1103 et
     1229 du code civil ») : ils entrent comme relations non formatées, pas comme arêtes
     ni comme nœuds."""
-    document = _parse("cass_avec_liens.xml", SourceName.CASS)
+    document = _parse(CASS_AVEC_LIENS, SourceName.CASS)
 
     links = extract_links(
         references=document.structure["references"],
@@ -84,7 +84,7 @@ def test_une_citation_decrite_devient_une_RELATION_NON_FORMATEE_jamais_une_arete
 
 def test_un_arret_est_nomme_par_son_identifiant_brut() -> None:
     """Un arrêt se distingue par le préfixe de son identifiant (``JURITEXT``)."""
-    document = _parse("cass_avec_liens.xml", SourceName.CASS)
+    document = _parse(CASS_AVEC_LIENS, SourceName.CASS)
 
     assert document.identifier.prefix == "JURITEXT"
     assert document.identifier.serialize() == document.identifier.raw
@@ -97,9 +97,9 @@ def test_la_juri_n_a_AUCUNE_balise_sans_role() -> None:
     orphelines: dict[str, set[str]] = {}
 
     for fixture, source, table in (
-        ("cass_avec_liens.xml", SourceName.CASS, JURI_JUDI_ROLE_TABLE),
-        ("jade.xml", SourceName.JADE, JURI_ADMIN_ROLE_TABLE),
-        ("constit.xml", SourceName.CONSTIT, JURI_CONSTIT_ROLE_TABLE),
+        (CASS_AVEC_LIENS, SourceName.CASS, JURI_JUDI_ROLE_TABLE),
+        (JADE, SourceName.JADE, JURI_ADMIN_ROLE_TABLE),
+        (CONSTIT, SourceName.CONSTIT, JURI_CONSTIT_ROLE_TABLE),
     ):
         raw = _raw(fixture, source)
         sans_role = {
@@ -143,7 +143,7 @@ def test_la_juri_n_a_AUCUN_role_version() -> None:
 
 def test_le_contenu_de_larret_est_ingere() -> None:
     """Le texte est bien là : des arêtes sans contenu passeraient sinon inaperçues."""
-    document = _parse("cass_avec_liens.xml", SourceName.CASS)
+    document = _parse(CASS_AVEC_LIENS, SourceName.CASS)
 
     assert document.content.strip(), "l'arrêt DOIT avoir du texte"
     assert document.title.strip()
@@ -154,9 +154,9 @@ def test_le_contenu_de_larret_est_ingere() -> None:
 @pytest.mark.parametrize(
     ("fixture", "source"),
     [
-        ("cass_avec_liens.xml", SourceName.CASS),
-        ("jade.xml", SourceName.JADE),
-        ("constit.xml", SourceName.CONSTIT),
+        (CASS_AVEC_LIENS, SourceName.CASS),
+        (JADE, SourceName.JADE),
+        (CONSTIT, SourceName.CONSTIT),
     ],
 )
 def test_URL_nest_ni_une_metadonnee_ni_un_signal(
@@ -173,10 +173,10 @@ def test_URL_nest_ni_une_metadonnee_ni_un_signal(
 @pytest.mark.parametrize(
     ("fixture", "source", "nature"),
     [
-        ("cass_avec_liens.xml", SourceName.CASS, "ARRET"),
+        (CASS_AVEC_LIENS, SourceName.CASS, "ARRET"),
         # JADE écrit « Texte » pour toutes ses décisions
-        ("jade.xml", SourceName.JADE, None),
-        ("constit.xml", SourceName.CONSTIT, "QPC"),
+        (JADE, SourceName.JADE, None),
+        (CONSTIT, SourceName.CONSTIT, "QPC"),
     ],
 )
 def test_toute_decision_est_typee_DECISION_avec_sa_nature(

@@ -7,7 +7,6 @@ une cible qui écrase un champ du contrat.
 
 from __future__ import annotations
 
-import asyncio
 from pathlib import Path
 
 import pytest
@@ -16,11 +15,11 @@ from ragcore.core.exceptions import CollisionError
 from ragcore.core.models.document import RawDocument
 from ragcore.core.models.enums import SourceName
 from ragcore.core.ports.connector import BaseConnector
-from ragcore.sources.generic import GenericParser, RoleTable
-from ragcore.sources.jurisprudence import JuriFileConnector
+from ragcore.sources.generic import GenericParser, KeyedFileConnector, RoleTable
 from ragcore.sources.jurisprudence.table import _COMMON_RENAMES, ROLE_TABLE_BY_ROOT
 from ragcore.sources.legislatif.file_connector import LegiFileConnector
 from ragcore.sources.legislatif.table import LEGI_ROLE_TABLE
+from ragcore.tests.fakes import read_source
 
 _SOURCES = Path(__file__).parents[2] / "sources"
 
@@ -77,10 +76,7 @@ def test_aucune_table_juri_ne_redefinit_un_renommage_commun(root: str) -> None:
 
 
 def _fixtures(connector: BaseConnector) -> list[RawDocument]:
-    async def run() -> list[RawDocument]:
-        return [raw async for raw in connector.fetch_all()]
-
-    return asyncio.run(run())
+    return read_source(connector)
 
 
 def _table_of(raw: RawDocument) -> RoleTable:
@@ -92,7 +88,7 @@ def _table_of(raw: RawDocument) -> RoleTable:
     "connector",
     [
         LegiFileConnector(_SOURCES / "legislatif" / "tests" / "fixtures"),
-        JuriFileConnector(
+        KeyedFileConnector(
             _SOURCES / "jurisprudence" / "tests" / "fixtures", SourceName.CASS
         ),
     ],

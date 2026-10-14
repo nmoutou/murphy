@@ -17,3 +17,8 @@ REASON_EXPORT_ARTIFACT = "export_artifact"
 # `parse_error`, où l'arbre existait : les confondre masquerait une corruption de la
 # source derrière un bug supposé du parser.
 REASON_UNREADABLE = "unreadable"
+
+# Un fichier dont l'`<ID>` n'est pas son nom (ADR-034 §1) : la clé du flux est le nom, et
+# un document émis sous une autre clé que son identifiant pourrait être traité par deux
+# workers. Couvre aussi un `versions.xml` qui n'est pas un artefact.
+REASON_ID_MISMATCH = "id_mismatch"

@@ -21,6 +21,8 @@ from .conftest import (
     SECTION_ARTICLES,
     SECTION_MIXTE,
     TEXTE_DEUX_FACETTES,
+    TEXTE_STRUCT,
+    TEXTE_VERSION,
 )
 
 
@@ -79,8 +81,8 @@ def test_les_deux_facettes_du_texte_donnent_UN_document_avec_son_titre(
         .parse(
             _raw(
                 fixtures_dir,
-                f"{TEXTE_DEUX_FACETTES}-version.xml",
-                f"{TEXTE_DEUX_FACETTES}-struct.xml",
+                TEXTE_VERSION,
+                TEXTE_STRUCT,
             )
         )
         .document
@@ -103,8 +105,8 @@ def test_URL_nest_ni_une_metadonnee_ni_un_signal(fixtures_dir: Path) -> None:
     result = GenericParser(LEGI_ROLE_TABLE, _SN.LEGI).parse(
         _raw(
             fixtures_dir,
-            f"{TEXTE_DEUX_FACETTES}-version.xml",
-            f"{TEXTE_DEUX_FACETTES}-struct.xml",
+            TEXTE_VERSION,
+            TEXTE_STRUCT,
         )
     )
 
@@ -121,8 +123,8 @@ def test_le_texte_dun_decret_nest_PAS_dans_un_BLOC_TEXTUEL(fixtures_dir: Path) -
         .parse(
             _raw(
                 fixtures_dir,
-                f"{TEXTE_DEUX_FACETTES}-version.xml",
-                f"{TEXTE_DEUX_FACETTES}-struct.xml",
+                TEXTE_VERSION,
+                TEXTE_STRUCT,
             )
         )
         .document
@@ -194,7 +196,7 @@ def test_une_balise_non_configuree_est_ROUTEE_et_SIGNALEE(fixtures_dir: Path) ->
     vérifie que ``<ZORG>`` est à la fois signalée et ingérée sous sa clé chemin-complet.
     """
     result = GenericParser(LEGI_ROLE_TABLE, _SN.LEGI).parse(
-        _raw(fixtures_dir, "unknown_vocabulary.xml")
+        _raw(fixtures_dir, f"{ARTICLE_INCONNU}.xml")
     )
     parsed = result.document
 
@@ -203,8 +205,8 @@ def test_une_balise_non_configuree_est_ROUTEE_et_SIGNALEE(fixtures_dir: Path) ->
     assert parsed.metadata["article_zorg_attribut_inconnu"] == "peu importe"
     # Le signal, par clé, avec le fichier où le lire
     assert result.unconfigured_tags == {
-        "article_zorg": "unknown_vocabulary.xml",
-        "article_zorg_attribut_inconnu": "unknown_vocabulary.xml",
+        "article_zorg": f"{ARTICLE_INCONNU}.xml",
+        "article_zorg_attribut_inconnu": f"{ARTICLE_INCONNU}.xml",
     }
     assert parsed.identifier.raw == ARTICLE_INCONNU
     assert "texte parfaitement ordinaire" in parsed.content  # le reste est parsé
@@ -355,8 +357,8 @@ def test_un_identifiant_mal_forme_leve_ValidationError() -> None:
         ((f"{SECTION_MIXTE}.xml",), DocumentType.SECTION, None),
         (
             (
-                f"{TEXTE_DEUX_FACETTES}-version.xml",
-                f"{TEXTE_DEUX_FACETTES}-struct.xml",
+                TEXTE_VERSION,
+                TEXTE_STRUCT,
             ),
             DocumentType.TEXTE,
             "DECRET",

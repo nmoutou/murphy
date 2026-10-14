@@ -5,12 +5,16 @@ from pathlib import Path
 
 import pytest
 
+from ragcore.core.models.enums import SourceName
+from ragcore.core.models.inventory import SourceInventory
 from ragcore.core.ports.connector import BaseConnector
 from ragcore.core.services.exclusion_reasons import (
     REASON_EXPORT_ARTIFACT,
+    REASON_ID_MISMATCH,
     REASON_UNREADABLE,
 )
 from ragcore.sources.legislatif.file_connector import LegiFileConnector
+from ragcore.tests.fakes import read_source
 
 from .conftest import (
     ARTICLE_RICHE,
@@ -19,9 +23,21 @@ from .conftest import (
     TEXTE_DEUX_FACETTES,
 )
 
+_ARTICLE_42 = "LEGIARTI000000000042"
 
-async def _collect(connector: LegiFileConnector) -> dict[str, object]:
-    return {doc.source_document_id: doc async for doc in connector.fetch_all()}
+
+def _collect(connector: LegiFileConnector) -> dict[str, object]:
+    return {doc.source_document_id: doc for doc in read_source(connector)}
+
+
+def _write_article(path: Path, identifier: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        '<?xml version="1.0"?>'
+        f"<ARTICLE><META><META_COMMUN><ID>{identifier}</ID>"
+        "</META_COMMUN></META></ARTICLE>",
+        encoding="utf-8",
+    )
 
 
 def test_le_connecteur_satisfait_son_port() -> None:
@@ -30,17 +46,31 @@ def test_le_connecteur_satisfait_son_port() -> None:
     assert isinstance(LegiFileConnector(Path(".")), BaseConnector)
 
 
-@pytest.mark.asyncio
-async def test_fetch_all_est_un_generateur(corpus: Path) -> None:
+def test_la_passe_1_compte_les_cles_sans_les_artefacts(corpus: Path) -> None:
+    """Les deux facettes du texte font une clé, et les ``versions.xml`` sont mis à
+    part."""
+    inventory = LegiFileConnector(corpus).discover()
+
+    assert inventory == {SourceName.LEGI: SourceInventory(documents=len(DOCUMENTS))}
+
+
+def test_fetch_all_est_un_generateur(corpus: Path) -> None:
     """Un générateur, pas une liste : le corpus ne tient pas en mémoire."""
-    assert inspect.isasyncgen(LegiFileConnector(corpus).fetch_all())
+    connector = LegiFileConnector(corpus)
+    connector.discover()
+
+    assert inspect.isgenerator(connector.fetch_all())
 
 
-@pytest.mark.asyncio
-async def test_les_deux_facettes_dun_texte_ne_font_QUUN_document(corpus: Path) -> None:
-    """``TEXTE_VERSION`` et ``TEXTELR`` partagent leur ``<ID>`` : émises séparément,
-    la facette sans titre écraserait l'autre."""
-    docs = await _collect(LegiFileConnector(corpus))
+def test_fetch_all_sans_passe_1_leve(corpus: Path) -> None:
+    with pytest.raises(RuntimeError, match="discover"):
+        next(LegiFileConnector(corpus).fetch_all())
+
+
+def test_les_deux_facettes_dun_texte_ne_font_QUUN_document(corpus: Path) -> None:
+    """``TEXTE_VERSION`` et ``TEXTELR`` partagent leur ``<ID>``, dans deux dossiers :
+    émises séparément, la facette sans titre écraserait l'autre."""
+    docs = _collect(LegiFileConnector(corpus))
 
     assert TEXTE_DEUX_FACETTES in docs
     facets = docs[TEXTE_DEUX_FACETTES].payload["content"]
@@ -50,63 +80,93 @@ async def test_les_deux_facettes_dun_texte_ne_font_QUUN_document(corpus: Path) -
     assert roots == {"TEXTE_VERSION", "TEXTELR"}
 
 
-@pytest.mark.asyncio
-async def test_un_document_par_identifiant_pas_par_fichier(corpus: Path) -> None:
+def test_un_document_par_identifiant_pas_par_fichier(corpus: Path) -> None:
     """11 fichiers, 9 documents : ``versions.xml`` est écarté, et les deux facettes du
     texte n'en font qu'un."""
-    docs = await _collect(LegiFileConnector(corpus))
+    docs = _collect(LegiFileConnector(corpus))
 
     assert set(docs) == DOCUMENTS
 
 
-@pytest.mark.asyncio
-async def test_lartefact_dexport_est_ecarte_ET_compte(corpus: Path) -> None:
+def test_lartefact_dexport_est_ecarte_ET_compte(corpus: Path) -> None:
     """Les ``versions.xml`` sont écartés, et comptés."""
     connector = LegiFileConnector(corpus)
-    docs = await _collect(connector)
+    docs = _collect(connector)
 
     assert connector.skipped == {REASON_EXPORT_ARTIFACT: 1}
     assert not any("JORFCONT" in doc_id for doc_id in docs)
 
 
-@pytest.mark.asyncio
-async def test_un_xml_illisible_est_ecarte_ET_compte(tmp_path: Path) -> None:
+def test_un_xml_illisible_est_ecarte_ET_compte(tmp_path: Path) -> None:
     """Un XML qui ne parse pas est écarté et compté (``unreadable``), avant
     ``document.fetched``."""
-    (tmp_path / "malformed.xml").write_text(
-        "<ARTICLE><META><ID>LEGIARTI000000000042</ID>",  # jamais refermé
+    (tmp_path / f"{_ARTICLE_42}.xml").write_text(
+        f"<ARTICLE><META><ID>{_ARTICLE_42}</ID>",  # jamais refermé
         encoding="utf-8",
     )
 
     connector = LegiFileConnector(tmp_path)
-    docs = await _collect(connector)
+    docs = _collect(connector)
 
     assert docs == {}
     assert connector.skipped == {REASON_UNREADABLE: 1}
 
 
-@pytest.mark.asyncio
-async def test_on_ecarte_sur_la_racine_pas_sur_le_nom(tmp_path: Path) -> None:
-    """Un ``versions.xml`` de racine ``<ARTICLE>`` est un document : jamais d'écart sur
-    le seul nom."""
-    (tmp_path / "versions.xml").write_text(
-        '<?xml version="1.0"?>'
-        "<ARTICLE><META><META_COMMUN><ID>LEGIARTI000000000042</ID>"
-        "</META_COMMUN></META></ARTICLE>",
-        encoding="utf-8",
-    )
+def test_une_facette_illisible_n_emporte_pas_l_autre(tmp_path: Path) -> None:
+    _write_article(tmp_path / "en_vigueur" / f"{_ARTICLE_42}.xml", _ARTICLE_42)
+    broken = tmp_path / "non_vigueur" / f"{_ARTICLE_42}.xml"
+    broken.parent.mkdir()
+    broken.write_text("<ARTICLE>", encoding="utf-8")
 
     connector = LegiFileConnector(tmp_path)
-    docs = await _collect(connector)
+    docs = _collect(connector)
 
-    assert set(docs) == {"LEGIARTI000000000042"}
-    assert connector.skipped == {}
+    assert len(docs[_ARTICLE_42].payload["files"]) == 1
+    assert connector.skipped == {REASON_UNREADABLE: 1}
 
 
-@pytest.mark.asyncio
-async def test_les_liens_freres_survivent_a_la_transcription(corpus: Path) -> None:
+def test_un_fichier_dont_l_ID_n_est_pas_le_nom_est_ecarte_ET_compte(
+    tmp_path: Path,
+) -> None:
+    """La clé du flux est le nom : émis sous une autre clé que son identifiant, le
+    document pourrait croiser son jumeau dans un autre worker."""
+    _write_article(tmp_path / "LEGIARTI000000000043.xml", _ARTICLE_42)
+
+    connector = LegiFileConnector(tmp_path)
+    docs = _collect(connector)
+
+    assert docs == {}
+    assert connector.skipped == {REASON_ID_MISMATCH: 1}
+
+
+@pytest.mark.parametrize(
+    "content", ["<VERSIONS><VERSION/></VERSIONS>", "<ID>JORFCONT000029958086</ID>"]
+)
+def test_les_deux_formes_de_l_artefact_sont_ecartees(
+    tmp_path: Path, content: str
+) -> None:
+    (tmp_path / "versions.xml").write_text(content, encoding="utf-8")
+
+    connector = LegiFileConnector(tmp_path)
+    _collect(connector)
+
+    assert connector.skipped == {REASON_EXPORT_ARTIFACT: 1}
+
+
+def test_un_versions_xml_qui_n_est_pas_un_artefact_est_REJETE(tmp_path: Path) -> None:
+    """Sa clé, ``versions``, n'est jamais son ``<ID>`` : rejeté, pas ingéré."""
+    _write_article(tmp_path / "versions.xml", _ARTICLE_42)
+
+    connector = LegiFileConnector(tmp_path)
+    docs = _collect(connector)
+
+    assert docs == {}
+    assert connector.skipped == {REASON_ID_MISMATCH: 1}
+
+
+def test_les_liens_freres_survivent_a_la_transcription(corpus: Path) -> None:
     """Sans perte : les 23 ``<LIEN>`` frères survivent, les enfants étant une liste."""
-    docs = await _collect(LegiFileConnector(corpus))
+    docs = _collect(LegiFileConnector(corpus))
     (tree,) = docs[ARTICLE_RICHE].payload["content"]
 
     liens = _find_all(tree, "LIEN")
@@ -114,11 +174,10 @@ async def test_les_liens_freres_survivent_a_la_transcription(corpus: Path) -> No
     assert {lien["attrib"]["typelien"] for lien in liens} >= {"CITATION", "MODIFIE"}
 
 
-@pytest.mark.asyncio
-async def test_le_connecteur_ninterprete_rien(corpus: Path) -> None:
+def test_le_connecteur_ninterprete_rien(corpus: Path) -> None:
     """Le payload ne porte aucune sémantique LEGI : l'arbre et son fichier, rien de
     plus."""
-    docs = await _collect(LegiFileConnector(corpus))
+    docs = _collect(LegiFileConnector(corpus))
     payload = docs[ARTICLE_SIMPLE].payload
 
     assert set(payload) == {"content", "files"}

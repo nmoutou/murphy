@@ -41,7 +41,14 @@ DOCUMENTS = frozenset(
         SECTION_GRAND_PARENTE,
     }
 )
-"""10 fichiers lus (la paire n'en fait qu'un), un ``versions.xml`` écarté."""
+"""10 fichiers lus (la paire n'en fait qu'un), un ``versions.xml`` écarté.
+
+Chaque fichier porte le nom de son ``<ID>``, comme dans le dump : c'est la clé du
+connecteur. Les deux facettes du texte vivent dans ``texte/struct`` et
+``texte/version``."""
+
+TEXTE_STRUCT = f"texte/struct/{TEXTE_DEUX_FACETTES}.xml"
+TEXTE_VERSION = f"texte/version/{TEXTE_DEUX_FACETTES}.xml"
 
 
 @pytest.fixture
@@ -53,7 +60,6 @@ def fixtures_dir() -> Path:
 def corpus(tmp_path: Path) -> Path:
     """Une copie jetable des fixtures, sans ``malformed.xml`` : il fausserait les
     comptes de documents. Les tests qui le veulent le copient eux-mêmes."""
-    for xml in FIXTURES.glob("*.xml"):
-        if xml.name != "malformed.xml":
-            shutil.copy(xml, tmp_path / xml.name)
-    return tmp_path
+    copy = tmp_path / "corpus"
+    shutil.copytree(FIXTURES, copy, ignore=shutil.ignore_patterns("malformed.xml"))
+    return copy

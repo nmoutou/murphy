@@ -2,7 +2,7 @@
 hors `document.fetched`, donc hors équation de complétude.
 """
 
-from collections.abc import AsyncIterator
+from collections.abc import Iterator
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -11,24 +11,29 @@ import pytest
 from ragcore.application.run_context import PipelineContext
 from ragcore.core.models.document import RawDocument
 from ragcore.core.models.enums import SourceName
+from ragcore.core.models.inventory import SourceInventory
 from ragcore.core.services.exclusion_reasons import (
     REASON_EXPORT_ARTIFACT,
+    REASON_ID_MISMATCH,
     REASON_UNREADABLE,
 )
 from ragcore.core.statistics_measures import (
     FACETS,
+    STAGE_DISCOVERY,
     STAGE_PHASE1,
+    STEP_READ,
     XML_BYTES,
     document_measure,
+    step_measure,
 )
 from ragcore.core.telemetry_events import (
     DOCUMENT_FETCHED,
+    DOCUMENT_ID_MISMATCH,
     DOCUMENT_UNREADABLE,
     DOCUMENT_VERSION_SKIPPED,
 )
 from ragcore.orchestration.kedro.nodes.connect import connect_node
 from ragcore.orchestration.kedro.stage_clock import StageClock
-from ragcore.tests.fakes.runtime import FakeRuntime
 from ragcore.tests.fakes.telemetry import RecordingTelemetry
 
 
@@ -41,9 +46,11 @@ class _ConnectorWithSkips:
         self.skipped = skipped
         self._documents = documents
 
-    async def fetch_all(self) -> AsyncIterator[RawDocument]:
-        for document in self._documents:
-            yield document
+    def discover(self) -> dict[SourceName, SourceInventory]:
+        return {SourceName.LEGI: SourceInventory(documents=len(self._documents))}
+
+    def fetch_all(self) -> Iterator[RawDocument]:
+        yield from self._documents
 
 
 def _run(
@@ -55,7 +62,6 @@ def _run(
         connector=connector,  # type: ignore[arg-type]
         pipeline_context=context,
         telemetry=telemetry,
-        pipeline_runtime=FakeRuntime(worker_id=0),
         stage_clock=stage_clock or StageClock(),
         nuke_done={},
     )
@@ -82,14 +88,22 @@ def test_la_taille_et_les_facettes_de_chaque_document_sont_mesurees(
 
     assert telemetry.values_of(document_measure(SourceName.LEGI, XML_BYTES)) == [15]
     assert telemetry.values_of(document_measure(SourceName.LEGI, FACETS)) == [2]
+    assert len(telemetry.values_of(step_measure(SourceName.LEGI, STEP_READ))) == 1
 
 
-def test_la_lecture_compte_dans_la_phase_1() -> None:
+def test_la_passe_1_et_la_lecture_sont_deux_etapes() -> None:
     stage_clock = StageClock()
 
     _run(_ConnectorWithSkips({}), stage_clock)
 
-    assert STAGE_PHASE1 in stage_clock.durations()
+    assert set(stage_clock.durations()) == {STAGE_DISCOVERY, STAGE_PHASE1}
+
+
+def test_un_ID_qui_n_est_pas_le_nom_a_son_compteur() -> None:
+    telemetry = _run(_ConnectorWithSkips({REASON_ID_MISMATCH: 4}))
+
+    (event,) = telemetry.events_of(DOCUMENT_ID_MISMATCH)
+    assert event.payload["count"] == 4
 
 
 def test_chaque_raison_d_ecart_emet_son_propre_compteur() -> None:

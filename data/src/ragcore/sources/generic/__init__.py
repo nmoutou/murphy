@@ -3,6 +3,7 @@ une table déclarative (``RoleTable``), pas une classe.
 """
 
 from .chunking import StructuralChunker
+from .file_connector import KeyedFileConnector
 from .normalize import normalize_text
 from .parser import GenericParser
 from .relations import GenericRelationExtractor
@@ -13,6 +14,7 @@ from .xml_tree import locate_id, read_root, to_tree
 __all__ = [
     "GenericParser",
     "GenericRelationExtractor",
+    "KeyedFileConnector",
     "Role",
     "RoleTable",
     "StructuralChunker",

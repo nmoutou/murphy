@@ -7,10 +7,11 @@ jamais ambigu.
 
 from __future__ import annotations
 
-from collections.abc import AsyncIterator, Iterable, Mapping
+from collections.abc import Iterable, Iterator, Mapping
 
 from ragcore.core.models.document import ParsedDocument, RawDocument
 from ragcore.core.models.enums import SourceName
+from ragcore.core.models.inventory import SourceInventory
 from ragcore.core.ports.connector import BaseConnector
 from ragcore.core.ports.parser import ParseResult
 from ragcore.core.ports.relation_extractor import ExtractionResult
@@ -52,13 +53,19 @@ class CompositeConnector:
     def sources(self) -> tuple[SourceName, ...]:
         return tuple(self._connectors)
 
-    async def fetch_all(self) -> AsyncIterator[RawDocument]:
+    def discover(self) -> dict[SourceName, SourceInventory]:
+        """Toutes les sources avant la première lecture."""
+        inventories: dict[SourceName, SourceInventory] = {}
+        for connector in self._connectors.values():
+            inventories.update(connector.discover())
+        return inventories
+
+    def fetch_all(self) -> Iterator[RawDocument]:
         """Générateur de bout en bout : le corpus n'est jamais entier en mémoire."""
         self.skipped = {}
 
         for connector in self._connectors.values():
-            async for document in connector.fetch_all():
-                yield document
+            yield from connector.fetch_all()
 
             # Après épuisement : `skipped` se remplit au fil de la lecture
             for reason, count in connector.skipped.items():

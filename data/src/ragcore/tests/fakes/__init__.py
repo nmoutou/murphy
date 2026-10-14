@@ -2,6 +2,7 @@
 production, qui ne les exécuterait jamais.
 """
 
+from .connectors import read_source
 from .embedder import NoopEmbedder
 from .repositories import (
     InMemoryDocumentRepository,
@@ -24,4 +25,5 @@ __all__ = [
     "NoopEmbedder",
     "RecordingTelemetry",
     "RecordingTelemetryFactory",
+    "read_source",
 ]

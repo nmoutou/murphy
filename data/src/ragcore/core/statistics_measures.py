@@ -12,6 +12,7 @@ __all__ = [
     "CONTENT_CHARS",
     "FACETS",
     "RELATIONS",
+    "STAGE_DISCOVERY",
     "STAGE_PHASE1",
     "STAGE_PHASE2_WRITE",
     "STEP_EMBED",
@@ -19,6 +20,7 @@ __all__ = [
     "STEP_NEO4J",
     "STEP_OPENSEARCH",
     "STEP_PARSE",
+    "STEP_READ",
     "XML_BYTES",
     "document_measure",
     "milliseconds_since",
@@ -36,12 +38,14 @@ CONTENT_CHARS = "content_chars"
 CHUNKS = "chunks"
 RELATIONS = "relations"
 
+STEP_READ = "read"
 STEP_PARSE = "parse"
 STEP_EMBED = "embed"
 STEP_MONGO = "mongo"
 STEP_OPENSEARCH = "opensearch"
 STEP_NEO4J = "neo4j"
 
+STAGE_DISCOVERY = "discovery"
 STAGE_PHASE1 = "phase1"
 STAGE_PHASE2_WRITE = "phase2_write"
 

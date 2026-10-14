@@ -7,10 +7,7 @@ un corpus neuf, ce qu'on ne connaît pas.
 
 from __future__ import annotations
 
-import asyncio
 from pathlib import Path
-
-import pytest
 
 from ragcore.core.models.document import RawDocument
 from ragcore.core.models.enums import SourceName
@@ -18,26 +15,22 @@ from ragcore.sources.generic import GenericParser, Role
 from ragcore.sources.generic.tree import walk
 from ragcore.sources.legislatif.file_connector import LegiFileConnector
 from ragcore.sources.legislatif.table import LEGI_ROLE_TABLE
+from ragcore.sources.legislatif.tests.conftest import ARTICLE_INCONNU
+from ragcore.tests.fakes import read_source
 
 FIXTURES = Path(__file__).parents[2] / "sources" / "legislatif" / "tests" / "fixtures"
 
-# La fixture `unknown_vocabulary.xml` porte délibérément du vocabulaire inconnu : elle
-# teste l'instrument, pas le cliquet, qui ne pourrait sinon jamais échouer.
-_FIXTURE_PATHOLOGIQUE = "unknown_vocabulary.xml"
+# Cette fixture porte délibérément du vocabulaire inconnu : elle teste l'instrument, pas
+# le cliquet, qui ne pourrait sinon jamais échouer.
+_FIXTURE_PATHOLOGIQUE = ARTICLE_INCONNU
 
 
 def _raws() -> list[RawDocument]:
-    async def run() -> list[RawDocument]:
-        connector = LegiFileConnector(FIXTURES)
-        return [
-            raw
-            async for raw in connector.fetch_all()
-            if not any(
-                Path(f).name == _FIXTURE_PATHOLOGIQUE for f in raw.payload["files"]
-            )
-        ]
-
-    return asyncio.run(run())
+    return [
+        raw
+        for raw in read_source(LegiFileConnector(FIXTURES))
+        if raw.source_document_id != _FIXTURE_PATHOLOGIQUE
+    ]
 
 
 def _tags_without_role(raw: RawDocument) -> set[str]:
@@ -79,13 +72,11 @@ def test_le_cliquet_est_CAPABLE_d_echouer() -> None:
     """Le contre-exemple : ``<ZORG>`` est trouvée par le parcours, signalée, et ingérée
     sous sa clé chemin-complet."""
 
-    async def run() -> RawDocument:
-        async for raw in LegiFileConnector(FIXTURES).fetch_all():
-            if any(Path(f).name == _FIXTURE_PATHOLOGIQUE for f in raw.payload["files"]):
-                return raw
-        pytest.fail(f"La fixture {_FIXTURE_PATHOLOGIQUE} est introuvable")
-
-    raw = asyncio.run(run())
+    (raw,) = (
+        raw
+        for raw in read_source(LegiFileConnector(FIXTURES))
+        if raw.source_document_id == _FIXTURE_PATHOLOGIQUE
+    )
     result = GenericParser(LEGI_ROLE_TABLE, SourceName.LEGI).parse(raw)
 
     assert _tags_without_role(raw) == {"ZORG"}, (

@@ -5,7 +5,6 @@ déborde sur les citations, un ``typelien`` qui disparaît. Le faire bouger doit
 geste délibéré.
 """
 
-import asyncio
 import collections
 from pathlib import Path
 
@@ -29,6 +28,7 @@ from ragcore.sources.legislatif.tests.conftest import (
     SECTION_GRAND_PARENTE,
     SECTION_PARENTE,
 )
+from ragcore.tests.fakes import read_source
 
 # Les fixtures de la source, empruntées : deux jeux dériveraient
 FIXTURES = Path(__file__).parents[2] / "sources" / "legislatif" / "tests" / "fixtures"
@@ -38,7 +38,7 @@ OVERLAP = 25
 
 
 def _run() -> dict:
-    async def chain() -> dict:
+    def chain() -> dict:
         connector = LegiFileConnector(FIXTURES)
         parser = GenericParser(LEGI_ROLE_TABLE, _SN.LEGI)
         extractor = GenericRelationExtractor(LEGI_ROLE_TABLE, _SN.LEGI)
@@ -52,7 +52,7 @@ def _run() -> dict:
         relations = []
         unknowns: dict[str, set[str]] = collections.defaultdict(set)
 
-        async for raw in connector.fetch_all():
+        for raw in read_source(connector):
             documents += 1
             files += len(raw.payload["files"])
 
@@ -91,7 +91,7 @@ def _run() -> dict:
             "reduced": reduced,
         }
 
-    return asyncio.run(chain())
+    return chain()
 
 
 def test_la_chaine_complete_est_figee() -> None:

@@ -4,13 +4,14 @@ devient plausible et faux. C'est ce qu'on teste d'abord.
 
 from __future__ import annotations
 
-from collections.abc import AsyncIterator
+from collections.abc import Iterator
 from datetime import UTC, datetime
 
 import pytest
 
 from ragcore.core.models.document import RawDocument
 from ragcore.core.models.enums import SourceName
+from ragcore.core.models.inventory import SourceInventory
 from ragcore.sources.composite import (
     CompositeConnector,
     RoutingParser,
@@ -37,7 +38,10 @@ class _FakeConnector:
         self._count = count
         self.skipped = skipped or {}
 
-    async def fetch_all(self) -> AsyncIterator[RawDocument]:
+    def discover(self) -> dict[SourceName, SourceInventory]:
+        return {self._source: SourceInventory(documents=self._count)}
+
+    def fetch_all(self) -> Iterator[RawDocument]:
         for i in range(self._count):
             yield _raw(self._source, f"{self._source.value}-{i}")
 
@@ -57,7 +61,21 @@ class _FakeParser:
 # ── CompositeConnector ────────────────────────────────────────────────────────
 
 
-async def test_composite_emits_every_source() -> None:
+def test_composite_discovers_every_source() -> None:
+    composite = CompositeConnector(
+        {
+            SourceName.LEGI: _FakeConnector(SourceName.LEGI, 2),
+            SourceName.CASS: _FakeConnector(SourceName.CASS, 3),
+        }
+    )
+
+    assert composite.discover() == {
+        SourceName.LEGI: SourceInventory(documents=2),
+        SourceName.CASS: SourceInventory(documents=3),
+    }
+
+
+def test_composite_emits_every_source() -> None:
     """Les documents de toutes les sources sortent."""
     composite = CompositeConnector(
         {
@@ -66,14 +84,14 @@ async def test_composite_emits_every_source() -> None:
         }
     )
 
-    docs = [doc async for doc in composite.fetch_all()]
+    docs = list(composite.fetch_all())
 
     assert len(docs) == 5
     assert [d.source for d in docs].count(SourceName.LEGI) == 2
     assert [d.source for d in docs].count(SourceName.CASS) == 3
 
 
-async def test_composite_preserves_source_stamp() -> None:
+def test_composite_preserves_source_stamp() -> None:
     """Chaque document garde la source de son connecteur : l'invariant du routage."""
     composite = CompositeConnector(
         {
@@ -82,16 +100,13 @@ async def test_composite_preserves_source_stamp() -> None:
         }
     )
 
-    by_id = {
-        d.source_document_id: d.source
-        for d in [doc async for doc in composite.fetch_all()]
-    }
+    by_id = {d.source_document_id: d.source for d in list(composite.fetch_all())}
 
     assert by_id["jade-0"] is SourceName.JADE
     assert by_id["constit-0"] is SourceName.CONSTIT
 
 
-async def test_composite_merges_skipped_counters() -> None:
+def test_composite_merges_skipped_counters() -> None:
     """Deux illisibles dans deux sources font deux exclusions : les compteurs se
     somment."""
     composite = CompositeConnector(
@@ -105,19 +120,19 @@ async def test_composite_merges_skipped_counters() -> None:
         }
     )
 
-    _ = [doc async for doc in composite.fetch_all()]
+    _ = list(composite.fetch_all())
 
     assert composite.skipped == {"unreadable": 5}
 
 
-async def test_composite_resets_skipped_between_runs() -> None:
+def test_composite_resets_skipped_between_runs() -> None:
     """Deux itérations ne cumulent pas : le compteur est celui de cette lecture."""
     composite = CompositeConnector(
         {SourceName.CASS: _FakeConnector(SourceName.CASS, 1, skipped={"unreadable": 2})}
     )
 
-    _ = [doc async for doc in composite.fetch_all()]
-    _ = [doc async for doc in composite.fetch_all()]
+    _ = list(composite.fetch_all())
+    _ = list(composite.fetch_all())
 
     assert composite.skipped == {"unreadable": 2}
 

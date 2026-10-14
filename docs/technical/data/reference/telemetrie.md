@@ -17,7 +17,7 @@ n'en sort en silence.
 | Événement | Sens |
 |---|---|
 | `document.fetched` | Documents vus par le connecteur (1 événement, `count` = lot). **Le dénominateur** de l'équation. |
-| `document.version_skipped` / `document.unreadable` | Écartés par le connecteur : artefacts d'export (`versions.xml`) / XML illisibles. Un compteur par raison, chacun porte son `count`. **Hors équation** : un fichier écarté n'est pas un document vu. |
+| `document.version_skipped` / `document.unreadable` / `document.id_mismatch` | Écartés par le connecteur : artefacts d'export (`versions.xml`) / XML illisibles / fichiers dont l'`<ID>` n'est pas le nom (ADR-034 §1). Un compteur par raison, chacun porte son `count`. **Hors équation** : un fichier écarté n'est pas un document vu. |
 | `document.parsed` | Parse réussi |
 | `document.invalidated` | Rejet au parse (validation, lecture ou collision non configurée, ADR-025) : `reason`, `uid` (chemin source), `error` |
 | `document.persisted` | Saga complète |
@@ -29,9 +29,10 @@ n'en sort en silence.
 | `relation.unknown` | Liens qu'on ne sait pas écrire (`sens` inconnu, `@id` illisible, `typelien` ou balise heuristique qui ne peut pas être un verbe) : 1 événement par document, `count` = liens perdus. L'arête n'existe pas ; un lien retiré par `skip_unconfigured` n'est pas compté. Ne change pas le statut du run (ADR-024). |
 | `saga.compensation.triggered` / `.completed` / `.failed` | Rollback d'une saga (`.failed` = un écrit partiel subsiste ; `success` du `.completed` dit la vérité : une seule compensation ratée et le rollback n'est pas propre) |
 
-**Contrat de cardinalité** : la plupart des événements pèsent 1. Six — et eux
+**Contrat de cardinalité** : la plupart des événements pèsent 1. Sept — et eux
 exactement (`COUNT_CARRYING_EVENTS`) — portent leur poids dans `payload["count"]` :
 `document.fetched`, `document.version_skipped`, `document.unreadable`,
+`document.id_mismatch`,
 `relation.upserted`, `relation.unknown`, `chunk.truncated`.
 L'ensemble est nommé et verrouillé par golden : un émetteur qui prétend porter une cardinalité sans y figurer est
 un bug visible, pas une dérive muette.
@@ -166,18 +167,18 @@ Le vocabulaire est `core/statistics_measures.py` :
 
 ```json
 { "run_id": "…", "started_at": ISODate("…"),
-  "stages_s": { "phase1": 812.4, "phase2_write": 41.0 },
+  "stages_s": { "discovery": 95.2, "phase1": 812.4, "phase2_write": 41.0 },
   "documents": {
     "legi": {
       "xml_bytes": {…}, "facets": {…}, "content_chars": {…}, "chunks": {…},
       "relations": {…},
-      "step_ms": { "parse": {…}, "embed": {…}, "mongo": {…}, "opensearch": {…},
-                   "neo4j": {…} } } } }
+      "step_ms": { "read": {…}, "parse": {…}, "embed": {…}, "mongo": {…},
+                   "opensearch": {…}, "neo4j": {…} } } } }
 ```
 
 - `stages_s` : la durée de chaque étape, en secondes (`StageClock`, une étape mesurée
-  plusieurs fois s'additionne). `phase1` couvre `connect`, `parseDocuments` et `ingest` ;
-  `phase2_write`, `resolveRelations`.
+  plusieurs fois s'additionne). `discovery` est la passe 1 des connecteurs ; `phase1`
+  couvre leur passe 2, `parseDocuments` et `ingest` ; `phase2_write`, `resolveRelations`.
 - `documents.<source>` : par document, sa taille XML (facettes sommées), son nombre de
   facettes, de caractères, de chunks et de relations, et la durée de chaque étape en
   millisecondes. `mongo` additionne l'écriture du document et celle de ses relations non

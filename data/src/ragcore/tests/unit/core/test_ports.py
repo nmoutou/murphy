@@ -61,6 +61,7 @@ def test_a_class_missing_a_method_does_not_satisfy_the_port() -> None:
 def test_ports_expose_the_methods_their_callers_call() -> None:
     """Les nœuds Kedro appellent ces méthodes par leur nom."""
     for port, method in [
+        (BaseConnector, "discover"),
         (BaseConnector, "fetch_all"),
         (BaseEmbedder, "embed"),
         (BaseParser, "parse"),

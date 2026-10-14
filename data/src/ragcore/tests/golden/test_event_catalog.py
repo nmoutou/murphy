@@ -10,6 +10,8 @@ GOLDEN = {
     "document.invalidated",
     "document.version_skipped",
     "document.unreadable",
+    # Un fichier dont l'<ID> n'est pas le nom : la clé du flux (ADR-034 §1)
+    "document.id_mismatch",
     "document.persisted",
     # Vu, jamais ingéré : sans ce compteur, le run se déclarerait « ok »
     "document.failed",
@@ -41,6 +43,7 @@ GOLDEN_COUNT_CARRYING = {
     "chunk.truncated",  # nombre de chunks raccourcis
     "document.version_skipped",  # nombre d'artefacts d'export écartés
     "document.unreadable",  # nombre de fichiers illisibles écartés
+    "document.id_mismatch",  # nombre de fichiers dont l'<ID> n'est pas le nom
     "relation.unknown",  # nombre de liens perdus d'un document
 }
 

@@ -93,16 +93,22 @@ uniquement comme **signal d'ordre** (arête du DAG).
 
 ## 2. `connect`
 
-Entrées : `connector`, le contexte, la télémétrie, le runtime du hook, `stage_clock`,
-`nuke_done` (signal). Draine `connector.fetch_all()` → `list[RawDocument]`. `connect`,
-`parseDocuments` et `ingest` additionnent leur durée sous `stages_s.phase1`.
+Entrées : `connector`, le contexte, la télémétrie, `stage_clock`, `nuke_done` (signal).
+
+1. **Passe 1** (`connector.discover()`, `stages_s.discovery`) : chaque connecteur indexe
+   son arborescence sans ouvrir un fichier ; le nombre de documents de chaque source part
+   au log.
+2. **Passe 2** (`connector.fetch_all()`, `stages_s.phase1`) : drainée dans une
+   `list[RawDocument]`. Chaque document est mesuré (`xml_bytes`, `facets`, et
+   `step_ms.read`, le temps écoulé depuis le document précédent). `connect`,
+   `parseDocuments` et `ingest` additionnent leur durée sous `stages_s.phase1`.
 
 - Émet `document.fetched` **une fois**, avec `count` = le nombre de documents vus. Ce
   compte est le **dénominateur** de l'équation de complétude.
 - Ce que le connecteur a écarté en amont est émis en un compteur par raison,
-  `document.version_skipped` (artefacts d'export) et `document.unreadable` (fichiers
-  illisibles), **hors équation** : un fichier écarté n'est pas un document vu.
-- Mesure chaque document (`xml_bytes`, `facets`) pour `statistics`.
+  `document.version_skipped` (artefacts d'export), `document.unreadable` (fichiers
+  illisibles) et `document.id_mismatch` (`<ID>` différent du nom de fichier), **hors
+  équation** : un fichier écarté n'est pas un document vu.
 
 Sortie : `raw_documents`.
 

@@ -59,21 +59,41 @@ balise demain, il la transporte — c'est le parser qui la déclarera inconnue. 
 transcription est un arbre (pas un dict à plat : `<LIENS>` contient N `<LIEN>` frères
 qu'un aplatissement écraserait mutuellement).
 
-**`LegiFileConnector`** prend deux décisions, aucune ne regarde le contenu :
+**La clé d'un document est le nom de son fichier sans extension**, qui doit être son
+`<ID>` (ADR-034 §1). Elle se lit sans ouvrir le fichier, d'où deux passes
+(`sources/generic/file_connector.py:KeyedFileConnector`) :
 
-- **il écarte les artefacts d'export** : les `versions.xml` (racine `<VERSIONS>`) et les
-  fichiers `<ID>` d'une ligne — mesuré, 1 637 + 60 des 2 564 fichiers du corpus. Ce ne
-  sont pas des documents pauvres, ce ne sont pas des documents. L'écart est **compté**
-  (`connector.skipped`, par raison) et émis en `document.version_skipped`, hors équation
-  de complétude ;
+1. **`discover()`** parcourt l'arborescence sans rien parser et construit l'index
+   `clé → [chemins]` (des chaînes : l'index tient tout le stock). Il rend l'inventaire
+   de la source (`SourceInventory`, le nombre de clés) ;
+2. **`fetch_all()`**, un générateur synchrone, lit les facettes d'une clé au moment de
+   l'émettre, clés triées pour un run reproductible. Chaque fichier est contrôlé : un
+   fichier illisible est écarté (`unreadable`), un fichier dont l'`<ID>` n'est pas le
+   nom aussi (`id_mismatch`, journalisé avec son chemin) ; les autres facettes de la clé
+   sont émises quand même.
+
+Tout écart est **compté** (`connector.skipped`, par raison) et émis en un compteur par
+raison, hors équation de complétude. La fusion reste globale : les facettes d'un
+identifiant vivent parfois dans deux arborescences (`en_vigueur` / `non_vigueur`, 16 008
+identifiants LEGI), un regroupement dossier par dossier les couperait. La garantie qu'un
+identifiant n'est émis qu'une fois vient de là : la clé est unique par source.
+
+**`LegiFileConnector`** compose le connecteur générique, et ajoute deux choses, sans
+regarder le contenu :
+
+- **il écarte les artefacts d'export** : les `versions.xml` partagent tous la clé
+  `versions`, que la passe 1 met à part ; ils sont lus un par un après les documents.
+  Une racine `<VERSIONS>` ou un `<ID>` nu est un artefact, compté et émis en
+  `document.version_skipped`. Tout autre `versions.xml` est rejeté en `id_mismatch` : sa
+  clé n'est jamais son `<ID>`. Dans le dump du 13 octobre 2026, les 282 633
+  `versions.xml` sont des artefacts (95 illisibles) ;
 - **il fusionne les deux facettes d'un même texte** : `TEXTE_VERSION` (titre +
   métadonnées) et `TEXTELR` (structure, aucun titre) sont le même document dans deux
-  fichiers (98 IDs, intersection 98/98). Les émettre séparément produirait 98 collisions
-  d'identifiant, et les 98 textes finiraient sans titre. `ParsedDocument.source_files`
-  garde la provenance (jusqu'à 2 fichiers par document).
+  fichiers de même nom (`texte/version/` et `texte/struct/`). Émises séparément, les
+  textes finiraient sans titre. `ParsedDocument.source_files` garde la provenance.
 
-**`JuriFileConnector`** — une seule classe pour les cinq bases (la base est un paramètre,
-pas un type). Plus simple que LEGI : un fichier = un document, aucun artefact d'export.
+**La jurisprudence** prend le connecteur générique tel quel, une instance par base (la
+base est un paramètre, pas un type) : un fichier par décision, aucun artefact d'export.
 
 ## Le parser générique (`sources/generic/parser.py`)
 
