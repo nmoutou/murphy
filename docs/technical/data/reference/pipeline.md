@@ -128,8 +128,12 @@ passe le temps.
 Pour chaque `RawDocument` :
 
 1. **Parse** (`parser.parse(raw)` → `ParseResult`). Deux familles d'échec, distinguées :
-   - `ValidationError` (lisible mais irrecevable : identifiant absent/mal formé) → événement
-     `document.invalidated` (`reason=validation_error`, `uid` = chemin source, `error`) ;
+   - `ValidationError` (lisible mais irrecevable) → événement `document.invalidated`
+     (`reason`, `uid` = chemin source, `error`) et un warning qui logue la raison et le
+     détail. L'exception porte sa raison, une par règle : `identifier_missing`,
+     `identifier_malformed`, `undeclared_prefix`, `facet_root_duplicated` (deux facettes
+     de même racine), `facet_root_undeclared` (racine absente de `table.roots`),
+     `collision` (ADR-025) ;
    - `ParseError` (illisible) → idem avec `reason=parse_error`.
    Dans les deux cas le document part dans `to_skip`. Toute autre exception sort du
    contrat du parser : c'est un bug du run, elle remonte et l'arrête. Il n'y a **pas** de

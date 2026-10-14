@@ -34,6 +34,9 @@ class RecordingTelemetry:
     def record_collision(self, key: str, source_files: tuple[str, ...]) -> None:
         self._declared = self._declared.with_collision(key, source_files)
 
+    def record_invalidation(self, reason: str) -> None:
+        self._declared = self._declared.with_invalidation(reason)
+
     def snapshot(self) -> RunStats:
         stats = self._declared
         for event in self.events:

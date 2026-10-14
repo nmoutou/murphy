@@ -30,6 +30,13 @@ def _merge_tallies(
     return merged
 
 
+def _sum_counts(left: Mapping[str, int], right: Mapping[str, int]) -> dict[str, int]:
+    summed = dict(left)
+    for key, n in right.items():
+        summed[key] = summed.get(key, 0) + n
+    return summed
+
+
 class RunStats(BaseModel):
     """Monoïde : neutre ``empty()``, opérateur ``merge`` associatif et commutatif.
 
@@ -49,15 +56,15 @@ class RunStats(BaseModel):
     """Clé de métadonnée qui a reçu plusieurs valeurs -> nombre de documents et
     fichiers de l'un d'eux (ADR-025)."""
 
+    invalidations: dict[str, int] = Field(default_factory=dict)
+    """Raison de rejet au parse -> nombre de documents ; leur somme vaut
+    ``counts["document.invalidated"]``."""
+
     @classmethod
     def empty(cls) -> "RunStats":
         return cls()
 
     def merge(self, other: "RunStats") -> "RunStats":
-        counts = dict(self.counts)
-        for event_type, n in other.counts.items():
-            counts[event_type] = counts.get(event_type, 0) + n
-
         unknowns = {
             category: _merge_tallies(
                 self.unknowns.get(category, {}), other.unknowns.get(category, {})
@@ -66,7 +73,12 @@ class RunStats(BaseModel):
         }
         collisions = _merge_tallies(self.collisions, other.collisions)
 
-        return RunStats(counts=counts, unknowns=unknowns, collisions=collisions)
+        return RunStats(
+            counts=_sum_counts(self.counts, other.counts),
+            unknowns=unknowns,
+            collisions=collisions,
+            invalidations=_sum_counts(self.invalidations, other.invalidations),
+        )
 
     @classmethod
     def reduce(cls, stats: Iterable["RunStats"]) -> "RunStats":
@@ -87,3 +99,6 @@ class RunStats(BaseModel):
     def with_collision(self, key: str, source_files: tuple[str, ...]) -> "RunStats":
         tally = CollisionTally.seen_in(source_files)
         return self.merge(RunStats(collisions={key: tally}))
+
+    def with_invalidation(self, reason: str) -> "RunStats":
+        return self.merge(RunStats(invalidations={reason: 1}))

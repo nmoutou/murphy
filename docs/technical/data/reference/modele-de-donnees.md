@@ -20,7 +20,8 @@ Les 8 lettres de tête (`Identifier.prefix`) disent le fonds et le type du docum
 | `JURITEXT` / `CETATEXT` / `CONSTEXT` | les 5 juri | `decision` (judiciaire, administrative, constitutionnelle : `source` les distingue) |
 | `JORFTEXT` / `JORFARTI` | — | cible de liens LEGI uniquement (pas de connecteur JORF) |
 
-Un préfixe que la table ne déclare pas refuse le document (`ValidationError`). La nature
+Un préfixe que la table ne déclare pas refuse le document (`ValidationError`,
+`reason=undeclared_prefix`). La nature
 juridique (`LOI`, `ARRET`, `QPC`…) est un autre champ, `nature` : la balise `NATURE` en
 majuscules, `None` si elle manque ou n'apporte rien (`Article` en LEGI, `Texte` dans
 JADE).

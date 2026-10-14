@@ -152,9 +152,8 @@ l'extraction — le signal survit toujours au filtre.
   aval, sous sa valeur brute (`LEGIARTI000006419264`, `JURITEXT000019333891`). Il est
   validé à la construction (8 majuscules + 12 chiffres), pour toutes les sources ; ses
   8 lettres distinguent un article d'une décision. Identifiant absent ou mal formé =
-  `ValidationError` = rejet métier (`document.invalidated`, `reason=validation_error`),
-  distinct d'une panne de lecture
-  (`ParseError`).
+  `ValidationError` = rejet métier (`document.invalidated`, `reason=identifier_missing`
+  ou `identifier_malformed`), distinct d'une panne de lecture (`ParseError`).
 - **`content` et `structure["sections"]` sortent de la même lecture, dans le même
   ordre** : chaque section est un morceau **littéral** de `content`, et
   `content.find(section)` le retrouve toujours. C'est l'invariant dont dépendent les

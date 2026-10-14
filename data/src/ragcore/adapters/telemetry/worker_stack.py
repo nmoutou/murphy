@@ -48,6 +48,9 @@ class WorkerTelemetryStack:
     def record_collision(self, key: str, source_files: tuple[str, ...]) -> None:
         self._backends.aggregate.record_collision(key, source_files)
 
+    def record_invalidation(self, reason: str) -> None:
+        self._backends.aggregate.record_invalidation(reason)
+
     def record_measure(self, path: MeasurePath, value: float, ref: str) -> None:
         self._backends.measures.record(path, value, ref)
 

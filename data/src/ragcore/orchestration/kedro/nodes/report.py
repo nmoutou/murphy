@@ -40,4 +40,5 @@ def report_node(
         "collisions": {
             key: tally.model_dump() for key, tally in stats.collisions.items()
         },
+        "invalidations": dict(stats.invalidations),
     }

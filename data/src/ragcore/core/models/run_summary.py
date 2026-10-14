@@ -68,6 +68,10 @@ class RunSummary(BaseModel):
     collisions: dict[str, CollisionTally]
     """Les clés de métadonnée qui ont reçu plusieurs valeurs distinctes (ADR-025)."""
 
+    invalidations: dict[str, int] = Field(default_factory=dict)
+    """Les rejets au parse, par raison. Un défaut : les bilans écrits avant lui se
+    relisent."""
+
     ingestion_ratio: float = FULL_RATIO
     sampling: dict[SourceName, SourceInventory] = Field(default_factory=dict)
     """Voir ``RunSampling``. Des défauts : les bilans écrits avant eux se relisent."""
@@ -104,6 +108,7 @@ class RunSummary(BaseModel):
             counts=stats.counts,
             unknowns=stats.unknowns,
             collisions=stats.collisions,
+            invalidations=stats.invalidations,
             ingestion_ratio=sampling.ingestion_ratio,
             sampling=sampling.sources,
             error_message=error_message,

@@ -285,3 +285,13 @@ class TestTelemetry:
             }
         finally:
             runtime.close()
+
+    def test_an_invalidation_reaches_the_aggregate(self) -> None:
+        runtime = AsyncioRuntimeFactory().build(0)
+        try:
+            stack = _telemetry_factory().build(0, runtime)
+            stack.record_invalidation("identifier_missing")
+
+            assert stack.snapshot().invalidations == {"identifier_missing": 1}
+        finally:
+            runtime.close()

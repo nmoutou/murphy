@@ -20,6 +20,7 @@ A = RunStats(
     counts={"persisted": 2, "invalidated": 1},
     unknowns={"field": {"NOTA": _tally(1, DOC_2)}},
     collisions={"url": CollisionTally(count=1, example=ONE_FILE)},
+    invalidations={"identifier_missing": 1},
 )
 B = RunStats(
     counts={"persisted": 3},
@@ -31,6 +32,7 @@ B = RunStats(
         "url": CollisionTally(count=2, example=TWO_FILES),
         "num": CollisionTally(count=1, example=ONE_FILE),
     },
+    invalidations={"identifier_missing": 2, "facet_root_duplicated": 1},
 )
 C = RunStats(counts={"promoted": 1}, unknowns={"field": {"LIENS": _tally(1, DOC_1)}})
 
@@ -109,3 +111,16 @@ def test_with_collision_counts_one_document() -> None:
 
     assert stats.collisions == {"url": CollisionTally(count=2, example=TWO_FILES)}
     assert stats.unknowns == {}
+
+
+def test_invalidations_are_summed_per_reason() -> None:
+    merged = A.merge(B)
+    assert merged.invalidations == {"identifier_missing": 3, "facet_root_duplicated": 1}
+
+
+def test_with_invalidation_counts_one_document() -> None:
+    stats = RunStats.empty().with_invalidation("undeclared_prefix")
+    stats = stats.with_invalidation("undeclared_prefix")
+
+    assert stats.invalidations == {"undeclared_prefix": 2}
+    assert stats.counts == {}

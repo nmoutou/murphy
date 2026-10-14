@@ -151,6 +151,7 @@ class _ParseSite:
                 error_message=str(exc),
             )
         )
+        self.telemetry.record_invalidation(reason)
 
     def declare_signals(self, result: ParseResult) -> None:
         """Toujours, et avant le curseur : `skip` n'efface jamais le signal."""

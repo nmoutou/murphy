@@ -19,7 +19,7 @@ n'en sort en silence.
 | `document.fetched` | Documents vus par le connecteur (1 événement, `count` = lot). **Le dénominateur** de l'équation. |
 | `document.version_skipped` / `document.unreadable` / `document.id_mismatch` | Écartés par le connecteur : artefacts d'export (`versions.xml`) / XML illisibles / fichiers dont l'`<ID>` n'est pas le nom (ADR-034 §1). Un compteur par raison, chacun porte son `count`. **Hors équation** : un fichier écarté n'est pas un document vu. |
 | `document.parsed` | Parse réussi |
-| `document.invalidated` | Rejet au parse (validation, lecture ou collision non configurée, ADR-025) : `reason`, `uid` (chemin source), `error` |
+| `document.invalidated` | Rejet au parse : `reason` (une règle métier, `parse_error` ou `collision`, ADR-025), `uid` (chemin source), `error`. Ventilé par raison dans `invalidations`. |
 | `document.persisted` | Saga complète |
 | `document.failed` | **La fuite** : vu, jamais ingéré (saga échouée/compensée). `reason` = type d'exception. |
 | `chunk.truncated` | Chunks raccourcis par l'embedder pour tenir dans la fenêtre du modèle (1 événement en fin de run, `count`). Pas une fuite — mais la fin de ces chunks n'est pas indexée : `CHUNKING_MAX_CHARS` à corriger. |
@@ -63,7 +63,7 @@ et le livrer dans `WorkerTelemetryStack.emit`.
 
 Un **monoïde de fusion** : élément neutre `empty()`, opérateur `merge` associatif **et
 commutatif** (les workers finissent dans un ordre non déterministe — une fusion non
-commutative ferait dépendre le bilan de l'ordonnancement). Trois champs :
+commutative ferait dépendre le bilan de l'ordonnancement). Quatre champs :
 
 - `counts` : event_type → occurrences (fusion : somme). ⚠️ Dette ouverte : pas de
   compteurs par **source**, un run multi-sources rend un bilan où l'échec est anonyme
@@ -91,6 +91,11 @@ commutative ferait dépendre le bilan de l'ordonnancement). Trois champs :
   `example` est la liste des fichiers d'où viennent les valeurs d'un de ces
   documents, distincts, dans l'ordre déclaré des facettes : deux pour une collision entre
   facettes, un pour une balise répétée dans une facette. Fusion : comme `unknowns`.
+- `invalidations` : raison de rejet au parse → nombre de documents (`record_invalidation`,
+  un appel par `document.invalidated`) ; leur somme vaut `counts["document.invalidated"]`.
+  Les raisons sont celles de `exclusion_reasons.py` : `identifier_missing`,
+  `identifier_malformed`, `undeclared_prefix`, `facet_root_duplicated`,
+  `facet_root_undeclared`, `collision`, `parse_error`. Fusion : somme.
 
 **La remontée passe par le DAG, pas par le hook** : le nœud `ingest` remet les agrégats
 des workers (compteurs et mesures) aux `RunAggregates` du run (`run_sink`, que le hook
@@ -103,7 +108,7 @@ les compterait deux fois).
 ## Le statut d'un run
 
 `RunSummary` = l'identité du run (run_id, `sources`, dates) + les `counts`, les
-`unknowns` et les `collisions` de l'agrégat, recopiés à plat + le `status` + la part du
+`unknowns`, les `collisions` et les `invalidations` de l'agrégat, recopiés à plat + le `status` + la part du
 corpus lue : `ingestion_ratio` et, par source, `sampling` (`{total, retained}`, de la
 passe 1 ; vide si le run a cassé avant elle). Un run `ok` à 10 % ne doit pas passer pour
 un run complet (ADR-034 §9). Le statut annoncé « ok » par le hook est **re-dérivé des compteurs**
@@ -142,6 +147,7 @@ document est plat :
   "collisions": {
     "versions_a_venir": { "count": 14, "example": [
       "/…/texte/version/LEGITEXT….xml" ] } },
+  "invalidations": { "facet_root_duplicated": 3, "parse_error": 1 },
   "ingestion_ratio": 0.1,
   "sampling": { "legi": { "total": 2116313, "retained": 211632 } } }
 ```

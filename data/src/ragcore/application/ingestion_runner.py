@@ -52,8 +52,8 @@ class IngestionOutcome:
     """La sortie du nœud de phase 1."""
 
     stats: RunStats
-    """Déjà remis à l'agrégat du run : ``report`` n'en lit que les inconnus et les
-    collisions."""
+    """Déjà remis à l'agrégat du run : ``report`` n'en lit que les inconnus, les
+    collisions et les rejets au parse."""
 
     written_node_ids: set[str]
     """Les nœuds écrits par ce run : le delta qui borne le rejeu des pendantes."""

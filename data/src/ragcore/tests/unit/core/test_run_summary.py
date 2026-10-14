@@ -104,6 +104,7 @@ def test_the_stored_summary_is_flat() -> None:
                 "relation_type": {"titre_tm": UnknownTally(count=2, example=DOC_1)}
             },
             collisions={"url": CollisionTally(count=3, example=FACETS)},
+            invalidations={"facet_root_duplicated": 4},
         ),
         context_run_id=RUN,
         sources=(SourceName.CASS, SourceName.JADE),
@@ -126,6 +127,7 @@ def test_the_stored_summary_is_flat() -> None:
     assert stored["collisions"] == {
         "url": {"count": 3, "example": ["version.xml", "struct.xml"]}
     }
+    assert stored["invalidations"] == {"facet_root_duplicated": 4}
     assert "stats" not in stored
     assert "breakdowns" not in stored
 
@@ -181,6 +183,18 @@ def test_aggregator_counts_collisions_apart_from_unknowns(
     assert "collisions" not in summary.unknowns
 
 
+def test_aggregator_counts_invalidations_by_reason(
+    aggregator: RunStatsAggregator,
+) -> None:
+    aggregator.record_invalidation("identifier_missing")
+    aggregator.record_invalidation("identifier_missing")
+    aggregator.record_invalidation("parse_error")
+
+    summary = aggregator.finalize(RunStatus.OK)
+
+    assert summary.invalidations == {"identifier_missing": 2, "parse_error": 1}
+
+
 def test_the_summary_projects_the_reduction_of_n_workers() -> None:
     """N agrégats fusionnent, puis l'identité s'attache."""
     workers = [
@@ -233,3 +247,14 @@ def test_a_summary_written_before_the_sampling_still_reads() -> None:
     summary = RunSummary.model_validate(document)
 
     assert (summary.ingestion_ratio, summary.sampling) == (1, {})
+
+
+def test_a_summary_written_before_the_invalidations_still_reads() -> None:
+    document = json.loads(
+        RunStatsAggregator(RUN, (), datetime.now(UTC))
+        .finalize(RunStatus.OK)
+        .model_dump_json()
+    )
+    del document["invalidations"]
+
+    assert RunSummary.model_validate(document).invalidations == {}

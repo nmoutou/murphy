@@ -77,6 +77,9 @@ class RunStatsAggregator:
         """Rangée en liste ou refusée, une clé en collision se compte."""
         self._stats = self._stats.with_collision(key, source_files)
 
+    def record_invalidation(self, reason: str) -> None:
+        self._stats = self._stats.with_invalidation(reason)
+
     def record_inventories(
         self, inventories: Mapping[SourceName, SourceInventory]
     ) -> None:

@@ -56,6 +56,11 @@ class WorkerTelemetry(TelemetryPort, Protocol):
         """
         ...
 
+    def record_invalidation(self, reason: str) -> None:
+        """Un document rejeté au parse, sous sa raison (``exclusion_reasons``). Un appel
+        par ``document.invalidated`` émis."""
+        ...
+
 
 @runtime_checkable
 class TelemetryFactory(Protocol):

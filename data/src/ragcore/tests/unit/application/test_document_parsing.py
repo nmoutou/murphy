@@ -114,6 +114,7 @@ def test_une_ParseError_exclut_le_document_et_le_compte() -> None:
     assert to_skip == ["doc-1"]
     invalidated = telemetry.events_of(DOCUMENT_INVALIDATED)
     assert [e.payload["reason"] for e in invalidated] == [REASON_PARSE_ERROR]
+    assert telemetry.snapshot().invalidations == {REASON_PARSE_ERROR: 1}
 
 
 def test_une_ValidationError_est_rejetee_sous_SA_raison() -> None:
@@ -126,6 +127,7 @@ def test_une_ValidationError_est_rejetee_sous_SA_raison() -> None:
     (event,) = telemetry.events_of(DOCUMENT_INVALIDATED)
     assert event.payload["reason"] == REASON_FACET_ROOT_DUPLICATED
     assert event.payload["error"] == "racines en double"
+    assert telemetry.snapshot().invalidations == {REASON_FACET_ROOT_DUPLICATED: 1}
 
 
 def test_le_warning_de_rejet_dit_la_raison_et_le_detail(
@@ -254,6 +256,7 @@ def test_une_collision_non_configuree_est_rejetee_sous_sa_raison() -> None:
     assert skipped == ["LEGIARTI000000000003"]
     invalidated = telemetry.events_of(DOCUMENT_INVALIDATED)
     assert [e.payload["reason"] for e in invalidated] == [REASON_COLLISION]
+    assert telemetry.snapshot().invalidations == {REASON_COLLISION: 1}
 
 
 def test_parse_ou_refuse_chaque_collision_est_comptee_au_bilan() -> None:
