@@ -1,6 +1,6 @@
 # ADR-019 — Configuration de l'ingestion : un fichier, un bloc `dev`, `ENVIRONMENT` seul arbitre
 
-**Statut** : ✅ Accepté (30 septembre 2026) — amende ADR-011 §5-§6, ADR-012 et ADR-018 §3 · **§3 et §4 amendés le 30 septembre 2026** (labels Neo4j déclarés par les sources ; découpe dans l'environnement ; bloc `dev` aplati) · **§4 amendé par [ADR-020](ADR-020-suppression-du-manifest.md)** (suppression du manifest) · **amendement du §3 remplacé par [ADR-022](ADR-022-typage-des-documents.md)** (labels Neo4j)
+**Statut** : ✅ Accepté (30 septembre 2026) — amende ADR-011 §5-§6, ADR-012 et ADR-018 §3 · **§3 et §4 amendés le 30 septembre 2026** (labels Neo4j déclarés par les sources ; découpe dans l'environnement ; bloc `dev` aplati) · **§4 amendé par [ADR-020](ADR-020-suppression-du-manifest.md)** (suppression du manifest) · **amendement du §3 remplacé par [ADR-022](ADR-022-typage-des-documents.md)** (labels Neo4j) · **§3 amendé par [ADR-034](ADR-034-ingestion-en-flux.md)** (`ingestion_ratio` rejoint les clés, `1` hors `dev`)
 
 ## Contexte
 

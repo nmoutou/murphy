@@ -1,6 +1,6 @@
 # INDEX — Registre des décisions (ADR)
 
-> Un fichier par ADR (format Nygard). **Prochain numéro : ADR-034.**
+> Un fichier par ADR (format Nygard). **Prochain numéro : ADR-035.**
 
 ## Registre
 
@@ -18,13 +18,13 @@
 | [ADR-010](ADR-010-tri-base-stateless-failfast.md) | Architecture tri-base + serving stateless/fail-fast | Rétro-documenté — amendé par ADR-028 (OpenSearch, LLM retiré) et ADR-033 (segment de conversation renvoyé par le client, LLM obligatoire, toute variable obligatoire arrête le démarrage) |
 | [ADR-011](ADR-011-regimes-ingestion-dev-prod.md) | Régimes d'ingestion dev/prod : exhaustif vs sélectif | Acté — §5 amendé par ADR-012, ADR-019 et ADR-020, §2 et §6 par ADR-019, §4 par ADR-019 et ADR-020, §7 par ADR-013, §1 par ADR-023, §3 corrigé par ADR-025 |
 | [ADR-012](ADR-012-interrupteur-embedding-dev.md) | Un interrupteur d'embedding, pas trois interrupteurs de store | Acté — amende ADR-011 §5, amendé par ADR-019 |
-| [ADR-013](ADR-013-retrait-echantillonnage-corpus.md) | Retrait de l'échantillonnage de corpus | Acté — amende ADR-011 §7 |
+| [ADR-013](ADR-013-retrait-echantillonnage-corpus.md) | Retrait de l'échantillonnage de corpus | Acté — amende ADR-011 §7, amendé par ADR-034 (un échantillonnage revient, en ratio) |
 | [ADR-014](ADR-014-restructuration-configuration.md) | Restructuration de la configuration en partition workflow / ingestion | ❌ Remplacé par ADR-018 |
 | [ADR-015](ADR-015-contrat-ingestion-serving.md) | Contrat ingestion ↔ serving : le texte d'un passage vit dans Mongo, désigné par ses offsets | ✅ Accepté (25 septembre 2026) — s'appuie sur ADR-010 et ADR-011 §4, §3 amendé par ADR-018, §2 par ADR-022, §1 à §5 par ADR-028, §2 par ADR-031 et ADR-033 (`content_length`, `parent_text_title`) |
 | [ADR-016](ADR-016-depot-unique.md) | Un seul dépôt : fin des sous-modules, contrat du flux dans un paquet partagé | ✅ Accepté (25 septembre 2026) |
 | [ADR-017](ADR-017-erreurs-du-chat-en-modale.md) | Erreurs du chat : une modale, l'étape en cause, un arrêt propagé au backend | ✅ Accepté (26 septembre 2026) — étend le contrat d'ADR-016 (`@murphy/contract/errors`) · §2 et §5 amendés par ADR-030 côté backend · §2 à §4 amendés par ADR-032 côté frontend |
 | [ADR-018](ADR-018-collection-qdrant-nom-fixe.md) | Une collection Qdrant au nom fixe : fin de l'empreinte, du pointeur et du tracking | ✅ Accepté (30 septembre 2026) — remplace ADR-014, amende ADR-015 §3, §3 amendé par ADR-019, §1-§2 par ADR-028 |
-| [ADR-019](ADR-019-configuration-ingestion-environment.md) | Configuration de l'ingestion : un fichier, un bloc `dev`, `ENVIRONMENT` seul arbitre | ✅ Accepté (30 septembre 2026) — amende ADR-011 §5-§6, ADR-012, ADR-018 §3 ; §3 et §4 amendés (labels Neo4j déclarés par les sources ; découpe dans l'environnement ; bloc `dev` aplati), §4 par ADR-020, amendement du §3 par ADR-022 |
+| [ADR-019](ADR-019-configuration-ingestion-environment.md) | Configuration de l'ingestion : un fichier, un bloc `dev`, `ENVIRONMENT` seul arbitre | ✅ Accepté (30 septembre 2026) — amende ADR-011 §5-§6, ADR-012, ADR-018 §3 ; §3 et §4 amendés (labels Neo4j déclarés par les sources ; découpe dans l'environnement ; bloc `dev` aplati), §4 par ADR-020, amendement du §3 par ADR-022, §3 par ADR-034 (`ingestion_ratio`) |
 | [ADR-020](ADR-020-suppression-du-manifest.md) | Suppression du manifest d'ingestion | ✅ Accepté (1er octobre 2026) — amende ADR-011 §4-§5 et ADR-019 §2 et §4 |
 | [ADR-021](ADR-021-relations-non-formatees.md) | Relations non formatées : une collection, plus un champ du document | ✅ Accepté (1er octobre 2026) |
 | [ADR-022](ADR-022-typage-des-documents.md) | Typage des documents : `document_type` fait foi, Neo4j le reflète | ✅ Accepté (1er octobre 2026) — amende ADR-015 §2 et l'amendement du §3 d'ADR-019 |
@@ -39,6 +39,7 @@
 | [ADR-031](ADR-031-modele-embedding-francais.md) | Un modèle d'embedding qui couvre le droit français | ✅ Accepté (11 octobre 2026) — `microsoft/harrier-oss-v1-0.6b`, consigne devant la question ; amende ADR-015 §2 |
 | [ADR-032](ADR-032-interface-onglets-dockview.md) | L'interface du moteur de recherche : un espace d'onglets Dockview | ✅ Accepté (11 octobre 2026) — réalise ADR-028 §10 côté frontend, amende ADR-030 §2 et §3 et ADR-017 §2 à §4 · ferme le point ouvert « Interface du frontend adaptée au pivot » · §1 à §6 et §12 amendés le 11 octobre 2026 (ni icône de document, ni bouton Scinder ; la barre de recherche passe dans l'onglet Résultats, renommé Recherche ; Explication renommé Résumé) · §2, §4, §6, §11 et §12 amendés par ADR-033 (sélection, sidebar, onglet Explications) |
 | [ADR-033](ADR-033-onglet-explications.md) | L'onglet Explications : un LLM borné aux documents choisis | ✅ Accepté (12 octobre 2026) — amende ADR-007, ADR-010, ADR-015 §2, ADR-030 §1, §4 à §6 et ADR-032 §2, §4, §6, §11 et §12 |
+| [ADR-034](ADR-034-ingestion-en-flux.md) | L'ingestion en flux : une mémoire bornée, des relations en transit | ✅ Accepté (14 octobre 2026) — amende ADR-013 et ADR-019 §3 |
 
 ## Points ouverts rattachés
 

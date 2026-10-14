@@ -1,6 +1,6 @@
 # ADR-013 — Retrait de l'échantillonnage de corpus
 
-**Statut** : acté (18 juillet 2026) — amende ADR-011 §7
+**Statut** : acté (18 juillet 2026) — amende ADR-011 §7 · **amendé par [ADR-034](ADR-034-ingestion-en-flux.md)** (le stock LEGI complet fait renaître l'échantillonnage, sous la forme d'un ratio par source : `ingestion_ratio`)
 
 ## Contexte
 
