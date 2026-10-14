@@ -63,6 +63,19 @@ describe('Workspace', () => {
     expect(closeButton('Explications').closest('[title]')).toHaveAttribute('title', 'Explications');
   });
 
+  it('keeps a hidden tab in the page, so it keeps its scroll position', async () => {
+    explanationChat.messages = [];
+    renderWorkspace();
+
+    await userEvent.click(screen.getByRole('tab', { name: 'Explications' }));
+    const conversation = await screen.findByText(/Posez une question/);
+    const results = screen.getByRole('tab', { name: 'Recherche' });
+    await userEvent.click(results);
+    await vi.waitFor(() => expect(results).toHaveAttribute('aria-selected', 'true'));
+
+    expect(conversation).toBeInTheDocument();
+  });
+
   it('reopens a closed fixed tab from the group menu', async () => {
     renderWorkspace();
     await closeTabs('Graphe');

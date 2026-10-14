@@ -34,6 +34,8 @@ export default function Workspace() {
         <DockviewReact
           theme={MURPHY_THEME}
           components={PANEL_COMPONENTS}
+          // Par défaut, un onglet masqué est retiré du DOM et perd sa position de défilement
+          defaultRenderer="always"
           onReady={handleReady}
           defaultTabComponent={PanelTab}
           rightHeaderActionsComponent={GroupActions}

@@ -39,6 +39,9 @@ if (typeof window.matchMedia !== 'function') {
 if (typeof Element.prototype.scrollIntoView !== 'function') {
   Element.prototype.scrollIntoView = () => {};
 }
+if (typeof Element.prototype.scrollTo !== 'function') {
+  Element.prototype.scrollTo = () => {};
+}
 
 // Sans les globals de Vitest, Testing Library ne peut pas enregistrer son nettoyage
 afterEach(() => {

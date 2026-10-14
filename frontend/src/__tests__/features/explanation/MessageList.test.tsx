@@ -48,6 +48,12 @@ describe('MessageList', () => {
     ).toEqual(['1Titre A', '2Titre B']);
   });
 
+  it('shows no sources for a question asked without documents', () => {
+    renderList([question('q1', 'Bonjour.')]);
+
+    expect(screen.queryByText(/^Sources/)).not.toBeInTheDocument();
+  });
+
   it('renders the answer in Markdown', () => {
     renderList([question('q1', 'Résume.', 'A'), answer('a1', '**Important** : un *texte*.')]);
 

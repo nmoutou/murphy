@@ -71,9 +71,9 @@ describe('document tabs', () => {
   it('opens a result in a tab next to Recherche, its passage highlighted', async () => {
     const { container } = render(<Workspace />);
 
-    await userEvent.click(screen.getByRole('button', { name: RESULT.title }));
+    await userEvent.click(await screen.findByRole('button', { name: RESULT.title }));
 
-    expect((await screen.findByText('se prescrivent')).tagName).toBe('MARK');
+    expect(await screen.findByText('se prescrivent', { selector: 'mark' })).toBeInTheDocument();
     expect(container.querySelectorAll('.dv-groupview')).toHaveLength(1);
   });
 

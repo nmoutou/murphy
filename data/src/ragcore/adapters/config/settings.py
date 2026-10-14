@@ -90,7 +90,7 @@ class InfraSettings(BaseSettings):
     """Sans défaut. Le backend lit la même variable : l'ingestion écrit l'index qu'il
     interroge."""
 
-    xml_source_path: Path = Path("/mnt/data/Murphy/src")
+    xml_source_path: Path = Path("/data/Murphy/src")
     """La racine du corpus, en chemin absolu hors du dépôt. Le sous-répertoire de chaque
     source vit dans `sources/registry.py`."""
 

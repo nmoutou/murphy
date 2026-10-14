@@ -1,12 +1,14 @@
 'use client';
 
+import { useRef } from 'react';
 import type { SelectionEntry } from '@/stores/selectionStore';
 import { useSelectionStore } from '@/stores/selectionStore';
 import { useSearchStore } from '@/stores/searchStore';
-import { askQuestion, stopAnswer, useExplanation } from '@/stores/explanationStore';
+import { askQuestion, stopAnswer, useExplanation, useIsAnswering } from '@/stores/explanationStore';
 import { isOverBudget } from '@/lib/selectionBudget';
 import MessageList from './MessageList';
 import QuestionForm from './QuestionForm';
+import { useScrollToLastQuestion } from './useScrollToLastQuestion';
 
 const OVER_BUDGET_HINT = 'La sélection dépasse le budget de lecture : retirez un document.';
 const EMPTY_CONVERSATION =
@@ -22,19 +24,39 @@ const useQuestionHint = (): { readonly canAsk: boolean; readonly hint?: string }
   return { canAsk: true };
 };
 
+function QuestionDock() {
+  const { canAsk, hint } = useQuestionHint();
+  const isAnswering = useIsAnswering();
+  return (
+    <div className="sticky bottom-2 mt-6">
+      <QuestionForm
+        canAsk={canAsk}
+        isAnswering={isAnswering}
+        hint={hint}
+        onAsk={(question) => void askQuestion(question)}
+        onStop={() => void stopAnswer()}
+      />
+    </div>
+  );
+}
+
 interface ExplanationPanelProps {
   readonly onOpenDocument: (source: SelectionEntry) => void;
 }
 
 /** Le LLM résume et explique les documents choisis, rien d'autre (ADR-033) */
 export default function ExplanationPanel({ onOpenDocument }: ExplanationPanelProps) {
-  const { messages, status } = useExplanation();
-  const { canAsk, hint } = useQuestionHint();
-  const isAnswering = status === 'submitted' || status === 'streaming';
+  const { messages } = useExplanation();
+  const panelRef = useRef<HTMLElement>(null);
+  useScrollToLastQuestion(panelRef, messages);
 
   return (
-    // pb-6 = bottom-6 du champ : tout en bas, le texte finit au-dessus de lui
-    <section className="flex h-full flex-col overflow-y-auto px-4 pt-4 pb-2 text-tertiary scrollbar">
+    // pb-2 = bottom-2 du champ : tout en bas, le texte finit au-dessus de lui.
+    // Conteneur de taille : MessageList se dimensionne en cqh
+    <section
+      ref={panelRef}
+      className="flex h-full flex-col overflow-y-auto px-4 pt-4 pb-2 text-tertiary scrollbar [container-type:size]"
+    >
       <div className="flex-1">
         {messages.length === 0 ? (
           <p className="text-sm">{EMPTY_CONVERSATION}</p>
@@ -42,15 +64,9 @@ export default function ExplanationPanel({ onOpenDocument }: ExplanationPanelPro
           <MessageList messages={messages} onOpenDocument={onOpenDocument} />
         )}
       </div>
-      <div className="sticky bottom-2 mt-6">
-        <QuestionForm
-          canAsk={canAsk}
-          isAnswering={isAnswering}
-          hint={hint}
-          onAsk={(question) => void askQuestion(question)}
-          onStop={() => void stopAnswer()}
-        />
-      </div>
+      {/* Tout en bas, la fin de la réponse remonte vers le milieu du panneau */}
+      {messages.length > 0 && <div aria-hidden className="h-1/2 shrink-0" />}
+      <QuestionDock />
     </section>
   );
 }

@@ -34,7 +34,11 @@ function MessageItem({ messages, index, onOpenDocument }: MessageItemProps) {
 /** Toute la conversation ; un séparateur marque chaque changement de sélection */
 export default function MessageList({ messages, onOpenDocument }: MessageListProps) {
   return (
-    <ol aria-label="Conversation" className="flex flex-col gap-4">
+    // Le dernier message laisse la place de remonter la question envoyée en haut du panneau
+    <ol
+      aria-label="Conversation"
+      className="flex flex-col gap-4 [&>li:last-child]:min-h-[calc(50cqh-5rem)]"
+    >
       {messages.map((message, index) => (
         <Fragment key={message.id}>
           {startsSegment(messages, index) && <SegmentSeparator />}
