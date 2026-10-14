@@ -27,7 +27,7 @@ def report_node(
         "documents_failed": len(ingestion_outcome.failures),
         # (identifiant, message) : un échec anonyme ne se rejoue pas
         "failures": list(ingestion_outcome.failures),
-        "relations_extracted": len(ingestion_outcome.relations),
+        "relations_extracted": resolution_outcome.extracted_count,
         "relations_written": resolution_outcome.written_count,
         "relations_pending": resolution_outcome.pending_count,
         "relations_reduced": resolution_outcome.reduced_count,

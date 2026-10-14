@@ -20,6 +20,9 @@ from ragcore.adapters.storage.mongo.run_summary_repository import (
 from ragcore.adapters.storage.mongo.statistics_repository import (
     MongoStatisticsRepository,
 )
+from ragcore.adapters.storage.mongo.transit_repository import (
+    MongoTransitRelationRepository,
+)
 from ragcore.adapters.storage.mongo.unformatted_repository import (
     MongoUnformattedRelationRepository,
 )
@@ -49,6 +52,7 @@ from ragcore.core.ports.telemetry import (
     TelemetryPort,
     WorkerTelemetry,
 )
+from ragcore.core.ports.transit_repository import TransitRelationRepository
 from ragcore.core.ports.unformatted_repository import UnformattedRelationRepository
 
 RUN_ID = "abc123"
@@ -68,6 +72,11 @@ class TestStorageAdapters:
     def test_mongo_document_repository(self) -> None:
         repo = MongoDocumentRepository.__new__(MongoDocumentRepository)
         assert isinstance(repo, DocumentRepository)
+
+    def test_mongo_transit_repository(self) -> None:
+        """Sans lui, les relations n'iraient pas de la phase 1 à la phase 2."""
+        repo = MongoTransitRelationRepository.__new__(MongoTransitRelationRepository)
+        assert isinstance(repo, TransitRelationRepository)
 
     def test_mongo_statistics_repository(self) -> None:
         repo = MongoStatisticsRepository.__new__(MongoStatisticsRepository)

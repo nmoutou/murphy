@@ -48,3 +48,8 @@ class CollisionError(ValidationError):
 # un `except ValidationError` placé avant `except ParseError`.
 class ParseError(RagCoreError):
     """Le document n'a pas pu être lu (XML malformé, structure inattendue)."""
+
+
+class TransitNotDrainedError(RagCoreError):
+    """``transit_relations`` n'est pas vide en fin de phase 2 : une relation n'a été ni
+    écrite, ni mise en attente, ni réduite. Un bug, pas un état dégradé (ADR-034 §6)."""

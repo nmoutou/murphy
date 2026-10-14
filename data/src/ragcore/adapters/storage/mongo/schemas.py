@@ -5,6 +5,9 @@ from ragcore.adapters.storage.mongo.pending_repository import (
     PENDING_RELATIONS_COLLECTION,
 )
 from ragcore.adapters.storage.mongo.statistics_repository import STATISTICS_COLLECTION
+from ragcore.adapters.storage.mongo.transit_repository import (
+    TRANSIT_RELATIONS_COLLECTION,
+)
 from ragcore.adapters.storage.mongo.unformatted_repository import (
     UNFORMATTED_RELATIONS_COLLECTION,
 )
@@ -46,6 +49,18 @@ _DATA_INDEXES: dict[str, list[IndexModel]] = {
             ],
             unique=True,
             name="uq_unformatted_source_text_type_sens",
+        ),
+    ],
+    # Non unique : une arête déclarée par deux documents donne deux lignes, que la
+    # réduction dédoublonne. Son préfixe `run_id` sert aussi la compensation.
+    TRANSIT_RELATIONS_COLLECTION: [
+        IndexModel(
+            [
+                ("run_id", ASCENDING),
+                ("relation_type", ASCENDING),
+                ("source_id", ASCENDING),
+            ],
+            name="idx_transit_run_type_source",
         ),
     ],
 }

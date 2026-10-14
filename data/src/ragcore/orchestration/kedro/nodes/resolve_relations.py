@@ -1,5 +1,5 @@
 """Nœud de la phase 2 : il consomme l'``IngestionOutcome``, donc ne tourne qu'une fois
-tous les nœuds du run écrits.
+tous les nœuds du run écrits, et leurs relations en transit.
 
 Non parallélisé : il traite l'union en un batch, sur le runtime du hook.
 """
@@ -29,8 +29,6 @@ def resolve_relations_node(
     with stage_clock.stage(STAGE_PHASE2_WRITE):
         return pipeline_runtime.run(
             resolve_service.execute(
-                ingestion_outcome.relations,
-                ingestion_outcome.written_node_ids,
-                pipeline_context,
+                ingestion_outcome.written_node_ids, pipeline_context
             )
         )

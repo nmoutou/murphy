@@ -163,3 +163,35 @@ class InMemoryUnformattedRepository:
 
     async def count(self) -> int:
         return len(self.rows)
+
+
+class InMemoryTransitRepository:
+    """Une ligne par relation, sans dédoublonnage."""
+
+    def __init__(self) -> None:
+        self.rows: list[tuple[Relation, RunId]] = []
+
+    async def clear(self) -> None:
+        self.rows = []
+
+    async def insert_many(self, relations: Sequence[Relation], run_id: RunId) -> None:
+        self.rows.extend((relation, run_id) for relation in relations)
+
+    async def delete_for_source(
+        self, source_identifier: Identifier, run_id: RunId
+    ) -> None:
+        key = source_identifier.serialize()
+        self.rows = [
+            (relation, rid)
+            for relation, rid in self.rows
+            if not (rid == run_id and relation.source_identifier.serialize() == key)
+        ]
+
+    async def read_run(self, run_id: RunId) -> list[Relation]:
+        return [relation for relation, rid in self.rows if rid == run_id]
+
+    async def delete_run(self, run_id: RunId) -> None:
+        self.rows = [(relation, rid) for relation, rid in self.rows if rid != run_id]
+
+    async def count(self) -> int:
+        return len(self.rows)

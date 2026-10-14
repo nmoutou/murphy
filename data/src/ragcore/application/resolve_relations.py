@@ -1,4 +1,4 @@
-"""La phase 2 : les arêtes, en batch.
+"""La phase 2 : les arêtes, en batch, lues dans ``transit_relations``.
 
 Suppose que tous les nœuds du run existent : c'est l'arête du DAG entre les phases 1
 et 2 qui le garantit. Seul ce service touche au registre des pendantes.
@@ -6,12 +6,14 @@ et 2 qui le garantit. Seul ce service touche au registre des pendantes.
 
 from dataclasses import dataclass
 
+from ragcore.core.exceptions import TransitNotDrainedError
 from ragcore.core.models import PendingRelation, Relation, RunStats
 from ragcore.core.models.audit import build_event
 from ragcore.core.models.pending import PendingKey
 from ragcore.core.ports.graph_repository import GraphRepository
 from ragcore.core.ports.pending_repository import PendingRelationRepository
 from ragcore.core.ports.telemetry import TelemetryPort
+from ragcore.core.ports.transit_repository import TransitRelationRepository
 from ragcore.core.services.relation_reduction import reduce_transitively
 from ragcore.core.telemetry_events import (
     RELATION_PENDING,
@@ -39,55 +41,88 @@ class ResolutionOutcome:
     reduced_count: int = 0
     """Redondantes, éliminées par la réduction transitive : ni écrites ni pendantes."""
 
+    extracted_count: int = 0
+    """Lues en transit : une par déclaration, doublons compris."""
+
+
+@dataclass(frozen=True)
+class _Written:
+    stats: RunStats
+    written_count: int
+    pending_count: int
+    reduced_count: int
+
 
 class ResolveRelationsService:
     def __init__(
         self,
         graph_repo: GraphRepository,
         pending_repo: PendingRelationRepository,
+        transit_repo: TransitRelationRepository,
         telemetry: TelemetryPort,
     ) -> None:
         self._graph_repo = graph_repo
         self._pending_repo = pending_repo
+        self._transit_repo = transit_repo
         self._telemetry = telemetry
 
     async def execute(
-        self,
-        relations: list[Relation],
-        written_node_ids: set[str],
-        context: PipelineContext,
+        self, written_node_ids: set[str], context: PipelineContext
     ) -> ResolutionOutcome:
-        stats = RunStats.empty()
-
-        # À l'échelle du corpus : la hiérarchie d'un article se déclare aussi dans
-        # d'autres fichiers
-        submitted = len(relations)
-        relations = reduce_transitively(relations)
-        reduced_count = submitted - len(relations)
-
-        result = await self._graph_repo.upsert_relations(relations, context.run_id)
-
-        await self._record_pending(result.pending, context)
-        if result.pending:
-            stats = stats.with_count(RELATION_PENDING, len(result.pending))
-
-        if result.written:
-            self._announce_written(result.written, context)
-            stats = stats.with_count(RELATION_UPSERTED)
+        """Lève ``TransitNotDrainedError`` si une relation reste en transit."""
+        relations = await self._transit_repo.read_run(context.run_id)
+        written = await self._write(relations, context)
+        await self._transit_repo.delete_run(context.run_id)
+        await self._ensure_drained()
 
         # Ne retente que les pendantes dont la cible vient d'arriver : le coût suit le
         # delta du run, jamais la taille du backlog
         promoted_count = await self._promote(written_node_ids, context)
+        stats = written.stats
         if promoted_count:
             stats = stats.with_count(RELATION_PROMOTED, promoted_count)
 
         return ResolutionOutcome(
             stats=stats,
+            written_count=written.written_count,
+            pending_count=written.pending_count,
+            promoted_count=promoted_count,
+            reduced_count=written.reduced_count,
+            extracted_count=len(relations),
+        )
+
+    async def _write(
+        self, relations: list[Relation], context: PipelineContext
+    ) -> _Written:
+        # À l'échelle du corpus : la hiérarchie d'un article se déclare aussi dans
+        # d'autres fichiers
+        reduced = reduce_transitively(relations)
+        result = await self._graph_repo.upsert_relations(reduced, context.run_id)
+
+        stats = RunStats.empty()
+        await self._record_pending(result.pending, context)
+        if result.pending:
+            stats = stats.with_count(RELATION_PENDING, len(result.pending))
+        if result.written:
+            self._announce_written(result.written, context)
+            stats = stats.with_count(RELATION_UPSERTED)
+
+        return _Written(
+            stats=stats,
             written_count=len(result.written),
             pending_count=len(result.pending),
-            promoted_count=promoted_count,
-            reduced_count=reduced_count,
+            reduced_count=len(relations) - len(reduced),
         )
+
+    async def _ensure_drained(self) -> None:
+        remaining = await self._transit_repo.count()
+        if remaining:
+            msg = (
+                f"transit_relations garde {remaining} relation(s) en fin de phase 2 : "
+                "ni écrites, ni mises en attente, ni réduites. Un bug de la phase 2 "
+                "(ADR-034 §6)."
+            )
+            raise TransitNotDrainedError(msg)
 
     async def _promote(
         self, written_node_ids: set[str], context: PipelineContext

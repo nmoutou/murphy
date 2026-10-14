@@ -110,6 +110,23 @@ relation_type, sens) — l'union de l'upsert ; `sens` en fait partie, car « je 
 
 Comme les pendantes, elles dérivent des documents et `nuke_all` les efface avec eux.
 
+### `transit_relations`
+
+Les relations d'un run entre ses deux phases (ADR-034 §4) : la phase 1 n'en garde aucune
+en mémoire. Une ligne par relation déclarée — `run_id`, `relation_type`, `source_id`,
+`target_id` à plat, et la `Relation` sérialisée sous `relation`. Écrites par la saga du
+document (étape `mongo_transit_insert`, après `mongo_unformatted_upsert`), dont la
+compensation retire les lignes du document pour ce run.
+
+Index **non unique** `idx_transit_run_type_source` (run_id, relation_type, source_id) :
+une arête déclarée par deux documents donne deux lignes, la réduction dédoublonne.
+
+**Temporaire** : vidée au démarrage de chaque run (`nukeAll`, quel que soit `nuke_all`),
+avant la phase 1, puis par la phase 2. Chaque run relit et réextrait tout le corpus : les
+restes d'un run en échec ne contiennent rien que le suivant ne reproduise. Non vide en
+fin de phase 2, elle fait échouer le run (`TransitNotDrainedError`, ADR-034 §6). De
+l'ordre de 5 à 6 Go sur disque pendant un run complet.
+
 ## MongoDB — base méta `MURPHY_META`
 
 Préservée par `nuke_all` : la mémoire de ce qu'on a fait ne doit jamais partir avec les

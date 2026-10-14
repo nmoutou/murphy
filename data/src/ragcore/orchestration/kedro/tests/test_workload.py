@@ -40,6 +40,7 @@ from ragcore.tests.fakes import (
     InMemoryGraphRepository,
     InMemoryPendingRepository,
     InMemorySearchIndex,
+    InMemoryTransitRepository,
     InMemoryUnformattedRepository,
     RecordingTelemetry,
 )
@@ -147,6 +148,7 @@ def _use_case_factory(
     graph: InMemoryGraphRepository,
     search_index: InMemorySearchIndex,
     unformatted: InMemoryUnformattedRepository,
+    transit: InMemoryTransitRepository,
 ):
     """Les dépôts en mémoire sont partagés : le test ne parallélise pas."""
 
@@ -158,6 +160,7 @@ def _use_case_factory(
                 search_index=search_index,
                 pending=InMemoryPendingRepository(),
                 unformatted=unformatted,
+                transit=transit,
             ),
             telemetry,
         )
@@ -173,6 +176,7 @@ def _run(
 ):
     graph = InMemoryGraphRepository()
     search_index = InMemorySearchIndex()
+    transit = InMemoryTransitRepository()
     context = PipelineContext.create(sources=(SourceName.LEGI,))
     workload = build_document_workload(
         steps=WorkloadSteps(
@@ -181,7 +185,10 @@ def _run(
             extractor=extractor or _StubExtractor(),
         ),
         use_case_factory=_use_case_factory(
-            graph, search_index, unformatted or InMemoryUnformattedRepository()
+            graph,
+            search_index,
+            unformatted or InMemoryUnformattedRepository(),
+            transit,
         ),
         context=context,
         embedding_enabled=embedding_enabled,
@@ -189,16 +196,16 @@ def _run(
     runtime = FakeRuntime(worker_id=0)
     telemetry = RecordingTelemetry()
     try:
-        result = workload(document, runtime, telemetry)
+        workload(document, runtime, telemetry)
     finally:
         runtime.close()
-    return result, graph, search_index, telemetry
+    return transit, graph, search_index, telemetry
 
 
 def test_les_inconnus_de_lextraction_sont_DECLARES() -> None:
     """Les inconnus d'extraction rejoignent l'agrégat du worker ; ceux du parse sont
     déclarés ailleurs."""
-    _result, _graph, _search_index, telemetry = _run(_doc())
+    _transit, _graph, _search_index, telemetry = _run(_doc())
 
     unknowns = telemetry.snapshot().unknowns
     assert unknowns == _zorglub_seen_once()
@@ -206,7 +213,7 @@ def test_les_inconnus_de_lextraction_sont_DECLARES() -> None:
 
 def test_les_liens_perdus_sont_COMPTES_en_relation_unknown() -> None:
     """Les liens perdus sont comptés en ``relation.unknown`` (ADR-024)."""
-    _result, _graph, _search_index, telemetry = _run(
+    _transit, _graph, _search_index, telemetry = _run(
         _doc(), extractor=_StubExtractor(lost_links=2)
     )
 
@@ -215,20 +222,20 @@ def test_les_liens_perdus_sont_COMPTES_en_relation_unknown() -> None:
 
 
 def test_sans_lien_perdu_relation_unknown_n_est_PAS_emis() -> None:
-    _result, _graph, _search_index, telemetry = _run(_doc())
+    _transit, _graph, _search_index, telemetry = _run(_doc())
 
     assert telemetry.events_of(RELATION_UNKNOWN) == []
 
 
 def test_la_phase_1_NECRIT_AUCUNE_arete() -> None:
-    """Le nœud est écrit, pas l'arête : sa cible n'est peut-être pas encore un nœud."""
-    result, graph, _search_index, _telemetry = _run(_doc())
+    """Le nœud est écrit, pas l'arête : sa cible n'est peut-être pas encore un nœud. La
+    relation attend la phase 2 en transit (ADR-034 §4)."""
+    transit, graph, _search_index, _telemetry = _run(_doc())
 
     assert graph.nodes == {SELF.serialize()}  # le nœud est écrit…
     assert graph.edges == []  # …mais aucune arête
-    # La relation ressort intacte pour la phase 2
-    assert len(result.relations) == 1
-    assert result.relations[0].relation_type == CITE
+    ((relation, _run_id),) = transit.rows
+    assert relation.relation_type == CITE
 
 
 def test_les_relations_non_formatees_sont_ECRITES_des_la_phase_1() -> None:
@@ -252,14 +259,14 @@ def test_extract_est_appele_une_seule_fois_par_document() -> None:
 def test_aucun_inconnu_fantome_cote_parse() -> None:
     """Aucun inconnu fantôme côté parse : le workload ne déclare que ceux de
     l'extraction."""
-    _result, _graph, _search_index, telemetry = _run(_doc())
+    _transit, _graph, _search_index, telemetry = _run(_doc())
 
     assert telemetry.snapshot().unknowns == _zorglub_seen_once()
 
 
 def test_embedding_actif_ecrit_les_vecteurs_des_passages_SANS_celui_du_titre() -> None:
     """ADR-029 : le titre d'un document qui a des passages n'est pas embarqué."""
-    _result, _graph, search_index, _telemetry = _run(_doc(), embedding_enabled=True)
+    _transit, _graph, search_index, _telemetry = _run(_doc(), embedding_enabled=True)
 
     content = search_index.documents[SELF.serialize()]
     (passage,) = content.passages
@@ -269,7 +276,7 @@ def test_embedding_actif_ecrit_les_vecteurs_des_passages_SANS_celui_du_titre() -
 
 def test_un_document_sans_passage_recoit_le_VECTEUR_DE_SON_TITRE() -> None:
     """ADR-029 : sans lui, une section n'est trouvée que par la recherche lexicale."""
-    _result, _graph, search_index, _telemetry = _run(_doc(content=""))
+    _transit, _graph, search_index, _telemetry = _run(_doc(content=""))
 
     content = search_index.documents[SELF.serialize()]
     assert content.passages == ()
@@ -277,7 +284,7 @@ def test_un_document_sans_passage_recoit_le_VECTEUR_DE_SON_TITRE() -> None:
 
 
 def test_un_document_sans_passage_ni_titre_na_AUCUN_vecteur() -> None:
-    _result, _graph, search_index, _telemetry = _run(_doc(content="", title=""))
+    _transit, _graph, search_index, _telemetry = _run(_doc(content="", title=""))
 
     assert search_index.documents[SELF.serialize()].title_embedding is None
 
@@ -285,18 +292,18 @@ def test_un_document_sans_passage_ni_titre_na_AUCUN_vecteur() -> None:
 def test_embedding_coupe_ecrit_les_passages_SANS_VECTEUR_et_merge_le_noeud() -> None:
     """ADR-012 : ``embedding_enabled=False`` n'écrit aucun vecteur, mais les passages
     restent cherchables par leur texte, et le nœud et la relation suivent leur cours."""
-    result, graph, search_index, _telemetry = _run(_doc(), embedding_enabled=False)
+    transit, graph, search_index, _telemetry = _run(_doc(), embedding_enabled=False)
 
     content = search_index.documents[SELF.serialize()]
     (passage,) = content.passages
     assert passage.embedding is None
     assert content.title_embedding is None
     assert graph.nodes == {SELF.serialize()}  # …mais le nœud est bien écrit
-    assert len(result.relations) == 1  # …et la relation part en phase 2, intacte
+    assert len(transit.rows) == 1  # …et la relation part en transit, intacte
 
 
 def test_embedding_coupe_nembarque_pas_le_titre_dun_document_sans_passage() -> None:
-    _result, _graph, search_index, _telemetry = _run(
+    _transit, _graph, search_index, _telemetry = _run(
         _doc(content=""), embedding_enabled=False
     )
 
@@ -304,7 +311,7 @@ def test_embedding_coupe_nembarque_pas_le_titre_dun_document_sans_passage() -> N
 
 
 def test_les_tailles_et_les_durees_du_document_sont_MESUREES() -> None:
-    _result, _graph, _search_index, telemetry = _run(_doc(), embedding_enabled=True)
+    _transit, _graph, _search_index, telemetry = _run(_doc(), embedding_enabled=True)
 
     measured = {path for path, _value, _ref in telemetry.measured}
     steps = {step_measure(SourceName.LEGI, step) for step in (STEP_EMBED, STEP_MONGO)}
@@ -317,6 +324,6 @@ def test_les_tailles_et_les_durees_du_document_sont_MESUREES() -> None:
 
 
 def test_embedding_coupe_ne_mesure_PAS_d_embedding() -> None:
-    _result, _graph, _search_index, telemetry = _run(_doc(), embedding_enabled=False)
+    _transit, _graph, _search_index, telemetry = _run(_doc(), embedding_enabled=False)
 
     assert telemetry.values_of(step_measure(SourceName.LEGI, STEP_EMBED)) == []

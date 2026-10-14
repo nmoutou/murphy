@@ -7,6 +7,7 @@ from ragcore.adapters.storage.mongo.schemas import reset_data_collections
 from ragcore.adapters.storage.neo4j.graph_repository import Neo4jGraphRepository
 from ragcore.adapters.storage.opensearch.search_index import OpenSearchSearchIndex
 from ragcore.core.ports.runtime import AsyncRuntime
+from ragcore.core.ports.transit_repository import TransitRelationRepository
 
 logger = logging.getLogger(__name__)
 
@@ -15,19 +16,24 @@ def nuke_all_node(
     doc_repo: MongoDocumentRepository,
     graph_repo: Neo4jGraphRepository,
     search_index: OpenSearchSearchIndex,
+    transit_repo: TransitRelationRepository,
     nuke_all: bool,
     pipeline_runtime: AsyncRuntime,
 ) -> dict[str, bool]:
     """Efface toutes les données de toutes les bases quand ``nuke_all=true``.
 
-    - Mongo : `documents`, `pending_relations` et `unformatted_relations`, qui
-      pointent vers les nœuds effacés ;
+    - Mongo : `documents`, `pending_relations`, `unformatted_relations` et
+      `transit_relations`, qui pointent vers les nœuds effacés ;
     - Neo4j : le graphe entier ;
     - OpenSearch : l'index du run.
 
     La base méta (bilans de run) est préservée. Hors ``ENVIRONMENT=dev``, ``nuke_all``
     arrive ici à ``False`` (``resolve_dev_settings``).
+
+    ``transit_relations`` est vidée dans tous les cas, avant la phase 1 : les restes
+    d'un run en échec ne contiennent rien que ce run ne reproduise (ADR-034 §4).
     """
+    pipeline_runtime.run(transit_repo.clear())
     if not nuke_all:
         # L'index doit exister avant le pool : créé par les workers, il les mettrait en
         # course
@@ -55,7 +61,7 @@ def _drop_mongo(
     doc_repo: MongoDocumentRepository, pipeline_runtime: AsyncRuntime
 ) -> None:
     logger.warning(
-        "nuke_all Mongo : suppression des collections documents, pending_relations"
-        " et unformatted_relations"
+        "nuke_all Mongo : suppression des collections documents, pending_relations,"
+        " unformatted_relations et transit_relations"
     )
     pipeline_runtime.run(reset_data_collections(doc_repo.database))

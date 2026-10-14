@@ -27,6 +27,9 @@ from ragcore.adapters.storage.mongo.schemas import (
 from ragcore.adapters.storage.mongo.statistics_repository import (
     MongoStatisticsRepository,
 )
+from ragcore.adapters.storage.mongo.transit_repository import (
+    MongoTransitRelationRepository,
+)
 from ragcore.adapters.storage.mongo.unformatted_repository import (
     MongoUnformattedRelationRepository,
 )
@@ -108,6 +111,7 @@ def open_document_stores(
         ),
         pending=MongoPendingRelationRepository(clients.mongo, data_db),
         unformatted=MongoUnformattedRelationRepository(clients.mongo, data_db),
+        transit=MongoTransitRelationRepository(clients.mongo, data_db),
     )
 
 

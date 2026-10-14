@@ -6,11 +6,16 @@ from datetime import UTC, datetime
 
 import pytest
 
-from ragcore.application.ingest_document import IngestDocumentUseCase, IngestionStores
+from ragcore.application.ingest_document import (
+    DocumentRelations,
+    IngestDocumentUseCase,
+    IngestionStores,
+)
 from ragcore.application.run_context import PipelineContext
 from ragcore.core.models.document import ParsedDocument
 from ragcore.core.models.enums import DocumentType, SourceName
 from ragcore.core.models.identifiers import Identifier
+from ragcore.core.models.relation import Relation
 from ragcore.core.models.search_content import SearchContent
 from ragcore.core.models.unformatted_relation import UnformattedRelation
 from ragcore.core.statistics_measures import STEP_MONGO, STEP_NEO4J, STEP_OPENSEARCH
@@ -25,6 +30,7 @@ from ragcore.tests.fakes import (
     InMemoryGraphRepository,
     InMemoryPendingRepository,
     InMemorySearchIndex,
+    InMemoryTransitRepository,
     InMemoryUnformattedRepository,
     RecordingTelemetry,
 )
@@ -50,6 +56,7 @@ def stores() -> dict:
         "graph_repo": InMemoryGraphRepository(),
         "search_index": InMemorySearchIndex(),
         "unformatted_repo": InMemoryUnformattedRepository(),
+        "transit_repo": InMemoryTransitRepository(),
         "telemetry": RecordingTelemetry(),
     }
 
@@ -62,6 +69,7 @@ def _use_case(stores: dict) -> IngestDocumentUseCase:
             search_index=stores["search_index"],
             pending=InMemoryPendingRepository(),
             unformatted=stores["unformatted_repo"],
+            transit=stores["transit_repo"],
         ),
         stores["telemetry"],
     )
@@ -193,7 +201,9 @@ async def test_the_unformatted_relations_are_written_with_the_run_stamps(
     use_case = _use_case(stores)
     relation = _unformatted("Articles 1103 et 1229 du code civil.")
 
-    await use_case.execute(_doc(), SearchContent(), context, [relation])
+    await use_case.execute(
+        _doc(), SearchContent(), context, DocumentRelations(unformatted=[relation])
+    )
 
     [row] = stores["unformatted_repo"].rows.values()
     assert row.relation == relation
@@ -210,7 +220,10 @@ async def test_a_failed_saga_removes_the_unformatted_relations_born_in_its_run(
 
     with pytest.raises(RuntimeError, match="opensearch est tombé"):
         await use_case.execute(
-            _doc(), SearchContent(), context, [_unformatted("code civil")]
+            _doc(),
+            SearchContent(),
+            context,
+            DocumentRelations(unformatted=[_unformatted("code civil")]),
         )
 
     assert stores["unformatted_repo"].rows == {}
@@ -221,15 +234,63 @@ async def test_a_failed_saga_keeps_the_unformatted_relations_of_earlier_runs(
 ) -> None:  # noqa: ANN001
     """Une relation vue par un run précédent survit à la compensation."""
     known = _unformatted("code civil")
-    await _use_case(stores).execute(_doc(), SearchContent(), context, [known])
+    await _use_case(stores).execute(
+        _doc(), SearchContent(), context, DocumentRelations(unformatted=[known])
+    )
 
     stores["search_index"].index_document = _fail_opensearch
     next_run = PipelineContext.create(sources=(SourceName.LEGI,))
     with pytest.raises(RuntimeError, match="opensearch est tombé"):
         await _use_case(stores).execute(
-            _doc(), SearchContent(), next_run, [known, _unformatted("code pénal")]
+            _doc(),
+            SearchContent(),
+            next_run,
+            DocumentRelations(unformatted=[known, _unformatted("code pénal")]),
         )
 
     [row] = stores["unformatted_repo"].rows.values()
     assert row.relation == known, "seule la relation née dans ce run est défaite"
     assert row.first_seen_run == context.run_id
+
+
+def _relation(target: str) -> Relation:
+    return Relation(
+        source_identifier=Identifier(raw="LEGIARTI000000000001"),
+        target_identifier=Identifier(raw=target),
+        relation_type="cite",
+        source=SourceName.LEGI,
+    )
+
+
+async def test_the_relations_wait_in_transit_with_the_run_stamp(
+    stores, context
+) -> None:  # noqa: ANN001
+    """ADR-034 §4 : une ligne par relation, jamais une arête en phase 1."""
+    relations = [_relation("LEGIARTI000000000002"), _relation("LEGIARTI000000000003")]
+
+    await _use_case(stores).execute(
+        _doc(), SearchContent(), context, DocumentRelations(relations=relations)
+    )
+
+    assert stores["transit_repo"].rows == [(r, context.run_id) for r in relations]
+    assert stores["graph_repo"].edges == []
+
+
+async def test_a_failed_saga_removes_its_relations_in_transit_for_this_run_only(
+    stores, context
+) -> None:  # noqa: ANN001
+    """Les lignes d'un autre run, ou d'un autre document, survivent."""
+    other_run = PipelineContext.create(sources=(SourceName.LEGI,))
+    kept = _relation("LEGIARTI000000000009")
+    await stores["transit_repo"].insert_many([kept], other_run.run_id)
+    stores["search_index"].index_document = _fail_opensearch
+
+    with pytest.raises(RuntimeError, match="opensearch est tombé"):
+        await _use_case(stores).execute(
+            _doc(),
+            SearchContent(),
+            context,
+            DocumentRelations(relations=[_relation("LEGIARTI000000000002")]),
+        )
+
+    assert stores["transit_repo"].rows == [(kept, other_run.run_id)]

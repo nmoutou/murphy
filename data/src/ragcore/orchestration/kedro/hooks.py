@@ -88,10 +88,12 @@ class TelemetryHooks:
             "doc_repo": stores.documents,
             "graph_repo": stores.graph,
             "search_index": stores.search_index,
+            "transit_repo": stores.transit,
             "runner": build_runner(settings, plan, session.context, stack),
             "resolve_service": ResolveRelationsService(
                 graph_repo=stores.graph,
                 pending_repo=stores.pending,
+                transit_repo=stores.transit,
                 telemetry=session.telemetry,
             ),
             "pipeline_context": session.context,

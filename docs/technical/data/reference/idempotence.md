@@ -24,14 +24,15 @@ les documents en INSERT/UPDATE a été retiré : le classement ne changeait aucu
 
 ## La saga (`application/saga.py`, `application/ingest_document.py`)
 
-La phase 1 écrit chaque document par une saga de quatre steps, **dans cet ordre** :
+La phase 1 écrit chaque document par une saga de cinq steps, **dans cet ordre** :
 
 | # | Step | Forward | Compensation |
 |---|---|---|---|
 | 1 | `mongo_upsert` | `replace_one(upsert=True)` — remplacement atomique en place | `delete` (le rollback juste d'une première écriture) |
 | 2 | `mongo_unformatted_upsert` | upsert-union des relations non formatées du document (ADR-021) | `delete_first_seen` : seules les lignes du document nées dans ce run |
-| 3 | `opensearch_index` | `PUT /<index>/_doc/<identifier>` : le document entier, passages compris, remplacé d'un coup | `delete_document` par `_id` (un document absent n'est pas une erreur) |
-| 4 | `neo4j_merge_node` | `MERGE` du nœud (jamais ses arêtes) | aucune : step terminal, jamais compensé ; un `MERGE` raté est annulé par sa transaction |
+| 3 | `mongo_transit_insert` | une ligne par relation du document dans `transit_relations`, estampillée du run (ADR-034 §4) | `delete_for_source` : les lignes du document pour ce run |
+| 4 | `opensearch_index` | `PUT /<index>/_doc/<identifier>` : le document entier, passages compris, remplacé d'un coup | `delete_document` par `_id` (un document absent n'est pas une erreur) |
+| 5 | `neo4j_merge_node` | `MERGE` du nœud (jamais ses arêtes) | aucune : step terminal, jamais compensé ; un `MERGE` raté est annulé par sa transaction |
 
 En cas d'échec d'un step, les steps déjà exécutés sont compensés en ordre inverse, les
 événements `saga.compensation.*` sont émis (y compris `saga.compensation.failed` si une
@@ -89,8 +90,8 @@ erreur ni trace. D'où :
 
 `nuke_all: true` + `ENVIRONMENT=dev` (ailleurs, `parameters.yml` est ignoré : rien n'est effacé) :
 
-- efface Mongo `MURPHY_DATA` (`documents`, `pending_relations` et
-  `unformatted_relations`, puis **repose les index**), le graphe Neo4j entier, et l'index
+- efface Mongo `MURPHY_DATA` (`documents`, `pending_relations`, `unformatted_relations`
+  et `transit_relations`, puis **repose les index**), le graphe Neo4j entier, et l'index
   OpenSearch du run (`OPENSEARCH_INDEX`), recréé aussitôt ; les index système du cluster
   restent. Les pendantes partent avec le corpus : elles pointent vers des
   nœuds effacés, et le run suivant retrouve celles qui manquent toujours ;

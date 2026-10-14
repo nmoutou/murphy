@@ -9,6 +9,7 @@ from .repositories import (
     InMemoryGraphRepository,
     InMemoryPendingRepository,
     InMemorySearchIndex,
+    InMemoryTransitRepository,
     InMemoryUnformattedRepository,
 )
 from .runtime import FakeRuntime, FakeRuntimeFactory
@@ -21,6 +22,7 @@ __all__ = [
     "InMemoryGraphRepository",
     "InMemoryPendingRepository",
     "InMemorySearchIndex",
+    "InMemoryTransitRepository",
     "InMemoryUnformattedRepository",
     "NoopEmbedder",
     "RecordingTelemetry",

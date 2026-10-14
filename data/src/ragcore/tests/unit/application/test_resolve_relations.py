@@ -10,6 +10,7 @@ import pytest
 
 from ragcore.application.resolve_relations import ResolveRelationsService
 from ragcore.application.run_context import PipelineContext
+from ragcore.core.exceptions import TransitNotDrainedError
 from ragcore.core.links import CITE
 from ragcore.core.models.document import ParsedDocument
 from ragcore.core.models.enums import DocumentType, SourceName
@@ -24,6 +25,7 @@ from ragcore.core.telemetry_events import (
 from ragcore.tests.fakes import (
     InMemoryGraphRepository,
     InMemoryPendingRepository,
+    InMemoryTransitRepository,
     RecordingTelemetry,
 )
 
@@ -67,6 +69,11 @@ def pending() -> InMemoryPendingRepository:
 
 
 @pytest.fixture
+def transit() -> InMemoryTransitRepository:
+    return InMemoryTransitRepository()
+
+
+@pytest.fixture
 def telemetry() -> RecordingTelemetry:
     return RecordingTelemetry()
 
@@ -77,8 +84,19 @@ def context() -> PipelineContext:
 
 
 @pytest.fixture
-def service(graph, pending, telemetry) -> ResolveRelationsService:  # noqa: ANN001
-    return ResolveRelationsService(graph, pending, telemetry)
+def service(graph, pending, transit, telemetry) -> ResolveRelationsService:  # noqa: ANN001
+    return ResolveRelationsService(graph, pending, transit, telemetry)
+
+
+async def _execute(
+    service: ResolveRelationsService,
+    relations: list[Relation],
+    written_node_ids: set[str],
+    context: PipelineContext,
+):
+    """La phase 1 a laissé ``relations`` en transit."""
+    await service._transit_repo.insert_many(relations, context.run_id)  # noqa: SLF001
+    return await service.execute(written_node_ids, context)
 
 
 async def test_a_resolvable_edge_is_written_and_counted(
@@ -87,7 +105,7 @@ async def test_a_resolvable_edge_is_written_and_counted(
     await graph.merge_document_node(_doc(A))
     await graph.merge_document_node(_doc(B))
 
-    outcome = await service.execute([_rel(A, B)], {f"LEGIARTI{A}"}, context)
+    outcome = await _execute(service, [_rel(A, B)], {f"LEGIARTI{A}"}, context)
 
     assert outcome.written_count == 1
     assert outcome.pending_count == 0
@@ -100,10 +118,12 @@ async def test_an_unresolvable_edge_becomes_a_pending_not_a_silence(
     graph, pending, telemetry, context
 ) -> None:  # noqa: ANN001
     """La cible n'existe pas : rien n'est écrit, et la relation part en pendante."""
-    service = ResolveRelationsService(graph, pending, telemetry)
+    service = ResolveRelationsService(
+        graph, pending, InMemoryTransitRepository(), telemetry
+    )
     await graph.merge_document_node(_doc(A))  # la cible MISSING n'est pas là
 
-    outcome = await service.execute([_rel(A, MISSING)], set(), context)
+    outcome = await _execute(service, [_rel(A, MISSING)], set(), context)
 
     assert outcome.written_count == 0
     assert outcome.pending_count == 1
@@ -121,7 +141,7 @@ async def test_nothing_is_lost_between_input_and_output(
     await graph.merge_document_node(_doc(B))
     relations = [_rel(A, B), _rel(A, MISSING), _rel(B, MISSING)]
 
-    outcome = await service.execute(relations, set(), context)
+    outcome = await _execute(service, relations, set(), context)
 
     assert outcome.written_count + outcome.pending_count == len(relations)
 
@@ -130,14 +150,16 @@ async def test_a_pending_is_promoted_when_its_target_finally_arrives(
     graph, pending, telemetry, context
 ) -> None:  # noqa: ANN001
     """La cible arrive au run suivant : la pendante est promue."""
-    service = ResolveRelationsService(graph, pending, telemetry)
+    service = ResolveRelationsService(
+        graph, pending, InMemoryTransitRepository(), telemetry
+    )
     await graph.merge_document_node(_doc(A))
-    await service.execute([_rel(A, B)], set(), context)  # B n'existe pas encore
+    await _execute(service, [_rel(A, B)], set(), context)  # B n'existe pas encore
     assert len(pending.pendings) == 1
 
     # Run suivant : B arrive
     await graph.merge_document_node(_doc(B))
-    outcome = await service.execute([], {f"LEGIARTI{B}"}, context)
+    outcome = await _execute(service, [], {f"LEGIARTI{B}"}, context)
 
     assert outcome.promoted_count == 1
     assert pending.pendings == {}  # la pendante résolue quitte le cache
@@ -154,7 +176,7 @@ async def test_replay_is_bounded_by_the_delta_not_the_backlog(
     )
     await graph.merge_document_node(_doc(B))
 
-    outcome = await service.execute([], {f"LEGIARTI{B}"}, context)
+    outcome = await _execute(service, [], {f"LEGIARTI{B}"}, context)
 
     assert outcome.promoted_count == 0
     assert len(pending.pendings) == 1  # la vieille pendante reste, intacte
@@ -171,8 +193,8 @@ async def test_a_pending_seen_again_keeps_its_birth_date(
     first = PipelineContext.create(sources=(SourceName.LEGI,))
     second = PipelineContext.create(sources=(SourceName.LEGI,))
 
-    await service.execute([_rel(A, MISSING)], set(), first)
-    await service.execute([_rel(A, MISSING)], set(), second)
+    await _execute(service, [_rel(A, MISSING)], set(), first)
+    await _execute(service, [_rel(A, MISSING)], set(), second)
 
     assert len(pending.pendings) == 1  # union idempotente : pas de doublon
     stored = next(iter(pending.pendings.values()))
@@ -181,8 +203,32 @@ async def test_a_pending_seen_again_keeps_its_birth_date(
 
 
 async def test_an_empty_phase_two_is_a_legal_run(service, context) -> None:  # noqa: ANN001
-    outcome = await service.execute([], set(), context)
+    outcome = await _execute(service, [], set(), context)
 
     assert outcome.written_count == 0
     assert outcome.pending_count == 0
     assert outcome.promoted_count == 0
+
+
+async def test_the_transit_is_drained_by_phase_two(
+    service, graph, transit, context
+) -> None:  # noqa: ANN001
+    await graph.merge_document_node(_doc(A))
+    await graph.merge_document_node(_doc(B))
+
+    outcome = await _execute(service, [_rel(A, B), _rel(A, MISSING)], set(), context)
+
+    assert outcome.extracted_count == 2
+    assert await transit.count() == 0
+
+
+async def test_a_relation_left_in_transit_fails_the_run(
+    service, transit, context
+) -> None:  # noqa: ANN001
+    """Une ligne d'un autre run ne devrait pas exister : le vidage au démarrage l'aurait
+    emportée. C'est un bug, pas un état dégradé (ADR-034 §6)."""
+    stray = PipelineContext.create(sources=(SourceName.LEGI,))
+    await transit.insert_many([_rel(A, B)], stray.run_id)
+
+    with pytest.raises(TransitNotDrainedError, match="1 relation"):
+        await service.execute(set(), context)

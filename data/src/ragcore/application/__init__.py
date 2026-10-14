@@ -3,7 +3,6 @@ from .ingestion_runner import (
     DocumentWorkload,
     IngestionOutcome,
     IngestionRunner,
-    WorkloadResult,
 )
 from .resolve_relations import ResolutionOutcome, ResolveRelationsService
 from .run_context import PipelineContext
@@ -19,5 +18,4 @@ __all__ = [
     "ResolveRelationsService",
     "SagaExecutor",
     "SagaStep",
-    "WorkloadResult",
 ]

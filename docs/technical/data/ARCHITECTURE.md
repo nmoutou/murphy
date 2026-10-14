@@ -69,9 +69,10 @@ Déroulé détaillé nœud par nœud : [reference/pipeline.md](reference/pipelin
   boucle asyncio, ses clients Mongo / Neo4j / OpenSearch, sa télémétrie et ses agrégats.
   Le travail d'un document (le *workload*) : extraction des relations et des relations
   non formatées → chunking → embedding → saga d'écriture (Mongo → relations non
-  formatées `MURPHY_DATA.unformatted_relations` → OpenSearch → nœud Neo4j).
+  formatées `MURPHY_DATA.unformatted_relations` → relations en transit
+  `MURPHY_DATA.transit_relations` → OpenSearch → nœud Neo4j).
 - **Phase 2 — relations** (`resolveRelations`) : après la barrière, un service unique
-  écrit les arêtes en batch, met en attente celles dont la cible n'est pas dans le corpus
+  lit les relations en transit, écrit les arêtes en batch, met en attente celles dont la cible n'est pas dans le corpus
   (`MURPHY_DATA.pending_relations`) et **promeut** les pendantes de runs passés dont la cible
   vient d'arriver.
 

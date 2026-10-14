@@ -26,6 +26,10 @@ search_index:
   type: MemoryDataset
   copy_mode: assign
 
+transit_repo:
+  type: MemoryDataset
+  copy_mode: assign
+
 # --- Le pool phase 1 et le service phase 2 ---
 runner:
   type: MemoryDataset

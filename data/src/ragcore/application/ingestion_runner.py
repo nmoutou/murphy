@@ -18,7 +18,7 @@ from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
 from typing import Protocol
 
-from ragcore.core.models import ParsedDocument, Relation, RunStats
+from ragcore.core.models import ParsedDocument, RunStats
 from ragcore.core.models.audit import build_event
 from ragcore.core.models.run_measures import RunMeasures
 from ragcore.core.ports.runtime import AsyncRuntime, AsyncRuntimeFactory
@@ -35,7 +35,6 @@ __all__ = [
     "IngestionOutcome",
     "IngestionRunner",
     "WorkerResultsSink",
-    "WorkloadResult",
 ]
 
 logger = logging.getLogger(__name__)
@@ -43,16 +42,9 @@ logger = logging.getLogger(__name__)
 _PROGRESS_LABEL = "Phase 1"
 
 
-@dataclass(frozen=True)
-class WorkloadResult:
-    relations: list[Relation] = field(default_factory=list)
-    """Écrites en phase 2, pas ici."""
-
-
-DocumentWorkload = Callable[
-    [ParsedDocument, AsyncRuntime, WorkerTelemetry],
-    WorkloadResult,
-]
+DocumentWorkload = Callable[[ParsedDocument, AsyncRuntime, WorkerTelemetry], None]
+"""Le travail sur un document. Ses relations partent en transit avec lui (ADR-034
+§4) : rien n'en remonte."""
 
 
 @dataclass(frozen=True)
@@ -62,9 +54,6 @@ class IngestionOutcome:
     stats: RunStats
     """Déjà remis à l'agrégat du run : ``report`` n'en lit que les inconnus et les
     collisions."""
-
-    relations: list[Relation]
-    """L'entrée de la phase 2."""
 
     written_node_ids: set[str]
     """Les nœuds écrits par ce run : le delta qui borne le rejeu des pendantes."""
@@ -81,7 +70,6 @@ class WorkerResultsSink(Protocol):
 
 @dataclass
 class _WorkerResult:
-    relations: list[Relation] = field(default_factory=list)
     written_node_ids: set[str] = field(default_factory=set)
     failures: list[tuple[str, str]] = field(default_factory=list)
 
@@ -214,12 +202,11 @@ class IngestionRunner:
     ) -> None:
         identifier = parsed.identifier.serialize()
         try:
-            outcome = self._workload(parsed, worker.runtime, worker.telemetry)
+            self._workload(parsed, worker.runtime, worker.telemetry)
         except Exception as exc:  # noqa: BLE001 — le document est perdu, pas le run : l'échec est compté par document
             _declare_failure(worker.telemetry, parsed, exc, context)
             worker.result.failures.append((identifier, str(exc)))
             return
-        worker.result.relations.extend(outcome.relations)
         worker.result.written_node_ids.add(identifier)
 
 
@@ -240,7 +227,6 @@ def _hand_over(pool_run: _PoolRun, sink: WorkerResultsSink) -> RunStats:
 def _outcome(stats: RunStats, results: list[_WorkerResult]) -> IngestionOutcome:
     return IngestionOutcome(
         stats=stats,
-        relations=[r for result in results for r in result.relations],
         written_node_ids=set().union(*(result.written_node_ids for result in results)),
         failures=[f for result in results for f in result.failures],
     )

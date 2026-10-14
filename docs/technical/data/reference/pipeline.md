@@ -65,8 +65,10 @@ l'exécute dans la boucle juste avant de la fermer.
 
 ## 1. `nukeAll`
 
-Entrées : les dépôts Mongo et Neo4j du hook, l'index OpenSearch, `nuke_all` (du plan du
-run), le runtime du hook.
+Entrées : les dépôts Mongo et Neo4j du hook, l'index OpenSearch, `transit_repo`,
+`nuke_all` (du plan du run), le runtime du hook.
+
+- **Toujours** : vide `MURPHY_DATA.transit_relations`, avant la phase 1 (ADR-034 §4).
 
 - `nuke_all: false` → ne supprime rien, mais fait quand même le **setup partagé** :
   `search_index.ensure_index()`, qui crée l'index s'il est absent, avec ses analyseurs et
@@ -78,8 +80,8 @@ run), le runtime du hook.
 - `nuke_all: true` → le garde-fou a déjà joué en amont : hors `ENVIRONMENT=dev`, `plan_run`
   ignore `parameters.yml` et `nuke_all` arrive ici à `false` (l'absence de la variable vaut
   `prod`). Le nœud n'efface donc qu'en dev :
-  - Mongo `MURPHY_DATA` : les collections `documents`, `pending_relations` et
-    `unformatted_relations`
+  - Mongo `MURPHY_DATA` : les collections `documents`, `pending_relations`,
+    `unformatted_relations` et `transit_relations`
     (`schemas.reset_data_collections`, qui **repose les index** qu'un drop détruit avec
     la collection) ;
   - Neo4j : le graphe entier ;
@@ -212,23 +214,26 @@ fusionne pas. Lecture, parse et pool forment `stages_s.phase1`.
    [idempotence.md](idempotence.md#la-saga).
    Un use case **par worker**, mémorisé par identité de télémétrie (la fabrique crée
    trois clients ; l'appeler par document en créerait 1 121 jeux au lieu de 4).
-5. Les relations extraites **ne sont pas écrites ici** : elles remontent dans
-   `WorkloadResult.relations` vers la phase 2.
+5. Les relations extraites **ne deviennent pas des arêtes ici** : la saga les écrit dans
+   `MURPHY_DATA.transit_relations`, que la phase 2 consomme (ADR-034 §4). Rien ne
+   remonte du workload.
 6. **Mesures** : `content_chars`, `chunks`, `relations`, et la durée de l'embedding et
    de l'écriture dans chaque base (`step_ms.embed|mongo|opensearch|neo4j`, rendues par
    la saga).
 
 Sortie : `IngestionOutcome` — `stats` (réduction monoïde des N agrégats locaux, déjà
-remise à `run_sink`),
-`relations` (l'union), `written_node_ids` (le delta du run, qui borne le rejeu ciblé),
+remise à `run_sink`), `written_node_ids` (le delta du run, qui borne le rejeu ciblé),
 `failures`.
 
 ## 3. `resolveRelations` — la phase 2
 
 Entrées : `ingestion_outcome` (LA barrière), `resolve_service`, runtime du hook, contexte,
 `stage_clock` (`stages_s.phase2_write`).
-Non parallélisé : un batch, sur la boucle du hook. Quatre temps
-(`application/resolve_relations.py`) :
+Non parallélisé : un batch, sur la boucle du hook (`application/resolve_relations.py`).
+Les relations sont lues dans `transit_relations`, pour ce run ; une fois écrites, mises en
+attente ou réduites, elles en sont supprimées. Si la collection n'est pas vide ensuite, le
+run échoue (`TransitNotDrainedError`, ADR-034 §6) : c'est un bug, pas un état dégradé.
+Quatre temps :
 
 0. **Réduction transitive** (`reduce_transitively`, networkx) — à l'échelle du corpus, et
    ici seulement : la hiérarchie d'un article se déclare des deux côtés (sa fermeture

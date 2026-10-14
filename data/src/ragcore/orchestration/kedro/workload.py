@@ -3,8 +3,9 @@
 - Le workload tient la télémétrie du worker : il déclare les inconnus et les liens
   perdus que l'extracteur remonte dans sa valeur de retour. Les signaux de parse sont
   déclarés au site de parse.
-- Il extrait les relations sans les écrire : elles remontent vers la phase 2. La saga
-  n'écrit que le nœud et les relations non formatées, dont la cible n'est pas un nœud.
+- Il extrait les relations sans écrire d'arête : la saga écrit le nœud, les relations
+  non formatées, dont la cible n'est pas un nœud, et les relations en transit, que la
+  phase 2 consomme (ADR-034 §4).
 """
 
 from __future__ import annotations
@@ -13,8 +14,11 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from time import perf_counter
 
-from ragcore.application.ingest_document import IngestDocumentUseCase
-from ragcore.application.ingestion_runner import DocumentWorkload, WorkloadResult
+from ragcore.application.ingest_document import (
+    DocumentRelations,
+    IngestDocumentUseCase,
+)
+from ragcore.application.ingestion_runner import DocumentWorkload
 from ragcore.application.run_context import PipelineContext
 from ragcore.core.models.audit import build_event
 from ragcore.core.models.chunk import Chunk
@@ -76,7 +80,7 @@ def build_document_workload(
         parsed: ParsedDocument,
         runtime: AsyncRuntime,
         telemetry: WorkerTelemetry,
-    ) -> WorkloadResult:
+    ) -> None:
         extraction = _extract(steps.extractor, parsed, telemetry, context)
 
         chunks = steps.chunker.chunk(parsed)
@@ -88,12 +92,18 @@ def build_document_workload(
 
         use_case = use_cases.for_worker(telemetry, runtime)
         durations |= runtime.run(
-            use_case.execute(parsed, content, context, extraction.unformatted_relations)
+            use_case.execute(
+                parsed,
+                content,
+                context,
+                DocumentRelations(
+                    extraction.relations, extraction.unformatted_relations
+                ),
+            )
         )
 
         _record_document(telemetry, parsed, len(chunks), len(extraction.relations))
         _record_steps(telemetry, parsed, durations)
-        return WorkloadResult(relations=extraction.relations)
 
     return workload
 

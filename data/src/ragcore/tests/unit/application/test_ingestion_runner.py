@@ -10,7 +10,7 @@ from datetime import UTC, datetime
 
 import pytest
 
-from ragcore.application.ingestion_runner import IngestionRunner, WorkloadResult
+from ragcore.application.ingestion_runner import IngestionRunner
 from ragcore.application.run_context import PipelineContext
 from ragcore.core.models.audit import build_event
 from ragcore.core.models.document import ParsedDocument
@@ -46,14 +46,13 @@ def _docs(count: int) -> list[ParsedDocument]:
     return [_doc(n) for n in range(count)]
 
 
-def _workload(parsed, runtime, telemetry) -> WorkloadResult:  # noqa: ANN001
+def _workload(parsed, runtime, telemetry) -> None:  # noqa: ANN001
     del runtime
     telemetry.emit(
         build_event(
             DOCUMENT_PERSISTED, "run-1", document_id=parsed.identifier.serialize()
         )
     )
-    return WorkloadResult(relations=[])
 
 
 class _SpySink:
@@ -110,11 +109,11 @@ class TestStream:
                     counts["yielded"] += 1
                 yield parsed
 
-        def slow(parsed, runtime, telemetry) -> WorkloadResult:  # noqa: ANN001
+        def slow(parsed, runtime, telemetry) -> None:  # noqa: ANN001
             time.sleep(0.005)
             with lock:
                 counts["finished"] += 1
-            return _workload(parsed, runtime, telemetry)
+            _workload(parsed, runtime, telemetry)
 
         _runner(slow, worker_count=2).run(stream(), context, _SpySink())
 
@@ -177,30 +176,15 @@ class TestIsolation:
 
 
 class TestOutcome:
-    def test_relations_are_collected_not_written(
-        self, context: PipelineContext
-    ) -> None:
-        """La phase 1 remonte les relations sans les écrire."""
-        sentinel = object()
-
-        def workload(parsed, runtime, telemetry):  # noqa: ANN001, ANN202
-            del parsed, runtime, telemetry
-            return WorkloadResult(relations=[sentinel])  # type: ignore[list-item]
-
-        outcome = _runner(workload).run(iter(_docs(5)), context, _SpySink())
-
-        assert outcome.relations == [sentinel] * 5
-
     def test_a_failed_document_does_not_stop_the_corpus(
         self, context: PipelineContext
     ) -> None:
         """Un document perdu est compté, sans interrompre le run."""
 
-        def workload(parsed, runtime, telemetry):  # noqa: ANN001, ANN202
+        def workload(parsed, runtime, telemetry) -> None:  # noqa: ANN001
             del runtime, telemetry
             if parsed.identifier.raw.endswith("003"):
                 raise RuntimeError("saga compensée")
-            return WorkloadResult()
 
         outcome = _runner(workload).run(iter(_docs(6)), context, _SpySink())
 
@@ -215,7 +199,6 @@ class TestOutcome:
     def test_an_empty_corpus_is_a_legal_run(self, context: PipelineContext) -> None:
         outcome = _runner().run(iter([]), context, _SpySink())
 
-        assert outcome.relations == []
         assert outcome.written_node_ids == set()
         assert outcome.failures == []
 
@@ -287,9 +270,9 @@ class TestHandOver:
     def test_the_sink_receives_the_reduced_stats_and_measures(
         self, context: PipelineContext
     ) -> None:
-        def measuring(parsed, runtime, telemetry) -> WorkloadResult:  # noqa: ANN001
+        def measuring(parsed, runtime, telemetry) -> None:  # noqa: ANN001
             telemetry.record_measure(("documents", "legi", "chunks"), 2, "x")
-            return _workload(parsed, runtime, telemetry)
+            _workload(parsed, runtime, telemetry)
 
         sink = _SpySink()
 
