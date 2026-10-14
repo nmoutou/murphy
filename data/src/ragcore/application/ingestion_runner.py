@@ -1,18 +1,21 @@
-"""Le pool de la phase 1 : N workers, un seul verrou, celui de la progression.
+"""Le pool de la phase 1 (ADR-034 §3) : une lecture, N workers, une file bornée entre
+eux.
 
-- Un worker a son runtime, ses clients, ses backends et ses agrégats : rien d'autre de
-  mutable n'est partagé.
-- Dispatch par clé document : un identifiant n'est traité que par un worker, et le
-  ``chunk_id`` dérive de lui, donc deux sagas ne touchent jamais le même chunk.
+- La lecture et le parse restent dans le thread qui appelle ``run`` ; ils déposent dans
+  la file, que le premier worker libre consomme.
+- Un worker a son runtime, ses clients, ses backends et ses agrégats. Seuls la file, la
+  progression et ce que les workers déposent en sortant sont partagés.
+- Un identifiant n'est traité que par un worker : la clé est unique par source, et les
+  préfixes d'identifiants ne se croisent pas entre sources. Le ``chunk_id`` dérive de
+  lui, donc deux sagas ne touchent jamais le même chunk.
 
 Le runner ne connaît ni Kedro ni base de données : il ne sait que paralléliser.
 """
 
 import logging
-from collections.abc import Callable
-from concurrent.futures import ThreadPoolExecutor
+import threading
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
-from hashlib import blake2b
 from typing import Protocol
 
 from ragcore.core.models import ParsedDocument, Relation, RunStats
@@ -20,8 +23,10 @@ from ragcore.core.models.audit import build_event
 from ragcore.core.models.run_measures import RunMeasures
 from ragcore.core.ports.runtime import AsyncRuntime, AsyncRuntimeFactory
 from ragcore.core.ports.telemetry import TelemetryFactory, WorkerTelemetry
+from ragcore.core.statistics_measures import QUEUE_WORKER_IDLE
 from ragcore.core.telemetry_events import DOCUMENT_FAILED
 
+from .document_queue import DocumentQueue
 from .progress import ProgressLog
 from .run_context import PipelineContext
 
@@ -33,9 +38,9 @@ __all__ = [
     "WorkloadResult",
 ]
 
-_PROGRESS_LABEL = "Phase 1"
-
 logger = logging.getLogger(__name__)
+
+_PROGRESS_LABEL = "Phase 1"
 
 
 @dataclass(frozen=True)
@@ -75,28 +80,41 @@ class WorkerResultsSink(Protocol):
 
 
 @dataclass
-class _ShardResult:
+class _WorkerResult:
     relations: list[Relation] = field(default_factory=list)
     written_node_ids: set[str] = field(default_factory=set)
     failures: list[tuple[str, str]] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
-class _WorkerSnapshot:
-    stats: RunStats
-    measures: RunMeasures
+class _Worker:
+    name: str
+    runtime: AsyncRuntime
+    telemetry: WorkerTelemetry
+    result: _WorkerResult = field(default_factory=_WorkerResult)
 
 
 @dataclass(frozen=True)
 class _PoolRun:
-    """Ce que les workers d'un run partagent : le contexte, figé, et deux objets sûrs
-    entre threads."""
+    """Ce que la lecture et les workers d'un run partagent. Les listes sont remplies
+    par chaque worker en sortant, même en échec : ``list.append`` est atomique."""
 
     context: PipelineContext
     progress: ProgressLog
-    snapshots: list[_WorkerSnapshot] = field(default_factory=list)
-    """Rempli par chaque worker en sortant, même en échec : ``list.append`` est
-    atomique."""
+    queue: DocumentQueue
+    stats: list[RunStats] = field(default_factory=list)
+    measures: list[RunMeasures] = field(default_factory=list)
+    results: list[_WorkerResult] = field(default_factory=list)
+    errors: list[Exception] = field(default_factory=list)
+
+    def fail(self, exc: Exception) -> None:
+        self.errors.append(exc)
+        self.queue.stop()
+
+    def hand_in(self, worker: _Worker) -> None:
+        self.stats.append(worker.telemetry.snapshot())
+        self.measures.append(worker.telemetry.snapshot_measures())
+        self.results.append(worker.result)
 
 
 class IngestionRunner:
@@ -116,103 +134,116 @@ class IngestionRunner:
 
     def run(
         self,
-        to_process: list[ParsedDocument],
+        documents: Iterable[ParsedDocument],
         context: PipelineContext,
         sink: WorkerResultsSink,
+        expected: int | None = None,
     ) -> IngestionOutcome:
-        """Synchrone : le pont entre Kedro et les dépôts async.
+        """Synchrone : le pont entre Kedro et les dépôts async. ``documents`` est
+        consommé dans le thread appelant ; ``expected`` sert à la progression.
 
         Les agrégats des workers rejoignent ``sink`` même quand le pool lève : le bilan
-        et les statistiques d'un run en échec gardent ce que la phase 1 a fait.
+        et les statistiques d'un run en échec gardent ce que la phase 1 a fait. Une
+        erreur de worker hors document est relevée ici.
         """
-        pool_run = _PoolRun(context, ProgressLog(_PROGRESS_LABEL, len(to_process)))
-        try:
-            results = self._run_pool(to_process, pool_run)
-        finally:
-            stats = _hand_over(pool_run.snapshots, sink)
-        pool_run.progress.finish()
-
-        return IngestionOutcome(
-            stats=stats,
-            relations=[r for shard in results for r in shard.relations],
-            written_node_ids=set().union(
-                *(shard.written_node_ids for shard in results)
-            ),
-            failures=[f for shard in results for f in shard.failures],
+        pool_run = _PoolRun(
+            context,
+            ProgressLog(_PROGRESS_LABEL, expected),
+            DocumentQueue(self._worker_count),
         )
-
-    def _run_pool(
-        self, to_process: list[ParsedDocument], pool_run: _PoolRun
-    ) -> list[_ShardResult]:
-        shards = self.partition(to_process, self._worker_count)
-        with ThreadPoolExecutor(max_workers=self._worker_count) as pool:
-            return list(
-                pool.map(
-                    lambda indexed: self._run_shard(indexed[0], indexed[1], pool_run),
-                    enumerate(shards),
-                )
-            )
-
-    def _run_shard(
-        self,
-        worker_id: int,
-        shard: list[ParsedDocument],
-        pool_run: _PoolRun,
-    ) -> _ShardResult:
-        runtime = self._runtime_factory.build(worker_id)
-        telemetry = self._telemetry_factory.build(worker_id, runtime)
+        workers = self._start_workers(pool_run)
         try:
-            return self._process(shard, runtime, telemetry, pool_run)
+            _produce(documents, pool_run)
         finally:
-            pool_run.snapshots.append(
-                _WorkerSnapshot(telemetry.snapshot(), telemetry.snapshot_measures())
+            pool_run.queue.close(self._worker_count)
+            for worker in workers:
+                worker.join()
+            stats = _hand_over(pool_run, sink)
+        if pool_run.errors:
+            raise pool_run.errors[0]
+        pool_run.progress.finish()
+        return _outcome(stats, pool_run.results)
+
+    def _start_workers(self, pool_run: _PoolRun) -> list[threading.Thread]:
+        workers = [
+            threading.Thread(
+                target=self._work,
+                args=(worker_id, pool_run),
+                name=f"ingest-worker-{worker_id}",
             )
-            _close_worker(runtime, telemetry)
+            for worker_id in range(self._worker_count)
+        ]
+        for worker in workers:
+            worker.start()
+        return workers
+
+    def _work(self, worker_id: int, pool_run: _PoolRun) -> None:
+        try:
+            self._run_worker(worker_id, pool_run)
+        except Exception as exc:  # noqa: BLE001 — frontière du thread : relevée par `run` dans le thread appelant, elle tuerait sinon le worker en silence
+            pool_run.fail(exc)
+
+    def _run_worker(self, worker_id: int, pool_run: _PoolRun) -> None:
+        worker = self._open_worker(worker_id)
+        try:
+            self._consume(worker, pool_run)
+        finally:
+            pool_run.hand_in(worker)
+            _close_worker(worker)
+
+    def _open_worker(self, worker_id: int) -> _Worker:
+        runtime = self._runtime_factory.build(worker_id)
+        try:
+            telemetry = self._telemetry_factory.build(worker_id, runtime)
+        except Exception:
+            runtime.close()
+            raise
+        return _Worker(f"worker-{worker_id}", runtime, telemetry)
+
+    def _consume(self, worker: _Worker, pool_run: _PoolRun) -> None:
+        while True:
+            parsed, idle_s = pool_run.queue.take()
+            worker.telemetry.record_measure(QUEUE_WORKER_IDLE, idle_s, worker.name)
+            if parsed is None:
+                return
+            pool_run.progress.advance()
+            self._process(parsed, worker, pool_run.context)
 
     def _process(
-        self,
-        shard: list[ParsedDocument],
-        runtime: AsyncRuntime,
-        telemetry: WorkerTelemetry,
-        pool_run: _PoolRun,
-    ) -> _ShardResult:
-        result = _ShardResult()
-        for parsed in shard:
-            identifier = parsed.identifier.serialize()
-            pool_run.progress.advance()
-            try:
-                outcome = self._workload(parsed, runtime, telemetry)
-            except Exception as exc:  # noqa: BLE001 — le document est perdu, pas le run : l'échec est compté par document
-                _declare_failure(telemetry, parsed, exc, pool_run.context)
-                result.failures.append((identifier, str(exc)))
-                continue
-            result.relations.extend(outcome.relations)
-            result.written_node_ids.add(identifier)
-        return result
-
-    @staticmethod
-    def partition(
-        to_process: list[ParsedDocument], worker_count: int
-    ) -> list[list[ParsedDocument]]:
-        """blake2b plutôt que ``hash()``, randomisé par ``PYTHONHASHSEED`` : la
-        partition reste reproductible."""
-        shards: list[list[ParsedDocument]] = [[] for _ in range(worker_count)]
-        for parsed in to_process:
-            shards[_shard_of(parsed.identifier.serialize(), worker_count)].append(
-                parsed
-            )
-        return shards
+        self, parsed: ParsedDocument, worker: _Worker, context: PipelineContext
+    ) -> None:
+        identifier = parsed.identifier.serialize()
+        try:
+            outcome = self._workload(parsed, worker.runtime, worker.telemetry)
+        except Exception as exc:  # noqa: BLE001 — le document est perdu, pas le run : l'échec est compté par document
+            _declare_failure(worker.telemetry, parsed, exc, context)
+            worker.result.failures.append((identifier, str(exc)))
+            return
+        worker.result.relations.extend(outcome.relations)
+        worker.result.written_node_ids.add(identifier)
 
 
-def _shard_of(identifier: str, worker_count: int) -> int:
-    digest = blake2b(identifier.encode("utf-8"), digest_size=8).digest()
-    return int.from_bytes(digest, "big") % worker_count
+def _produce(documents: Iterable[ParsedDocument], pool_run: _PoolRun) -> None:
+    """S'arrête de lire dès qu'un worker est tombé."""
+    for parsed in documents:
+        if not pool_run.queue.offer(parsed):
+            return
 
 
-def _hand_over(snapshots: list[_WorkerSnapshot], sink: WorkerResultsSink) -> RunStats:
-    stats = RunStats.reduce(snapshot.stats for snapshot in snapshots)
-    sink.absorb(stats, RunMeasures.reduce(s.measures for s in snapshots))
+def _hand_over(pool_run: _PoolRun, sink: WorkerResultsSink) -> RunStats:
+    stats = RunStats.reduce(pool_run.stats)
+    measures = RunMeasures.reduce(pool_run.measures)
+    sink.absorb(stats, measures.merge(pool_run.queue.producer_measures()))
     return stats
+
+
+def _outcome(stats: RunStats, results: list[_WorkerResult]) -> IngestionOutcome:
+    return IngestionOutcome(
+        stats=stats,
+        relations=[r for result in results for r in result.relations],
+        written_node_ids=set().union(*(result.written_node_ids for result in results)),
+        failures=[f for result in results for f in result.failures],
+    )
 
 
 def _declare_failure(
@@ -246,7 +277,7 @@ def _declare_failure(
     )
 
 
-def _close_worker(runtime: AsyncRuntime, telemetry: WorkerTelemetry) -> None:
+def _close_worker(worker: _Worker) -> None:
     """Les backends d'abord, la boucle ensuite."""
-    telemetry.close()
-    runtime.close()
+    worker.telemetry.close()
+    worker.runtime.close()

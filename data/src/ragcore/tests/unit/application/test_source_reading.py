@@ -1,4 +1,4 @@
-"""`connect` remonte au bilan ce que le connecteur a écarté : un compteur par raison,
+"""La lecture remonte au bilan ce que le connecteur a écarté : un compteur par raison,
 hors `document.fetched`, donc hors équation de complétude.
 """
 
@@ -10,6 +10,7 @@ from pathlib import Path
 import pytest
 
 from ragcore.application.run_context import PipelineContext
+from ragcore.application.source_reading import SourceReading
 from ragcore.core.models.document import RawDocument
 from ragcore.core.models.enums import SourceName
 from ragcore.core.models.inventory import SourceInventory
@@ -20,8 +21,6 @@ from ragcore.core.services.exclusion_reasons import (
 )
 from ragcore.core.statistics_measures import (
     FACETS,
-    STAGE_DISCOVERY,
-    STAGE_PHASE1,
     STEP_READ,
     XML_BYTES,
     document_measure,
@@ -33,8 +32,6 @@ from ragcore.core.telemetry_events import (
     DOCUMENT_UNREADABLE,
     DOCUMENT_VERSION_SKIPPED,
 )
-from ragcore.orchestration.kedro.nodes.connect import connect_node
-from ragcore.orchestration.kedro.stage_clock import StageClock
 from ragcore.tests.fakes.telemetry import RecordingTelemetry
 
 
@@ -46,30 +43,27 @@ class _ConnectorWithSkips:
     ) -> None:
         self.skipped = skipped
         self._documents = documents
+        self.yielded: list[RawDocument] = []
 
     def discover(self) -> dict[SourceName, SourceInventory]:
         count = len(self._documents)
         return {SourceName.LEGI: SourceInventory(total=count * 2, retained=count)}
 
     def fetch_all(self) -> Iterator[RawDocument]:
-        yield from self._documents
+        for document in self._documents:
+            self.yielded.append(document)
+            yield document
 
 
 def _run(
-    connector: _ConnectorWithSkips,
-    stage_clock: StageClock | None = None,
-    sink: "_SpySink | None" = None,
+    connector: _ConnectorWithSkips, sink: "_SpySink | None" = None
 ) -> RecordingTelemetry:
     telemetry = RecordingTelemetry()
     context = PipelineContext.create(sources=(SourceName.LEGI,))
-    connect_node(
-        connector=connector,  # type: ignore[arg-type]
-        pipeline_context=context,
-        telemetry=telemetry,
-        stage_clock=stage_clock or StageClock(),
-        run_sink=sink or _SpySink(),
-        nuke_done={},
-    )
+    reading = SourceReading(connector, context, telemetry)  # type: ignore[arg-type]
+    reading.discover(sink or _SpySink())
+    list(reading.documents())
+    reading.declare_counts()
     return telemetry
 
 
@@ -118,12 +112,31 @@ def test_la_taille_et_les_facettes_de_chaque_document_sont_mesurees(
     assert len(telemetry.values_of(step_measure(SourceName.LEGI, STEP_READ))) == 1
 
 
-def test_la_passe_1_et_la_lecture_sont_deux_etapes() -> None:
-    stage_clock = StageClock()
+def test_la_passe_1_rend_le_nombre_de_documents_retenus() -> None:
+    connector = _ConnectorWithSkips({}, (_raw([]), _raw([])))
+    reading = SourceReading(
+        connector,  # type: ignore[arg-type]
+        PipelineContext.create(sources=(SourceName.LEGI,)),
+        RecordingTelemetry(),
+    )
 
-    _run(_ConnectorWithSkips({}), stage_clock)
+    assert reading.discover(_SpySink()) == 2
 
-    assert set(stage_clock.durations()) == {STAGE_DISCOVERY, STAGE_PHASE1}
+
+def test_la_lecture_est_un_flux() -> None:
+    """Rien n'est lu d'avance : un document à la fois."""
+    connector = _ConnectorWithSkips({}, (_raw([]), _raw([])))
+    reading = SourceReading(
+        connector,  # type: ignore[arg-type]
+        PipelineContext.create(sources=(SourceName.LEGI,)),
+        RecordingTelemetry(),
+    )
+    reading.discover(_SpySink())
+
+    stream = reading.documents()
+    next(stream)
+
+    assert len(connector.yielded) == 1
 
 
 def test_un_ID_qui_n_est_pas_le_nom_a_son_compteur() -> None:

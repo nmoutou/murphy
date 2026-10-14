@@ -1,6 +1,6 @@
 """Le DAG d'ingestion : l'ordre vient des seules dépendances de données.
 
-- ``nuke_done`` → ``connect`` : la source n'est pas lue pendant l'effacement ;
+- ``nuke_done`` → ``ingest`` : la source n'est pas lue pendant l'effacement ;
 - ``ingestion_outcome`` → ``resolveRelations`` : la barrière entre les phases, une
   arête ayant besoin que ses deux nœuds existent.
 
@@ -12,10 +12,8 @@ from __future__ import annotations
 
 from kedro.pipeline import Node, Pipeline, node, pipeline
 
-from .nodes.connect import connect_node
 from .nodes.ingest import ingest_node
 from .nodes.nuke_all import nuke_all_node
-from .nodes.parse_documents import parse_documents_node
 from .nodes.report import report_node
 from .nodes.resolve_relations import resolve_relations_node
 
@@ -23,12 +21,10 @@ __all__ = ["create_ingestion_pipeline"]
 
 
 def create_ingestion_pipeline() -> Pipeline:
-    """nukeAll → connect → parseDocuments → ingest → resolve → report."""
+    """nukeAll → ingest → resolve → report."""
     return pipeline(
         [
             _nuke_all(),
-            _connect(),
-            _parse_documents(),
             _ingest(),
             _resolve_relations(),
             _report(),
@@ -52,52 +48,24 @@ def _nuke_all() -> Node:
     )
 
 
-def _connect() -> Node:
-    return node(
-        func=connect_node,
-        inputs=[
-            "connector",
-            "pipeline_context",
-            "telemetry",
-            "stage_clock",
-            "run_sink",
-            # Simple signal : nukeAll avant connect
-            "nuke_done",
-        ],
-        outputs="raw_documents",
-        name="connect",
-    )
-
-
-def _parse_documents() -> Node:
-    return node(
-        func=parse_documents_node,
-        inputs=[
-            "raw_documents",
-            "parser",
-            "pipeline_context",
-            "telemetry",
-            "skip_unconfigured",
-            "stage_clock",
-        ],
-        outputs=["to_process", "to_skip"],
-        name="parseDocuments",
-    )
-
-
 def _ingest() -> Node:
     return node(
         func=ingest_node,
         inputs=[
-            "to_process",
+            "connector",
+            "parser",
             "runner",
             "search_index",
             "pipeline_context",
+            "telemetry",
             "pipeline_runtime",
+            "skip_unconfigured",
             "run_sink",
             "stage_clock",
+            # Simple signal : nukeAll avant la lecture
+            "nuke_done",
         ],
-        outputs="ingestion_outcome",
+        outputs=["ingestion_outcome", "to_skip"],
         name="ingest",
     )
 

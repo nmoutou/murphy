@@ -9,6 +9,8 @@ from ragcore.core.models.run_measures import MeasurePath
 
 __all__ = [
     "CHUNKS",
+    "QUEUE_PRODUCER_BLOCKED",
+    "QUEUE_WORKER_IDLE",
     "CONTENT_CHARS",
     "FACETS",
     "RELATIONS",
@@ -31,6 +33,14 @@ _MS_PER_S = 1000
 
 _DOCUMENTS = "documents"
 _STEP_MS = "step_ms"
+_QUEUES = "queues"
+
+QUEUE_PRODUCER_BLOCKED: MeasurePath = (_QUEUES, "producer_blocked_s")
+"""L'attente de la lecture devant une file pleine : souvent bloquée, elle désigne les
+workers."""
+QUEUE_WORKER_IDLE: MeasurePath = (_QUEUES, "worker_idle_s")
+"""L'attente d'un worker devant une file vide : souvent inactifs, ils désignent la
+lecture."""
 
 XML_BYTES = "xml_bytes"
 FACETS = "facets"

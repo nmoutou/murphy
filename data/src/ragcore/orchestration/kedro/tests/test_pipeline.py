@@ -1,6 +1,6 @@
 """Le DAG : sa forme, et les deux arêtes qui portent l'ordre.
 
-- ``nuke_done`` → ``connect`` : la source n'est pas lue pendant l'effacement ;
+- ``nuke_done`` → ``ingest`` : la source n'est pas lue pendant l'effacement ;
 - ``ingestion_outcome`` → ``resolveRelations`` : la barrière entre les phases.
 """
 
@@ -37,17 +37,11 @@ def test_la_porte_repond_et_rend_des_pipelines() -> None:
     assert pipelines["__default__"] is pipelines["ingestion"]
 
 
-def test_les_six_noeuds_sont_la() -> None:
+def test_les_quatre_noeuds_sont_la() -> None:
+    """Lecture et parse vivent dans `ingest` (ADR-034 §2)."""
     names = {n.name for n in _pipeline().nodes}
 
-    assert names == {
-        "nukeAll",
-        "connect",
-        "parseDocuments",
-        "ingest",
-        "resolveRelations",
-        "report",
-    }
+    assert names == {"nukeAll", "ingest", "resolveRelations", "report"}
 
 
 def test_la_barriere_phase1_phase2_est_une_arete() -> None:
@@ -60,11 +54,11 @@ def test_la_barriere_phase1_phase2_est_une_arete() -> None:
     assert "ingestion_outcome" in set(ingest.outputs)
 
 
-def test_nukeAll_precede_connect() -> None:
+def test_nukeAll_precede_ingest() -> None:
     """La source n'est pas lue pendant l'effacement."""
     pipeline = _pipeline()
 
-    assert "nuke_done" in _inputs(pipeline, "connect")
+    assert "nuke_done" in _inputs(pipeline, "ingest")
     (nuke_all,) = (n for n in pipeline.nodes if n.name == "nukeAll")
     assert "nuke_done" in set(nuke_all.outputs)
 
@@ -88,7 +82,7 @@ def test_le_pipeline_est_un_DAG_coherent() -> None:
     ordered = [n.name for n in pipeline.nodes]
     assert ordered.index("ingest") < ordered.index("resolveRelations")
     assert ordered.index("resolveRelations") < ordered.index("report")
-    assert ordered.index("nukeAll") < ordered.index("connect")
+    assert ordered.index("nukeAll") < ordered.index("ingest")
 
 
 def test_chaque_input_venu_du_hook_est_declare_au_catalogue() -> None:

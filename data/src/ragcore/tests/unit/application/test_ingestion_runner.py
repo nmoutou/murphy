@@ -1,10 +1,11 @@
-"""Le pool : dispatch par clé document, isolement des workers, un document perdu qui
-n'arrête pas le corpus mais reste compté, et des agrégats remis au run même en échec.
+"""Le pool : une file bornée entre la lecture et les workers, l'isolement des workers, un
+document perdu qui n'arrête pas le corpus mais reste compté, des arrêts qui ne pendent
+jamais, et des agrégats remis au run même en échec.
 """
 
-import os
-import subprocess
-import sys
+import threading
+import time
+from collections.abc import Iterator
 from datetime import UTC, datetime
 
 import pytest
@@ -19,6 +20,7 @@ from ragcore.core.models.run_measures import RunMeasures
 from ragcore.core.models.run_stats import RunStats
 from ragcore.core.ports.runtime import AsyncRuntimeFactory
 from ragcore.core.ports.telemetry import TelemetryFactory, WorkerTelemetry
+from ragcore.core.statistics_measures import QUEUE_PRODUCER_BLOCKED, QUEUE_WORKER_IDLE
 from ragcore.core.telemetry_events import DOCUMENT_PERSISTED
 from ragcore.tests.fakes import (
     FakeRuntimeFactory,
@@ -40,6 +42,10 @@ def _doc(n: int) -> ParsedDocument:
     )
 
 
+def _docs(count: int) -> list[ParsedDocument]:
+    return [_doc(n) for n in range(count)]
+
+
 def _workload(parsed, runtime, telemetry) -> WorkloadResult:  # noqa: ANN001
     del runtime
     telemetry.emit(
@@ -59,17 +65,17 @@ class _SpySink:
 
 
 class _FailingRuntimeFactory(FakeRuntimeFactory):
-    """Le worker 1 tombe avant son premier document : une panne hors document."""
+    """Les workers nommés tombent avant leur premier document : une panne hors
+    document."""
+
+    def __init__(self, failing: set[int]) -> None:
+        super().__init__()
+        self._failing = failing
 
     def build(self, worker_id: int):  # noqa: ANN201
-        if worker_id == 1:
+        if worker_id in self._failing:
             raise RuntimeError("boucle introuvable")
         return super().build(worker_id)
-
-
-def _measuring_workload(parsed, runtime, telemetry) -> WorkloadResult:  # noqa: ANN001
-    telemetry.record_measure(("documents", "legi", "chunks"), 2, parsed.identifier.raw)
-    return _workload(parsed, runtime, telemetry)
 
 
 @pytest.fixture
@@ -86,51 +92,49 @@ def _runner(workload=_workload, worker_count: int = 4) -> IngestionRunner:  # no
     )
 
 
-class TestPartition:
-    """Le dispatch par clé document."""
+class TestStream:
+    """La lecture alimente la file, que les workers vident : la mémoire est bornée."""
 
-    def test_every_document_lands_in_exactly_one_shard(self) -> None:
-        docs = [_doc(i) for i in range(50)]
+    def test_at_most_two_documents_per_worker_wait_or_run(
+        self, context: PipelineContext
+    ) -> None:
+        """n traités, n en file : la lecture n'avance pas plus loin."""
+        lock = threading.Lock()
+        counts = {"yielded": 0, "finished": 0, "ahead": 0}
 
-        shards = IngestionRunner.partition(docs, worker_count=4)
+        def stream() -> Iterator[ParsedDocument]:
+            for parsed in _docs(40):
+                with lock:
+                    ahead = counts["yielded"] - counts["finished"]
+                    counts["ahead"] = max(counts["ahead"], ahead)
+                    counts["yielded"] += 1
+                yield parsed
 
-        placed = [d.identifier.serialize() for shard in shards for d in shard]
-        assert sorted(placed) == sorted(d.identifier.serialize() for d in docs)
-        assert len(placed) == len(set(placed))  # aucun document dupliqué
+        def slow(parsed, runtime, telemetry) -> WorkloadResult:  # noqa: ANN001
+            time.sleep(0.005)
+            with lock:
+                counts["finished"] += 1
+            return _workload(parsed, runtime, telemetry)
 
-    def test_the_same_identifier_always_lands_on_the_same_worker(self) -> None:
-        """Un parent ne va jamais sur deux workers, donc deux sagas ne se croisent
-        jamais sur un chunk."""
-        first = IngestionRunner.partition([_doc(7)], 4)
-        second = IngestionRunner.partition([_doc(7)], 4)
+        _runner(slow, worker_count=2).run(stream(), context, _SpySink())
 
-        assert [i for i, s in enumerate(first) if s] == [
-            i for i, s in enumerate(second) if s
-        ]
+        assert counts["finished"] == 40
+        assert counts["ahead"] <= 2 * 2
 
-    def test_the_dispatch_is_reproducible_across_processes(self) -> None:
-        """La partition survit à un changement de ``PYTHONHASHSEED`` : on relance un
-        interpréteur neuf."""
-        script = (
-            "from ragcore.application.ingestion_runner import _shard_of;"
-            "print([_shard_of(f'LEGIARTI{i:012d}', 4) for i in range(20)])"
-        )
-        runs = [
-            subprocess.run(  # noqa: S603
-                [sys.executable, "-c", script],
-                env={**os.environ, "PYTHONHASHSEED": seed},
-                capture_output=True,
-                text=True,
-                check=True,
-            ).stdout
-            for seed in ("0", "1", "42")
-        ]
+    def test_every_document_is_processed_exactly_once(
+        self, context: PipelineContext
+    ) -> None:
+        docs = _docs(50)
 
-        assert runs[0] == runs[1] == runs[2]
+        outcome = _runner().run(iter(docs), context, _SpySink())
 
-    def test_a_single_worker_gets_everything(self) -> None:
-        docs = [_doc(i) for i in range(10)]
-        assert [len(s) for s in IngestionRunner.partition(docs, 1)] == [10]
+        assert outcome.stats.counts[DOCUMENT_PERSISTED] == 50
+        assert outcome.written_node_ids == {d.identifier.serialize() for d in docs}
+
+    def test_a_single_worker_gets_everything(self, context: PipelineContext) -> None:
+        outcome = _runner(worker_count=1).run(iter(_docs(10)), context, _SpySink())
+
+        assert len(outcome.written_node_ids) == 10
 
 
 class TestIsolation:
@@ -148,7 +152,7 @@ class TestIsolation:
             worker_count=3,
         )
 
-        runner.run([_doc(i) for i in range(9)], context, _SpySink())
+        runner.run(iter(_docs(9)), context, _SpySink())
 
         assert len(runtime_factory.built) == 3
         assert len(telemetry_factory.built) == 3
@@ -166,24 +170,13 @@ class TestIsolation:
             worker_count=2,
         )
 
-        runner.run([_doc(i) for i in range(6)], context, _SpySink())
+        runner.run(iter(_docs(6)), context, _SpySink())
 
         assert all(r.closed for r in runtime_factory.built)
         assert all(t.closed for t in telemetry_factory.built)
 
 
 class TestOutcome:
-    def test_stats_are_the_reduction_of_the_workers(
-        self, context: PipelineContext
-    ) -> None:
-        docs = [_doc(i) for i in range(12)]
-
-        outcome = _runner().run(docs, context, _SpySink())
-
-        # 12 documents, 12 événements, quel que soit le nombre de workers
-        assert outcome.stats.counts[DOCUMENT_PERSISTED] == 12
-        assert outcome.written_node_ids == {d.identifier.serialize() for d in docs}
-
     def test_relations_are_collected_not_written(
         self, context: PipelineContext
     ) -> None:
@@ -194,9 +187,7 @@ class TestOutcome:
             del parsed, runtime, telemetry
             return WorkloadResult(relations=[sentinel])  # type: ignore[list-item]
 
-        outcome = _runner(workload).run(
-            [_doc(i) for i in range(5)], context, _SpySink()
-        )
+        outcome = _runner(workload).run(iter(_docs(5)), context, _SpySink())
 
         assert outcome.relations == [sentinel] * 5
 
@@ -211,9 +202,7 @@ class TestOutcome:
                 raise RuntimeError("saga compensée")
             return WorkloadResult()
 
-        outcome = _runner(workload).run(
-            [_doc(i) for i in range(6)], context, _SpySink()
-        )
+        outcome = _runner(workload).run(iter(_docs(6)), context, _SpySink())
 
         assert len(outcome.failures) == 1
         identifier, message = outcome.failures[0]
@@ -224,45 +213,101 @@ class TestOutcome:
         assert len(outcome.written_node_ids) == 5
 
     def test_an_empty_corpus_is_a_legal_run(self, context: PipelineContext) -> None:
-        outcome = _runner().run([], context, _SpySink())
+        outcome = _runner().run(iter([]), context, _SpySink())
 
         assert outcome.relations == []
         assert outcome.written_node_ids == set()
         assert outcome.failures == []
 
 
+class TestStop:
+    """Un arrêt ne pend jamais, et laisse ses agrégats au run."""
+
+    def test_a_failing_read_stops_the_run_after_the_queued_documents(
+        self, context: PipelineContext
+    ) -> None:
+        def stream() -> Iterator[ParsedDocument]:
+            yield from _docs(3)
+            raise ValueError("lecture cassée")
+
+        sink = _SpySink()
+        runtime_factory = FakeRuntimeFactory()
+        runner = IngestionRunner(
+            workload=_workload,
+            runtime_factory=runtime_factory,
+            telemetry_factory=RecordingTelemetryFactory(),
+            worker_count=2,
+        )
+
+        with pytest.raises(ValueError, match="lecture cassée"):
+            runner.run(stream(), context, sink)
+
+        ((stats, _measures),) = sink.absorbed
+        assert stats.counts[DOCUMENT_PERSISTED] == 3
+        assert all(r.closed for r in runtime_factory.built)
+
+    def test_a_worker_down_outside_a_document_stops_the_read(
+        self, context: PipelineContext
+    ) -> None:
+        """Le worker 1 tombe : la lecture cesse d'attendre une place dans la file, et
+        les agrégats du worker 0 rejoignent le run."""
+        sink = _SpySink()
+        runner = IngestionRunner(
+            workload=_workload,
+            runtime_factory=_FailingRuntimeFactory({1}),
+            telemetry_factory=RecordingTelemetryFactory(),
+            worker_count=2,
+        )
+
+        with pytest.raises(RuntimeError, match="boucle introuvable"):
+            runner.run(iter(_docs(1000)), context, sink)
+
+        ((stats, _measures),) = sink.absorbed
+        assert stats.counts.get(DOCUMENT_PERSISTED, 0) < 1000
+
+    def test_every_worker_down_does_not_hang_the_read(
+        self, context: PipelineContext
+    ) -> None:
+        """Personne ne vide la file : sans arrêt, la lecture attendrait pour
+        toujours."""
+        runner = IngestionRunner(
+            workload=_workload,
+            runtime_factory=_FailingRuntimeFactory({0, 1}),
+            telemetry_factory=RecordingTelemetryFactory(),
+            worker_count=2,
+        )
+
+        with pytest.raises(RuntimeError, match="boucle introuvable"):
+            runner.run(iter(_docs(100)), context, _SpySink())
+
+
 class TestHandOver:
-    """Les agrégats des workers rejoignent le run, même quand le pool lève."""
+    """Les agrégats des workers et de la file rejoignent le run."""
 
     def test_the_sink_receives_the_reduced_stats_and_measures(
         self, context: PipelineContext
     ) -> None:
+        def measuring(parsed, runtime, telemetry) -> WorkloadResult:  # noqa: ANN001
+            telemetry.record_measure(("documents", "legi", "chunks"), 2, "x")
+            return _workload(parsed, runtime, telemetry)
+
         sink = _SpySink()
 
-        _runner(_measuring_workload).run([_doc(i) for i in range(7)], context, sink)
+        _runner(measuring).run(iter(_docs(7)), context, sink)
 
         ((stats, measures),) = sink.absorbed
         assert stats.counts[DOCUMENT_PERSISTED] == 7
         assert measures.distributions[("documents", "legi", "chunks")].count == 7
 
-    def test_a_worker_down_outside_a_document_still_hands_over_the_others(
-        self, context: PipelineContext
-    ) -> None:
+    def test_the_queue_waits_are_measured(self, context: PipelineContext) -> None:
+        """Une attente par document déposé, une par document pris ou fin de flux."""
         sink = _SpySink()
-        runner = IngestionRunner(
-            workload=_workload,
-            runtime_factory=_FailingRuntimeFactory(),
-            telemetry_factory=RecordingTelemetryFactory(),
-            worker_count=2,
-        )
-        docs = [_doc(i) for i in range(10)]
-        handled_by_worker_0 = IngestionRunner.partition(docs, 2)[0]
 
-        with pytest.raises(RuntimeError, match="boucle introuvable"):
-            runner.run(docs, context, sink)
+        _runner(worker_count=2).run(iter(_docs(5)), context, sink)
 
-        ((stats, _measures),) = sink.absorbed
-        assert stats.counts.get(DOCUMENT_PERSISTED, 0) == len(handled_by_worker_0)
+        ((_stats, measures),) = sink.absorbed
+        assert measures.distributions[QUEUE_PRODUCER_BLOCKED].count == 5
+        assert measures.distributions[QUEUE_WORKER_IDLE].count == 5 + 2
 
 
 def test_worker_count_must_be_at_least_one() -> None:

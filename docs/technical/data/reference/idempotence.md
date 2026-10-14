@@ -6,7 +6,7 @@ Comment le pipeline garantit qu'un document est écrit une fois et bien, et qu'u
 ## L'idempotence : réécrire en place
 
 Pas de registre ni de comparaison : chaque run relit toute la source, et chaque document
-qui parse (`parseDocuments`) est réécrit sous son `identifier`, qu'il soit déjà en base ou
+qui parse (dans `ingest`) est réécrit sous son `identifier`, qu'il soit déjà en base ou
 non. Les trois écritures de la saga sont idempotentes (`replace_one` Mongo, `PUT` du
 document OpenSearch, `MERGE` Neo4j) : rejouer un run donne le même état. Il n'y a
 **pas de SKIP** ni de hash de contenu.

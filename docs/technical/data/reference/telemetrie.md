@@ -173,6 +173,7 @@ Le vocabulaire est `core/statistics_measures.py` :
 ```json
 { "run_id": "…", "started_at": ISODate("…"),
   "stages_s": { "discovery": 95.2, "phase1": 812.4, "phase2_write": 41.0 },
+  "queues": { "producer_blocked_s": {…}, "worker_idle_s": {…} },
   "documents": {
     "legi": {
       "xml_bytes": {…}, "facets": {…}, "content_chars": {…}, "chunks": {…},
@@ -183,7 +184,12 @@ Le vocabulaire est `core/statistics_measures.py` :
 
 - `stages_s` : la durée de chaque étape, en secondes (`StageClock`, une étape mesurée
   plusieurs fois s'additionne). `discovery` est la passe 1 des connecteurs ; `phase1`
-  couvre leur passe 2, `parseDocuments` et `ingest` ; `phase2_write`, `resolveRelations`.
+  couvre leur passe 2, le parse et le pool de `ingest` ; `phase2_write`,
+  `resolveRelations`.
+- `queues` : les attentes devant la file de la phase 1, en secondes.
+  `producer_blocked_s`, une par document déposé : une lecture souvent bloquée désigne
+  les workers ; `worker_idle_s`, une par document pris (et une par fin de flux) : des
+  workers souvent inactifs désignent la lecture.
 - `documents.<source>` : par document, sa taille XML (facettes sommées), son nombre de
   facettes, de caractères, de chunks et de relations, et la durée de chaque étape en
   millisecondes. `mongo` additionne l'écriture du document et celle de ses relations non

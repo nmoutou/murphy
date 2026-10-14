@@ -1,5 +1,5 @@
-"""Parse les documents : ceux qui parsent partent à l'ingestion, déjà en base ou non ;
-les autres sont rejetés et comptés (``document.invalidated``).
+"""Parse un flux de documents : ceux qui parsent partent à l'ingestion, déjà en base ou
+non ; les autres sont rejetés et comptés (``document.invalidated``).
 
 Les collisions (ADR-025) sont comptées par (document, clé), document refusé compris.
 """
@@ -7,11 +7,10 @@ Les collisions (ADR-025) sont comptées par (document, clé), document refusé c
 from __future__ import annotations
 
 import logging
-from collections.abc import Sequence
+from collections.abc import Iterable, Iterator, Sequence
 from dataclasses import dataclass
 from time import perf_counter
 
-from ragcore.application.run_context import PipelineContext
 from ragcore.core.exceptions import CollisionError, ParseError, ValidationError
 from ragcore.core.models.audit import build_event
 from ragcore.core.models.collision import Collision
@@ -30,13 +29,15 @@ from ragcore.core.services.unknown_categories import (
     CATEGORY_TAG,
 )
 from ragcore.core.statistics_measures import (
-    STAGE_PHASE1,
     STEP_PARSE,
     milliseconds_since,
     step_measure,
 )
 from ragcore.core.telemetry_events import DOCUMENT_INVALIDATED, DOCUMENT_PARSED
-from ragcore.orchestration.kedro.stage_clock import StageClock
+
+from .run_context import PipelineContext
+
+__all__ = ["DocumentParsing"]
 
 logger = logging.getLogger(__name__)
 
@@ -56,49 +57,41 @@ _COLLISION_REJECTION = _Rejection(
 )
 
 
-def parse_documents_node(
-    raw_documents: list[RawDocument],
-    parser: BaseParser,
-    pipeline_context: PipelineContext,
-    # WorkerTelemetry, pas TelemetryPort : ce nœud déclare aussi (`record_unknown`)
-    telemetry: WorkerTelemetry,
-    skip_unconfigured: bool,
-    stage_clock: StageClock,
-) -> tuple[list[ParsedDocument], list[str]]:
+class DocumentParsing:
     """Le site de parse : déclare toujours les signaux non configurés (``tags``,
     ``links``, ``roots``), puis applique ``skip_unconfigured``, qui retire les
     métadonnées non configurées. Les liens non configurés sont retirés à l'extraction.
+
+    ``telemetry`` est une ``WorkerTelemetry`` : le parse déclare aussi des inconnus
+    (``record_unknown``).
     """
-    with stage_clock.stage(STAGE_PHASE1):
-        return _parse_all(
-            raw_documents,
-            parser,
-            _ParseSite(pipeline_context, telemetry),
-            skip_unconfigured,
-        )
 
+    def __init__(
+        self,
+        parser: BaseParser,
+        context: PipelineContext,
+        telemetry: WorkerTelemetry,
+        skip_unconfigured: bool,
+    ) -> None:
+        self._parser = parser
+        self._site = _ParseSite(context, telemetry)
+        self._skip_unconfigured = skip_unconfigured
+        self.skipped: list[str] = []
+        """Les documents rejetés, complet une fois le flux épuisé."""
 
-def _parse_all(
-    raw_documents: list[RawDocument],
-    parser: BaseParser,
-    site: _ParseSite,
-    skip_unconfigured: bool,
-) -> tuple[list[ParsedDocument], list[str]]:
-    to_process: list[ParsedDocument] = []
-    to_skip: list[str] = []
-
-    for raw in raw_documents:
-        result = _timed_parse(raw, parser, site)
-        if result is None:
-            to_skip.append(raw.source_document_id)
-            continue
-        site.declare_signals(result)
-        site.declare_collisions(result.collisions)
-        parsed = _apply_cursor(result, skip_unconfigured)
-        site.declare_parsed(raw, parsed)
-        to_process.append(parsed)
-
-    return to_process, to_skip
+    def parse_all(
+        self, raw_documents: Iterable[RawDocument]
+    ) -> Iterator[ParsedDocument]:
+        for raw in raw_documents:
+            result = _timed_parse(raw, self._parser, self._site)
+            if result is None:
+                self.skipped.append(raw.source_document_id)
+                continue
+            self._site.declare_signals(result)
+            self._site.declare_collisions(result.collisions)
+            parsed = _apply_cursor(result, self._skip_unconfigured)
+            self._site.declare_parsed(raw, parsed)
+            yield parsed
 
 
 def _timed_parse(

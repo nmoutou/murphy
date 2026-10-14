@@ -88,37 +88,40 @@ run), le runtime du hook.
   - **préservé** : la base méta `MURPHY_META` (bilans et statistiques de run) — un nuke ne doit
     jamais emporter la mémoire de ce qu'on a fait.
 
-Chaque effacement est annoncé en `logger.warning`. Sortie : `nuke_done` — consommé par `connect`
+Chaque effacement est annoncé en `logger.warning`. Sortie : `nuke_done` — consommé par `ingest`
 uniquement comme **signal d'ordre** (arête du DAG).
 
-## 2. `connect`
+## 2. `ingest` — la phase 1, en flux
 
-Entrées : `connector`, le contexte, la télémétrie, `stage_clock`, `run_sink`,
-`nuke_done` (signal).
+Entrées : `connector`, `parser`, `runner`, l'index OpenSearch, le contexte, la télémétrie
+du hook, son runtime, `skip_unconfigured` (du plan du run), `run_sink`, `stage_clock`,
+`nuke_done` (signal). Sorties : `ingestion_outcome` et `to_skip`.
+
+La lecture, le parse et l'ingestion s'enchaînent dans un seul nœud (ADR-034 §2) : aucune
+étape ne matérialise le corpus. `ragcore` expose chaque étape comme une fonction sur un
+itérateur, testée seule (`application/source_reading.py`,
+`application/document_parsing.py`, `application/ingestion_runner.py`) ; le nœud les
+compose. Kedro ne voit qu'un nœud : les logs de progression et `statistics` disent où
+passe le temps.
+
+### La lecture (`SourceReading`)
 
 1. **Passe 1** (`connector.discover()`, `stages_s.discovery`) : chaque connecteur indexe
    son arborescence sans ouvrir un fichier, et garde les clés que retient
    `ingestion_ratio` ([configuration.md](configuration.md)). L'inventaire de chaque
    source (documents retenus sur le total) rejoint le bilan (`run_sink`) et part au
-   log, en avertissement pour un run partiel.
-2. **Passe 2** (`connector.fetch_all()`, `stages_s.phase1`) : drainée dans une
-   `list[RawDocument]`. Chaque document est mesuré (`xml_bytes`, `facets`, et
-   `step_ms.read`, le temps écoulé depuis le document précédent). `connect`,
-   `parseDocuments` et `ingest` additionnent leur durée sous `stages_s.phase1`.
+   log, en avertissement pour un run partiel. Le total retenu sert à la progression.
+2. **Passe 2** (`connector.fetch_all()`) : un document à la fois. Chacun est mesuré
+   (`xml_bytes`, `facets`, et `step_ms.read`, le temps écoulé depuis le document
+   précédent).
+3. **En fin de flux**, même quand le run casse : `document.fetched` **une fois**, avec
+   `count` = le nombre de documents vus — le **dénominateur** de l'équation de
+   complétude ; puis un compteur par raison pour ce que le connecteur a écarté,
+   `document.version_skipped` (artefacts d'export), `document.unreadable` (fichiers
+   illisibles) et `document.id_mismatch` (`<ID>` différent du nom de fichier), **hors
+   équation** : un fichier écarté n'est pas un document vu.
 
-- Émet `document.fetched` **une fois**, avec `count` = le nombre de documents vus. Ce
-  compte est le **dénominateur** de l'équation de complétude.
-- Ce que le connecteur a écarté en amont est émis en un compteur par raison,
-  `document.version_skipped` (artefacts d'export), `document.unreadable` (fichiers
-  illisibles) et `document.id_mismatch` (`<ID>` différent du nom de fichier), **hors
-  équation** : un fichier écarté n'est pas un document vu.
-
-Sortie : `raw_documents`.
-
-## 3. `parseDocuments`
-
-Entrées : `raw_documents`, `parser`, contexte, télémétrie (de type `WorkerTelemetry` : ce
-nœud *déclare* des inconnus), `skip_unconfigured` (du plan du run), `stage_clock`.
+### Le parse (`DocumentParsing`)
 
 Pour chaque `RawDocument` :
 
@@ -145,47 +148,51 @@ La source de chaque événement est `raw.source` (la vraie origine du
 fichier), jamais `context.source` — qui vaut `None` en run multi-source. La durée de
 chaque parse est mesurée (`step_ms.parse`), document rejeté compris.
 
-Sorties : `to_process` (`list[ParsedDocument]`) et `to_skip` (`list[str]`).
+Les rejetés forment `to_skip`.
 
-## 4. `ingest` — la phase 1
+### La file et le pool (`application/ingestion_runner.py`, `document_queue.py`)
 
-Entrées : `to_process`, `runner`, l'index OpenSearch, contexte, le runtime du hook,
-`run_sink`, `stage_clock`. Le nœud est mince : il lance `IngestionRunner.run()` et rend
-son `IngestionOutcome`.
+La lecture et le parse tournent dans le thread du nœud ; ils déposent chaque document
+dans une **file bornée**, que le premier worker libre consomme (ADR-034 §3). Autour, le
+nœud suspend le rafraîchissement de l'index (`refresh_interval: -1`), puis, dans un
+`finally`, lance un `_refresh` et rend au réglage sa valeur par défaut : même un run en
+échec laisse un index cherchable. Pendant le run, le backend ne voit donc pas les
+documents réécrits. Un run arrivé au bout fusionne ensuite l'index en un seul segment
+(`_forcemerge`), puis le rafraîchit : chaque requête kNN ne parcourt plus qu'un graphe
+HNSW (voir [index-opensearch.md](index-opensearch.md#lécriture)). Un run en échec ne
+fusionne pas. Lecture, parse et pool forment `stages_s.phase1`.
 
-Le runner remet les agrégats des workers (compteurs et mesures) à `run_sink`, **même
-quand le pool lève** : chaque worker dépose les siens en sortant, dans un `finally`. Un
-run qui casse plus loin garde donc dans son bilan et ses statistiques ce que la phase 1 a
-fait. Une ligne de progression (documents traités, total, débit) part au log toutes les
-30 s au plus (`application/progress.py`).
-
-Autour du pool, il suspend le rafraîchissement de l'index (`refresh_interval: -1`), puis,
-dans un `finally`, lance un `_refresh` et rend au réglage sa valeur par défaut : même un
-run en échec laisse un index cherchable. Pendant le run, le backend ne voit donc pas les
-documents réécrits.
-
-Un run arrivé au bout fusionne ensuite l'index en un seul segment (`_forcemerge`), puis le
-rafraîchit : chaque requête kNN ne parcourt plus qu'un graphe HNSW (voir
-[index-opensearch.md](index-opensearch.md#lécriture)). Un run en échec ne fusionne pas.
-
-### Le pool (`application/ingestion_runner.py`)
-
-- **Partition par clé document** : blake2b(identifiant) mod 4. Un identifiant donné n'est
-  traité que par UN worker ; comme les `chunk_id` dérivent de l'identifiant parent, deux
-  sagas ne peuvent pas se toucher — la garantie vient de la partition, pas d'un mutex.
-  (Jamais `hash()` natif : randomisé par `PYTHONHASHSEED`, il rendrait la partition non
-  reproductible.)
-- **Un worker = une boucle + ses clients + sa télémétrie + ses agrégats locaux.** Seule
-  la progression est partagée, sous un verrou. 4 workers (`_WORKER_COUNT`, assembly.py) — mesuré : en
-  augmenter le nombre ne gagne rien, ~99,9 % du temps d'un document part dans l'embedding
-  et le mur est le GPU (parse 0,9 ms, chunk 0,1 ms, embed ~1 364 ms).
+- **Capacité : le nombre de workers.** Un double tampon : chaque worker trouve un
+  document prêt en finissant le sien. Au pire 2n + 1 documents vivent à la fois (n
+  traités, n en file, un en parse).
+- **Un identifiant n'est traité que par UN worker** : la clé est unique par source, et
+  les préfixes d'identifiants ne se croisent pas entre sources. Comme les `chunk_id`
+  dérivent de l'identifiant parent, deux sagas ne peuvent pas se toucher — la garantie
+  vient du flux, pas d'un mutex.
+- **Un worker = un thread + une boucle + ses clients + sa télémétrie + ses agrégats
+  locaux.** Seuls la file, la progression (sous un verrou) et ce que les workers
+  déposent en sortant sont partagés. 4 workers (`_WORKER_COUNT`, assembly.py) — mesuré
+  sur l'extrait : en augmenter le nombre ne gagnait rien, l'embedding prenait ~99,9 % du
+  temps d'un document. Une ligne de progression (documents traités, total, débit) part
+  au log toutes les 30 s au plus (`application/progress.py`).
+- **Les attentes sont mesurées** (`queues`) : `producer_blocked_s`, l'attente de la
+  lecture devant une file pleine (souvent bloquée, elle désigne les workers), et
+  `worker_idle_s`, celle d'un worker devant une file vide (souvent inactifs, ils
+  désignent la lecture).
 - **Un échec de document ne casse pas le run** : l'exception est attrapée, comptée
   (`document.failed`, avec `reason` = le *type* de l'exception — le type regroupe, le
   message, gardé dans `error`, disperserait les raisons), journalisée en `logger.error`
   (seule trace de *quel* document a échoué) et le document rejoint `failures`
   (identifiant + message : un échec anonyme est un échec qu'on ne peut pas rejouer).
-- **Fin de shard** : `telemetry.close()` → `runtime.close()`, qui ferme d'abord les
-  clients du worker.
+- **Arrêt** : en fin de flux, la lecture dépose un marqueur de fin par worker, y compris
+  quand elle échoue ; les workers vident la file puis s'arrêtent. Un worker qui tombe
+  hors d'un document arrête la file : la lecture cesse d'attendre une place, les autres
+  workers s'arrêtent, et l'erreur est relevée dans le thread du nœud.
+- **Fin d'un worker** : il dépose ses agrégats (compteurs, mesures) et son résultat,
+  même en échec, puis `telemetry.close()` → `runtime.close()`, qui ferme d'abord ses
+  clients. Le runner remet les agrégats à `run_sink` **même quand le pool lève** : un
+  run qui casse plus loin garde dans son bilan et ses statistiques ce que la phase 1 a
+  fait.
 
 ### Le workload d'un document (`orchestration/kedro/workload.py`)
 
@@ -216,7 +223,7 @@ remise à `run_sink`),
 `relations` (l'union), `written_node_ids` (le delta du run, qui borne le rejeu ciblé),
 `failures`.
 
-## 5. `resolveRelations` — la phase 2
+## 3. `resolveRelations` — la phase 2
 
 Entrées : `ingestion_outcome` (LA barrière), `resolve_service`, runtime du hook, contexte,
 `stage_clock` (`stages_s.phase2_write`).
@@ -247,7 +254,7 @@ Invariant de lisibilité : `written + pending == entrée réduite`.
 
 Sortie : `ResolutionOutcome` (stats, written/pending/promoted/reduced counts).
 
-## 6. `report` — le nœud terminal
+## 4. `report` — le nœud terminal
 
 Entrées : les deux outcomes, `to_skip`. Sans I/O.
 

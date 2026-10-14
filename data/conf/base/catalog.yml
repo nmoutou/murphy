@@ -4,7 +4,7 @@
 # Le DAG les nomme, le hook les fournit. `copy_mode: assign` passe la référence, jamais
 # une copie : un client Mongo copié n'a plus de sens.
 
-# --- Composants source (lus par les nœuds de maintenance) ---
+# --- Composants source (lus par `ingest`) ---
 connector:
   type: MemoryDataset
   copy_mode: assign
@@ -70,14 +70,6 @@ nuke_all:
 # ============================================================
 
 nuke_done:
-  type: MemoryDataset
-  copy_mode: assign
-
-raw_documents:
-  type: MemoryDataset
-  copy_mode: assign
-
-to_process:
   type: MemoryDataset
   copy_mode: assign
 

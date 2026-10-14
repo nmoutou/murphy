@@ -40,10 +40,8 @@ pipelines). L'ordre est exprimé par les **dépendances de données**, jamais pa
 
 ```mermaid
 flowchart LR
-    nukeAll -- nuke_done --> connect
-    connect -- raw_documents --> parseDocuments
-    parseDocuments -- to_process --> ingest
-    parseDocuments -- to_skip --> report
+    nukeAll -- nuke_done --> ingest
+    ingest -- to_skip --> report
     ingest -- ingestion_outcome --> resolveRelations
     ingest -- ingestion_outcome --> report
     resolveRelations -- resolution_outcome --> report
@@ -51,7 +49,7 @@ flowchart LR
 
 Deux arêtes portent tout le sens :
 
-- **`nuke_done` → `connect`** : on ne lit pas la source pendant qu'on efface les stores.
+- **`nuke_done` → `ingest`** : on ne lit pas la source pendant qu'on efface les stores.
 - **`ingestion_outcome` → `resolveRelations`** : LA barrière phase 1 / phase 2. Une arête
   Neo4j a besoin que ses deux nœuds existent ; tant que la phase 1 n'a pas fini pour
   *tous* les documents, Kedro ne lance pas la phase 2. La barrière est structurelle.
@@ -65,12 +63,13 @@ Déroulé détaillé nœud par nœud : [reference/pipeline.md](reference/pipelin
 
 ## Les deux phases
 
-- **Phase 1 — documents** (`ingest`) : un pool de 4 workers, dispatch par clé document
-  (hash blake2b de l'identifiant). Chaque worker a sa boucle asyncio, ses clients Mongo /
-  Neo4j / OpenSearch, sa télémétrie et son agrégat local : rien de mutable n'est partagé, donc
-  aucun verrou. Le travail d'un document (le *workload*) : extraction des relations
-  et des relations non formatées → chunking → embedding → saga d'écriture (Mongo →
-  relations non formatées `MURPHY_DATA.unformatted_relations` → OpenSearch → nœud Neo4j).
+- **Phase 1 — documents** (`ingest`) : lecture, parse et ingestion en flux (ADR-034).
+  La lecture et le parse tournent dans le thread du nœud et alimentent une file bornée,
+  que 4 workers consomment : la mémoire tient en quelques documents. Chaque worker a sa
+  boucle asyncio, ses clients Mongo / Neo4j / OpenSearch, sa télémétrie et ses agrégats.
+  Le travail d'un document (le *workload*) : extraction des relations et des relations
+  non formatées → chunking → embedding → saga d'écriture (Mongo → relations non
+  formatées `MURPHY_DATA.unformatted_relations` → OpenSearch → nœud Neo4j).
 - **Phase 2 — relations** (`resolveRelations`) : après la barrière, un service unique
   écrit les arêtes en batch, met en attente celles dont la cible n'est pas dans le corpus
   (`MURPHY_DATA.pending_relations`) et **promeut** les pendantes de runs passés dont la cible

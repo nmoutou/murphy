@@ -3,6 +3,6 @@ from ragcore.core.ports.connector import BaseConnector
 
 
 def read_source(connector: BaseConnector) -> list[RawDocument]:
-    """Les deux passes, comme le nœud `connect`."""
+    """Les deux passes, comme le nœud `ingest`."""
     connector.discover()
     return list(connector.fetch_all())

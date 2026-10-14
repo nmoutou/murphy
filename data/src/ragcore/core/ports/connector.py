@@ -16,7 +16,7 @@ class BaseConnector(Protocol):
     def skipped(self) -> dict[str, int]:
         """Ce que le connecteur a écarté, par raison (artefact d'export, illisible…).
 
-        Le nœud `connect` en émet un compteur par raison : sans lui, un fichier écarté
+        La lecture en émet un compteur par raison : sans lui, un fichier écarté
         disparaîtrait avant `document.fetched`, sans trace au bilan. Lisible une fois
         `fetch_all` épuisé."""
         ...

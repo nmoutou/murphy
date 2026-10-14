@@ -139,7 +139,7 @@ Une balise absente de la table est **routée**, pas jetée :
   **valeur**, jamais sur le nom d'attribut) → traitée comme un **lien** ;
 - sinon → **métadonnée**, sous sa clé chemin-complet.
 
-Le signal est déclaré au site de parse (`parseDocuments`), sous la clé chemin-complet
+Le signal est déclaré au site de parse (`DocumentParsing`, dans `ingest`), sous la clé chemin-complet
 de la valeur : `links` pour un lien, `tags` pour une métadonnée (ADR-024). Une balise
 sans texte ni attribut ne laisse aucune trace. Le curseur `skip_unconfigured` (booléen,
 validé en tête de run, forcé à `true` hors `ENVIRONMENT=dev`) décide ensuite du sort de

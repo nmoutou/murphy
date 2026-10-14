@@ -1,4 +1,4 @@
-"""``parse_documents`` ne range en rejet que ce que le port promet (``ValidationError``,
+"""Le parse ne range en rejet que ce que le port promet (``ValidationError``,
 ``ParseError``) : toute autre exception est un bug du run, qui l'arrête.
 """
 
@@ -7,6 +7,7 @@ from xml.etree import ElementTree as ET
 
 import pytest
 
+from ragcore.application.document_parsing import DocumentParsing
 from ragcore.application.run_context import PipelineContext
 from ragcore.core.exceptions import ParseError
 from ragcore.core.models.collision_tally import CollisionTally
@@ -18,8 +19,6 @@ from ragcore.core.services.exclusion_reasons import REASON_COLLISION, REASON_PAR
 from ragcore.core.services.unknown_categories import CATEGORY_TAG
 from ragcore.core.statistics_measures import STEP_PARSE, step_measure
 from ragcore.core.telemetry_events import DOCUMENT_INVALIDATED
-from ragcore.orchestration.kedro.nodes.parse_documents import parse_documents_node
-from ragcore.orchestration.kedro.stage_clock import StageClock
 from ragcore.sources.generic import GenericParser, to_tree
 from ragcore.sources.legislatif.table import LEGI_ROLE_TABLE
 from ragcore.tests.fakes.telemetry import RecordingTelemetry
@@ -56,14 +55,49 @@ def _raw_document() -> RawDocument:
     )
 
 
+def _parse_documents(
+    raw_documents: list[RawDocument],
+    parser: object,
+    telemetry: RecordingTelemetry,
+    skip_unconfigured: bool,
+) -> tuple[list, list[str]]:
+    parsing = DocumentParsing(
+        parser,  # type: ignore[arg-type]
+        PipelineContext.create(),
+        telemetry,
+        skip_unconfigured,
+    )
+    return list(parsing.parse_all(raw_documents)), parsing.skipped
+
+
+def test_le_parse_est_un_flux() -> None:
+    """Un document rejeté n'arrête pas le flux, et rien n'est parsé d'avance."""
+    seen: list[str] = []
+
+    def raws():  # noqa: ANN202
+        for raw in [_raw_document()]:
+            seen.append(raw.source_document_id)
+            yield raw
+
+    parsing = DocumentParsing(
+        _FailingParser(ParseError("XML malformé")),  # type: ignore[arg-type]
+        PipelineContext.create(),
+        RecordingTelemetry(),
+        skip_unconfigured=False,
+    )
+    stream = parsing.parse_all(raws())
+
+    assert seen == []
+    assert list(stream) == []
+    assert parsing.skipped == ["doc-1"]
+
+
 def _run(parser: _FailingParser, telemetry: RecordingTelemetry) -> list[str]:
-    _, to_skip = parse_documents_node(
+    _, to_skip = _parse_documents(
         raw_documents=[_raw_document()],
         parser=parser,
-        pipeline_context=PipelineContext.create(),
         telemetry=telemetry,
         skip_unconfigured=False,
-        stage_clock=StageClock(),
     )
     return to_skip
 
@@ -101,13 +135,11 @@ def _parse_article(skip_unconfigured: bool, telemetry: RecordingTelemetry):
         },
         fetched_at=datetime.now(UTC),
     )
-    to_process, _ = parse_documents_node(
+    to_process, _ = _parse_documents(
         raw_documents=[raw],
         parser=GenericParser(LEGI_ROLE_TABLE, SourceName.LEGI),
-        pipeline_context=PipelineContext.create(),
         telemetry=telemetry,
         skip_unconfigured=skip_unconfigured,
-        stage_clock=StageClock(),
     )
     return to_process[0]
 
@@ -174,13 +206,11 @@ _REFUSED = _article("LEGIARTI000000000003", "<NUM>1</NUM><NUM>2</NUM>")
 
 
 def _parse_collisions(telemetry: RecordingTelemetry) -> tuple[list[str], list[str]]:
-    to_process, to_skip = parse_documents_node(
+    to_process, to_skip = _parse_documents(
         raw_documents=[_LISTED, _REFUSED],
         parser=GenericParser(LEGI_ROLE_TABLE, SourceName.LEGI),
-        pipeline_context=PipelineContext.create(),
         telemetry=telemetry,
         skip_unconfigured=True,
-        stage_clock=StageClock(),
     )
     return [parsed.identifier.raw for parsed in to_process], to_skip
 
