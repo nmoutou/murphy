@@ -70,15 +70,19 @@ class MongoPendingRelationRepository:
         await self._collection.bulk_write(operations, ordered=False)
 
     async def promotable_for(self, written_node_ids: set[str]) -> list[PendingRelation]:
-        promotable: list[PendingRelation] = []
+        """Une pendante dont les deux extrémités sont dans le delta peut sortir de deux
+        tranches : la clé la dédoublonne."""
+        promotable: dict[PendingKey, PendingRelation] = {}
         for chunk in _chunks(list(written_node_ids)):
+            ids = list(chunk)
             cursor = self._collection.find(
-                {"target_id": {"$in": list(chunk)}}, {"_id": 0}
+                {"$or": [{"source_id": {"$in": ids}}, {"target_id": {"$in": ids}}]},
+                {"_id": 0},
             )
-            promotable.extend(
-                [PendingRelation.model_validate(doc) async for doc in cursor]
-            )
-        return promotable
+            async for document in cursor:
+                pending = PendingRelation.model_validate(document)
+                promotable[pending.key] = pending
+        return list(promotable.values())
 
     async def delete_many(self, keys: list[PendingKey]) -> None:
         for chunk in _chunks(keys):

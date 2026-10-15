@@ -16,8 +16,8 @@ class PendingRelationRepository(Protocol):
         ...
 
     async def promotable_for(self, written_node_ids: set[str]) -> list[PendingRelation]:
-        """Les pendantes dont la cible fait partie des nœuds écrits par ce run : le rejeu
-        est borné par le delta du run, jamais par l'historique.
+        """Les pendantes dont la source ou la cible fait partie des nœuds écrits par ce
+        run : le rejeu est borné par le delta du run, jamais par l'historique.
         """
         ...
 

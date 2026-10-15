@@ -1,7 +1,7 @@
 """La phase 2 : le comptage exact, et les pendantes.
 
-Invariant exécuté : ``written + pending == entrée``. Une arête dont la cible manque est
-différée, jamais comptée comme écrite.
+Invariant exécuté : ``written + pending == entrée``. Une arête dont une extrémité manque
+est différée, jamais comptée comme écrite.
 """
 
 import random
@@ -170,6 +170,63 @@ async def test_a_pending_is_promoted_when_its_target_finally_arrives(
     assert pending.pendings == {}  # la pendante résolue quitte le cache
     assert len(graph.edges) == 1  # l'arête est enfin dans le graphe
     assert len(telemetry.events_of(RELATION_PROMOTED)) == 1
+
+
+async def test_a_pending_is_promoted_when_its_source_finally_arrives(
+    graph, pending, telemetry, context
+) -> None:  # noqa: ANN001
+    """``sens="cible"``, ancêtre, version précédente : le document courant est la cible
+    de l'arête, et c'est la source qui manque."""
+    service = ResolveRelationsService(
+        graph, pending, InMemoryTransitRepository(), telemetry
+    )
+    await graph.merge_document_node(_doc(B))
+    await _execute(service, [_rel(A, B)], {f"LEGIARTI{B}"}, context)
+    assert len(pending.pendings) == 1
+
+    await graph.merge_document_node(_doc(A))
+    outcome = await _execute(service, [], {f"LEGIARTI{A}"}, context)
+
+    assert outcome.promoted_count == 1
+    assert pending.pendings == {}
+    assert len(graph.edges) == 1
+
+
+async def test_a_pending_born_in_this_run_is_not_replayed_in_it(
+    service, graph, context
+) -> None:  # noqa: ANN001
+    """Elle naît quand tous les nœuds du run existent : la rejouer échouerait à coup
+    sûr."""
+    attempts: list[Relation] = []
+    write = graph.upsert_relations
+
+    async def spying_write(relations, run_id):  # noqa: ANN001, ANN202
+        attempts.extend(relations)
+        return await write(relations, run_id)
+
+    graph.upsert_relations = spying_write
+    await graph.merge_document_node(_doc(B))
+
+    outcome = await _execute(service, [_rel(MISSING, B)], {f"LEGIARTI{B}"}, context)
+
+    assert outcome.pending_count == 1
+    assert outcome.promoted_count == 0
+    assert attempts == [_rel(MISSING, B)]
+
+
+async def test_a_pending_whose_other_end_is_still_missing_stays(
+    service, graph, pending, context
+) -> None:  # noqa: ANN001
+    past = PipelineContext.create(sources=(SourceName.LEGI,))
+    await pending.upsert_many(
+        [PendingRelation.from_relation(_rel(A, MISSING), past.run_id)]
+    )
+    await graph.merge_document_node(_doc(A))
+
+    outcome = await _execute(service, [], {f"LEGIARTI{A}"}, context)
+
+    assert outcome.promoted_count == 0
+    assert len(pending.pendings) == 1
 
 
 async def test_replay_is_bounded_by_the_delta_not_the_backlog(

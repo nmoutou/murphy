@@ -109,7 +109,11 @@ class InMemoryPendingRepository:
 
     async def promotable_for(self, written_node_ids: set[str]) -> list[PendingRelation]:
         self.promotable_calls.append(frozenset(written_node_ids))
-        return [p for p in self.pendings.values() if p.target_id in written_node_ids]
+        return [
+            p
+            for p in self.pendings.values()
+            if p.source_id in written_node_ids or p.target_id in written_node_ids
+        ]
 
     async def delete_many(self, keys: list[PendingKey]) -> None:
         for key in keys:

@@ -1,7 +1,11 @@
-"""Une arête différée : sa cible n'est pas (encore) dans le corpus.
+"""Une arête différée : sa source ou sa cible n'est pas (encore) dans le corpus.
 
-Écrite en phase 2, rejouée le jour où la cible arrive. Elle peut rester pendante
-indéfiniment : un arrêt qui cite une directive jamais ingérée n'est pas une erreur.
+Écrite en phase 2, rejouée le jour où l'extrémité manquante arrive. Elle peut rester
+pendante indéfiniment : un arrêt qui cite une directive jamais ingérée n'est pas une
+erreur.
+
+La source manque quand le document courant est la cible de l'arête : lien
+``sens="cible"``, contenance déclarée par l'ancêtre, version précédente.
 """
 
 from typing import Any
@@ -38,10 +42,10 @@ class PendingKey(BaseModel):
 
 
 class PendingRelation(BaseModel):
-    """Relation dont la cible n'existait pas au moment de l'écriture.
+    """Relation dont une extrémité n'existait pas au moment de l'écriture.
 
-    Ni TTL ni ``retry_count`` : le rejeu ne vise que les pendantes dont la cible vient
-    d'arriver, donc une pendante n'est jamais « essayée puis échouée ».
+    Ni TTL ni ``retry_count`` : le rejeu ne vise que les pendantes dont une extrémité
+    vient d'arriver.
     """
 
     model_config = ConfigDict(frozen=True)

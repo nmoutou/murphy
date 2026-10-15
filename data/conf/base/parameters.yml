@@ -28,4 +28,4 @@ include_content_neo4j: true
 # hash, les mêmes d'un run à l'autre. Un run partiel laisse la plupart des arêtes
 # pendantes : son graphe n'est pas représentatif (ADR-034).
 ingestion_ratio: 
-  legi: 0.001
+  legi: 1

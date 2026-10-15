@@ -2,7 +2,8 @@
 déclaré sur des noms de champs écrits à la main.
 
 À trancher sur la vraie base : l'index unique porte sur le bon triplet,
-``$setOnInsert`` fige ``first_seen_run``, et le rejeu filtre par ``target_id``.
+``$setOnInsert`` fige ``first_seen_run``, et le rejeu filtre par ``source_id`` ou
+``target_id``.
 """
 
 import pytest
@@ -115,6 +116,26 @@ async def test_the_replay_is_bounded_by_the_delta_not_the_backlog(repo) -> None:
     assert len(promotable) == 1
     assert promotable[0].target_id == "D"
     assert await repo.count() == 3  # rien n'a été retiré
+
+
+async def test_the_replay_also_finds_a_pending_by_its_source(repo) -> None:
+    """La source manque quand le document courant est la cible de l'arête."""
+    await repo.upsert_many([_pending("A", "B", "run-1"), _pending("C", "D", "run-1")])
+
+    promotable = await repo.promotable_for({"A"})
+
+    assert [(p.source_id, p.target_id) for p in promotable] == [("A", "B")]
+
+
+async def test_a_pending_with_both_ends_in_two_chunks_comes_out_once(
+    repo, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(pending_repository, "_QUERY_CHUNK", 1)
+    await repo.upsert_many([_pending("A", "B", "run-1")])
+
+    promotable = await repo.promotable_for({"A", "B"})
+
+    assert len(promotable) == 1
 
 
 async def test_a_promoted_pending_leaves_the_backlog(repo) -> None:

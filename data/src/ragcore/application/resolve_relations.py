@@ -55,9 +55,10 @@ class ResolutionOutcome:
     written_count: int
     """Réellement écrites, pas tentées."""
     pending_count: int
-    """Différées : leur cible n'est pas (encore) dans le corpus."""
+    """Différées : une extrémité n'est pas (encore) dans le corpus."""
     promoted_count: int
-    """Pendantes de runs passés, résolues parce que leur cible vient d'arriver."""
+    """Pendantes de runs passés, résolues parce que leur extrémité manquante vient
+    d'arriver."""
     reduced_count: int
     """Redondantes, éliminées par la réduction transitive : ni écrites ni pendantes."""
     extracted_count: int
@@ -103,6 +104,9 @@ class ResolveRelationsService:
         context: PipelineContext,
     ) -> ResolutionOutcome:
         """Lève ``TransitNotDrainedError`` si une relation reste en transit."""
+        # Avant les écritures : les pendantes du run naissent quand tous ses nœuds
+        # existent, les rejouer échouerait à coup sûr
+        promoted_count = await self._promote(written_node_ids, context)
         stores = WriterStores(self._graph_repo, self._pending_repo)
         run = _Run(context, RelationWriter(stores, self._telemetry, context))
         for verb, found in components.items():
@@ -110,10 +114,6 @@ class ResolveRelationsService:
         await self._write_others(run)
         await run.writer.flush()
         await self._ensure_drained()
-
-        # Ne retente que les pendantes dont la cible vient d'arriver : le coût suit le
-        # delta du run, jamais la taille du backlog
-        promoted_count = await self._promote(written_node_ids, context)
         return ResolutionOutcome(
             written_count=run.writer.written_count,
             pending_count=run.writer.pending_count,
@@ -194,11 +194,9 @@ class ResolveRelationsService:
         )
 
         if result.pending:
-            # La cible vient d'être écrite : c'est la source qui manque. La pendante
-            # reste.
             self._telemetry.log(
-                "warning",
-                "relation.promotion.incomplete",
+                "info",
+                "relation.promotion.still_pending",
                 count=len(result.pending),
             )
 
