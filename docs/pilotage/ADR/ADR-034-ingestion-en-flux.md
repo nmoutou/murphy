@@ -2,7 +2,8 @@
 
 **Statut** : ✅ Accepté (14 octobre 2026) — amende ADR-013 (un échantillonnage revient,
 en ratio) et ADR-019 §3 (une clé de plus dans `parameters.yml`) · **§8 amendé le
-15 octobre 2026** (le détail des collisions a sa collection)
+15 octobre 2026** (le détail des collisions a sa collection) · **§1 amendé le
+15 octobre 2026** (les copies d'une même racine sont départagées par leur date)
 
 ## Contexte
 
@@ -54,6 +55,17 @@ regroupement dossier par dossier les couperait.
 - Un fichier dont l'`<ID>` diffère de sa clé est rejeté et compté, sous une nouvelle
   raison d'exclusion.
 - Le connecteur de jurisprudence prend la même clé et le même contrôle.
+
+> **Amendement (15 octobre 2026) : les copies d'une même racine.** Les « 16 008
+> identifiants » ci-dessus ne sont pas des facettes légitimes réparties sur deux
+> arborescences, mais des copies : l'export garde l'ancienne version d'un texte quand il
+> écrit la nouvelle, souvent dans l'autre arborescence. Le parser les refusait toutes
+> (`facet_root_duplicated`), version à jour comprise. Le connecteur générique les
+> départage désormais, par racine : des copies identiques n'en font qu'une ; entre
+> copies différentes, la plus récente (mtime) reste, le stock montrant qu'elle porte
+> toujours l'état le plus avancé ; à date égale, toutes restent et le parser refuse le
+> document. Chaque arbitrage est une collision (§8). La règle exige des mtimes
+> préservés à l'extraction.
 
 **2. Un nœud `ingest` enchaîne lecture, parse et ingestion.** `connect` et
 `parseDocuments` cessent d'être des nœuds Kedro. `ragcore` expose les étapes comme des

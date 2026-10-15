@@ -1,9 +1,11 @@
-"""Le connecteur d'une source de fichiers XML : il transcrit sans interpréter.
+"""Le connecteur d'une source de fichiers XML : il transcrit sans interpréter le
+contenu.
 
 La clé d'un document est le nom de son fichier sans extension, qui doit être son
 ``<ID>`` (ADR-034 §1). Elle se lit sans ouvrir le fichier : la passe 1 indexe toute
 l'arborescence, la passe 2 lit les facettes d'une clé au moment de l'émettre. La fusion
-reste globale : les facettes d'un texte LEGI vivent dans deux dossiers.
+reste globale : les copies d'une même racine vivent dans deux dossiers, et seule la
+plus récente fait foi (``copy_arbitration``).
 """
 
 from __future__ import annotations
@@ -12,9 +14,9 @@ import logging
 from collections.abc import Collection, Iterator
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
 from xml.etree import ElementTree as ET
 
+from ragcore.core.models.collision_record import CollisionRecord
 from ragcore.core.models.document import RawDocument
 from ragcore.core.models.enums import SourceName
 from ragcore.core.models.inventory import FULL_RATIO, SourceInventory
@@ -24,6 +26,7 @@ from ragcore.core.services.exclusion_reasons import (
 )
 from ragcore.core.services.key_sampling import select_keys
 
+from .copy_arbitration import Facet, arbitrate
 from .xml_tree import locate_id, read_root, to_tree
 
 __all__ = ["KeyedFileConnector"]
@@ -31,9 +34,6 @@ __all__ = ["KeyedFileConnector"]
 logger = logging.getLogger(__name__)
 
 _XML_GLOB = "*.xml"
-
-Facet = tuple[str, dict[str, Any]]
-"""Le chemin du fichier, et son arbre."""
 
 
 class KeyedFileConnector:
@@ -60,6 +60,7 @@ class KeyedFileConnector:
         self._index: dict[str, list[str]] | None = None
         self.set_aside_paths: list[str] = []
         self.skipped: dict[str, int] = {}
+        self.collisions: list[CollisionRecord] = []
 
     @property
     def source_name(self) -> SourceName:
@@ -69,6 +70,7 @@ class KeyedFileConnector:
         """Les chemins sont gardés en chaînes : un ``Path`` pèse plusieurs fois plus,
         et l'index tient tout le stock."""
         self.skipped = {}
+        self.collisions = []
         index: dict[str, list[str]] = {}
         for path in self._root.rglob(_XML_GLOB):
             index.setdefault(path.stem, []).append(str(path))
@@ -120,7 +122,7 @@ class KeyedFileConnector:
             raise RuntimeError(msg)
         return self._index
 
-    def _read_facets(self, key: str, paths: list[str]) -> list[Facet]:
+    def _read_facets(self, key: str, paths: list[str]) -> tuple[Facet, ...]:
         """Une facette écartée n'emporte pas les autres."""
         facets: list[Facet] = []
         for path in paths:
@@ -131,17 +133,19 @@ class KeyedFileConnector:
             if found != key:
                 self.reject_id_mismatch(path, found, key)
                 continue
-            facets.append((path, to_tree(root)))
-        return facets
+            facets.append(Facet(path, to_tree(root), Path(path).stat().st_mtime_ns))
+        arbitration = arbitrate(self._source, key, facets)
+        self.collisions.extend(arbitration.collisions)
+        return arbitration.kept
 
-    def _raw_document(self, key: str, facets: list[Facet]) -> RawDocument:
+    def _raw_document(self, key: str, facets: tuple[Facet, ...]) -> RawDocument:
         return RawDocument(
             source=self._source,
             source_document_id=key,
             payload={
                 # Une liste, même d'une facette : fusion et cas simple, même chemin
-                "content": [tree for _, tree in facets],
-                "files": [path for path, _ in facets],
+                "content": [facet.tree for facet in facets],
+                "files": [facet.path for facet in facets],
             },
             fetched_at=datetime.now(UTC),
         )

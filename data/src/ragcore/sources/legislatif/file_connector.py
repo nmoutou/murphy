@@ -11,6 +11,7 @@ nom.
 from collections.abc import Iterator
 from pathlib import Path
 
+from ragcore.core.models.collision_record import CollisionRecord
 from ragcore.core.models.document import RawDocument
 from ragcore.core.models.enums import SourceName
 from ragcore.core.models.inventory import FULL_RATIO, SourceInventory
@@ -36,6 +37,10 @@ class LegiFileConnector:
     @property
     def skipped(self) -> dict[str, int]:
         return self._files.skipped
+
+    @property
+    def collisions(self) -> list[CollisionRecord]:
+        return self._files.collisions
 
     def discover(self) -> dict[SourceName, SourceInventory]:
         return self._files.discover()

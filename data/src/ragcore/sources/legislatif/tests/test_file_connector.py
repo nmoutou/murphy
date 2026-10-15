@@ -1,6 +1,7 @@
 """Le connecteur LEGI : ce qu'il émet, ce qu'il fusionne, ce qu'il écarte."""
 
 import inspect
+import os
 from pathlib import Path
 
 import pytest
@@ -8,6 +9,7 @@ import pytest
 from ragcore.core.models.enums import SourceName
 from ragcore.core.models.inventory import SourceInventory
 from ragcore.core.ports.connector import BaseConnector
+from ragcore.core.services.collision_reasons import COLLISION_SUPERSEDED_COPY
 from ragcore.core.services.exclusion_reasons import (
     REASON_EXPORT_ARTIFACT,
     REASON_ID_MISMATCH,
@@ -139,6 +141,30 @@ def test_une_facette_illisible_n_emporte_pas_l_autre(tmp_path: Path) -> None:
 
     assert len(docs[_ARTICLE_42].payload["files"]) == 1
     assert connector.skipped == {REASON_UNREADABLE: 1}
+
+
+def test_la_copie_la_plus_recente_d_un_article_fait_foi(tmp_path: Path) -> None:
+    """L'export garde la copie périmée dans l'autre arborescence : seule la plus
+    récente est émise, et l'arbitrage est une collision."""
+    stale = tmp_path / "en_vigueur" / f"{_ARTICLE_42}.xml"
+    fresh = tmp_path / "non_vigueur" / f"{_ARTICLE_42}.xml"
+    _write_article(stale, _ARTICLE_42)
+    fresh.parent.mkdir()
+    fresh.write_text(
+        stale.read_text(encoding="utf-8").replace("<META>", "<META><ETAT/>"),
+        encoding="utf-8",
+    )
+    os.utime(stale, ns=(1_000, 1_000))
+    os.utime(fresh, ns=(2_000, 2_000))
+
+    connector = LegiFileConnector(tmp_path)
+    docs = _collect(connector)
+
+    assert docs[_ARTICLE_42].payload["files"] == [str(fresh)]
+    (collision,) = connector.collisions
+    assert collision.reason == COLLISION_SUPERSEDED_COPY
+    assert collision.files == (str(fresh), str(stale))
+    assert connector.skipped == {}
 
 
 def test_un_fichier_dont_l_ID_n_est_pas_le_nom_est_ecarte_ET_compte(

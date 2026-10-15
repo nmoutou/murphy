@@ -9,6 +9,7 @@ from datetime import UTC, datetime
 
 import pytest
 
+from ragcore.core.models.collision_record import CollisionRecord
 from ragcore.core.models.document import RawDocument
 from ragcore.core.models.enums import SourceName
 from ragcore.core.models.inventory import SourceInventory
@@ -37,6 +38,7 @@ class _FakeConnector:
         self._source = source
         self._count = count
         self.skipped = skipped or {}
+        self.collisions: list[CollisionRecord] = []
 
     def discover(self) -> dict[SourceName, SourceInventory]:
         return {self._source: SourceInventory(total=self._count, retained=self._count)}
@@ -135,6 +137,30 @@ def test_composite_resets_skipped_between_runs() -> None:
     _ = list(composite.fetch_all())
 
     assert composite.skipped == {"unreadable": 2}
+
+
+def test_composite_gathers_the_collisions_of_every_source() -> None:
+    """Relues à chaque lecture : deux itérations ne cumulent pas."""
+    cass = _FakeConnector(SourceName.CASS, 1)
+    jade = _FakeConnector(SourceName.JADE, 1)
+    cass.collisions = [_collision(SourceName.CASS)]
+    jade.collisions = [_collision(SourceName.JADE)]
+    composite = CompositeConnector({SourceName.CASS: cass, SourceName.JADE: jade})
+
+    _ = list(composite.fetch_all())
+    _ = list(composite.fetch_all())
+
+    assert composite.collisions == [*cass.collisions, *jade.collisions]
+
+
+def _collision(source: SourceName) -> CollisionRecord:
+    return CollisionRecord(
+        source=source,
+        reason="superseded_copy",
+        identifier=f"{source.value}-0",
+        key="TEXTE_JURI_JUDI",
+        files=("b.xml", "a.xml"),
+    )
 
 
 def test_composite_refuses_to_be_empty() -> None:

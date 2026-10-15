@@ -176,14 +176,19 @@ raisons sont celles de `collision_reasons.py` :
 | Raison | `key` | `files` |
 |---|---|---|
 | `metadata` | La clé de métadonnée qui a reçu plusieurs valeurs distinctes (ADR-025), rangée en liste ou refusée (`invalidations.collision`) | Les fichiers d'où viennent les valeurs, distincts, dans l'ordre des facettes |
-| `facet_root_duplicated` | La racine XML portée par plusieurs fichiers ; le document est aussi rejeté (`invalidations.facet_root_duplicated`) | Les seuls fichiers de cette racine |
+| `duplicate_copy` | La racine XML portée par plusieurs copies identiques ; le connecteur n'en garde qu'une | La copie gardée (la plus récente), puis les autres |
+| `superseded_copy` | La racine XML portée par plusieurs copies différentes ; le connecteur garde la plus récente (mtime) | La copie gardée, puis les écartées, de la plus récente à la plus ancienne |
+| `facet_root_duplicated` | La racine XML portée par des copies différentes de même date, que le connecteur n'a pas su départager ; le document est aussi rejeté (`invalidations.facet_root_duplicated`) | Les seuls fichiers de cette racine |
 
 `count` est le total de la source ; les `details` sont triés par (`identifier`, `key`),
 pour qu'un run rejoué écrive les mêmes documents. Au-delà de 15 Mio de détails, la
 source est découpée en parties (`part` sur `parts`), chacune répétant les comptes de la
 source entière : la limite de 16 Mo d'un document Mongo ne tronque rien. Le détail
 s'accumule dans le `CollisionsAggregator` du hook : lecture et parse tournent dans le
-thread du nœud `ingest`, jamais dans un worker.
+thread du nœud `ingest`, jamais dans un worker. Les copies départagées par le connecteur
+(`connector.collisions`) y sont déclarées en fin de flux, avec ses écarts
+(`SourceReading.declare_counts`) : leur document est émis, elles ne touchent pas
+l'équation de complétude.
 
 ## Les statistiques d'un run
 

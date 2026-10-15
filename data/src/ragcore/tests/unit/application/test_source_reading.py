@@ -11,6 +11,7 @@ import pytest
 
 from ragcore.application.run_context import PipelineContext
 from ragcore.application.source_reading import SourceReading
+from ragcore.core.models.collision_record import CollisionRecord
 from ragcore.core.models.document import RawDocument
 from ragcore.core.models.enums import SourceName
 from ragcore.core.models.inventory import SourceInventory
@@ -42,6 +43,7 @@ class _ConnectorWithSkips:
         self, skipped: dict[str, int], documents: tuple[RawDocument, ...] = ()
     ) -> None:
         self.skipped = skipped
+        self.collisions: list[CollisionRecord] = []
         self._documents = documents
         self.yielded: list[RawDocument] = []
 
@@ -177,3 +179,22 @@ def test_un_connecteur_sans_ecart_nemet_aucun_skip() -> None:
 
     assert telemetry.events_of(DOCUMENT_VERSION_SKIPPED) == []
     assert telemetry.events_of(DOCUMENT_UNREADABLE) == []
+
+
+def test_les_copies_departagees_sont_des_collisions_pas_des_ecarts() -> None:
+    """Leur document est émis : ni compteur d'écart, ni effet sur le dénominateur."""
+    connector = _ConnectorWithSkips({})
+    record = CollisionRecord(
+        source=SourceName.LEGI,
+        reason="superseded_copy",
+        identifier="LEGIARTI1",
+        key="ARTICLE",
+        files=("non_vigueur/LEGIARTI1.xml", "en_vigueur/LEGIARTI1.xml"),
+    )
+    connector.collisions = [record]
+
+    telemetry = _run(connector)
+
+    assert telemetry.collisions == [record]
+    assert telemetry.snapshot().collisions == {"superseded_copy": 1}
+    assert [event.event_type for event in telemetry.events] == [DOCUMENT_FETCHED]

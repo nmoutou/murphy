@@ -90,10 +90,13 @@ class SourceReading:
 
     def declare_counts(self) -> None:
         """``document.fetched`` est le dénominateur de l'équation de complétude ; les
-        écartés en sont hors, un compteur par raison."""
+        écartés en sont hors, un compteur par raison. Les copies départagées sont des
+        collisions, pas des écarts : leur document est émis."""
         self._emit(DOCUMENT_FETCHED, self._fetched)
         for reason, count in self._connector.skipped.items():
             self._emit(_SKIP_EVENT_BY_REASON[reason], count)
+        for record in self._connector.collisions:
+            self._telemetry.record_collision(record)
 
     def _measure(self, document: RawDocument, read_ms: float) -> None:
         files = document.payload["files"]

@@ -72,13 +72,33 @@ qu'un aplatissement écraserait mutuellement).
    l'émettre, clés triées pour un run reproductible. Chaque fichier est contrôlé : un
    fichier illisible est écarté (`unreadable`), un fichier dont l'`<ID>` n'est pas le
    nom aussi (`id_mismatch`, journalisé avec son chemin) ; les autres facettes de la clé
-   sont émises quand même.
+   sont émises quand même. Puis les copies d'une même racine sont départagées (voir
+   plus bas).
 
 Tout écart est **compté** (`connector.skipped`, par raison) et émis en un compteur par
-raison, hors équation de complétude. La fusion reste globale : les facettes d'un
-identifiant vivent parfois dans deux arborescences (`en_vigueur` / `non_vigueur`, 16 008
-identifiants LEGI), un regroupement dossier par dossier les couperait. La garantie qu'un
-identifiant n'est émis qu'une fois vient de là : la clé est unique par source.
+raison, hors équation de complétude. La fusion reste globale : la garantie qu'un
+identifiant n'est émis qu'une fois vient de là, la clé est unique par source.
+
+**Les copies d'une même racine** (`sources/generic/copy_arbitration.py`). L'export DILA
+garde l'ancienne version d'un texte quand il écrit la nouvelle, parfois dans l'autre
+arborescence (`en_vigueur` / `non_vigueur`), sans supprimer l'ancienne. Dans le stock du
+13 juillet 2025, 16 602 clés LEGI ont plusieurs fichiers de même racine XML ; dans les
+groupes à contenus différents, la copie la plus récente porte toujours l'état le plus
+avancé (`ABROGE_DIFF → ABROGE`, `VIGUEUR_DIFF → VIGUEUR`…), et le dossier ne départage
+rien (environ 800 fois, la bonne copie est dans `en_vigueur`). Rien dans un article ne
+date sa version : seule la date de modification du fichier (mtime) les départage. Pour
+chaque racine portée par plusieurs fichiers d'une clé :
+
+1. des copies identiques n'en font qu'une, la plus récente (`duplicate_copy`) ;
+2. entre copies différentes, la plus récente reste (`superseded_copy`) ;
+3. à date égale, toutes restent, et le parser refuse le document
+   (`facet_root_duplicated`) plutôt que de choisir au hasard.
+
+Chaque arbitrage est une collision (`connector.collisions`), détaillée dans
+`MURPHY_META.collisions` ([telemetrie.md](telemetrie.md#les-collisions-dun-run)). La
+règle suppose **des mtimes préservés à l'extraction** : c'est le défaut de `tar`, pas
+de `cp` sans `-p`, de `rsync` sans `-t`, ni de `tar --touch`. Une seule extraction par
+racine de source : un dump incrémental posé à côté de l'export global le duplique.
 
 **`LegiFileConnector`** compose le connecteur générique, et ajoute deux choses, sans
 regarder le contenu :

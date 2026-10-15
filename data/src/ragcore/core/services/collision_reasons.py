@@ -6,6 +6,10 @@ from .exclusion_reasons import REASON_FACET_ROOT_DUPLICATED
 
 # Une clé de métadonnée a reçu plusieurs valeurs distinctes (ADR-025)
 COLLISION_METADATA = "metadata"
-# Plusieurs fichiers d'une clé ont la même racine : le document est aussi rejeté, sous
-# la même chaîne
+# Des copies d'une même racine que le connecteur n'a pas su départager (même date) :
+# le document est aussi rejeté, sous la même chaîne
 COLLISION_FACET_ROOT_DUPLICATED = REASON_FACET_ROOT_DUPLICATED
+# Copies identiques d'une même racine sous une clé : une seule est gardée
+COLLISION_DUPLICATE_COPY = "duplicate_copy"
+# Copies différentes d'une même racine : la plus récente (mtime) est gardée
+COLLISION_SUPERSEDED_COPY = "superseded_copy"
