@@ -4,10 +4,8 @@ récente ; à date égale, toutes, pour que le parser refuse le document."""
 from typing import Any
 
 from ragcore.core.models.enums import SourceName
-from ragcore.core.services.collision_reasons import (
-    COLLISION_DUPLICATE_COPY,
-    COLLISION_SUPERSEDED_COPY,
-)
+from ragcore.core.models.problems import CopyStamp
+from ragcore.core.services.collision_reasons import COLLISION_DUPLICATE_COPY
 from ragcore.sources.generic.copy_arbitration import Facet, arbitrate
 
 _ID = "LEGIARTI000006201477"
@@ -29,7 +27,7 @@ def test_une_facette_seule_passe_sans_collision() -> None:
 
     result = _arbitrate(alone)
 
-    assert (result.kept, result.collisions) == ((alone,), ())
+    assert (result.kept, result.collisions, result.superseded) == ((alone,), (), ())
 
 
 def test_des_racines_differentes_ne_sont_pas_des_copies() -> None:
@@ -51,10 +49,26 @@ def test_la_copie_la_plus_recente_fait_foi() -> None:
     result = _arbitrate(stale, fresh)
 
     assert result.kept == (fresh,)
-    (collision,) = result.collisions
-    assert collision.reason == COLLISION_SUPERSEDED_COPY
-    assert (collision.identifier, collision.key) == (_ID, "ARTICLE")
-    assert collision.files == (_NON_VIGUEUR, _VIGUEUR)
+    assert result.collisions == ()
+    (copy,) = result.superseded
+    assert (copy.identifier, copy.root) == (_ID, "ARTICLE")
+    assert copy.kept == CopyStamp(path=_NON_VIGUEUR, mtime_ns=_NEWER)
+    assert copy.discarded == CopyStamp(path=_VIGUEUR, mtime_ns=_OLDER)
+
+
+def test_chaque_copie_ecartee_a_sa_ligne() -> None:
+    """Trois copies anciennes en donnent trois, chacune face à la copie gardée."""
+    fresh = Facet("/d.xml", _tree("ARTICLE", "ABROGE"), _NEWER)
+    stale = [Facet(f"/{n}.xml", _tree("ARTICLE", n), _OLDER) for n in "abc"]
+
+    result = _arbitrate(fresh, *stale)
+
+    assert {copy.kept.path for copy in result.superseded} == {"/d.xml"}
+    assert [copy.discarded.path for copy in result.superseded] == [
+        "/a.xml",
+        "/b.xml",
+        "/c.xml",
+    ]
 
 
 def test_la_plus_recente_peut_etre_dans_en_vigueur() -> None:
@@ -89,7 +103,7 @@ def test_a_date_egale_des_copies_differentes_restent_toutes() -> None:
     result = _arbitrate(one, other)
 
     assert result.kept == (one, other)
-    assert result.collisions == ()
+    assert (result.collisions, result.superseded) == ((), ())
 
 
 def test_chaque_racine_est_departagee_seule() -> None:
@@ -107,7 +121,4 @@ def test_chaque_racine_est_departagee_seule() -> None:
         "/non_vigueur/struct.xml",
         "/non_vigueur/version.xml",
     ]
-    assert [collision.key for collision in result.collisions] == [
-        "TEXTE_VERSION",
-        "TEXTELR",
-    ]
+    assert [copy.root for copy in result.superseded] == ["TEXTE_VERSION", "TEXTELR"]

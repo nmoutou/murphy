@@ -15,6 +15,7 @@ from ragcore.core.models.collision_record import CollisionRecord
 from ragcore.core.models.document import RawDocument
 from ragcore.core.models.enums import SourceName
 from ragcore.core.models.inventory import FULL_RATIO, SourceInventory
+from ragcore.core.models.problems import FileProblem
 from ragcore.core.services.exclusion_reasons import REASON_EXPORT_ARTIFACT
 from ragcore.sources.generic import KeyedFileConnector, locate_id
 
@@ -41,6 +42,10 @@ class LegiFileConnector:
     @property
     def collisions(self) -> list[CollisionRecord]:
         return self._files.collisions
+
+    @property
+    def problems(self) -> list[FileProblem]:
+        return self._files.problems
 
     def discover(self) -> dict[SourceName, SourceInventory]:
         return self._files.discover()

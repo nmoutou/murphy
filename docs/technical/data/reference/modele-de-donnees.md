@@ -144,6 +144,12 @@ files}`, chemins absolus. Index `idx_collisions_run_source_reason` (run_id, sour
 reason) et `idx_collisions_identifier`. Voir
 [telemetrie.md](telemetrie.md#les-problèmes-dun-run).
 
+### `superseded`
+
+Une ligne par copie écartée par l'arbitrage (ADR-036 §4) : `{run_id, source, identifier,
+root, kept: {path, mtime}, discarded: {path, mtime}}`, `mtime` en date Mongo. Index
+`idx_superseded_run_source` (run_id, source) et `idx_superseded_identifier`.
+
 ## MongoDB — base méta `MURPHY_META`
 
 Préservée par `nuke_all` : la mémoire de ce qu'on a fait ne doit jamais partir avec les

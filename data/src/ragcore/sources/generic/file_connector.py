@@ -20,8 +20,10 @@ from ragcore.core.models.collision_record import CollisionRecord
 from ragcore.core.models.document import RawDocument
 from ragcore.core.models.enums import SourceName
 from ragcore.core.models.inventory import FULL_RATIO, SourceInventory
+from ragcore.core.models.problems import FileProblem
 from ragcore.core.services.exclusion_reasons import (
     REASON_ID_MISMATCH,
+    REASON_SUPERSEDED,
     REASON_UNREADABLE,
 )
 from ragcore.core.services.key_sampling import select_keys
@@ -61,6 +63,7 @@ class KeyedFileConnector:
         self.set_aside_paths: list[str] = []
         self.skipped: dict[str, int] = {}
         self.collisions: list[CollisionRecord] = []
+        self.problems: list[FileProblem] = []
 
     @property
     def source_name(self) -> SourceName:
@@ -71,6 +74,7 @@ class KeyedFileConnector:
         et l'index tient tout le stock."""
         self.skipped = {}
         self.collisions = []
+        self.problems = []
         index: dict[str, list[str]] = {}
         for path in self._root.rglob(_XML_GLOB):
             index.setdefault(path.stem, []).append(str(path))
@@ -110,6 +114,11 @@ class KeyedFileConnector:
     def skip(self, reason: str) -> None:
         self.skipped[reason] = self.skipped.get(reason, 0) + 1
 
+    def _discard(self, problem: FileProblem, reason: str) -> None:
+        """Compté sous ``reason``, détaillé dans ``problems``."""
+        self.problems.append(problem)
+        self.skip(reason)
+
     def _sample(self, index: dict[str, list[str]]) -> dict[str, list[str]]:
         """Sans copie à 1 : l'index tient tout le stock."""
         if self._ratio >= FULL_RATIO:
@@ -136,6 +145,8 @@ class KeyedFileConnector:
             facets.append(Facet(path, to_tree(root), Path(path).stat().st_mtime_ns))
         arbitration = arbitrate(self._source, key, facets)
         self.collisions.extend(arbitration.collisions)
+        for copy in arbitration.superseded:
+            self._discard(copy, REASON_SUPERSEDED)
         return arbitration.kept
 
     def _raw_document(self, key: str, facets: tuple[Facet, ...]) -> RawDocument:

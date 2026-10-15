@@ -25,6 +25,10 @@ REASON_EXPORT_ARTIFACT = "export_artifact"
 # source derrière un bug supposé du parser.
 REASON_UNREADABLE = "unreadable"
 
+# Une copie d'une racine plus ancienne qu'une autre, et différente : l'arbitrage du
+# connecteur l'écarte, et le document est émis avec la plus récente (ADR-034 §1).
+REASON_SUPERSEDED = "superseded"
+
 # Un fichier dont l'`<ID>` n'est pas son nom (ADR-034 §1) : la clé du flux est le nom, et
 # un document émis sous une autre clé que son identifiant pourrait être traité par deux
 # workers. Couvre aussi un `versions.xml` qui n'est pas un artefact.

@@ -13,6 +13,7 @@ from ragcore.core.models.collision_record import CollisionRecord
 from ragcore.core.models.document import ParsedDocument, RawDocument
 from ragcore.core.models.enums import SourceName
 from ragcore.core.models.inventory import SourceInventory
+from ragcore.core.models.problems import FileProblem
 from ragcore.core.ports.connector import BaseConnector
 from ragcore.core.ports.parser import ParseResult
 from ragcore.core.ports.relation_extractor import ExtractionResult
@@ -50,6 +51,7 @@ class CompositeConnector:
         self.skipped: dict[str, int] = {}
         """Ce que les connecteurs ont écarté, sommé par raison."""
         self.collisions: list[CollisionRecord] = []
+        self.problems: list[FileProblem] = []
 
     @property
     def sources(self) -> tuple[SourceName, ...]:
@@ -66,15 +68,17 @@ class CompositeConnector:
         """Générateur de bout en bout : le corpus n'est jamais entier en mémoire."""
         self.skipped = {}
         self.collisions = []
+        self.problems = []
 
         for connector in self._connectors.values():
             yield from connector.fetch_all()
 
-            # Après épuisement : `skipped` et `collisions` se remplissent au fil de la
-            # lecture
+            # Après épuisement : `skipped`, `collisions` et `problems` se remplissent au
+            # fil de la lecture
             for reason, count in connector.skipped.items():
                 self.skipped[reason] = self.skipped.get(reason, 0) + count
             self.collisions.extend(connector.collisions)
+            self.problems.extend(connector.problems)
 
 
 class RoutingParser:

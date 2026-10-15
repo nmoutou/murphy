@@ -13,6 +13,7 @@ from ragcore.core.models.collision_record import CollisionRecord
 from ragcore.core.models.document import RawDocument
 from ragcore.core.models.enums import SourceName
 from ragcore.core.models.inventory import SourceInventory
+from ragcore.core.models.problems import FileProblem
 from ragcore.sources.composite import (
     CompositeConnector,
     RoutingParser,
@@ -39,6 +40,7 @@ class _FakeConnector:
         self._count = count
         self.skipped = skipped or {}
         self.collisions: list[CollisionRecord] = []
+        self.problems: list[FileProblem] = []
 
     def discover(self) -> dict[SourceName, SourceInventory]:
         return {self._source: SourceInventory(total=self._count, retained=self._count)}
@@ -156,7 +158,7 @@ def test_composite_gathers_the_collisions_of_every_source() -> None:
 def _collision(source: SourceName) -> CollisionRecord:
     return CollisionRecord(
         source=source,
-        reason="superseded_copy",
+        reason="duplicate_copy",
         identifier=f"{source.value}-0",
         key="TEXTE_JURI_JUDI",
         files=("b.xml", "a.xml"),

@@ -90,12 +90,15 @@ date sa version : seule la date de modification du fichier (mtime) les départag
 chaque racine portée par plusieurs fichiers d'une clé :
 
 1. des copies identiques n'en font qu'une, la plus récente (`duplicate_copy`) ;
-2. entre copies différentes, la plus récente reste (`superseded_copy`) ;
+2. entre copies différentes, la plus récente reste, et chaque autre est écartée
+   (`document.superseded`) ;
 3. à date égale, toutes restent, et le parser refuse le document
    (`facet_root_duplicated`) plutôt que de choisir au hasard.
 
-Chaque arbitrage est une collision (`connector.collisions`), détaillée dans
-`MURPHY_PROBLEMS.collisions` ([telemetrie.md](telemetrie.md#les-problèmes-dun-run)). La
+Des copies identiques font une collision (`connector.collisions`), détaillée dans
+`MURPHY_PROBLEMS.collisions` ; une copie écartée n'en est pas une : elle est détaillée,
+avec les dates des deux copies, dans `MURPHY_PROBLEMS.superseded`
+([telemetrie.md](telemetrie.md#les-problèmes-dun-run)). La
 règle suppose **des mtimes préservés à l'extraction** : c'est le défaut de `tar`, pas
 de `cp` sans `-p`, de `rsync` sans `-t`, ni de `tar --touch`. Une seule extraction par
 racine de source : un dump incrémental posé à côté de l'export global le duplique.

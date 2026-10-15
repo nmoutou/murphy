@@ -12,6 +12,8 @@ GOLDEN = {
     "document.unreadable",
     # Un fichier dont l'<ID> n'est pas le nom : la clé du flux (ADR-034 §1)
     "document.id_mismatch",
+    # Une copie écartée par l'arbitrage, au profit d'une plus récente (ADR-036 §4)
+    "document.superseded",
     "document.persisted",
     # Vu, jamais ingéré : sans ce compteur, le run se déclarerait « ok »
     "document.failed",
@@ -44,6 +46,7 @@ GOLDEN_COUNT_CARRYING = {
     "document.version_skipped",  # nombre d'artefacts d'export écartés
     "document.unreadable",  # nombre de fichiers illisibles écartés
     "document.id_mismatch",  # nombre de fichiers dont l'<ID> n'est pas le nom
+    "document.superseded",  # nombre de copies écartées par l'arbitrage
     "relation.unknown",  # nombre de liens perdus d'un document
 }
 

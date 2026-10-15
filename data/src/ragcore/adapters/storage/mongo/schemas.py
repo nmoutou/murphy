@@ -4,7 +4,10 @@ from ragcore.adapters.storage.mongo.client import MongoDatabase
 from ragcore.adapters.storage.mongo.pending_repository import (
     PENDING_RELATIONS_COLLECTION,
 )
-from ragcore.adapters.storage.mongo.problem_repository import COLLISIONS_COLLECTION
+from ragcore.adapters.storage.mongo.problem_repository import (
+    COLLISIONS_COLLECTION,
+    SUPERSEDED_COLLECTION,
+)
 from ragcore.adapters.storage.mongo.statistics_repository import STATISTICS_COLLECTION
 from ragcore.adapters.storage.mongo.transit_repository import (
     TRANSIT_RELATIONS_COLLECTION,
@@ -93,6 +96,13 @@ _PROBLEMS_INDEXES: dict[str, list[IndexModel]] = {
             name="idx_collisions_run_source_reason",
         ),
         IndexModel([("identifier", ASCENDING)], name="idx_collisions_identifier"),
+    ],
+    SUPERSEDED_COLLECTION: [
+        IndexModel(
+            [("run_id", ASCENDING), ("source", ASCENDING)],
+            name="idx_superseded_run_source",
+        ),
+        IndexModel([("identifier", ASCENDING)], name="idx_superseded_identifier"),
     ],
 }
 """Par collection, dans la base des problèmes."""

@@ -6,6 +6,7 @@ from typing import Any
 
 from ragcore.core.models.audit import AuditEvent
 from ragcore.core.models.collision_record import CollisionRecord
+from ragcore.core.models.problems import FileProblem
 from ragcore.core.models.run_measures import MeasurePath, RunMeasures
 from ragcore.core.models.run_stats import RunStats
 from ragcore.core.models.unknown_tally import UnknownExample
@@ -49,6 +50,9 @@ class WorkerTelemetryStack:
     def record_collision(self, record: CollisionRecord) -> None:
         self._backends.aggregate.record_collision(record.reason)
         self._backends.problems.record(record)
+
+    def record_problem(self, problem: FileProblem) -> None:
+        self._backends.problems.record(problem)
 
     def record_invalidation(self, reason: str) -> None:
         self._backends.aggregate.record_invalidation(reason)

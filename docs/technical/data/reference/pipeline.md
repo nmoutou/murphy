@@ -125,8 +125,10 @@ passe le temps.
    `count` = le nombre de documents vus — le **dénominateur** de l'équation de
    complétude ; puis un compteur par raison pour ce que le connecteur a écarté,
    `document.version_skipped` (artefacts d'export), `document.unreadable` (fichiers
-   illisibles) et `document.id_mismatch` (`<ID>` différent du nom de fichier), **hors
-   équation** : un fichier écarté n'est pas un document vu.
+   illisibles), `document.id_mismatch` (`<ID>` différent du nom de fichier) et
+   `document.superseded` (copies écartées par une plus récente), **hors équation** : un
+   fichier écarté n'est pas un document vu. Les collisions et le détail des écartés
+   partent avec les problèmes du run ([telemetrie.md](telemetrie.md#les-problèmes-dun-run)).
 
 ### Le parse (`DocumentParsing`)
 

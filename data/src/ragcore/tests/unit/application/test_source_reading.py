@@ -15,9 +15,11 @@ from ragcore.core.models.collision_record import CollisionRecord
 from ragcore.core.models.document import RawDocument
 from ragcore.core.models.enums import SourceName
 from ragcore.core.models.inventory import SourceInventory
+from ragcore.core.models.problems import CopyStamp, FileProblem, SupersededCopy
 from ragcore.core.services.exclusion_reasons import (
     REASON_EXPORT_ARTIFACT,
     REASON_ID_MISMATCH,
+    REASON_SUPERSEDED,
     REASON_UNREADABLE,
 )
 from ragcore.core.statistics_measures import (
@@ -30,6 +32,7 @@ from ragcore.core.statistics_measures import (
 from ragcore.core.telemetry_events import (
     DOCUMENT_FETCHED,
     DOCUMENT_ID_MISMATCH,
+    DOCUMENT_SUPERSEDED,
     DOCUMENT_UNREADABLE,
     DOCUMENT_VERSION_SKIPPED,
 )
@@ -44,6 +47,7 @@ class _ConnectorWithSkips:
     ) -> None:
         self.skipped = skipped
         self.collisions: list[CollisionRecord] = []
+        self.problems: list[FileProblem] = []
         self._documents = documents
         self.yielded: list[RawDocument] = []
 
@@ -181,12 +185,12 @@ def test_un_connecteur_sans_ecart_nemet_aucun_skip() -> None:
     assert telemetry.events_of(DOCUMENT_UNREADABLE) == []
 
 
-def test_les_copies_departagees_sont_des_collisions_pas_des_ecarts() -> None:
+def test_les_collisions_du_connecteur_sont_declarees() -> None:
     """Leur document est émis : ni compteur d'écart, ni effet sur le dénominateur."""
     connector = _ConnectorWithSkips({})
     record = CollisionRecord(
         source=SourceName.LEGI,
-        reason="superseded_copy",
+        reason="duplicate_copy",
         identifier="LEGIARTI1",
         key="ARTICLE",
         files=("non_vigueur/LEGIARTI1.xml", "en_vigueur/LEGIARTI1.xml"),
@@ -196,5 +200,24 @@ def test_les_copies_departagees_sont_des_collisions_pas_des_ecarts() -> None:
     telemetry = _run(connector)
 
     assert telemetry.collisions == [record]
-    assert telemetry.snapshot().collisions == {"superseded_copy": 1}
+    assert telemetry.snapshot().collisions == {"duplicate_copy": 1}
     assert [event.event_type for event in telemetry.events] == [DOCUMENT_FETCHED]
+
+
+def test_une_copie_ecartee_est_comptee_et_detaillee_hors_collisions() -> None:
+    connector = _ConnectorWithSkips({REASON_SUPERSEDED: 1})
+    copy = SupersededCopy(
+        source=SourceName.LEGI,
+        identifier="LEGIARTI1",
+        root="ARTICLE",
+        kept=CopyStamp(path="non_vigueur/LEGIARTI1.xml", mtime_ns=2_000),
+        discarded=CopyStamp(path="en_vigueur/LEGIARTI1.xml", mtime_ns=1_000),
+    )
+    connector.problems = [copy]
+
+    telemetry = _run(connector)
+
+    assert telemetry.problems == [copy]
+    assert telemetry.snapshot().collisions == {}
+    (event,) = telemetry.events_of(DOCUMENT_SUPERSEDED)
+    assert event.payload == {"count": 1}

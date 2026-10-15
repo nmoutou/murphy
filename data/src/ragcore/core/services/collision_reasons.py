@@ -11,5 +11,3 @@ COLLISION_METADATA = "metadata"
 COLLISION_FACET_ROOT_DUPLICATED = REASON_FACET_ROOT_DUPLICATED
 # Copies identiques d'une même racine sous une clé : une seule est gardée
 COLLISION_DUPLICATE_COPY = "duplicate_copy"
-# Copies différentes d'une même racine : la plus récente (mtime) est gardée
-COLLISION_SUPERSEDED_COPY = "superseded_copy"

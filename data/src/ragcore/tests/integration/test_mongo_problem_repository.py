@@ -1,6 +1,8 @@
 """Les problèmes contre un vrai Mongo : une ligne par problème, sous son `run_id`, par
 lots, et les runs successifs s'accumulent."""
 
+from datetime import datetime
+
 import pytest
 from testcontainers.mongodb import MongoDbContainer
 
@@ -8,6 +10,7 @@ from ragcore.adapters.storage.mongo import problem_repository
 from ragcore.adapters.storage.mongo.client import create_mongo_client
 from ragcore.adapters.storage.mongo.problem_repository import (
     COLLISIONS_COLLECTION,
+    SUPERSEDED_COLLECTION,
     MongoProblemRepository,
 )
 from ragcore.adapters.storage.mongo.schemas import (
@@ -17,6 +20,7 @@ from ragcore.adapters.storage.mongo.schemas import (
 from ragcore.core.models.collision_record import CollisionRecord
 from ragcore.core.models.enums import SourceName
 from ragcore.core.models.identifiers import RunId
+from ragcore.core.models.problems import CopyStamp, SupersededCopy
 
 pytestmark = pytest.mark.integration
 
@@ -72,6 +76,33 @@ async def test_une_collision_donne_une_ligne_a_plat(database) -> None:
             ],
         }
     ]
+
+
+async def test_une_copie_ecartee_est_datee_a_la_milliseconde(database) -> None:
+    kept_ns = 1_760_000_000_123_456_789
+    copy = SupersededCopy(
+        source=SourceName.LEGI,
+        identifier="LEGIARTI1",
+        root="ARTICLE",
+        kept=CopyStamp(path="/non_vigueur/LEGIARTI1.xml", mtime_ns=kept_ns),
+        discarded=CopyStamp(path="/en_vigueur/LEGIARTI1.xml", mtime_ns=0),
+    )
+    repo = MongoProblemRepository(database.client, DB)
+
+    await repo.insert_run(RUN_1, [_collision("LEGIARTI1"), copy])
+
+    (row,) = await _rows(database, SUPERSEDED_COLLECTION)
+    assert row["kept"] == {
+        "path": "/non_vigueur/LEGIARTI1.xml",
+        "mtime": datetime(2025, 10, 9, 8, 53, 20, 123000),
+    }
+    assert row["discarded"]["mtime"] == datetime(1970, 1, 1)
+    assert (row["run_id"], row["identifier"], row["root"]) == (
+        "run-1",
+        "LEGIARTI1",
+        "ARTICLE",
+    )
+    assert await database[COLLISIONS_COLLECTION].count_documents({}) == 1
 
 
 async def test_les_lignes_partent_par_lots(

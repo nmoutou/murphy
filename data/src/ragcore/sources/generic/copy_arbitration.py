@@ -6,9 +6,10 @@ date sa version, seule la date de modification du fichier les départage. Sur le
 LEGI, la copie la plus récente porte toujours l'état le plus avancé
 (``ABROGE_DIFF → ABROGE``…).
 
-Des copies identiques se réduisent à une. Entre copies différentes, la plus récente
-reste ; à égalité de date, toutes restent, et le parser refuse le document
-(``facet_root_duplicated``) plutôt que de choisir au hasard.
+Des copies identiques se réduisent à une (une collision). Entre copies différentes, la
+plus récente reste et chaque autre est écartée (une ``SupersededCopy``) ; à égalité de
+date, toutes restent, et le parser refuse le document (``facet_root_duplicated``) plutôt
+que de choisir au hasard.
 """
 
 from __future__ import annotations
@@ -19,10 +20,8 @@ from typing import Any
 
 from ragcore.core.models.collision_record import CollisionRecord
 from ragcore.core.models.enums import SourceName
-from ragcore.core.services.collision_reasons import (
-    COLLISION_DUPLICATE_COPY,
-    COLLISION_SUPERSEDED_COPY,
-)
+from ragcore.core.models.problems import CopyStamp, SupersededCopy
+from ragcore.core.services.collision_reasons import COLLISION_DUPLICATE_COPY
 
 __all__ = ["Arbitration", "Facet", "arbitrate"]
 
@@ -39,6 +38,7 @@ class Arbitration:
     kept: tuple[Facet, ...]
     """Dans l'ordre des chemins."""
     collisions: tuple[CollisionRecord, ...]
+    superseded: tuple[SupersededCopy, ...]
 
 
 @dataclass(frozen=True)
@@ -60,21 +60,36 @@ class _Root:
             files=(kept.path, *(facet.path for facet in dropped)),
         )
 
+    def superseded(self, kept: Facet, dropped: Sequence[Facet]) -> list[SupersededCopy]:
+        return [
+            SupersededCopy(
+                source=self.source,
+                identifier=self.identifier,
+                root=self.tag,
+                kept=_stamp(kept),
+                discarded=_stamp(facet),
+            )
+            for facet in dropped
+        ]
+
 
 def arbitrate(
     source: SourceName, identifier: str, facets: Sequence[Facet]
 ) -> Arbitration:
     kept: list[Facet] = []
     collisions: list[CollisionRecord] = []
+    superseded: list[SupersededCopy] = []
     for tag, group in _by_root(facets).items():
         root = _Root(source, identifier, tag)
         distinct, merged = _merge_identical(root, group)
-        survivors, superseded = _keep_newest(root, distinct)
+        survivors, dropped = _keep_newest(root, distinct)
         kept.extend(survivors)
-        collisions.extend((*merged, *superseded))
+        collisions.extend(merged)
+        superseded.extend(dropped)
     return Arbitration(
         kept=tuple(sorted(kept, key=lambda facet: facet.path)),
         collisions=tuple(collisions),
+        superseded=tuple(superseded),
     )
 
 
@@ -108,14 +123,18 @@ def _merge_identical(
 
 def _keep_newest(
     root: _Root, distinct: list[Facet]
-) -> tuple[list[Facet], list[CollisionRecord]]:
+) -> tuple[list[Facet], list[SupersededCopy]]:
     if len(distinct) == 1:
         return distinct, []
     newest, *older = sorted(distinct, key=_newest_first)
     if older[0].mtime_ns == newest.mtime_ns:
         return distinct, []
-    return [newest], [root.record(COLLISION_SUPERSEDED_COPY, newest, older)]
+    return [newest], root.superseded(newest, older)
 
 
 def _newest_first(facet: Facet) -> tuple[int, str]:
     return -facet.mtime_ns, facet.path
+
+
+def _stamp(facet: Facet) -> CopyStamp:
+    return CopyStamp(path=facet.path, mtime_ns=facet.mtime_ns)

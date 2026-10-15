@@ -5,6 +5,7 @@ from ..models.collision_record import CollisionRecord
 from ..models.document import RawDocument
 from ..models.enums import SourceName
 from ..models.inventory import SourceInventory
+from ..models.problems import FileProblem
 
 
 @runtime_checkable
@@ -24,8 +25,14 @@ class BaseConnector(Protocol):
 
     @property
     def collisions(self) -> list[CollisionRecord]:
-        """Les copies d'une même racine que le connecteur a départagées. Lisible une
-        fois `fetch_all` épuisé, comme `skipped`."""
+        """Les copies identiques d'une même racine que le connecteur a réduites à une.
+        Lisible une fois `fetch_all` épuisé, comme `skipped`."""
+        ...
+
+    @property
+    def problems(self) -> list[FileProblem]:
+        """Le détail de ce que `skipped` compte, quand il vaut d'être gardé (ADR-036).
+        Lisible une fois `fetch_all` épuisé."""
         ...
 
     def discover(self) -> dict[SourceName, SourceInventory]:

@@ -18,6 +18,7 @@ from ragcore.core.ports.telemetry import WorkerTelemetry
 from ragcore.core.services.exclusion_reasons import (
     REASON_EXPORT_ARTIFACT,
     REASON_ID_MISMATCH,
+    REASON_SUPERSEDED,
     REASON_UNREADABLE,
 )
 from ragcore.core.statistics_measures import (
@@ -31,6 +32,7 @@ from ragcore.core.statistics_measures import (
 from ragcore.core.telemetry_events import (
     DOCUMENT_FETCHED,
     DOCUMENT_ID_MISMATCH,
+    DOCUMENT_SUPERSEDED,
     DOCUMENT_UNREADABLE,
     DOCUMENT_VERSION_SKIPPED,
 )
@@ -46,6 +48,7 @@ _SKIP_EVENT_BY_REASON = {
     REASON_EXPORT_ARTIFACT: DOCUMENT_VERSION_SKIPPED,
     REASON_UNREADABLE: DOCUMENT_UNREADABLE,
     REASON_ID_MISMATCH: DOCUMENT_ID_MISMATCH,
+    REASON_SUPERSEDED: DOCUMENT_SUPERSEDED,
 }
 
 
@@ -90,13 +93,15 @@ class SourceReading:
 
     def declare_counts(self) -> None:
         """``document.fetched`` est le dénominateur de l'équation de complétude ; les
-        écartés en sont hors, un compteur par raison. Les copies départagées sont des
-        collisions, pas des écarts : leur document est émis."""
+        écartés en sont hors, un compteur par raison, et leur détail part avec les
+        problèmes du run."""
         self._emit(DOCUMENT_FETCHED, self._fetched)
         for reason, count in self._connector.skipped.items():
             self._emit(_SKIP_EVENT_BY_REASON[reason], count)
         for record in self._connector.collisions:
             self._telemetry.record_collision(record)
+        for problem in self._connector.problems:
+            self._telemetry.record_problem(problem)
 
     def _measure(self, document: RawDocument, read_ms: float) -> None:
         files = document.payload["files"]

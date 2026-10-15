@@ -11,6 +11,7 @@ DOCUMENT_VERSION_SKIPPED = (
 )
 DOCUMENT_UNREADABLE = "document.unreadable"  # XML illisible (tronqué, encodage cassé)
 DOCUMENT_ID_MISMATCH = "document.id_mismatch"  # fichier dont l'<ID> n'est pas le nom
+DOCUMENT_SUPERSEDED = "document.superseded"  # copie écartée par une plus récente
 DOCUMENT_INVALIDATED = "document.invalidated"
 DOCUMENT_PERSISTED = "document.persisted"
 DOCUMENT_FAILED = "document.failed"  # vu, jamais ingéré : une fuite
@@ -49,6 +50,7 @@ COUNT_CARRYING_EVENTS: frozenset[str] = frozenset(
         DOCUMENT_VERSION_SKIPPED,  # émis une fois en fin de fetch → nombre d'artefacts
         DOCUMENT_UNREADABLE,  # émis une fois en fin de fetch → nombre d'illisibles
         DOCUMENT_ID_MISMATCH,  # émis une fois en fin de fetch → nombre de fichiers
+        DOCUMENT_SUPERSEDED,  # émis une fois en fin de fetch → nombre de copies
         RELATION_UNKNOWN,  # émis une fois par document → nombre de liens perdus
     }
 )
@@ -70,6 +72,7 @@ EVENT_TYPES: frozenset[str] = frozenset(
         DOCUMENT_VERSION_SKIPPED,
         DOCUMENT_UNREADABLE,
         DOCUMENT_ID_MISMATCH,
+        DOCUMENT_SUPERSEDED,
         # --- Traitement ---
         DOCUMENT_PERSISTED,
         DOCUMENT_FAILED,
