@@ -150,6 +150,13 @@ Une ligne par copie écartée par l'arbitrage (ADR-036 §4) : `{run_id, source, 
 root, kept: {path, mtime}, discarded: {path, mtime}}`, `mtime` en date Mongo. Index
 `idx_superseded_run_source` (run_id, source) et `idx_superseded_identifier`.
 
+### `unreadable` et `mismatch`
+
+Une ligne par fichier écarté par le connecteur (ADR-036 §5 et §6) : `{run_id, source,
+key, path, error}` pour un XML illisible, `{run_id, source, key, path, found_id}` pour un
+`<ID>` qui n'est pas le nom du fichier. Index `idx_unreadable_run_source` et
+`idx_mismatch_run_source` (run_id, source).
+
 ## MongoDB — base méta `MURPHY_META`
 
 Préservée par `nuke_all` : la mémoire de ce qu'on a fait ne doit jamais partir avec les

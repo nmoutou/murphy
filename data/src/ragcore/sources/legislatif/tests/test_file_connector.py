@@ -8,6 +8,7 @@ import pytest
 
 from ragcore.core.models.enums import SourceName
 from ragcore.core.models.inventory import SourceInventory
+from ragcore.core.models.problems import MismatchedFile, UnreadableFile
 from ragcore.core.ports.connector import BaseConnector
 from ragcore.core.services.exclusion_reasons import (
     REASON_EXPORT_ARTIFACT,
@@ -128,6 +129,13 @@ def test_un_xml_illisible_est_ecarte_ET_compte(tmp_path: Path) -> None:
 
     assert docs == {}
     assert connector.skipped == {REASON_UNREADABLE: 1}
+    (unreadable,) = connector.problems
+    assert isinstance(unreadable, UnreadableFile)
+    assert (unreadable.key, unreadable.path) == (
+        _ARTICLE_42,
+        str(tmp_path / f"{_ARTICLE_42}.xml"),
+    )
+    assert "line 1" in unreadable.error
 
 
 def test_une_facette_illisible_n_emporte_pas_l_autre(tmp_path: Path) -> None:
@@ -180,6 +188,14 @@ def test_un_fichier_dont_l_ID_n_est_pas_le_nom_est_ecarte_ET_compte(
 
     assert docs == {}
     assert connector.skipped == {REASON_ID_MISMATCH: 1}
+    assert connector.problems == [
+        MismatchedFile(
+            source=SourceName.LEGI,
+            key="LEGIARTI000000000043",
+            path=str(tmp_path / "LEGIARTI000000000043.xml"),
+            found_id=_ARTICLE_42,
+        )
+    ]
 
 
 @pytest.mark.parametrize(
@@ -194,6 +210,7 @@ def test_les_deux_formes_de_l_artefact_sont_ecartees(
     _collect(connector)
 
     assert connector.skipped == {REASON_EXPORT_ARTIFACT: 1}
+    assert connector.problems == []
 
 
 def test_un_versions_xml_qui_n_est_pas_un_artefact_est_REJETE(tmp_path: Path) -> None:
@@ -205,6 +222,9 @@ def test_un_versions_xml_qui_n_est_pas_un_artefact_est_REJETE(tmp_path: Path) ->
 
     assert docs == {}
     assert connector.skipped == {REASON_ID_MISMATCH: 1}
+    (mismatch,) = connector.problems
+    assert isinstance(mismatch, MismatchedFile)
+    assert (mismatch.key, mismatch.found_id) == ("versions", _ARTICLE_42)
 
 
 def test_les_liens_freres_survivent_a_la_transcription(corpus: Path) -> None:

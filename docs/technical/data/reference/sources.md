@@ -70,8 +70,9 @@ qu'un aplatissement écraserait mutuellement).
    jamais lues) ;
 2. **`fetch_all()`**, un générateur synchrone, lit les facettes d'une clé au moment de
    l'émettre, clés triées pour un run reproductible. Chaque fichier est contrôlé : un
-   fichier illisible est écarté (`unreadable`), un fichier dont l'`<ID>` n'est pas le
-   nom aussi (`id_mismatch`, journalisé avec son chemin) ; les autres facettes de la clé
+   fichier illisible est écarté (`unreadable`, avec l'erreur du parseur XML), un fichier
+   dont l'`<ID>` n'est pas le nom aussi (`id_mismatch`, avec l'`<ID>` trouvé), chacun
+   détaillé dans `MURPHY_PROBLEMS` ; les autres facettes de la clé
    sont émises quand même. Puis les copies d'une même racine sont départagées (voir
    plus bas).
 

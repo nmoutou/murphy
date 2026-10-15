@@ -9,13 +9,10 @@ from xml.etree import ElementTree as ET
 __all__ = ["locate_id", "read_root", "to_tree"]
 
 
-def read_root(path: Path) -> ET.Element | None:
-    """``None`` si le fichier est illisible : l'appelant doit le compter
-    (``skipped[REASON_UNREADABLE]``)."""
-    try:
-        return ET.parse(path).getroot()  # noqa: S314 — corpus local, pas une entrée réseau
-    except ET.ParseError:
-        return None
+def read_root(path: Path) -> ET.Element:
+    """Lève ``ET.ParseError`` si le fichier est illisible : l'appelant doit le compter
+    et en garder l'erreur."""
+    return ET.parse(path).getroot()  # noqa: S314 — corpus local, pas une entrée réseau
 
 
 def to_tree(element: ET.Element) -> dict[str, Any]:

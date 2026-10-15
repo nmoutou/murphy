@@ -20,7 +20,7 @@ from ragcore.core.models.collision_record import CollisionRecord
 from ragcore.core.models.document import RawDocument
 from ragcore.core.models.enums import SourceName
 from ragcore.core.models.inventory import FULL_RATIO, SourceInventory
-from ragcore.core.models.problems import FileProblem
+from ragcore.core.models.problems import FileProblem, MismatchedFile, UnreadableFile
 from ragcore.core.services.exclusion_reasons import (
     REASON_ID_MISMATCH,
     REASON_SUPERSEDED,
@@ -99,17 +99,24 @@ class KeyedFileConnector:
         self._index = None
 
     def read_counted(self, path: str) -> ET.Element | None:
-        """``None`` pour un fichier illisible, compté."""
-        root = read_root(Path(path))
-        if root is None:
-            self.skip(REASON_UNREADABLE)
-        return root
+        """``None`` pour un fichier illisible, compté et détaillé."""
+        try:
+            return read_root(Path(path))
+        except ET.ParseError as exc:
+            unreadable = UnreadableFile(
+                source=self._source, key=Path(path).stem, path=path, error=str(exc)
+            )
+            self._discard(unreadable, REASON_UNREADABLE)
+            return None
 
     def reject_id_mismatch(self, path: str, found: str | None, key: str) -> None:
         logger.warning(
             "Fichier %s écarté : son <ID> (%s) n'est pas son nom (%s)", path, found, key
         )
-        self.skip(REASON_ID_MISMATCH)
+        mismatch = MismatchedFile(
+            source=self._source, key=key, path=path, found_id=found
+        )
+        self._discard(mismatch, REASON_ID_MISMATCH)
 
     def skip(self, reason: str) -> None:
         self.skipped[reason] = self.skipped.get(reason, 0) + 1

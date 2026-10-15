@@ -10,17 +10,27 @@ from typing import Any
 from ragcore.adapters.storage.mongo.client import MongoClient
 from ragcore.core.models.collision_record import CollisionRecord
 from ragcore.core.models.identifiers import RunId
-from ragcore.core.models.problems import CopyStamp, Problem, SupersededCopy
+from ragcore.core.models.problems import (
+    CopyStamp,
+    MismatchedFile,
+    Problem,
+    SupersededCopy,
+    UnreadableFile,
+)
 
 __all__ = [
     "COLLISIONS_COLLECTION",
     "INSERT_BATCH_SIZE",
+    "MISMATCH_COLLECTION",
     "SUPERSEDED_COLLECTION",
+    "UNREADABLE_COLLECTION",
     "MongoProblemRepository",
 ]
 
 COLLISIONS_COLLECTION = "collisions"
 SUPERSEDED_COLLECTION = "superseded"
+UNREADABLE_COLLECTION = "unreadable"
+MISMATCH_COLLECTION = "mismatch"
 INSERT_BATCH_SIZE = 1_000
 _NS_PER_S = 1_000_000_000
 
@@ -54,6 +64,10 @@ def _routed(problem: Problem) -> tuple[str, _Row]:
             return COLLISIONS_COLLECTION, _collision_row(problem)
         case SupersededCopy():
             return SUPERSEDED_COLLECTION, _superseded_row(problem)
+        case UnreadableFile():
+            return UNREADABLE_COLLECTION, problem.model_dump(mode="json")
+        case MismatchedFile():
+            return MISMATCH_COLLECTION, problem.model_dump(mode="json")
 
 
 def _collision_row(record: CollisionRecord) -> _Row:

@@ -1,9 +1,11 @@
-"""La transcription XML → arbre : sans perte, ``None`` pour un illisible, et une racine
-qui peut être un ``<ID>``.
+"""La transcription XML → arbre : sans perte, une erreur pour un illisible, et une
+racine qui peut être un ``<ID>``.
 """
 
 from pathlib import Path
 from xml.etree import ElementTree as ET
+
+import pytest
 
 from ragcore.sources.generic import locate_id, read_root, to_tree
 
@@ -24,18 +26,18 @@ class TestLaTranscriptionEstSansPerte:
         assert tree["text"] == "corps"
 
 
-class TestLIllisibleRendNone:
-    def test_un_xml_malforme_rend_none(self, tmp_path: Path) -> None:
+class TestLIllisibleLeve:
+    def test_un_xml_malforme_leve_son_erreur(self, tmp_path: Path) -> None:
+        """L'erreur porte sa ligne et sa colonne : le connecteur la garde."""
         bad = tmp_path / "casse.xml"
         bad.write_text("<ARTICLE><non-ferme>", encoding="utf-8")
-        assert read_root(bad) is None
+        with pytest.raises(ET.ParseError, match="line 1, column"):
+            read_root(bad)
 
     def test_un_xml_valide_rend_sa_racine(self, tmp_path: Path) -> None:
         good = tmp_path / "ok.xml"
         good.write_text("<ARTICLE/>", encoding="utf-8")
-        root = read_root(good)
-        assert root is not None
-        assert root.tag == "ARTICLE"
+        assert read_root(good).tag == "ARTICLE"
 
 
 class TestLocaliserLId:

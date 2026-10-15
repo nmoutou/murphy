@@ -6,7 +6,9 @@ from ragcore.adapters.storage.mongo.pending_repository import (
 )
 from ragcore.adapters.storage.mongo.problem_repository import (
     COLLISIONS_COLLECTION,
+    MISMATCH_COLLECTION,
     SUPERSEDED_COLLECTION,
+    UNREADABLE_COLLECTION,
 )
 from ragcore.adapters.storage.mongo.statistics_repository import STATISTICS_COLLECTION
 from ragcore.adapters.storage.mongo.transit_repository import (
@@ -103,6 +105,18 @@ _PROBLEMS_INDEXES: dict[str, list[IndexModel]] = {
             name="idx_superseded_run_source",
         ),
         IndexModel([("identifier", ASCENDING)], name="idx_superseded_identifier"),
+    ],
+    UNREADABLE_COLLECTION: [
+        IndexModel(
+            [("run_id", ASCENDING), ("source", ASCENDING)],
+            name="idx_unreadable_run_source",
+        ),
+    ],
+    MISMATCH_COLLECTION: [
+        IndexModel(
+            [("run_id", ASCENDING), ("source", ASCENDING)],
+            name="idx_mismatch_run_source",
+        ),
     ],
 }
 """Par collection, dans la base des problèmes."""

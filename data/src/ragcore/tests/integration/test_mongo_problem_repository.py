@@ -10,7 +10,9 @@ from ragcore.adapters.storage.mongo import problem_repository
 from ragcore.adapters.storage.mongo.client import create_mongo_client
 from ragcore.adapters.storage.mongo.problem_repository import (
     COLLISIONS_COLLECTION,
+    MISMATCH_COLLECTION,
     SUPERSEDED_COLLECTION,
+    UNREADABLE_COLLECTION,
     MongoProblemRepository,
 )
 from ragcore.adapters.storage.mongo.schemas import (
@@ -20,7 +22,12 @@ from ragcore.adapters.storage.mongo.schemas import (
 from ragcore.core.models.collision_record import CollisionRecord
 from ragcore.core.models.enums import SourceName
 from ragcore.core.models.identifiers import RunId
-from ragcore.core.models.problems import CopyStamp, SupersededCopy
+from ragcore.core.models.problems import (
+    CopyStamp,
+    MismatchedFile,
+    SupersededCopy,
+    UnreadableFile,
+)
 
 pytestmark = pytest.mark.integration
 
@@ -103,6 +110,40 @@ async def test_une_copie_ecartee_est_datee_a_la_milliseconde(database) -> None:
         "ARTICLE",
     )
     assert await database[COLLISIONS_COLLECTION].count_documents({}) == 1
+
+
+async def test_les_fichiers_ecartes_ont_chacun_leur_collection(database) -> None:
+    unreadable = UnreadableFile(
+        source=SourceName.LEGI,
+        key="LEGIARTI1",
+        path="/legi/LEGIARTI1.xml",
+        error="no element found: line 1, column 9",
+    )
+    mismatch = MismatchedFile(
+        source=SourceName.LEGI, key="versions", path="/legi/versions.xml", found_id=None
+    )
+    repo = MongoProblemRepository(database.client, DB)
+
+    await repo.insert_run(RUN_1, [unreadable, mismatch])
+
+    assert await _rows(database, UNREADABLE_COLLECTION) == [
+        {
+            "run_id": "run-1",
+            "source": "legi",
+            "key": "LEGIARTI1",
+            "path": "/legi/LEGIARTI1.xml",
+            "error": "no element found: line 1, column 9",
+        }
+    ]
+    assert await _rows(database, MISMATCH_COLLECTION) == [
+        {
+            "run_id": "run-1",
+            "source": "legi",
+            "key": "versions",
+            "path": "/legi/versions.xml",
+            "found_id": None,
+        }
+    ]
 
 
 async def test_les_lignes_partent_par_lots(

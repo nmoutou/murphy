@@ -202,6 +202,23 @@ tranché. Comptée `document.superseded`, hors équation de complétude comme un
 avant l'écriture, la ligne sert à lire et à dater (ADR-035). Index `(run_id, source)` et
 `(identifier)`.
 
+### `unreadable` et `mismatch`
+
+Une ligne par fichier que le connecteur écarte avant le parser, comptée
+`document.unreadable` ou `document.id_mismatch`. Index `(run_id, source)`.
+
+```json
+{ "run_id": "…", "source": "legi", "key": "LEGIARTI…", "path": "/…/LEGIARTI….xml",
+  "error": "no element found: line 12, column 0" }
+{ "run_id": "…", "source": "legi", "key": "versions", "path": "/…/versions.xml",
+  "found_id": "LEGIARTI…" }
+```
+
+`key` est le nom du fichier sans extension ; `error` le message du parseur XML ;
+`found_id` l'`<ID>` lu dans le fichier, `null` s'il n'en a pas. Les artefacts d'export
+(`document.version_skipped`) ne sont que comptés : la DILA en livre un par texte, et leur
+chemin n'apprend rien.
+
 ## Les statistiques d'un run
 
 `MURPHY_META.statistics` mesure ce que le bilan compte (ADR-034 §8) : un document par
