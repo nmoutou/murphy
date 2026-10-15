@@ -10,6 +10,7 @@ from ragcore.core.models.run_measures import MeasurePath, RunMeasures
 from ragcore.core.models.run_stats import RunStats
 from ragcore.core.models.unknown_tally import UnknownExample
 from ragcore.core.ports.runtime import AsyncRuntime
+from ragcore.core.telemetry_events import collision_count_key, invalidation_count_key
 
 
 class RecordingTelemetry:
@@ -37,14 +38,16 @@ class RecordingTelemetry:
         self._declared = self._declared.with_unknown(category, value, example)
 
     def record_collision(self, record: CollisionRecord) -> None:
-        self._declared = self._declared.with_collision(record.reason)
+        self._declared = self._declared.with_count(collision_count_key(record.reason))
         self.collisions.append(record)
 
     def record_problem(self, problem: FileProblem) -> None:
         self.problems.append(problem)
 
     def record_invalidation(self, document: InvalidatedDocument) -> None:
-        self._declared = self._declared.with_invalidation(document.reason)
+        self._declared = self._declared.with_count(
+            invalidation_count_key(document.reason)
+        )
         self.invalidated.append(document)
 
     def snapshot(self) -> RunStats:

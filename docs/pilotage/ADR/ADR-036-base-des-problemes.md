@@ -2,7 +2,8 @@
 
 **Statut** : ✅ Accepté (15 octobre 2026) — amende ADR-034 §8 (l'amendement
 `MURPHY_META.collisions`), ADR-021 §1 (la base de `unformatted_relations`) et les
-conséquences d'ADR-035 (une copie écartée n'est plus une collision)
+conséquences d'ADR-035 (une copie écartée n'est plus une collision) · **§1 amendé le
+15 octobre 2026** (les comptes par raison passent dans `counts`)
 
 ## Contexte
 
@@ -29,6 +30,17 @@ problèmes : la DILA en livre un par texte, et leur chemin n'apprend rien.
 **1. Une base `MURPHY_PROBLEMS`.** Elle est nommée par `MONGODB_PROBLEMS_DB_NAME`
 (`.env.dev`), comme les deux autres bases. Elle tient le détail des problèmes ;
 `run_summaries` en garde les comptes, et le statut du run ne change pas de règle.
+
+> **Amendement (15 octobre 2026) : les comptes par raison dans `counts`.** Les champs
+> `collisions` et `invalidations` de `run_summaries` disparaissent : leurs comptes
+> deviennent des clés de `counts`, `collision.<raison>` et
+> `document.invalidated.<raison>`, à côté des compteurs de fichiers écartés
+> (`document.unreadable`, `document.superseded`…). Un problème se compte ainsi d'une
+> seule façon. `document.invalidated` reste le total que lit l'équation de complétude ;
+> ses clés par raison le détaillent sans s'y ajouter. Les bilans déjà écrits se
+> relisent, sans leur détail par raison. Le compte par raison reste dans le bilan, et ne
+> se déduit pas de `MURPHY_PROBLEMS` : `nuke_all` vide cette base, `MURPHY_META` garde
+> l'historique des runs.
 
 **2. Une ligne par problème.** Chaque document Mongo décrit un seul problème, et porte le
 `run_id` du run qui l'a rencontré (sauf `unformatted_relations`, §8). Les chemins sont
@@ -150,7 +162,8 @@ aujourd'hui.
 - `MURPHY_META.collisions` et `MURPHY_DATA.unformatted_relations` disparaissent ; le
   découpage en parties (`collision_documents.py`) aussi.
 - `run_summaries.collisions` perd la raison `superseded_copy`, et
-  `run_summaries.counts` gagne `document.superseded`.
+  `run_summaries.counts` gagne `document.superseded`. *Amendé (§1) : `collisions` et
+  `invalidations` passent dans `counts`.*
 - Les connecteurs gardent le chemin et l'erreur de chaque fichier écarté, et non plus
   seulement leur compte.
 - En production, sans `nuke_all`, `MURPHY_PROBLEMS` grandit à chaque run.

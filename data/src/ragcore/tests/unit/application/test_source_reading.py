@@ -30,11 +30,13 @@ from ragcore.core.statistics_measures import (
     step_measure,
 )
 from ragcore.core.telemetry_events import (
+    COLLISION_COUNT_PREFIX,
     DOCUMENT_FETCHED,
     DOCUMENT_ID_MISMATCH,
     DOCUMENT_SUPERSEDED,
     DOCUMENT_UNREADABLE,
     DOCUMENT_VERSION_SKIPPED,
+    collision_count_key,
 )
 from ragcore.tests.fakes.telemetry import RecordingTelemetry
 
@@ -200,7 +202,7 @@ def test_les_collisions_du_connecteur_sont_declarees() -> None:
     telemetry = _run(connector)
 
     assert telemetry.collisions == [record]
-    assert telemetry.snapshot().collisions == {"duplicate_copy": 1}
+    assert telemetry.snapshot().counts[collision_count_key("duplicate_copy")] == 1
     assert [event.event_type for event in telemetry.events] == [DOCUMENT_FETCHED]
 
 
@@ -218,6 +220,7 @@ def test_une_copie_ecartee_est_comptee_et_detaillee_hors_collisions() -> None:
     telemetry = _run(connector)
 
     assert telemetry.problems == [copy]
-    assert telemetry.snapshot().collisions == {}
+    counted = telemetry.snapshot().counts
+    assert not [key for key in counted if key.startswith(COLLISION_COUNT_PREFIX)]
     (event,) = telemetry.events_of(DOCUMENT_SUPERSEDED)
     assert event.payload == {"count": 1}

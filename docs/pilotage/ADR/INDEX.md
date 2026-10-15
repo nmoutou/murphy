@@ -41,7 +41,7 @@
 | [ADR-033](ADR-033-onglet-explications.md) | L'onglet Explications : un LLM borné aux documents choisis | ✅ Accepté (12 octobre 2026) — amende ADR-007, ADR-010, ADR-015 §2, ADR-030 §1, §4 à §6 et ADR-032 §2, §4, §6, §11 et §12 |
 | [ADR-034](ADR-034-ingestion-en-flux.md) | L'ingestion en flux : une mémoire bornée, des relations en transit | ✅ Accepté (14 octobre 2026) — amende ADR-013 et ADR-019 §3 · §8 amendé par ADR-036 (`MURPHY_PROBLEMS`) |
 | [ADR-035](ADR-035-historique-editorial.md) | L'historique éditorial : les archives DILA font foi, chaque révision est gardée | Proposé (15 octobre 2026) — amende ADR-034 §1 · conséquences amendées par ADR-036 (une copie écartée n'est plus une collision) |
-| [ADR-036](ADR-036-base-des-problemes.md) | `MURPHY_PROBLEMS` : une base des problèmes d'ingestion, une ligne par problème | ✅ Accepté (15 octobre 2026) — amende ADR-034 §8, ADR-021 §1 et ADR-035 (une copie écartée n'est plus une collision) |
+| [ADR-036](ADR-036-base-des-problemes.md) | `MURPHY_PROBLEMS` : une base des problèmes d'ingestion, une ligne par problème | ✅ Accepté (15 octobre 2026) — amende ADR-034 §8, ADR-021 §1 et ADR-035 (une copie écartée n'est plus une collision) · §1 amendé (les comptes par raison passent dans `counts`) |
 
 ## Points ouverts rattachés
 

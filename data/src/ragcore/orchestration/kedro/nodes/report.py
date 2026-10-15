@@ -37,6 +37,5 @@ def report_node(
             category: {value: tally.model_dump() for value, tally in tallies.items()}
             for category, tallies in stats.unknowns.items()
         },
-        "collisions": dict(stats.collisions),
-        "invalidations": dict(stats.invalidations),
+        "counts": dict(stats.counts),
     }

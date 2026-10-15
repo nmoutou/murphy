@@ -46,18 +46,11 @@ class RunStats(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     counts: dict[str, int] = Field(default_factory=dict)
-    """event_type -> nombre d'occurrences."""
+    """event_type, ou compteur par raison (``telemetry_events``) -> nombre
+    d'occurrences."""
 
     unknowns: dict[str, dict[str, UnknownTally]] = Field(default_factory=dict)
     """Catégorie -> mot que le run n'a pas su nommer -> nombre de documents et exemple."""
-
-    collisions: dict[str, int] = Field(default_factory=dict)
-    """Raison de collision -> nombre de (document, clé). Le détail vit dans
-    ``MURPHY_PROBLEMS.collisions``."""
-
-    invalidations: dict[str, int] = Field(default_factory=dict)
-    """Raison de rejet au parse -> nombre de documents ; leur somme vaut
-    ``counts["document.invalidated"]``."""
 
     @classmethod
     def empty(cls) -> "RunStats":
@@ -73,8 +66,6 @@ class RunStats(BaseModel):
         return RunStats(
             counts=_sum_counts(self.counts, other.counts),
             unknowns=unknowns,
-            collisions=_sum_counts(self.collisions, other.collisions),
-            invalidations=_sum_counts(self.invalidations, other.invalidations),
         )
 
     @classmethod
@@ -92,9 +83,3 @@ class RunStats(BaseModel):
     ) -> "RunStats":
         tally = UnknownTally.seen_in(example)
         return self.merge(RunStats(unknowns={category: {value: tally}}))
-
-    def with_collision(self, reason: str) -> "RunStats":
-        return self.merge(RunStats(collisions={reason: 1}))
-
-    def with_invalidation(self, reason: str) -> "RunStats":
-        return self.merge(RunStats(invalidations={reason: 1}))

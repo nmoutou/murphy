@@ -30,7 +30,11 @@ from ragcore.core.services.exclusion_reasons import (
 )
 from ragcore.core.services.unknown_categories import CATEGORY_TAG
 from ragcore.core.statistics_measures import STEP_PARSE, step_measure
-from ragcore.core.telemetry_events import DOCUMENT_INVALIDATED
+from ragcore.core.telemetry_events import (
+    DOCUMENT_INVALIDATED,
+    collision_count_key,
+    invalidation_count_key,
+)
 from ragcore.sources.generic import GenericParser, to_tree
 from ragcore.sources.legislatif.table import LEGI_ROLE_TABLE
 from ragcore.tests.fakes.telemetry import RecordingTelemetry
@@ -122,7 +126,7 @@ def test_une_ParseError_exclut_le_document_et_le_compte() -> None:
     assert to_skip == ["doc-1"]
     invalidated = telemetry.events_of(DOCUMENT_INVALIDATED)
     assert [e.payload["reason"] for e in invalidated] == [REASON_PARSE_ERROR]
-    assert telemetry.snapshot().invalidations == {REASON_PARSE_ERROR: 1}
+    assert telemetry.snapshot().counts[invalidation_count_key(REASON_PARSE_ERROR)] == 1
     assert telemetry.invalidated == [
         InvalidatedDocument(
             source=SourceName.LEGI,
@@ -144,7 +148,8 @@ def test_une_ValidationError_est_rejetee_sous_SA_raison() -> None:
     (event,) = telemetry.events_of(DOCUMENT_INVALIDATED)
     assert event.payload["reason"] == REASON_FACET_ROOT_DUPLICATED
     assert event.payload["error"] == "racines en double"
-    assert telemetry.snapshot().invalidations == {REASON_FACET_ROOT_DUPLICATED: 1}
+    counts = telemetry.snapshot().counts
+    assert counts[invalidation_count_key(REASON_FACET_ROOT_DUPLICATED)] == 1
 
 
 def test_des_racines_en_double_sont_une_collision_ET_un_rejet() -> None:
@@ -156,8 +161,9 @@ def test_des_racines_en_double_sont_une_collision_ET_un_rejet() -> None:
 
     _run(_FailingParser(error), telemetry)
 
-    assert telemetry.snapshot().invalidations == {REASON_FACET_ROOT_DUPLICATED: 1}
-    assert telemetry.snapshot().collisions == {COLLISION_FACET_ROOT_DUPLICATED: 1}
+    counts = telemetry.snapshot().counts
+    assert counts[invalidation_count_key(REASON_FACET_ROOT_DUPLICATED)] == 1
+    assert counts[collision_count_key(COLLISION_FACET_ROOT_DUPLICATED)] == 1
     (record,) = telemetry.collisions
     assert (record.identifier, record.key, record.files) == (
         "doc-1",
@@ -292,7 +298,7 @@ def test_une_collision_non_configuree_est_rejetee_sous_sa_raison() -> None:
     assert skipped == ["LEGIARTI000000000003"]
     invalidated = telemetry.events_of(DOCUMENT_INVALIDATED)
     assert [e.payload["reason"] for e in invalidated] == [REASON_COLLISION]
-    assert telemetry.snapshot().invalidations == {REASON_COLLISION: 1}
+    assert telemetry.snapshot().counts[invalidation_count_key(REASON_COLLISION)] == 1
 
 
 def test_parse_ou_refuse_chaque_collision_est_comptee_au_bilan() -> None:
@@ -303,7 +309,7 @@ def test_parse_ou_refuse_chaque_collision_est_comptee_au_bilan() -> None:
     _parse_collisions(telemetry)
 
     stats = telemetry.snapshot()
-    assert stats.collisions == {COLLISION_METADATA: 2}
+    assert stats.counts[collision_count_key(COLLISION_METADATA)] == 2
     assert stats.unknowns.keys() <= {CATEGORY_TAG}
     assert {(r.identifier, r.key, r.files) for r in telemetry.collisions} == {
         ("LEGIARTI000000000002", "versions_a_venir", (_SOURCE_FILE,)),

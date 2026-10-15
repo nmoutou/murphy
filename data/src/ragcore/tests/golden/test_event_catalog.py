@@ -2,7 +2,12 @@
 un événement, c'est ajouter sa ligne ici, sciemment.
 """
 
-from ragcore.core.telemetry_events import COUNT_CARRYING_EVENTS, EVENT_TYPES
+from ragcore.core.telemetry_events import (
+    COUNT_CARRYING_EVENTS,
+    EVENT_TYPES,
+    collision_count_key,
+    invalidation_count_key,
+)
 
 GOLDEN = {
     "document.fetched",
@@ -61,3 +66,9 @@ def test_count_carrying_events_are_exactly_the_golden_set() -> None:
 
 def test_every_count_carrying_event_is_in_the_vocabulary() -> None:
     assert COUNT_CARRYING_EVENTS <= EVENT_TYPES
+
+
+def test_the_reason_counters_keep_their_keys() -> None:
+    """Les bilans de ``MURPHY_META`` se comparent d'un run à l'autre par ces clés."""
+    assert collision_count_key("metadata") == "collision.metadata"
+    assert invalidation_count_key("parse_error") == "document.invalidated.parse_error"

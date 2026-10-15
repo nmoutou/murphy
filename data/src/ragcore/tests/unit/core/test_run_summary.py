@@ -77,8 +77,7 @@ def test_skipped_files_are_counted_outside_the_equation(
 
     summary = aggregator.finalize(RunStatus.OK)
 
-    assert {key: summary.counts[key] for key in skipped} == skipped
-    assert summary.collisions == {}
+    assert summary.counts == {DOCUMENT_FETCHED: 1, DOCUMENT_PERSISTED: 1, **skipped}
     assert summary.status is RunStatus.OK
 
 
@@ -99,16 +98,19 @@ def _stored(summary: RunSummary) -> dict[str, object]:
 
 
 def test_the_stored_summary_is_flat() -> None:
-    """Compteurs, inconnus et collisions au premier niveau, sans enveloppe ni
-    ventilation."""
+    """Compteurs et inconnus au premier niveau, sans enveloppe ni ventilation : les
+    comptes par raison sont des compteurs comme les autres."""
+    counts = {
+        DOCUMENT_PERSISTED: 2,
+        "collision.metadata": 3,
+        "document.invalidated.facet_root_duplicated": 4,
+    }
     summary = RunSummary.of(
         RunStats(
-            counts={DOCUMENT_PERSISTED: 2},
+            counts=counts,
             unknowns={
                 "relation_type": {"titre_tm": UnknownTally(count=2, example=DOC_1)}
             },
-            collisions={"metadata": 3},
-            invalidations={"facet_root_duplicated": 4},
         ),
         context_run_id=RUN,
         sources=(SourceName.CASS, SourceName.JADE),
@@ -119,7 +121,7 @@ def test_the_stored_summary_is_flat() -> None:
     stored = _stored(summary)
 
     assert stored["sources"] == ["cass", "jade"]
-    assert stored["counts"] == {DOCUMENT_PERSISTED: 2}
+    assert stored["counts"] == counts
     assert stored["unknowns"] == {
         "relation_type": {
             "titre_tm": {
@@ -128,8 +130,7 @@ def test_the_stored_summary_is_flat() -> None:
             }
         }
     }
-    assert stored["collisions"] == {"metadata": 3}
-    assert stored["invalidations"] == {"facet_root_duplicated": 4}
+    assert stored.keys().isdisjoint({"collisions", "invalidations"})
     assert "stats" not in stored
     assert "breakdowns" not in stored
 
@@ -155,7 +156,6 @@ def test_unknowns_defaults_to_empty_not_none() -> None:
     (ADR-024)."""
     summary = RunStatsAggregator(RUN, (), datetime.now(UTC)).finalize(RunStatus.OK)
     assert summary.unknowns == {"tags": {}, "roots": {}, "links": {}}
-    assert summary.collisions == {}
 
 
 def test_aggregator_declares_what_it_could_not_name(
@@ -175,13 +175,13 @@ def test_aggregator_declares_what_it_could_not_name(
 def test_aggregator_counts_collisions_apart_from_unknowns(
     aggregator: RunStatsAggregator,
 ) -> None:
-    """Une collision a son propre champ, au premier niveau, compté par raison."""
+    """Une collision a son compteur par raison ; ce n'est pas un inconnu."""
     aggregator.record_collision("metadata")
     aggregator.record_collision("metadata")
 
     summary = aggregator.finalize(RunStatus.OK)
 
-    assert summary.collisions == {"metadata": 2}
+    assert summary.counts == {"collision.metadata": 2}
     assert "collisions" not in summary.unknowns
 
 
@@ -194,7 +194,10 @@ def test_aggregator_counts_invalidations_by_reason(
 
     summary = aggregator.finalize(RunStatus.OK)
 
-    assert summary.invalidations == {"identifier_missing": 2, "parse_error": 1}
+    assert summary.counts == {
+        "document.invalidated.identifier_missing": 2,
+        "document.invalidated.parse_error": 1,
+    }
 
 
 def test_the_summary_projects_the_reduction_of_n_workers() -> None:
@@ -268,12 +271,15 @@ def test_a_summary_with_a_single_ratio_still_reads() -> None:
     }
 
 
-def test_a_summary_written_before_the_invalidations_still_reads() -> None:
+def test_a_summary_with_breakdown_fields_still_reads() -> None:
+    """Avant les compteurs par raison : `collisions` et `invalidations` au premier
+    niveau, ignorés à la relecture."""
     document = json.loads(
         RunStatsAggregator(RUN, (), datetime.now(UTC))
         .finalize(RunStatus.OK)
         .model_dump_json()
     )
-    del document["invalidations"]
+    document["collisions"] = {"metadata": 3}
+    document["invalidations"] = {"parse_error": 1}
 
-    assert RunSummary.model_validate(document).invalidations == {}
+    assert RunSummary.model_validate(document).counts == {}

@@ -16,8 +16,6 @@ def _tally(count: int, example: UnknownExample) -> UnknownTally:
 A = RunStats(
     counts={"persisted": 2, "invalidated": 1},
     unknowns={"field": {"NOTA": _tally(1, DOC_2)}},
-    collisions={"metadata": 1},
-    invalidations={"identifier_missing": 1},
 )
 B = RunStats(
     counts={"persisted": 3},
@@ -25,8 +23,6 @@ B = RunStats(
         "field": {"NOTA": _tally(2, DOC_1), "CONTENU": _tally(1, DOC_2)},
         "relation_type": {"titre_tm": _tally(1, DOC_1)},
     },
-    collisions={"metadata": 2, "facet_root_duplicated": 1},
-    invalidations={"identifier_missing": 2, "facet_root_duplicated": 1},
 )
 C = RunStats(counts={"promoted": 1}, unknowns={"field": {"LIENS": _tally(1, DOC_1)}})
 
@@ -86,28 +82,3 @@ def test_reduce_of_nothing_is_empty() -> None:
 
 def test_reduce_folds_every_shard() -> None:
     assert RunStats.reduce([A, B, C]) == A.merge(B).merge(C)
-
-
-def test_collisions_are_summed_per_reason() -> None:
-    assert A.merge(B).collisions == {"metadata": 3, "facet_root_duplicated": 1}
-
-
-def test_with_collision_counts_one_per_call() -> None:
-    stats = RunStats.empty().with_collision("metadata")
-    stats = stats.with_collision("metadata")
-
-    assert stats.collisions == {"metadata": 2}
-    assert stats.unknowns == {}
-
-
-def test_invalidations_are_summed_per_reason() -> None:
-    merged = A.merge(B)
-    assert merged.invalidations == {"identifier_missing": 3, "facet_root_duplicated": 1}
-
-
-def test_with_invalidation_counts_one_document() -> None:
-    stats = RunStats.empty().with_invalidation("undeclared_prefix")
-    stats = stats.with_invalidation("undeclared_prefix")
-
-    assert stats.invalidations == {"undeclared_prefix": 2}
-    assert stats.counts == {}

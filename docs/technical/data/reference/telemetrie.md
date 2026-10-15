@@ -19,7 +19,7 @@ n'en sort en silence.
 | `document.fetched` | Documents vus par le connecteur (1 événement, `count` = lot). **Le dénominateur** de l'équation. |
 | `document.version_skipped` / `document.unreadable` / `document.id_mismatch` / `document.superseded` | Écartés par le connecteur : artefacts d'export (`versions.xml`) / XML illisibles / fichiers dont l'`<ID>` n'est pas le nom (ADR-034 §1) / copies d'une racine écartées par une plus récente (ADR-036 §4). Un compteur par raison, chacun porte son `count`. **Hors équation** : un fichier écarté n'est pas un document vu. |
 | `document.parsed` | Parse réussi |
-| `document.invalidated` | Rejet au parse : `reason` (une règle métier, `parse_error` ou `collision`, ADR-025), `uid` (chemin source), `error`. Ventilé par raison dans `invalidations`. |
+| `document.invalidated` | Rejet au parse : `reason` (une règle métier, `parse_error` ou `collision`, ADR-025), `uid` (chemin source), `error`. Détaillé par raison dans `document.invalidated.<raison>` (voir [Les compteurs par raison](#les-compteurs-par-raison)). |
 | `document.persisted` | Saga complète |
 | `document.failed` | **La fuite** : vu, jamais ingéré (saga échouée/compensée). `reason` = type d'exception. |
 | `chunk.truncated` | Chunks raccourcis par l'embedder pour tenir dans la fenêtre du modèle (1 événement en fin de run, `count`). Pas une fuite — mais la fin de ces chunks n'est pas indexée : `CHUNKING_MAX_CHARS` à corriger. |
@@ -63,9 +63,10 @@ et le livrer dans `WorkerTelemetryStack.emit`.
 
 Un **monoïde de fusion** : élément neutre `empty()`, opérateur `merge` associatif **et
 commutatif** (les workers finissent dans un ordre non déterministe — une fusion non
-commutative ferait dépendre le bilan de l'ordonnancement). Quatre champs :
+commutative ferait dépendre le bilan de l'ordonnancement). Deux champs :
 
-- `counts` : event_type → occurrences (fusion : somme). ⚠️ Dette ouverte : pas de
+- `counts` : event_type, ou compteur par raison (ci-dessous) → occurrences (fusion :
+  somme). ⚠️ Dette ouverte : pas de
   compteurs par **source**, un run multi-sources rend un bilan où l'échec est anonyme
   quant à sa provenance ;
 - `unknowns` : catégorie → mot que le run n'a pas su nommer → `{count, example}`.
@@ -85,16 +86,6 @@ commutative ferait dépendre le bilan de l'ordonnancement). Quatre champs :
 
   Une balise sans valeur n'y apparaît pas : elle n'a rien à ingérer. Un lien qu'on ne
   sait pas écrire n'est pas un type de lien : il est compté par `relation.unknown`.
-- `collisions` : raison de collision → nombre de (document, clé) (`record_collision`).
-  Ce n'est pas un inconnu : la table sait nommer ce qui entre en collision. Le détail
-  vit dans `MURPHY_PROBLEMS.collisions` (voir [Les problèmes d'un run](#les-problèmes-dun-run)).
-  Fusion : somme.
-- `invalidations` : raison de rejet au parse → nombre de documents (`record_invalidation`,
-  un appel par `document.invalidated`) ; leur somme vaut `counts["document.invalidated"]`.
-  Les raisons sont celles de `exclusion_reasons.py` : `identifier_missing`,
-  `identifier_malformed`, `undeclared_prefix`, `facet_root_duplicated`,
-  `facet_root_undeclared`, `collision`, `parse_error`. Fusion : somme. Le détail vit
-  dans `MURPHY_PROBLEMS.invalidated`.
 
 **La remontée passe par le DAG, pas par le hook** : le nœud `ingest` remet les agrégats
 des workers (compteurs et mesures) aux `RunAggregates` du run (`run_sink`, que le hook
@@ -104,10 +95,29 @@ d'après-run tomberait sur du vide. Chaque worker dépose les siens en sortant, 
 poussée (elle a tourné sur la télémétrie du hook, ses compteurs y sont déjà — les pousser
 les compterait deux fois).
 
+### Les compteurs par raison
+
+Deux familles de clés de `counts` ne sont pas des événements : elles comptent par raison
+ce que `MURPHY_PROBLEMS` détaille (ADR-036 §1). Leurs clés sont formées par
+`telemetry_events.py` (`collision_count_key`, `invalidation_count_key`), et figées par le
+test golden : les bilans de `MURPHY_META` se comparent d'un run à l'autre par elles.
+
+- `collision.<raison>` : nombre de (document, clé) en collision (`record_collision`).
+  Ce n'est pas un inconnu : la table sait nommer ce qui entre en collision. Les raisons
+  sont celles de `collision_reasons.py`. Hors équation de complétude. Le détail vit dans
+  `MURPHY_PROBLEMS.collisions` (voir [Les problèmes d'un run](#les-problèmes-dun-run)).
+- `document.invalidated.<raison>` : nombre de documents rejetés au parse
+  (`record_invalidation`, un appel par `document.invalidated`). Ils détaillent
+  `document.invalidated` : leur somme vaut ce total et ne s'y ajoute pas, donc on
+  n'additionne jamais tout `counts`. Les raisons sont celles de `exclusion_reasons.py` :
+  `identifier_missing`, `identifier_malformed`, `undeclared_prefix`,
+  `facet_root_duplicated`, `facet_root_undeclared`, `collision`, `parse_error`. Le détail
+  vit dans `MURPHY_PROBLEMS.invalidated`.
+
 ## Le statut d'un run
 
-`RunSummary` = l'identité du run (run_id, `sources`, dates) + les `counts`, les
-`unknowns`, les `collisions` et les `invalidations` de l'agrégat, recopiés à plat + le `status` + la part du
+`RunSummary` = l'identité du run (run_id, `sources`, dates) + les `counts` et les
+`unknowns` de l'agrégat, recopiés à plat + le `status` + la part du
 corpus lue : par source, `sampling` (`{ratio, total, retained}`, de la passe 1 ; vide si
 le run a cassé avant elle, et sans les sources écartées à `0`, qui ne sont pas du run). Un run `ok` à 10 % ne doit pas passer pour
 un run complet (ADR-034 §9). Le statut annoncé « ok » par le hook est **re-dérivé des compteurs**
@@ -137,14 +147,16 @@ document est plat :
 
 ```json
 { "run_id": "…", "sources": ["cass", "jade", "legi"], "status": "ok",
-  "started_at": "…", "ended_at": "…", "counts": { "document.fetched": 1121, … },
+  "started_at": "…", "ended_at": "…",
+  "counts": { "document.fetched": 1121, "document.invalidated": 4,
+    "document.invalidated.facet_root_duplicated": 3,
+    "document.invalidated.parse_error": 1,
+    "collision.metadata": 14, "collision.facet_root_duplicated": 3, … },
   "unknowns": {
     "tags": { "textelr_meta_meta_spec_meta_texte_chronicle_num_sequence": { "count": 92,
       "example": { "identifier": "LEGITEXT…", "source_file": "/…/LEGITEXT….xml" } } },
     "roots": {},
     "links": { "ZORGLUB": { "count": 1, "example": { … } } } },
-  "collisions": { "metadata": 14, "facet_root_duplicated": 3 },
-  "invalidations": { "facet_root_duplicated": 3, "parse_error": 1 },
   "sampling": { "legi": { "total": 2116313, "retained": 211632, "ratio": 0.1 } } }
 ```
 
@@ -163,8 +175,8 @@ runs successifs s'accumulent ; `nuke_all` vide la base. Le détail s'accumule da
 
 ### `collisions`
 
-Ce que `run_summaries.collisions` compte, une ligne par (document, clé), document refusé
-compris :
+Ce que les compteurs `collision.<raison>` comptent, une ligne par (document, clé),
+document refusé compris :
 
 ```json
 { "run_id": "…", "source": "legi", "reason": "facet_root_duplicated",
@@ -178,9 +190,9 @@ sont celles de `collision_reasons.py` :
 
 | Raison | `key` | `files` |
 |---|---|---|
-| `metadata` | La clé de métadonnée qui a reçu plusieurs valeurs distinctes (ADR-025), rangée en liste ou refusée (`invalidations.collision`) | Les fichiers d'où viennent les valeurs, distincts, dans l'ordre des facettes |
+| `metadata` | La clé de métadonnée qui a reçu plusieurs valeurs distinctes (ADR-025), rangée en liste ou refusée (`document.invalidated.collision`) | Les fichiers d'où viennent les valeurs, distincts, dans l'ordre des facettes |
 | `duplicate_copy` | La racine XML portée par plusieurs copies identiques ; le connecteur n'en garde qu'une | La copie gardée (la plus récente), puis les autres |
-| `facet_root_duplicated` | La racine XML portée par des copies différentes de même date, que le connecteur n'a pas su départager ; le document est aussi rejeté (`invalidations.facet_root_duplicated`) | Les seuls fichiers de cette racine |
+| `facet_root_duplicated` | La racine XML portée par des copies différentes de même date, que le connecteur n'a pas su départager ; le document est aussi rejeté (`document.invalidated.facet_root_duplicated`) | Les seuls fichiers de cette racine |
 
 Les copies départagées par le connecteur (`connector.collisions`) sont déclarées en fin
 de flux, avec ses écarts (`SourceReading.declare_counts`) : leur document est émis,
@@ -222,7 +234,8 @@ chemin n'apprend rien.
 
 ### `invalidated`
 
-Une ligne par document rejeté au parse, ce que `run_summaries.invalidations` compte :
+Une ligne par document rejeté au parse, ce que les compteurs
+`document.invalidated.<raison>` comptent :
 
 ```json
 { "run_id": "…", "source": "legi", "identifier": "LEGIARTI…",

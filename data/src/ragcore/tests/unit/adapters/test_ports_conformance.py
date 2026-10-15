@@ -57,6 +57,7 @@ from ragcore.core.ports.telemetry import (
 )
 from ragcore.core.ports.transit_repository import TransitRelationRepository
 from ragcore.core.ports.unformatted_repository import UnformattedRelationRepository
+from ragcore.core.telemetry_events import collision_count_key, invalidation_count_key
 
 RUN_ID = "abc123"
 
@@ -293,7 +294,7 @@ class TestTelemetry:
             )
             stack.record_collision(record)
 
-            assert stack.snapshot().collisions == {"metadata": 1}
+            assert stack.snapshot().counts == {collision_count_key("metadata"): 1}
             details = stack._backends.problems.snapshot()  # noqa: SLF001
             assert details == (record,)
         finally:
@@ -312,7 +313,9 @@ class TestTelemetry:
             )
             stack.record_invalidation(document)
 
-            assert stack.snapshot().invalidations == {"identifier_missing": 1}
+            assert stack.snapshot().counts == {
+                invalidation_count_key("identifier_missing"): 1
+            }
             details = stack._backends.problems.snapshot()  # noqa: SLF001
             assert details == (document,)
         finally:

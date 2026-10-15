@@ -16,7 +16,12 @@ from ragcore.core.models.run_stats import RunStats
 from ragcore.core.models.run_summary import RunStatus, RunSummary
 from ragcore.core.models.unknown_tally import UnknownExample
 from ragcore.core.services.unknown_categories import UNKNOWN_CATEGORIES
-from ragcore.core.telemetry_events import COUNT_CARRYING_EVENTS, PAYLOAD_COUNT_KEY
+from ragcore.core.telemetry_events import (
+    COUNT_CARRYING_EVENTS,
+    PAYLOAD_COUNT_KEY,
+    collision_count_key,
+    invalidation_count_key,
+)
 
 _EVERY_CATEGORY = RunStats(
     counts={}, unknowns={category: {} for category in UNKNOWN_CATEGORIES}
@@ -72,10 +77,10 @@ class RunStatsAggregator:
         self._stats = self._stats.with_unknown(category, value, example)
 
     def record_collision(self, reason: str) -> None:
-        self._stats = self._stats.with_collision(reason)
+        self._stats = self._stats.with_count(collision_count_key(reason))
 
     def record_invalidation(self, reason: str) -> None:
-        self._stats = self._stats.with_invalidation(reason)
+        self._stats = self._stats.with_count(invalidation_count_key(reason))
 
     def record_inventories(
         self, inventories: Mapping[SourceName, SourceInventory]

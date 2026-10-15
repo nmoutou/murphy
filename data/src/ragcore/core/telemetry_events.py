@@ -1,5 +1,6 @@
-"""Le vocabulaire des événements de télémétrie : leurs noms, et ceux qui portent un
-compte. Tout événement émis est compté au bilan du run (``RunStatsAggregator``).
+"""Le vocabulaire des événements de télémétrie : leurs noms, ceux qui portent un compte,
+et les clés des compteurs par raison. Tout événement émis est compté au bilan du run
+(``RunStatsAggregator``).
 """
 
 DOCUMENT_FETCHED = "document.fetched"
@@ -32,6 +33,23 @@ SAGA_COMPENSATION_COMPLETED = "saga.compensation.completed"
 # Une compensation ratée laisse un écrit partiel que rien d'autre ne compte : le
 # document, lui, est déjà compté FAILED.
 SAGA_COMPENSATION_FAILED = "saga.compensation.failed"
+
+
+# ---------------------------------------------------------------------------
+# Compteurs par raison, à côté des compteurs d'événements dans le bilan
+# ---------------------------------------------------------------------------
+COLLISION_COUNT_PREFIX = "collision"
+
+
+def collision_count_key(reason: str) -> str:
+    """Un (document, clé) en collision ; hors équation de complétude."""
+    return f"{COLLISION_COUNT_PREFIX}.{reason}"
+
+
+def invalidation_count_key(reason: str) -> str:
+    """Ces compteurs détaillent ``document.invalidated`` : leur somme vaut ce total, et
+    ne s'y ajoute pas."""
+    return f"{DOCUMENT_INVALIDATED}.{reason}"
 
 
 # ---------------------------------------------------------------------------

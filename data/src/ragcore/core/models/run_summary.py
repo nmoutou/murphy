@@ -47,19 +47,13 @@ class RunSummary(BaseModel):
     ended_at: datetime
 
     counts: dict[str, int]
-    """event_type -> nombre de choses comptées ; le statut s'en dérive."""
+    """event_type, ou compteur par raison (``collision.<raison>``,
+    ``document.invalidated.<raison>``) -> nombre de choses comptées ; le statut s'en
+    dérive. Le détail des problèmes est dans ``MURPHY_PROBLEMS``."""
 
     unknowns: dict[str, dict[str, UnknownTally]]
     """Ce que le run n'a pas su nommer, par catégorie : pour chaque mot, le nombre de
     documents qui le portent et l'un d'eux. Vide = le vocabulaire a tout couvert."""
-
-    collisions: dict[str, int]
-    """Par raison, le nombre de (document, clé) en collision ; le détail est dans
-    ``MURPHY_META.collisions``."""
-
-    invalidations: dict[str, int] = Field(default_factory=dict)
-    """Les rejets au parse, par raison. Un défaut : les bilans écrits avant lui se
-    relisent."""
 
     sampling: dict[SourceName, SourceInventory] = Field(default_factory=dict)
     """La part du corpus lue (ADR-034 §9) : par source, son ratio et les documents
@@ -97,8 +91,6 @@ class RunSummary(BaseModel):
             ended_at=ended_at or datetime.now(UTC),
             counts=stats.counts,
             unknowns=stats.unknowns,
-            collisions=stats.collisions,
-            invalidations=stats.invalidations,
             sampling=dict(sampling or {}),
             error_message=error_message,
         )
