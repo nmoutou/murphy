@@ -72,7 +72,7 @@ service.
 | `MONGODB_URI` | `mongodb://localhost:27017` | |
 | `MONGODB_DATA_DB_NAME` | `MURPHY_DATA` | Données : `documents`, `pending_relations`, `transit_relations` (temporaire, le temps d'un run). |
 | `MONGODB_META_DB_NAME` | `MURPHY_META` | Méta : bilans de run. |
-| `MONGODB_PROBLEMS_DB_NAME` | `MURPHY_PROBLEMS` | Problèmes d'ingestion, une ligne par problème (ADR-036) : `unformatted_relations`. Vidée par `nuke_all`. |
+| `MONGODB_PROBLEMS_DB_NAME` | `MURPHY_PROBLEMS` | Problèmes d'ingestion, une ligne par problème (ADR-036) : `collisions`, `superseded`, `unreadable`, `mismatch`, `invalidated`, `unformatted_relations`. Vidée par `nuke_all`. |
 | `NEO4J_URI` / `NEO4J_USERNAME` / `NEO4J_PASSWORD` | `bolt://localhost:7687` / `neo4j` / `neo4j` | Mot de passe en `SecretStr`. |
 | `OPENSEARCH_URL` | `http://localhost:9200` | Sans authentification : le plugin de sécurité est coupé en dev. La prod l'active (HTTPS, compte admin) ; l'ingestion n'y sait pas encore se connecter. |
 | `OPENSEARCH_INDEX` | — (**obligatoire**) | Le nom fixe de l'index, que le backend lira aussi. Absente = levée au chargement des settings. |

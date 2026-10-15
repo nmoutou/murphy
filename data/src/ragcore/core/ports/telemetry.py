@@ -2,7 +2,7 @@ from typing import Any, Protocol, runtime_checkable
 
 from ..models.audit import AuditEvent
 from ..models.collision_record import CollisionRecord
-from ..models.problems import FileProblem
+from ..models.problems import FileProblem, InvalidatedDocument
 from ..models.run_measures import MeasurePath, RunMeasures
 from ..models.run_stats import RunStats
 from ..models.unknown_tally import UnknownExample
@@ -67,9 +67,10 @@ class WorkerTelemetry(TelemetryPort, Protocol):
         Son compte arrive par l'événement de sa raison, jamais par ici."""
         ...
 
-    def record_invalidation(self, reason: str) -> None:
-        """Un document rejeté au parse, sous sa raison (``exclusion_reasons``). Un appel
-        par ``document.invalidated`` émis."""
+    def record_invalidation(self, document: InvalidatedDocument) -> None:
+        """Un document rejeté au parse, compté sous sa raison (``exclusion_reasons``) et
+        détaillé dans ``MURPHY_PROBLEMS.invalidated``. Un appel par
+        ``document.invalidated`` émis."""
         ...
 
 

@@ -6,6 +6,7 @@ from ragcore.adapters.storage.mongo.pending_repository import (
 )
 from ragcore.adapters.storage.mongo.problem_repository import (
     COLLISIONS_COLLECTION,
+    INVALIDATED_COLLECTION,
     MISMATCH_COLLECTION,
     SUPERSEDED_COLLECTION,
     UNREADABLE_COLLECTION,
@@ -117,6 +118,13 @@ _PROBLEMS_INDEXES: dict[str, list[IndexModel]] = {
             [("run_id", ASCENDING), ("source", ASCENDING)],
             name="idx_mismatch_run_source",
         ),
+    ],
+    INVALIDATED_COLLECTION: [
+        IndexModel(
+            [("run_id", ASCENDING), ("source", ASCENDING), ("reason", ASCENDING)],
+            name="idx_invalidated_run_source_reason",
+        ),
+        IndexModel([("identifier", ASCENDING)], name="idx_invalidated_identifier"),
     ],
 }
 """Par collection, dans la base des problèmes."""

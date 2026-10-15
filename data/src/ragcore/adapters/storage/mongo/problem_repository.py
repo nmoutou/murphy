@@ -12,6 +12,7 @@ from ragcore.core.models.collision_record import CollisionRecord
 from ragcore.core.models.identifiers import RunId
 from ragcore.core.models.problems import (
     CopyStamp,
+    InvalidatedDocument,
     MismatchedFile,
     Problem,
     SupersededCopy,
@@ -21,6 +22,7 @@ from ragcore.core.models.problems import (
 __all__ = [
     "COLLISIONS_COLLECTION",
     "INSERT_BATCH_SIZE",
+    "INVALIDATED_COLLECTION",
     "MISMATCH_COLLECTION",
     "SUPERSEDED_COLLECTION",
     "UNREADABLE_COLLECTION",
@@ -31,6 +33,7 @@ COLLISIONS_COLLECTION = "collisions"
 SUPERSEDED_COLLECTION = "superseded"
 UNREADABLE_COLLECTION = "unreadable"
 MISMATCH_COLLECTION = "mismatch"
+INVALIDATED_COLLECTION = "invalidated"
 INSERT_BATCH_SIZE = 1_000
 _NS_PER_S = 1_000_000_000
 
@@ -68,6 +71,8 @@ def _routed(problem: Problem) -> tuple[str, _Row]:
             return UNREADABLE_COLLECTION, problem.model_dump(mode="json")
         case MismatchedFile():
             return MISMATCH_COLLECTION, problem.model_dump(mode="json")
+        case InvalidatedDocument():
+            return INVALIDATED_COLLECTION, problem.model_dump(mode="json")
 
 
 def _collision_row(record: CollisionRecord) -> _Row:

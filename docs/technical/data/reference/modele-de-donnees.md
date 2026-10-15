@@ -157,6 +157,12 @@ key, path, error}` pour un XML illisible, `{run_id, source, key, path, found_id}
 `<ID>` qui n'est pas le nom du fichier. Index `idx_unreadable_run_source` et
 `idx_mismatch_run_source` (run_id, source).
 
+### `invalidated`
+
+Une ligne par document rejeté au parse (ADR-036 §7) : `{run_id, source, identifier,
+reason, error, files}`. Index `idx_invalidated_run_source_reason` (run_id, source,
+reason) et `idx_invalidated_identifier`.
+
 ## MongoDB — base méta `MURPHY_META`
 
 Préservée par `nuke_all` : la mémoire de ce qu'on a fait ne doit jamais partir avec les

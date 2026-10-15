@@ -5,7 +5,7 @@ from typing import Any
 from ragcore.adapters.telemetry.measures import MeasuresAggregator
 from ragcore.core.models.audit import AuditEvent
 from ragcore.core.models.collision_record import CollisionRecord
-from ragcore.core.models.problems import FileProblem
+from ragcore.core.models.problems import FileProblem, InvalidatedDocument
 from ragcore.core.models.run_measures import MeasurePath, RunMeasures
 from ragcore.core.models.run_stats import RunStats
 from ragcore.core.models.unknown_tally import UnknownExample
@@ -22,6 +22,7 @@ class RecordingTelemetry:
         self.measured: list[tuple[MeasurePath, float, str]] = []
         self.collisions: list[CollisionRecord] = []
         self.problems: list[FileProblem] = []
+        self.invalidated: list[InvalidatedDocument] = []
 
     def emit(self, event: AuditEvent) -> None:
         self.events.append(event)
@@ -42,8 +43,9 @@ class RecordingTelemetry:
     def record_problem(self, problem: FileProblem) -> None:
         self.problems.append(problem)
 
-    def record_invalidation(self, reason: str) -> None:
-        self._declared = self._declared.with_invalidation(reason)
+    def record_invalidation(self, document: InvalidatedDocument) -> None:
+        self._declared = self._declared.with_invalidation(document.reason)
+        self.invalidated.append(document)
 
     def snapshot(self) -> RunStats:
         stats = self._declared

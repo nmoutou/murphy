@@ -16,6 +16,7 @@ from ragcore.core.exceptions import (
 )
 from ragcore.core.models.document import RawDocument
 from ragcore.core.models.enums import SourceName
+from ragcore.core.models.problems import InvalidatedDocument
 from ragcore.core.models.unknown_tally import UnknownExample, UnknownTally
 from ragcore.core.ports.parser import ParseResult
 from ragcore.core.services.collision_reasons import (
@@ -61,7 +62,7 @@ def _raw_document() -> RawDocument:
     return RawDocument(
         source=SourceName.LEGI,
         source_document_id="doc-1",
-        payload={},
+        payload={"files": ["/legi/doc-1.xml"]},
         fetched_at=datetime.now(UTC),
     )
 
@@ -122,6 +123,15 @@ def test_une_ParseError_exclut_le_document_et_le_compte() -> None:
     invalidated = telemetry.events_of(DOCUMENT_INVALIDATED)
     assert [e.payload["reason"] for e in invalidated] == [REASON_PARSE_ERROR]
     assert telemetry.snapshot().invalidations == {REASON_PARSE_ERROR: 1}
+    assert telemetry.invalidated == [
+        InvalidatedDocument(
+            source=SourceName.LEGI,
+            identifier="doc-1",
+            reason=REASON_PARSE_ERROR,
+            error="XML malformé",
+            files=("/legi/doc-1.xml",),
+        )
+    ]
 
 
 def test_une_ValidationError_est_rejetee_sous_SA_raison() -> None:

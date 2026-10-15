@@ -11,6 +11,7 @@ from .enums import SourceName
 __all__ = [
     "CopyStamp",
     "FileProblem",
+    "InvalidatedDocument",
     "MismatchedFile",
     "Problem",
     "SupersededCopy",
@@ -67,4 +68,20 @@ class MismatchedFile(BaseModel):
 FileProblem: TypeAlias = SupersededCopy | UnreadableFile | MismatchedFile
 """Ce que le connecteur écarte, en détail."""
 
-Problem: TypeAlias = CollisionRecord | FileProblem
+
+class InvalidatedDocument(BaseModel):
+    """Un document rejeté au parse."""
+
+    model_config = ConfigDict(frozen=True)
+
+    source: SourceName
+    identifier: str
+    """La clé du document dans le flux : un document rejeté n'a pas d'identifiant
+    analysé."""
+    reason: str
+    """L'une des raisons de rejet au parse de ``exclusion_reasons``."""
+    error: str
+    files: tuple[str, ...]
+
+
+Problem: TypeAlias = CollisionRecord | FileProblem | InvalidatedDocument

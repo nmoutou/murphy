@@ -21,6 +21,7 @@ from ragcore.core.models.audit import build_event
 from ragcore.core.models.collision import Collision
 from ragcore.core.models.collision_record import CollisionRecord
 from ragcore.core.models.document import ParsedDocument, RawDocument
+from ragcore.core.models.problems import InvalidatedDocument
 from ragcore.core.models.unknown_tally import UnknownExample
 from ragcore.core.ports.parser import BaseParser, ParseResult
 from ragcore.core.ports.telemetry import WorkerTelemetry
@@ -192,7 +193,15 @@ class _ParseSite:
                 error_message=str(exc),
             )
         )
-        self.telemetry.record_invalidation(reason)
+        self.telemetry.record_invalidation(
+            InvalidatedDocument(
+                source=raw.source,
+                identifier=raw.source_document_id,
+                reason=reason,
+                error=str(exc),
+                files=tuple(raw.payload["files"]),
+            )
+        )
 
     def declare_signals(self, result: ParseResult) -> None:
         """Toujours, et avant le curseur : `skip` n'efface jamais le signal."""

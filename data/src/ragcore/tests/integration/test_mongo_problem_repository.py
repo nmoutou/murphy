@@ -10,6 +10,7 @@ from ragcore.adapters.storage.mongo import problem_repository
 from ragcore.adapters.storage.mongo.client import create_mongo_client
 from ragcore.adapters.storage.mongo.problem_repository import (
     COLLISIONS_COLLECTION,
+    INVALIDATED_COLLECTION,
     MISMATCH_COLLECTION,
     SUPERSEDED_COLLECTION,
     UNREADABLE_COLLECTION,
@@ -24,6 +25,7 @@ from ragcore.core.models.enums import SourceName
 from ragcore.core.models.identifiers import RunId
 from ragcore.core.models.problems import (
     CopyStamp,
+    InvalidatedDocument,
     MismatchedFile,
     SupersededCopy,
     UnreadableFile,
@@ -142,6 +144,30 @@ async def test_les_fichiers_ecartes_ont_chacun_leur_collection(database) -> None
             "key": "versions",
             "path": "/legi/versions.xml",
             "found_id": None,
+        }
+    ]
+
+
+async def test_un_document_rejete_garde_sa_raison_et_ses_fichiers(database) -> None:
+    rejected = InvalidatedDocument(
+        source=SourceName.LEGI,
+        identifier="LEGIARTI1",
+        reason="facet_root_duplicated",
+        error="racines en double : ARTICLE",
+        files=("/legi/a/LEGIARTI1.xml", "/legi/b/LEGIARTI1.xml"),
+    )
+    repo = MongoProblemRepository(database.client, DB)
+
+    await repo.insert_run(RUN_1, [rejected])
+
+    assert await _rows(database, INVALIDATED_COLLECTION) == [
+        {
+            "run_id": "run-1",
+            "source": "legi",
+            "identifier": "LEGIARTI1",
+            "reason": "facet_root_duplicated",
+            "error": "racines en double : ARTICLE",
+            "files": ["/legi/a/LEGIARTI1.xml", "/legi/b/LEGIARTI1.xml"],
         }
     ]
 

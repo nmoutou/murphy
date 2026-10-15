@@ -37,6 +37,7 @@ from ragcore.adapters.telemetry import (
 )
 from ragcore.core.models.collision_record import CollisionRecord
 from ragcore.core.models.enums import SourceName
+from ragcore.core.models.problems import InvalidatedDocument
 from ragcore.core.models.processing import EmbeddingModel
 from ragcore.core.models.run_stats import RunStats
 from ragcore.core.models.unknown_tally import UnknownExample, UnknownTally
@@ -302,8 +303,17 @@ class TestTelemetry:
         runtime = AsyncioRuntimeFactory().build(0)
         try:
             stack = _telemetry_factory().build(0, runtime)
-            stack.record_invalidation("identifier_missing")
+            document = InvalidatedDocument(
+                source=SourceName.LEGI,
+                identifier="LEGIARTI1",
+                reason="identifier_missing",
+                error="pas d'<ID>",
+                files=("/legi/LEGIARTI1.xml",),
+            )
+            stack.record_invalidation(document)
 
             assert stack.snapshot().invalidations == {"identifier_missing": 1}
+            details = stack._backends.problems.snapshot()  # noqa: SLF001
+            assert details == (document,)
         finally:
             runtime.close()

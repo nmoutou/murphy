@@ -93,7 +93,8 @@ commutative ferait dépendre le bilan de l'ordonnancement). Quatre champs :
   un appel par `document.invalidated`) ; leur somme vaut `counts["document.invalidated"]`.
   Les raisons sont celles de `exclusion_reasons.py` : `identifier_missing`,
   `identifier_malformed`, `undeclared_prefix`, `facet_root_duplicated`,
-  `facet_root_undeclared`, `collision`, `parse_error`. Fusion : somme.
+  `facet_root_undeclared`, `collision`, `parse_error`. Fusion : somme. Le détail vit
+  dans `MURPHY_PROBLEMS.invalidated`.
 
 **La remontée passe par le DAG, pas par le hook** : le nœud `ingest` remet les agrégats
 des workers (compteurs et mesures) aux `RunAggregates` du run (`run_sink`, que le hook
@@ -218,6 +219,23 @@ Une ligne par fichier que le connecteur écarte avant le parser, comptée
 `found_id` l'`<ID>` lu dans le fichier, `null` s'il n'en a pas. Les artefacts d'export
 (`document.version_skipped`) ne sont que comptés : la DILA en livre un par texte, et leur
 chemin n'apprend rien.
+
+### `invalidated`
+
+Une ligne par document rejeté au parse, ce que `run_summaries.invalidations` compte :
+
+```json
+{ "run_id": "…", "source": "legi", "identifier": "LEGIARTI…",
+  "reason": "facet_root_duplicated", "error": "…",
+  "files": ["/…/TNC_en_vigueur/…/LEGIARTI….xml", "/…/TNC_non_vigueur/…/LEGIARTI….xml"] }
+```
+
+`identifier` est la clé du document dans le flux (un document rejeté n'a pas
+d'identifiant analysé), `error` le message que porte déjà l'événement
+`document.invalidated`, `files` les fichiers du document. Un rejet `collision` ou
+`facet_root_duplicated` a aussi ses lignes dans `collisions` : celle-ci dit que le
+document est refusé, celles-là sur quoi ; elles se relient par `identifier`. Index
+`(run_id, source, reason)` et `(identifier)`.
 
 ## Les statistiques d'un run
 
