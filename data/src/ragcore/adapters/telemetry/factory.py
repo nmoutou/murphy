@@ -7,9 +7,9 @@ from ragcore.core.models.identifiers import RunId
 from ragcore.core.ports.runtime import AsyncRuntime
 
 from .aggregator import RunStatsAggregator
-from .collisions import CollisionsAggregator
 from .console_log import ConsoleLogTelemetry
 from .measures import MeasuresAggregator
+from .problems import ProblemsAggregator
 from .worker_backends import WorkerBackends
 from .worker_stack import WorkerTelemetryStack
 
@@ -19,7 +19,7 @@ __all__ = ["WorkerTelemetryFactory", "assemble_telemetry"]
 def assemble_telemetry(
     aggregate: RunStatsAggregator,
     measures: MeasuresAggregator,
-    collisions: CollisionsAggregator,
+    problems: ProblemsAggregator,
 ) -> WorkerTelemetryStack:
     """Partagé par la fabrique et le hook : un backend ajouté se voit en un seul
     point."""
@@ -28,7 +28,7 @@ def assemble_telemetry(
             log=ConsoleLogTelemetry(),
             aggregate=aggregate,
             measures=measures,
-            collisions=collisions,
+            problems=problems,
         )
     )
 
@@ -55,5 +55,5 @@ class WorkerTelemetryFactory:
             started_at=self._started_at,
         )
         return assemble_telemetry(
-            aggregator, MeasuresAggregator(), CollisionsAggregator()
+            aggregator, MeasuresAggregator(), ProblemsAggregator()
         )

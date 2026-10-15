@@ -1,9 +1,8 @@
 """La clôture d'un run : les chunks raccourcis sont déclarés avant le bilan, pour y
-figurer, et les statistiques et les collisions sont écrites, que le run ait réussi ou
+figurer, et les statistiques et les problèmes sont écrits, que le run ait réussi ou
 cassé."""
 
-from collections.abc import Iterator
-from datetime import datetime
+from collections.abc import Iterator, Sequence
 
 import pytest
 
@@ -12,7 +11,7 @@ from ragcore.core.models.audit import build_event
 from ragcore.core.models.collision_record import CollisionRecord
 from ragcore.core.models.enums import SourceName
 from ragcore.core.models.identifiers import RunId
-from ragcore.core.models.run_collisions import RunCollisions
+from ragcore.core.models.problems import Problem
 from ragcore.core.models.run_statistics import RunStatistics
 from ragcore.core.models.run_summary import RunStatus, RunSummary
 from ragcore.core.ports.embedder import BaseEmbedder
@@ -43,15 +42,12 @@ class _SpyStatistics:
         self.upserted.append(statistics)
 
 
-class _SpyCollisions:
+class _SpyProblems:
     def __init__(self) -> None:
-        self.replaced: list[tuple[RunId, RunCollisions]] = []
+        self.inserted: list[tuple[RunId, Sequence[Problem]]] = []
 
-    async def replace_run(
-        self, run_id: RunId, started_at: datetime, collisions: RunCollisions
-    ) -> None:
-        del started_at
-        self.replaced.append((run_id, collisions))
+    async def insert_run(self, run_id: RunId, problems: Sequence[Problem]) -> None:
+        self.inserted.append((run_id, problems))
 
 
 _RECORD = CollisionRecord(
@@ -73,7 +69,7 @@ class _Spies:
     def __init__(self) -> None:
         self.summaries = _SpySummaries()
         self.statistics = _SpyStatistics()
-        self.collisions = _SpyCollisions()
+        self.problems = _SpyProblems()
         self.telemetry = RecordingTelemetry()
 
 
@@ -100,7 +96,7 @@ def _session(
     for event_type in (DOCUMENT_FETCHED, DOCUMENT_PERSISTED):
         aggregates.stats.emit(build_event(event_type, context.run_id))
     aggregates.measures.record(("documents", "legi", "chunks"), 4, "LEGIARTI1")
-    aggregates.collisions.record(_RECORD)
+    aggregates.problems.record(_RECORD)
     with aggregates.stages.stage("phase1"):
         pass
     return RunSession(
@@ -109,7 +105,7 @@ def _session(
         aggregates=aggregates,
         summaries=spies.summaries,
         statistics=spies.statistics,
-        collisions=spies.collisions,
+        problems=spies.problems,
         embedder=embedder or NoopEmbedder(dimension=768),
         runtime=runtime,
     )
@@ -160,13 +156,13 @@ def test_les_statistiques_sont_ecrites_quel_que_soit_le_statut(
 
 
 @pytest.mark.parametrize("status", [RunStatus.OK, RunStatus.FAILED])
-def test_les_collisions_sont_ecrites_quel_que_soit_le_statut(
+def test_les_problemes_sont_ecrits_quel_que_soit_le_statut(
     spies: _Spies, runtime: FakeRuntime, status: RunStatus
 ) -> None:
     session = _session(spies, runtime)
 
     session.close(status, error_message="panne")
 
-    ((run_id, collisions),) = spies.collisions.replaced
+    ((run_id, problems),) = spies.problems.inserted
     assert run_id == session.context.run_id
-    assert collisions.records == (_RECORD,)
+    assert problems == (_RECORD,)

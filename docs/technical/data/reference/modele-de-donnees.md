@@ -137,6 +137,13 @@ Comme les pendantes, elles dérivent des documents et `nuke_all` les efface avec
 Elles vivent dans `MURPHY_PROBLEMS` depuis ADR-036 : une cible décrite est un problème
 d'ingestion, à lire à côté des autres.
 
+### `collisions`
+
+Une ligne par collision (ADR-036 §3) : `{run_id, source, reason, identifier, key,
+files}`, chemins absolus. Index `idx_collisions_run_source_reason` (run_id, source,
+reason) et `idx_collisions_identifier`. Voir
+[telemetrie.md](telemetrie.md#les-problèmes-dun-run).
+
 ## MongoDB — base méta `MURPHY_META`
 
 Préservée par `nuke_all` : la mémoire de ce qu'on a fait ne doit jamais partir avec les
@@ -145,7 +152,6 @@ données.
 | Collection | Contenu | Index |
 |---|---|---|
 | `run_summaries` | Un `RunSummary` par run, à plat : run_id, `sources` (liste), dates, `status` (`ok`/`degraded`/`failed`), `counts`, `unknowns` (`tags` / `roots` / `links` → clé → `{count, example: {identifier, source_file}}`, ADR-024), `collisions` (raison → nombre de (document, clé)), `sampling` (par source, `{ratio, total, retained}`, ADR-034 §9), et `error_message` sur un run `failed` seulement. | unique (run_id), (started_at) |
-| `collisions` | Le détail des collisions d'un run (ADR-034 §8, amendé) : un document par source en collision, `{run_id, source, started_at, part, parts, collisions: {raison: {count, details: [{identifier, key, files}]}}}`, découpé en parties au-delà de 15 Mio. Écrit même pour un run `failed`. Voir [telemetrie.md](telemetrie.md#les-collisions-dun-run). | unique (run_id, source, part) |
 | `statistics` | Les mesures d'un run (ADR-034 §8) : run_id, `started_at`, `stages_s` (durée de chaque étape, en secondes), `documents` (par source, des `Distribution` de tailles et de durées). Écrit même pour un run `failed`. Voir [telemetrie.md](telemetrie.md#les-statistiques-dun-run). | unique (run_id) |
 
 ## OpenSearch

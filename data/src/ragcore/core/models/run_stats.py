@@ -53,7 +53,7 @@ class RunStats(BaseModel):
 
     collisions: dict[str, int] = Field(default_factory=dict)
     """Raison de collision -> nombre de (document, clé). Le détail vit dans
-    ``RunCollisions``."""
+    ``MURPHY_PROBLEMS.collisions``."""
 
     invalidations: dict[str, int] = Field(default_factory=dict)
     """Raison de rejet au parse -> nombre de documents ; leur somme vaut

@@ -13,13 +13,11 @@ from opensearchpy import AsyncOpenSearch
 
 from ragcore.adapters.config.settings import InfraSettings
 from ragcore.adapters.storage.mongo.client import MongoClient, create_mongo_client
-from ragcore.adapters.storage.mongo.collision_repository import (
-    MongoCollisionRepository,
-)
 from ragcore.adapters.storage.mongo.document_repository import MongoDocumentRepository
 from ragcore.adapters.storage.mongo.pending_repository import (
     MongoPendingRelationRepository,
 )
+from ragcore.adapters.storage.mongo.problem_repository import MongoProblemRepository
 from ragcore.adapters.storage.mongo.run_summary_repository import (
     MongoRunSummaryRepository,
 )
@@ -49,13 +47,13 @@ from ragcore.orchestration.kedro.run_plan import RunPlan
 
 __all__ = [
     "InfraClients",
-    "MetaStores",
     "close_clients",
     "ensure_indexes",
     "open_clients",
     "open_document_stores",
-    "open_meta_stores",
     "open_nuke_targets",
+    "open_session_stores",
+    "SessionStores",
 ]
 
 
@@ -67,10 +65,13 @@ class InfraClients:
 
 
 @dataclass(frozen=True)
-class MetaStores:
+class SessionStores:
+    """Ce que la session écrit à sa clôture : bilan et statistiques dans la base méta,
+    problèmes dans la leur."""
+
     summaries: MongoRunSummaryRepository
     statistics: MongoStatisticsRepository
-    collisions: MongoCollisionRepository
+    problems: MongoProblemRepository
 
 
 def open_clients(settings: InfraSettings) -> InfraClients:
@@ -127,12 +128,16 @@ def open_document_stores(
     )
 
 
-def open_meta_stores(clients: InfraClients, settings: InfraSettings) -> MetaStores:
+def open_session_stores(
+    clients: InfraClients, settings: InfraSettings
+) -> SessionStores:
     meta_db = settings.mongodb_meta_db_name
-    return MetaStores(
+    return SessionStores(
         summaries=MongoRunSummaryRepository(clients.mongo, meta_db),
         statistics=MongoStatisticsRepository(clients.mongo, meta_db),
-        collisions=MongoCollisionRepository(clients.mongo, meta_db),
+        problems=MongoProblemRepository(
+            clients.mongo, settings.mongodb_problems_db_name
+        ),
     )
 
 

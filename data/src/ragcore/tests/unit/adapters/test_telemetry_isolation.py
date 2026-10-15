@@ -6,8 +6,8 @@ from datetime import UTC, datetime
 from typing import Any
 
 from ragcore.adapters.telemetry.aggregator import RunStatsAggregator
-from ragcore.adapters.telemetry.collisions import CollisionsAggregator
 from ragcore.adapters.telemetry.measures import MeasuresAggregator
+from ragcore.adapters.telemetry.problems import ProblemsAggregator
 from ragcore.adapters.telemetry.worker_backends import WorkerBackends
 from ragcore.adapters.telemetry.worker_stack import WorkerTelemetryStack
 from ragcore.core.models.audit import AuditEvent, build_event
@@ -47,7 +47,7 @@ def _backends(aggregate: RunStatsAggregator) -> WorkerBackends:
         log=ExplodingLog(),
         aggregate=aggregate,
         measures=MeasuresAggregator(),
-        collisions=CollisionsAggregator(),
+        problems=ProblemsAggregator(),
     )
 
 

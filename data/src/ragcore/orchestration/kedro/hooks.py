@@ -31,13 +31,13 @@ from ragcore.orchestration.kedro.run_parameters import load_parameters
 from ragcore.orchestration.kedro.run_plan import RunPlan, plan_run
 from ragcore.orchestration.kedro.run_session import RunSession, start_telemetry
 from ragcore.orchestration.kedro.stores import (
-    MetaStores,
+    SessionStores,
     close_clients,
     ensure_indexes,
     open_clients,
     open_document_stores,
-    open_meta_stores,
     open_nuke_targets,
+    open_session_stores,
 )
 
 logger = logging.getLogger(__name__)
@@ -80,8 +80,8 @@ class TelemetryHooks:
         self._runtime.defer_close(lambda: close_clients(clients))
         ensure_indexes(clients, settings, self._runtime)
         stores = open_document_stores(clients, settings, plan, embedder.dimension)
-        meta = open_meta_stores(clients, settings)
-        session = self._open_session(plan, meta, embedder)
+        written = open_session_stores(clients, settings)
+        session = self._open_session(plan, written, embedder)
         stack = build_processing_stack(plan, Path(settings.xml_source_path), embedder)
         return {
             "connector": stack.connector,
@@ -110,7 +110,7 @@ class TelemetryHooks:
     def _open_session(
         self,
         plan: RunPlan,
-        meta: MetaStores,
+        written: SessionStores,
         embedder: BaseEmbedder,
     ) -> RunSession:
         context = PipelineContext.create(sources=plan.sources)
@@ -119,9 +119,9 @@ class TelemetryHooks:
             context=context,
             telemetry=telemetry,
             aggregates=aggregates,
-            summaries=meta.summaries,
-            statistics=meta.statistics,
-            collisions=meta.collisions,
+            summaries=written.summaries,
+            statistics=written.statistics,
+            problems=written.problems,
             embedder=embedder,
             runtime=self._runtime,
         )

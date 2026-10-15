@@ -48,7 +48,7 @@ class WorkerTelemetryStack:
 
     def record_collision(self, record: CollisionRecord) -> None:
         self._backends.aggregate.record_collision(record.reason)
-        self._backends.collisions.record(record)
+        self._backends.problems.record(record)
 
     def record_invalidation(self, reason: str) -> None:
         self._backends.aggregate.record_invalidation(reason)

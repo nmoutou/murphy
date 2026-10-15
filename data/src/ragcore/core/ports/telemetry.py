@@ -52,7 +52,8 @@ class WorkerTelemetry(TelemetryPort, Protocol):
         ...
 
     def record_collision(self, record: CollisionRecord) -> None:
-        """Une collision, comptée au bilan et détaillée dans ``MURPHY_META.collisions``.
+        """Une collision, comptée au bilan et détaillée dans
+        ``MURPHY_PROBLEMS.collisions``.
         Un appel par document et par clé.
 
         Seule la pile du hook garde le détail : lecture et parse tournent dans le

@@ -1,10 +1,10 @@
 from pymongo import ASCENDING, IndexModel
 
 from ragcore.adapters.storage.mongo.client import MongoDatabase
-from ragcore.adapters.storage.mongo.collision_repository import COLLISIONS_COLLECTION
 from ragcore.adapters.storage.mongo.pending_repository import (
     PENDING_RELATIONS_COLLECTION,
 )
+from ragcore.adapters.storage.mongo.problem_repository import COLLISIONS_COLLECTION
 from ragcore.adapters.storage.mongo.statistics_repository import STATISTICS_COLLECTION
 from ragcore.adapters.storage.mongo.transit_repository import (
     TRANSIT_RELATIONS_COLLECTION,
@@ -69,13 +69,6 @@ _META_INDEXES: dict[str, list[IndexModel]] = {
             name="uq_statistics_run_id",
         ),
     ],
-    COLLISIONS_COLLECTION: [
-        IndexModel(
-            [("run_id", ASCENDING), ("source", ASCENDING), ("part", ASCENDING)],
-            unique=True,
-            name="uq_collisions_run_source_part",
-        ),
-    ],
 }
 """Par collection, dans la base méta."""
 
@@ -93,6 +86,13 @@ _PROBLEMS_INDEXES: dict[str, list[IndexModel]] = {
             unique=True,
             name="uq_unformatted_source_text_type_sens",
         ),
+    ],
+    COLLISIONS_COLLECTION: [
+        IndexModel(
+            [("run_id", ASCENDING), ("source", ASCENDING), ("reason", ASCENDING)],
+            name="idx_collisions_run_source_reason",
+        ),
+        IndexModel([("identifier", ASCENDING)], name="idx_collisions_identifier"),
     ],
 }
 """Par collection, dans la base des problèmes."""

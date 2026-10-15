@@ -67,7 +67,9 @@ Ce qu'un run laisse derrière lui :
 - les corpus dans Mongo `MURPHY_DATA`, OpenSearch (index `OPENSEARCH_INDEX`) et Neo4j ;
 - le bilan (`RunSummary`) dans `MURPHY_META.run_summaries`.
 - ses mesures (tailles et durées, en distributions) dans `MURPHY_META.statistics`, même
-  pour un run en échec.
+  pour un run en échec ;
+- le détail de ses problèmes, une ligne par problème, dans `MURPHY_PROBLEMS`, même pour
+  un run en échec.
 
 ### Développer
 

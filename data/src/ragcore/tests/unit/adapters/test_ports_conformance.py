@@ -10,13 +10,11 @@ from datetime import UTC, datetime
 
 from ragcore.adapters.embedding import EmbeddingTransport, TeiEmbedder
 from ragcore.adapters.runtime import AsyncioRuntime, AsyncioRuntimeFactory
-from ragcore.adapters.storage.mongo.collision_repository import (
-    MongoCollisionRepository,
-)
 from ragcore.adapters.storage.mongo.document_repository import MongoDocumentRepository
 from ragcore.adapters.storage.mongo.pending_repository import (
     MongoPendingRelationRepository,
 )
+from ragcore.adapters.storage.mongo.problem_repository import MongoProblemRepository
 from ragcore.adapters.storage.mongo.run_summary_repository import (
     MongoRunSummaryRepository,
 )
@@ -42,11 +40,11 @@ from ragcore.core.models.enums import SourceName
 from ragcore.core.models.processing import EmbeddingModel
 from ragcore.core.models.run_stats import RunStats
 from ragcore.core.models.unknown_tally import UnknownExample, UnknownTally
-from ragcore.core.ports.collision_repository import CollisionRepository
 from ragcore.core.ports.document_repository import DocumentRepository
 from ragcore.core.ports.embedder import BaseEmbedder
 from ragcore.core.ports.graph_repository import GraphRepository
 from ragcore.core.ports.pending_repository import PendingRelationRepository
+from ragcore.core.ports.problem_repository import ProblemRepository
 from ragcore.core.ports.run_summary_repository import RunSummaryRepository
 from ragcore.core.ports.runtime import AsyncRuntime, AsyncRuntimeFactory
 from ragcore.core.ports.search_index_repository import SearchIndexRepository
@@ -86,9 +84,9 @@ class TestStorageAdapters:
         repo = MongoStatisticsRepository.__new__(MongoStatisticsRepository)
         assert isinstance(repo, StatisticsRepository)
 
-    def test_mongo_collision_repository(self) -> None:
-        repo = MongoCollisionRepository.__new__(MongoCollisionRepository)
-        assert isinstance(repo, CollisionRepository)
+    def test_mongo_problem_repository(self) -> None:
+        repo = MongoProblemRepository.__new__(MongoProblemRepository)
+        assert isinstance(repo, ProblemRepository)
 
     def test_mongo_run_summary_repository(self) -> None:
         repo = MongoRunSummaryRepository.__new__(MongoRunSummaryRepository)
@@ -295,8 +293,8 @@ class TestTelemetry:
             stack.record_collision(record)
 
             assert stack.snapshot().collisions == {"metadata": 1}
-            details = stack._backends.collisions.snapshot()  # noqa: SLF001
-            assert details.records == (record,)
+            details = stack._backends.problems.snapshot()  # noqa: SLF001
+            assert details == (record,)
         finally:
             runtime.close()
 

@@ -95,7 +95,7 @@ chaque racine portée par plusieurs fichiers d'une clé :
    (`facet_root_duplicated`) plutôt que de choisir au hasard.
 
 Chaque arbitrage est une collision (`connector.collisions`), détaillée dans
-`MURPHY_META.collisions` ([telemetrie.md](telemetrie.md#les-collisions-dun-run)). La
+`MURPHY_PROBLEMS.collisions` ([telemetrie.md](telemetrie.md#les-problèmes-dun-run)). La
 règle suppose **des mtimes préservés à l'extraction** : c'est le défaut de `tar`, pas
 de `cp` sans `-p`, de `rsync` sans `-t`, ni de `tar --touch`. Une seule extraction par
 racine de source : un dump incrémental posé à côté de l'export global le duplique.

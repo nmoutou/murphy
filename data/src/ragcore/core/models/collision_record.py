@@ -1,5 +1,5 @@
-"""Une collision, telle que ``MURPHY_META.collisions`` la garde : où la retrouver, jamais
-les valeurs en conflit."""
+"""Une collision, telle que ``MURPHY_PROBLEMS.collisions`` la garde : où la retrouver,
+jamais les valeurs en conflit."""
 
 from pydantic import BaseModel, ConfigDict
 
@@ -19,10 +19,3 @@ class CollisionRecord(BaseModel):
     """La clé de métadonnée, ou la racine XML en double."""
     files: tuple[str, ...]
     """Absolus, distincts."""
-
-    def to_detail(self) -> dict[str, object]:
-        return {
-            "identifier": self.identifier,
-            "key": self.key,
-            "files": list(self.files),
-        }

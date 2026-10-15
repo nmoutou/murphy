@@ -87,7 +87,7 @@ commutative ferait dépendre le bilan de l'ordonnancement). Quatre champs :
   sait pas écrire n'est pas un type de lien : il est compté par `relation.unknown`.
 - `collisions` : raison de collision → nombre de (document, clé) (`record_collision`).
   Ce n'est pas un inconnu : la table sait nommer ce qui entre en collision. Le détail
-  vit dans `MURPHY_META.collisions` (voir [Les collisions d'un run](#les-collisions-dun-run)).
+  vit dans `MURPHY_PROBLEMS.collisions` (voir [Les problèmes d'un run](#les-problèmes-dun-run)).
   Fusion : somme.
 - `invalidations` : raison de rejet au parse → nombre de documents (`record_invalidation`,
   un appel par `document.invalidated`) ; leur somme vaut `counts["document.invalidated"]`.
@@ -151,27 +151,29 @@ document est plat :
 écrit que sur un run `failed` : un `degraded` n'a pas d'exception, il se lit dans les
 compteurs.
 
-## Les collisions d'un run
+## Les problèmes d'un run
 
-`MURPHY_META.collisions` détaille ce que `run_summaries.collisions` compte (ADR-034 §8,
-amendé) : un document par source en collision et par run, écrit à la clôture de la
-session, **même en cas d'échec**. Une source sans collision n'a pas de document.
+`MURPHY_PROBLEMS` détaille ce que le bilan compte (ADR-036) : une ligne Mongo par
+problème, sous le `run_id` du run qui l'a rencontré, écrite à la clôture de la session,
+**même en cas d'échec**, par lots de 1 000 (`MongoProblemRepository.insert_run`). Les
+runs successifs s'accumulent ; `nuke_all` vide la base. Le détail s'accumule dans le
+`ProblemsAggregator` du hook : lecture et parse tournent dans le thread du nœud
+`ingest`, jamais dans un worker.
+
+### `collisions`
+
+Ce que `run_summaries.collisions` compte, une ligne par (document, clé), document refusé
+compris :
 
 ```json
-{ "run_id": "…", "source": "legi", "started_at": ISODate("…"), "part": 1, "parts": 1,
-  "collisions": {
-    "metadata": { "count": 14, "details": [
-      { "identifier": "LEGITEXT…", "key": "versions_a_venir",
-        "files": ["/…/texte/version/LEGITEXT….xml"] } ] },
-    "facet_root_duplicated": { "count": 3, "details": [
-      { "identifier": "LEGIARTI…", "key": "ARTICLE",
-        "files": ["/…/TNC_en_vigueur/…/LEGIARTI….xml",
-                  "/…/TNC_non_vigueur/…/LEGIARTI….xml"] } ] } } }
+{ "run_id": "…", "source": "legi", "reason": "facet_root_duplicated",
+  "identifier": "LEGIARTI…", "key": "ARTICLE",
+  "files": ["/…/TNC_en_vigueur/…/LEGIARTI….xml", "/…/TNC_non_vigueur/…/LEGIARTI….xml"] }
 ```
 
-Un détail par (document, clé), document refusé compris ; ni les valeurs en conflit, ni
-les dates des fichiers : la clé et les chemins suffisent à retrouver la collision. Les
-raisons sont celles de `collision_reasons.py` :
+Ni les valeurs en conflit, ni les dates des fichiers : la clé et les chemins suffisent à
+retrouver la collision. Index `(run_id, source, reason)` et `(identifier)`. Les raisons
+sont celles de `collision_reasons.py` :
 
 | Raison | `key` | `files` |
 |---|---|---|
@@ -180,15 +182,9 @@ raisons sont celles de `collision_reasons.py` :
 | `superseded_copy` | La racine XML portée par plusieurs copies différentes ; le connecteur garde la plus récente (mtime) | La copie gardée, puis les écartées, de la plus récente à la plus ancienne |
 | `facet_root_duplicated` | La racine XML portée par des copies différentes de même date, que le connecteur n'a pas su départager ; le document est aussi rejeté (`invalidations.facet_root_duplicated`) | Les seuls fichiers de cette racine |
 
-`count` est le total de la source ; les `details` sont triés par (`identifier`, `key`),
-pour qu'un run rejoué écrive les mêmes documents. Au-delà de 15 Mio de détails, la
-source est découpée en parties (`part` sur `parts`), chacune répétant les comptes de la
-source entière : la limite de 16 Mo d'un document Mongo ne tronque rien. Le détail
-s'accumule dans le `CollisionsAggregator` du hook : lecture et parse tournent dans le
-thread du nœud `ingest`, jamais dans un worker. Les copies départagées par le connecteur
-(`connector.collisions`) y sont déclarées en fin de flux, avec ses écarts
-(`SourceReading.declare_counts`) : leur document est émis, elles ne touchent pas
-l'équation de complétude.
+Les copies départagées par le connecteur (`connector.collisions`) sont déclarées en fin
+de flux, avec ses écarts (`SourceReading.declare_counts`) : leur document est émis,
+elles ne touchent pas l'équation de complétude.
 
 ## Les statistiques d'un run
 

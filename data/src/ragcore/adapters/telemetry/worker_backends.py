@@ -9,8 +9,8 @@ from dataclasses import dataclass
 from ragcore.core.ports.telemetry import TelemetryPort
 
 from .aggregator import RunStatsAggregator
-from .collisions import CollisionsAggregator
 from .measures import MeasuresAggregator
+from .problems import ProblemsAggregator
 
 __all__ = ["WorkerBackends"]
 
@@ -18,13 +18,13 @@ __all__ = ["WorkerBackends"]
 @dataclass(frozen=True)
 class WorkerBackends:
     """``aggregate`` est un ``RunStatsAggregator`` concret : il porte le bilan, pas
-    seulement les événements. ``measures`` porte les statistiques, ``collisions`` leur
-    détail, sans fermeture."""
+    seulement les événements. ``measures`` porte les statistiques, ``problems`` le
+    détail des problèmes, sans fermeture."""
 
     log: TelemetryPort
     aggregate: RunStatsAggregator
     measures: MeasuresAggregator
-    collisions: CollisionsAggregator
+    problems: ProblemsAggregator
 
     def closable_in_order(self) -> list[tuple[str, TelemetryPort]]:
         """``aggregate`` en dernier : il rend le bilan. Le nom sert aux logs d'échec."""
