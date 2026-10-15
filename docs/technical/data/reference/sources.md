@@ -65,8 +65,9 @@ qu'un aplatissement écraserait mutuellement).
 
 1. **`discover()`** parcourt l'arborescence sans rien parser et construit l'index
    `clé → [chemins]` (des chaînes : l'index tient tout le stock). Il rend l'inventaire
-   de la source (`SourceInventory` : le nombre de clés, et celui que retient
-   `ingestion_ratio`, ADR-034 §9 — les clés écartées ne seront jamais lues) ;
+   de la source (`SourceInventory` : le nombre de clés, celui que retient le ratio de la
+   source dans `ingestion_ratio`, et ce ratio, ADR-034 §9 — les clés écartées ne seront
+   jamais lues) ;
 2. **`fetch_all()`**, un générateur synchrone, lit les facettes d'une clé au moment de
    l'émettre, clés triées pour un run reproductible. Chaque fichier est contrôlé : un
    fichier illisible est écarté (`unreadable`), un fichier dont l'`<ID>` n'est pas le

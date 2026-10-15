@@ -5,6 +5,7 @@ de l'environnement. L'assemblage le lit sans jamais le re-dériver.
 from __future__ import annotations
 
 import logging
+from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
 
@@ -43,8 +44,9 @@ class RunPlan:
     """``True`` retire les métadonnées non configurées (ADR-011). ``True`` hors ``dev``."""
     nuke_all: bool
     """``False`` hors ``dev``."""
-    ingestion_ratio: float
-    """La part de chaque source ingérée (ADR-034 §9). ``1`` hors ``dev``."""
+    ingestion_ratios: Mapping[SourceName, float]
+    """Par source du run, la part ingérée, dans ]0, 1] (ADR-034 §9). ``1`` hors
+    ``dev``."""
 
 
 def plan_run(
@@ -59,21 +61,43 @@ def plan_run(
     requested_source = (
         settings.source if parameters.source is None else parameters.source
     )
+    ratios = _apply_ratios(resolve_sources(requested_source), dev.ingestion_ratio)
     plan = RunPlan(
         chunking=chunking,
         index=settings.opensearch_index,
-        sources=resolve_sources(requested_source),
+        sources=tuple(ratios),
         include_path=dev.include_path,
         node_hydration=_node_hydration(dev, is_dev),
         embedding_enabled=dev.embedding_enabled,
         skip_unconfigured=dev.skip_unconfigured,
         nuke_all=dev.nuke_all,
-        ingestion_ratio=dev.ingestion_ratio,
+        ingestion_ratios=ratios,
     )
     if not is_dev:
         _warn_dev_ignored(settings.environment)
     _log_plan(plan)
     return plan
+
+
+def _apply_ratios(
+    requested: tuple[SourceName, ...], ratios: Mapping[str, float]
+) -> dict[SourceName, float]:
+    """Une source à ``0`` sort du run : son arborescence n'est même pas parcourue."""
+    resolved = {source: ratios.get(source.value, FULL_RATIO) for source in requested}
+    kept = {source: ratio for source, ratio in resolved.items() if ratio > 0}
+    excluded = [source.value for source in resolved if source not in kept]
+    if not kept:
+        msg = (
+            f"Rien à ingérer : les sources du run ({', '.join(excluded)}) sont toutes "
+            "à 0 dans `ingestion_ratio`. Le run est interrompu."
+        )
+        raise ValueError(msg)
+    if excluded:
+        logger.warning(
+            "SOURCES ÉCARTÉES (dev, ADR-034) : %s, à 0 dans ingestion_ratio.",
+            ", ".join(excluded),
+        )
+    return kept
 
 
 def _node_hydration(dev: DevParameters, is_dev: bool) -> NodeHydration:
@@ -111,17 +135,24 @@ def _log_plan(plan: RunPlan) -> None:
         "Balises non configurées : %s",
         "métadonnées retirées" if plan.skip_unconfigured else "métadonnées ingérées",
     )
-    if plan.ingestion_ratio < FULL_RATIO:
-        logger.warning(
-            "INGESTION PARTIELLE (dev, ADR-034) : ingestion_ratio=%s. Seule cette part "
-            "de chaque source est lue, et la plupart des arêtes deviendront pendantes : "
-            "le graphe n'est pas représentatif.",
-            plan.ingestion_ratio,
-        )
+    _warn_partial(plan.ingestion_ratios)
     if not plan.embedding_enabled:
         logger.warning(
             "EMBEDDING COUPÉ (dev, ADR-012) : aucun vecteur ne sera calculé. Les "
             "passages sont écrits dans l'index %s sans vecteur : seule la recherche "
             "lexicale les trouvera. Mongo et Neo4j sont peuplés normalement.",
             plan.index,
+        )
+
+
+def _warn_partial(ratios: Mapping[SourceName, float]) -> None:
+    partial = [
+        f"{source.value}={ratio}"
+        for source, ratio in ratios.items()
+        if ratio < FULL_RATIO
+    ]
+    if partial:
+        logger.warning(
+            "INGESTION PARTIELLE : ingestion_ratio %s.",
+            ", ".join(partial),
         )

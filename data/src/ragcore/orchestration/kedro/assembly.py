@@ -114,7 +114,7 @@ def build_processing_stack(
         connector=CompositeConnector(
             {
                 source: definition.connector(
-                    xml_root / definition.subdirectory, plan.ingestion_ratio
+                    xml_root / definition.subdirectory, plan.ingestion_ratios[source]
                 )
                 for source, definition in definitions.items()
             }

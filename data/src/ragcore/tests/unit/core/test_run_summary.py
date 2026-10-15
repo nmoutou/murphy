@@ -223,17 +223,16 @@ def test_the_summary_projects_the_reduction_of_n_workers() -> None:
 
 def test_a_partial_run_says_how_much_it_read() -> None:
     """Un run `ok` à 10 % ne doit pas passer pour un run complet (ADR-034 §9)."""
-    aggregator = RunStatsAggregator(
-        RUN, (SourceName.LEGI,), datetime.now(UTC), ingestion_ratio=0.1
-    )
+    aggregator = RunStatsAggregator(RUN, (SourceName.LEGI,), datetime.now(UTC))
     aggregator.record_inventories(
-        {SourceName.LEGI: SourceInventory(total=2116313, retained=211632)}
+        {SourceName.LEGI: SourceInventory(total=2116313, retained=211632, ratio=0.1)}
     )
 
     document = json.loads(aggregator.finalize(RunStatus.OK).model_dump_json())
 
-    assert document["ingestion_ratio"] == 0.1
-    assert document["sampling"] == {"legi": {"total": 2116313, "retained": 211632}}
+    assert document["sampling"] == {
+        "legi": {"total": 2116313, "retained": 211632, "ratio": 0.1}
+    }
 
 
 def test_a_summary_written_before_the_sampling_still_reads() -> None:
@@ -242,11 +241,29 @@ def test_a_summary_written_before_the_sampling_still_reads() -> None:
         .finalize(RunStatus.OK)
         .model_dump_json()
     )
-    del document["ingestion_ratio"], document["sampling"]
+    del document["sampling"]
 
     summary = RunSummary.model_validate(document)
 
-    assert (summary.ingestion_ratio, summary.sampling) == (1, {})
+    assert summary.sampling == {}
+
+
+def test_a_summary_with_a_single_ratio_still_reads() -> None:
+    """Avant les ratios par source : un `ingestion_ratio` au premier niveau, et un
+    `sampling` sans ratio, relu à 1."""
+    document = json.loads(
+        RunStatsAggregator(RUN, (), datetime.now(UTC))
+        .finalize(RunStatus.OK)
+        .model_dump_json()
+    )
+    document["ingestion_ratio"] = 0.1
+    document["sampling"] = {"legi": {"total": 10, "retained": 1}}
+
+    summary = RunSummary.model_validate(document)
+
+    assert summary.sampling == {
+        SourceName.LEGI: SourceInventory(total=10, retained=1, ratio=1)
+    }
 
 
 def test_a_summary_written_before_the_invalidations_still_reads() -> None:

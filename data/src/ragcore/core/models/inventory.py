@@ -15,3 +15,6 @@ class SourceInventory:
     facettes."""
     retained: int
     """Celles que ``ingestion_ratio`` garde, et que la passe 2 émettra."""
+    ratio: float = FULL_RATIO
+    """Le ``ingestion_ratio`` de la source. Un défaut : les bilans écrits avant lui se
+    relisent."""

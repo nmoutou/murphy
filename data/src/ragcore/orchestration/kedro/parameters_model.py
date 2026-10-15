@@ -6,10 +6,12 @@ ensemble. Strict : ``"false"`` n'est pas un booléen.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Annotated, Any
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 from pydantic_core import ErrorDetails
+
+from ragcore.sources.registry import all_sources
 
 __all__ = [
     "DevParameters",
@@ -36,8 +38,23 @@ class DevParameters(_StrictParameters):
     """Écrits dans Mongo et Neo4j."""
     include_content_neo4j: bool
     """Sous ``_text_content``."""
-    ingestion_ratio: float = Field(gt=0, le=1)
-    """La part de chaque source ingérée, dans ]0, 1] (ADR-034 §9)."""
+    ingestion_ratio: dict[str, Annotated[float, Field(ge=0, le=1)]]
+    """Par source, la part ingérée, dans [0, 1] (ADR-034 §9). Une source absente vaut
+    ``1`` ; à ``0``, elle est retirée du run."""
+
+    @field_validator("ingestion_ratio")
+    @classmethod
+    def _known_sources_only(cls, ratios: dict[str, float]) -> dict[str, float]:
+        """Une coquille ignorée ingérerait la source en entier."""
+        known = {source.value for source in all_sources()}
+        unknown = sorted(set(ratios) - known)
+        if unknown:
+            msg = (
+                f"sources inconnues : {', '.join(unknown)}. "
+                f"Sources ingérables : {', '.join(sorted(known))}."
+            )
+            raise ValueError(msg)
+        return ratios
 
 
 class RunParameters(_StrictParameters):

@@ -64,7 +64,7 @@ def test_un_ratio_reduit_n_emet_que_les_cles_retenues(corpus: Path) -> None:
     (inventory,) = connector.discover().values()
     docs = {doc.source_document_id: doc for doc in connector.fetch_all()}
 
-    assert inventory == SourceInventory(total=9, retained=5)
+    assert inventory == SourceInventory(total=9, retained=5, ratio=0.5)
     assert len(docs) == 5
     assert set(docs) < DOCUMENTS
     assert connector.skipped == {REASON_EXPORT_ARTIFACT: 1}

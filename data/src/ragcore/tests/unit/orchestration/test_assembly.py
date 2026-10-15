@@ -55,7 +55,7 @@ def plan(settings: InfraSettings) -> RunPlan:
         "skip_unconfigured": False,
         "include_path": True,
         "include_content_neo4j": True,
-        "ingestion_ratio": 1,
+        "ingestion_ratio": {},
         "source": "cass",
     }
     chunking = ChunkingConfig(max_chars=384, overlap_chars=25)

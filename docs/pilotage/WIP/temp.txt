@@ -1,0 +1,56 @@
+[10/15/26 11:52:41] WARNING  Document LEGIARTI000006201477 rejeté (facet_root_duplicated) : Ordre des facettes indéterminé : racines en double ['ARTICLE'],   document_parsing.py:137
+                             fichiers                                                                                                                                                
+                             ['/data/Murphy/src/LEGI/Freemium_legi_global_20250713-140000/legi/global/code_et_TNC_en_vigueur/TNC_en_vigueur/JORF/TEXT/00/00/0                        
+                             0/30/78/JORFTEXT000000307813/article/LEGI/ARTI/00/00/06/20/14/LEGIARTI000006201477.xml',                                                                
+                             '/data/Murphy/src/LEGI/Freemium_legi_global_20250713-140000/legi/global/code_et_TNC_non_vigueur/TNC_non_vigueur/JORF/TEXT/00/00/                        
+                             00/30/78/JORFTEXT000000307813/article/LEGI/ARTI/00/00/06/20/14/LEGIARTI000006201477.xml']                                                               
+                    WARNING  Document LEGIARTI000006201555 rejeté (facet_root_duplicated) : Ordre des facettes indéterminé : racines en double ['ARTICLE'],   document_parsing.py:137
+                             fichiers                                                                                                                                                
+                             ['/data/Murphy/src/LEGI/Freemium_legi_global_20250713-140000/legi/global/code_et_TNC_en_vigueur/TNC_en_vigueur/JORF/TEXT/00/00/0                        
+                             0/30/78/JORFTEXT000000307813/article/LEGI/ARTI/00/00/06/20/15/LEGIARTI000006201555.xml',
+                             '/data/Murphy/src/LEGI/Freemium_legi_global_20250713-140000/legi/global/code_et_TNC_non_vigueur/TNC_non_vigueur/JORF/TEXT/00/00/                        
+                             00/30/78/JORFTEXT000000307813/article/LEGI/ARTI/00/00/06/20/15/LEGIARTI000006201555.xml']                                                               
+[10/15/26 11:52:50] WARNING  Document LEGIARTI000006242128 rejeté (facet_root_duplicated) : Ordre des facettes indéterminé : racines en double ['ARTICLE'],   document_parsing.py:137
+                             fichiers                                                                                                                                                
+                             ['/data/Murphy/src/LEGI/Freemium_legi_global_20250713-140000/legi/global/code_et_TNC_en_vigueur/TNC_en_vigueur/JORF/TEXT/00/00/0                        
+                             0/81/27/JORFTEXT000000812724/article/LEGI/ARTI/00/00/06/24/21/LEGIARTI000006242128.xml',                                                                
+                             '/data/Murphy/src/LEGI/Freemium_legi_global_20250713-140000/legi/global/code_et_TNC_non_vigueur/TNC_non_vigueur/JORF/TEXT/00/00/                        
+                             00/81/27/JORFTEXT000000812724/article/LEGI/ARTI/00/00/06/24/21/LEGIARTI000006242128.xml']                                                               
+[10/15/26 11:52:58] WARNING  Document LEGIARTI000006284428 rejeté (facet_root_duplicated) : Ordre des facettes indéterminé : racines en double ['ARTICLE'],   document_parsing.py:137
+                             fichiers                                                                                                                                                
+                             ['/data/Murphy/src/LEGI/Freemium_legi_global_20250713-140000/legi/global/code_et_TNC_en_vigueur/TNC_en_vigueur/LEGI/TEXT/00/00/0                        
+                             6/06/94/LEGITEXT000006069445/article/LEGI/ARTI/00/00/06/28/44/LEGIARTI000006284428.xml',                                                                
+                             '/data/Murphy/src/LEGI/Freemium_legi_global_20250713-140000/legi/global/code_et_TNC_non_vigueur/TNC_non_vigueur/LEGI/TEXT/00/00/                        
+                             06/06/94/LEGITEXT000006069445/article/LEGI/ARTI/00/00/06/28/44/LEGIARTI000006284428.xml']                                                               
+[10/15/26 11:53:10] INFO     Phase 1 : 1134 / 21516 documents en 30 s (37.7 doc/s)                                                                                     progress.py:52
+[10/15/26 11:53:13] WARNING  Document LEGIARTI000006323387 rejeté (facet_root_duplicated) : Ordre des facettes indéterminé : racines en double ['ARTICLE'],   document_parsing.py:137
+                             fichiers                                                                                                                                                
+                             ['/data/Murphy/src/LEGI/Freemium_legi_global_20250713-140000/legi/global/code_et_TNC_en_vigueur/TNC_en_vigueur/JORF/TEXT/00/00/0                        
+                             0/50/49/JORFTEXT000000504919/article/LEGI/ARTI/00/00/06/32/33/LEGIARTI000006323387.xml',                                                                
+                             '/data/Murphy/src/LEGI/Freemium_legi_global_20250713-140000/legi/global/code_et_TNC_non_vigueur/TNC_non_vigueur/JORF/TEXT/00/00/                        
+                             00/50/49/JORFTEXT000000504919/article/LEGI/ARTI/00/00/06/32/33/LEGIARTI000006323387.xml']                                                               
+[10/15/26 11:53:22] WARNING  Document LEGIARTI000006368637 rejeté (facet_root_duplicated) : Ordre des facettes indéterminé : racines en double ['ARTICLE'],   document_parsing.py:137
+                             fichiers                                                                                                                                                
+                             ['/data/Murphy/src/LEGI/Freemium_legi_global_20250713-140000/legi/global/code_et_TNC_en_vigueur/TNC_en_vigueur/JORF/TEXT/00/00/0                        
+                             0/51/64/JORFTEXT000000516400/article/LEGI/ARTI/00/00/06/36/86/LEGIARTI000006368637.xml',                                                                
+                             '/data/Murphy/src/LEGI/Freemium_legi_global_20250713-140000/legi/global/code_et_TNC_non_vigueur/TNC_non_vigueur/JORF/TEXT/00/00/                        
+                             00/51/64/JORFTEXT000000516400/article/LEGI/ARTI/00/00/06/36/86/LEGIARTI000006368637.xml']                                                               
+                    WARNING  Document LEGIARTI000006368677 rejeté (facet_root_duplicated) : Ordre des facettes indéterminé : racines en double ['ARTICLE'],   document_parsing.py:137
+                             fichiers                                                                                                                                                
+                             ['/data/Murphy/src/LEGI/Freemium_legi_global_20250713-140000/legi/global/code_et_TNC_en_vigueur/TNC_en_vigueur/JORF/TEXT/00/00/0                        
+                             0/88/18/JORFTEXT000000881816/article/LEGI/ARTI/00/00/06/36/86/LEGIARTI000006368677.xml',                                                                
+                             '/data/Murphy/src/LEGI/Freemium_legi_global_20250713-140000/legi/global/code_et_TNC_non_vigueur/TNC_non_vigueur/JORF/TEXT/00/00/                        
+                             00/88/18/JORFTEXT000000881816/article/LEGI/ARTI/00/00/06/36/86/LEGIARTI000006368677.xml']                                                               
+[10/15/26 11:53:40] INFO     Phase 1 : 2168 / 21516 documents en 60 s (36.1 doc/s)                                                                                     progress.py:52
+[10/15/26 11:53:45] WARNING  Document LEGIARTI000006420317 rejeté (facet_root_duplicated) : Ordre des facettes indéterminé : racines en double ['ARTICLE'],   document_parsing.py:137
+                             fichiers                                                                                                                                                
+                             ['/data/Murphy/src/LEGI/Freemium_legi_global_20250713-140000/legi/global/code_et_TNC_en_vigueur/TNC_en_vigueur/JORF/TEXT/00/00/0                        
+                             0/51/22/JORFTEXT000000512205/article/LEGI/ARTI/00/00/06/42/03/LEGIARTI000006420317.xml',                                                                
+                             '/data/Murphy/src/LEGI/LEGI_20250712-211706/20250712-211706/legi/global/code_et_TNC_en_vigueur/TNC_en_vigueur/JORF/TEXT/00/00/00                        
+                             /51/22/JORFTEXT000000512205/article/LEGI/ARTI/00/00/06/42/03/LEGIARTI000006420317.xml']                                                                 
+[10/15/26 11:54:00] WARNING  Document LEGIARTI000006436203 rejeté (facet_root_duplicated) : Ordre des facettes indéterminé : racines en double ['ARTICLE'],   document_parsing.py:137
+                             fichiers                                                                                                                                                
+                             ['/data/Murphy/src/LEGI/Freemium_legi_global_20250713-140000/legi/global/code_et_TNC_en_vigueur/TNC_en_vigueur/JORF/TEXT/00/00/0                        
+                             0/44/95/JORFTEXT000000449503/article/LEGI/ARTI/00/00/06/43/62/LEGIARTI000006436203.xml',                                                                
+                             '/data/Murphy/src/LEGI/Freemium_legi_global_20250713-140000/legi/global/code_et_TNC_non_vigueur/TNC_non_vigueur/JORF/TEXT/00/00/                        
+                             00/44/95/JORFTEXT000000449503/article/LEGI/ARTI/00/00/06/43/62/LEGIARTI000006436203.xml']     

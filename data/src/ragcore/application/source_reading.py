@@ -122,10 +122,11 @@ def _announce(inventories: Mapping[SourceName, SourceInventory]) -> None:
     for source, inventory in inventories.items():
         if inventory.retained < inventory.total:
             logger.warning(
-                "Passe 1 : %s, %d documents retenus sur %d (ingestion_ratio)",
+                "%s : %d documents retenus sur %d (ingestion_ratio %s)",
                 source.value,
                 inventory.retained,
                 inventory.total,
+                inventory.ratio,
             )
         else:
-            logger.info("Passe 1 : %s, %d documents", source.value, inventory.total)
+            logger.info("%s : %d documents", source.value, inventory.total)

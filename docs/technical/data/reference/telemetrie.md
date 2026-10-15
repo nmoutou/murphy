@@ -109,8 +109,8 @@ les compterait deux fois).
 
 `RunSummary` = l'identité du run (run_id, `sources`, dates) + les `counts`, les
 `unknowns`, les `collisions` et les `invalidations` de l'agrégat, recopiés à plat + le `status` + la part du
-corpus lue : `ingestion_ratio` et, par source, `sampling` (`{total, retained}`, de la
-passe 1 ; vide si le run a cassé avant elle). Un run `ok` à 10 % ne doit pas passer pour
+corpus lue : par source, `sampling` (`{ratio, total, retained}`, de la passe 1 ; vide si
+le run a cassé avant elle, et sans les sources écartées à `0`, qui ne sont pas du run). Un run `ok` à 10 % ne doit pas passer pour
 un run complet (ADR-034 §9). Le statut annoncé « ok » par le hook est **re-dérivé des compteurs**
 (`_status_from`) — deux propriétés :
 
@@ -148,8 +148,7 @@ document est plat :
     "versions_a_venir": { "count": 14, "example": [
       "/…/texte/version/LEGITEXT….xml" ] } },
   "invalidations": { "facet_root_duplicated": 3, "parse_error": 1 },
-  "ingestion_ratio": 0.1,
-  "sampling": { "legi": { "total": 2116313, "retained": 211632 } } }
+  "sampling": { "legi": { "total": 2116313, "retained": 211632, "ratio": 0.1 } } }
 ```
 
 `sources` est toujours une liste, même pour un run mono-source. `error_message` n'est

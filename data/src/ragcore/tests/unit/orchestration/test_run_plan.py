@@ -25,7 +25,7 @@ PARAMS: dict[str, Any] = {
     "skip_unconfigured": False,
     "include_path": True,
     "include_content_neo4j": True,
-    "ingestion_ratio": 1,
+    "ingestion_ratio": {},
 }
 """Les clés de `parameters.yml` sans défaut dans le code."""
 
@@ -44,7 +44,7 @@ RISKIEST_DEV: dict[str, Any] = {
     "skip_unconfigured": False,
     "include_path": True,
     "include_content_neo4j": True,
-    "ingestion_ratio": 0.1,
+    "ingestion_ratio": {"legi": 0.1, "cass": 0},
 }
 """Le `parameters.yml` le plus risqué pour une prod."""
 
@@ -127,7 +127,8 @@ def test_en_dev_le_fichier_s_applique_tel_quel() -> None:
     assert plan.embedding_enabled is False
     assert plan.skip_unconfigured is False
     assert plan.include_path is True
-    assert plan.ingestion_ratio == 0.1
+    assert plan.ingestion_ratios[SourceName.LEGI] == 0.1
+    assert SourceName.CASS not in plan.sources
     assert plan.node_hydration == NodeHydration(
         metadata=True, include_path=True, include_content=True
     )
@@ -151,7 +152,8 @@ def test_hors_dev_le_fichier_est_ignore() -> None:
     assert plan.embedding_enabled is True
     assert plan.skip_unconfigured is True
     assert plan.include_path is False
-    assert plan.ingestion_ratio == 1
+    assert set(plan.ingestion_ratios.values()) == {1}
+    assert SourceName.CASS in plan.sources
     assert plan.node_hydration == NodeHydration()
 
 
@@ -171,32 +173,6 @@ def test_en_dev_aucun_avertissement_de_fichier_ignore(
         plan_run(PARAMS, _settings("dev"), CHUNKING)
 
     assert "est ignoré" not in caplog.text
-
-
-@pytest.mark.parametrize("value", [0, -0.5, 1.5, "0.5", True, None])
-def test_un_ratio_hors_de_0_1_arrete_le_run_meme_hors_dev(value: object) -> None:
-    """``0`` n'ingérerait rien : le run s'arrêterait « ok » sans rien avoir lu."""
-    with pytest.raises(ValueError, match=_path("ingestion_ratio")):
-        plan_run(_with("ingestion_ratio", value), _settings("prod"), CHUNKING)
-
-
-def test_sans_ratio_le_run_s_arrete() -> None:
-    with pytest.raises(ValueError, match=_path("ingestion_ratio")):
-        plan_run(_without("ingestion_ratio"), _settings("prod"), CHUNKING)
-
-
-def test_un_run_partiel_est_annonce(caplog: pytest.LogCaptureFixture) -> None:
-    with caplog.at_level(logging.WARNING):
-        plan_run(_with("ingestion_ratio", 0.25), _settings("dev"), CHUNKING)
-
-    assert "ingestion_ratio=0.25" in caplog.text
-
-
-def test_un_run_complet_n_annonce_rien(caplog: pytest.LogCaptureFixture) -> None:
-    with caplog.at_level(logging.WARNING):
-        plan_run(PARAMS, _settings("dev"), CHUNKING)
-
-    assert "INGESTION PARTIELLE" not in caplog.text
 
 
 @pytest.mark.parametrize("path", ["nlp", "include_pth", "nuke_al"])

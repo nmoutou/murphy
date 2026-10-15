@@ -165,20 +165,26 @@ Le schéma :
 workers, des workers souvent inactifs désignent la lecture.
 
 **9. `ingestion_ratio`, un réglage de dev par source.** Une nouvelle clé de
-`parameters.yml`, comprise dans ]0, 1] (`0` n'ingérerait rien et arrête le run), qui vaut
-`1` hors `dev` (`SAFE_DEV_SETTINGS`).
+`parameters.yml` : une table `source → ratio`, chaque ratio dans [0, 1]. Une source
+absente de la table vaut `1` ; une source inconnue, ou sans connecteur, arrête le run.
+Hors `dev`, la table est vide (`SAFE_DEV_SETTINGS`) : tout le corpus est ingéré.
+
+- **À `0`** : la source est retirée du run par son plan, avant la passe 1 : ni
+  connecteur, ni parcours de l'arborescence. Si toutes les sources du run sont à `0`, le
+  run s'arrête : il finirait « ok » sans rien avoir lu, après `nuke_all`.
 
 - **Sélection** : par source, les ⌈ratio × n⌉ clés de plus petit hash (blake2b de la
   clé). Elle est exacte (10 % de LEGI, c'est ⌈0,1 × n⌉ documents ; une source d'un
   fichier garde le sien), reproductible d'un run à l'autre, et emboîtée : ce qui est
   retenu à 10 % l'est à 20 %.
 - **Lieu** : dans les connecteurs, sur la clé, avant toute lecture : un document écarté
-  ne coûte rien. La passe 1 (§1) connaît déjà toutes les clés. Le plan du run porte le
-  ratio, l'assemblage le transmet.
-- **Annonce** : un avertissement au démarrage donne le ratio ; un second, après la
-  passe 1, donne par source le nombre retenu sur le total.
-- **Bilan** : `run_summaries` porte `ingestion_ratio` et, par source, le nombre retenu sur
-  le total. C'est de la comptabilité : un run `ok` à 10 % ne doit pas passer pour un run
+  ne coûte rien. La passe 1 (§1) connaît déjà toutes les clés. Le plan du run porte un
+  ratio par source, l'assemblage donne le sien à chaque connecteur.
+- **Annonce** : au démarrage, un avertissement donne les sources partielles et leur
+  ratio, un autre les sources écartées à `0` ; après la passe 1, un troisième donne par
+  source le nombre retenu sur le total.
+- **Bilan** : `run_summaries.sampling` porte, par source, son ratio et le nombre retenu
+  sur le total. C'est de la comptabilité : un run `ok` à 10 % ne doit pas passer pour un run
   complet.
 - **Limite assumée** : l'échantillon est tiré par document, pas par texte. Un article
   est souvent retenu sans sa section ni son texte, et la plupart de ses arêtes deviennent
@@ -237,13 +243,13 @@ document d'un processus à l'autre ; ce choix attend les mesures et sa propre AD
 - `transit_relations` occupe de l'ordre de 5 à 6 Go sur disque pendant un run complet,
   et doit être vide à sa fin.
 - Deux collections nouvelles (`MURPHY_DATA.transit_relations`,
-  `MURPHY_META.statistics`), et `run_summaries` gagne `ingestion_ratio` et les nombres
-  retenus par source.
+  `MURPHY_META.statistics`), et `run_summaries` gagne `sampling` : par source, le ratio
+  et les nombres retenus sur le total.
 - Un run partiel produit beaucoup de relations pendantes : c'est attendu (§9).
 - ADR-013 est **amendé** : l'échantillonnage revient, sous la forme d'un ratio et non
   d'une limite N, que la sélection du §9 rend sensée même sur une source d'un fichier.
 - ADR-019 §3 est **amendé** : `ingestion_ratio` rejoint les clés de `parameters.yml`, et
-  `SAFE_DEV_SETTINGS` le fixe à `1`.
+  `SAFE_DEV_SETTINGS` met toutes les sources à `1`.
 - `CLAUDE.md` et `docs/technical/data/` (`ARCHITECTURE.md`, `reference/pipeline.md`,
   `reference/modele-de-donnees.md`, `reference/telemetrie.md`,
   `reference/configuration.md`) suivent chaque commit qui les touche.

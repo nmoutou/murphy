@@ -2,9 +2,10 @@
 d'export.
 
 Les ``versions.xml`` partagent tous la clé ``versions`` : la passe 1 les met à part, et
-ils sont lus un par un après les documents, quel que soit ``ingestion_ratio``. Un ``<VERSIONS>`` ou un ``<ID>`` nu est un
-artefact, écarté et compté pour ne pas noyer les vrais rejets. Tout autre
-``versions.xml`` est rejeté : son ``<ID>`` n'est pas son nom.
+ils sont lus un par un après les documents, quel que soit ``ingestion_ratio``. Un
+``<VERSIONS>`` ou un ``<ID>`` nu est un artefact, écarté et compté pour ne pas noyer
+les vrais rejets. Tout autre ``versions.xml`` est rejeté : son ``<ID>`` n'est pas son
+nom.
 """
 
 from collections.abc import Iterator

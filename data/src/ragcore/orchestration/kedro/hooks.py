@@ -113,7 +113,7 @@ class TelemetryHooks:
         embedder: BaseEmbedder,
     ) -> RunSession:
         context = PipelineContext.create(sources=plan.sources)
-        telemetry, aggregates = start_telemetry(context, plan.ingestion_ratio)
+        telemetry, aggregates = start_telemetry(context)
         self._session = RunSession(
             context=context,
             telemetry=telemetry,

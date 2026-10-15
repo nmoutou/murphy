@@ -15,7 +15,7 @@ from ragcore.adapters.telemetry.worker_stack import WorkerTelemetryStack
 from ragcore.application.run_context import PipelineContext
 from ragcore.core.models.audit import build_event
 from ragcore.core.models.enums import SourceName
-from ragcore.core.models.inventory import FULL_RATIO, SourceInventory
+from ragcore.core.models.inventory import SourceInventory
 from ragcore.core.models.run_measures import RunMeasures
 from ragcore.core.models.run_statistics import RunStatistics
 from ragcore.core.models.run_stats import RunStats
@@ -55,14 +55,13 @@ class RunAggregates:
 
 
 def start_telemetry(
-    context: PipelineContext, ingestion_ratio: float = FULL_RATIO
+    context: PipelineContext,
 ) -> tuple[WorkerTelemetryStack, RunAggregates]:
     aggregates = RunAggregates(
         stats=RunStatsAggregator(
             run_id=context.run_id,
             sources=context.sources,
             started_at=context.started_at,
-            ingestion_ratio=ingestion_ratio,
         ),
         measures=MeasuresAggregator(),
         stages=StageClock(),

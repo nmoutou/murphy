@@ -9,7 +9,6 @@ from kedro.io import DataCatalog, DatasetError
 
 from ragcore.adapters.config.settings import Environment
 from ragcore.core.models.enums import SourceName
-from ragcore.core.models.inventory import FULL_RATIO
 from ragcore.orchestration.kedro.parameters_model import DevParameters
 from ragcore.sources.registry import all_sources
 
@@ -30,7 +29,7 @@ SAFE_DEV_SETTINGS = DevParameters(
     skip_unconfigured=True,
     include_path=False,
     include_content_neo4j=False,
-    ingestion_ratio=FULL_RATIO,
+    ingestion_ratio={},
 )
 """``parameters.yml`` tel qu'il s'applique hors ``dev``."""
 

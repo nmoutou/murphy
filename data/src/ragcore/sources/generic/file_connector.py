@@ -77,7 +77,9 @@ class KeyedFileConnector:
         )
         self._index = self._sample(index)
         return {
-            self._source: SourceInventory(total=len(index), retained=len(self._index))
+            self._source: SourceInventory(
+                total=len(index), retained=len(self._index), ratio=self._ratio
+            )
         }
 
     def fetch_all(self) -> Iterator[RawDocument]:

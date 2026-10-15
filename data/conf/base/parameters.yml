@@ -24,7 +24,9 @@ include_path: true
 # toujours présentes en dev (ADR-011). Même remarque sans `nuke_all`.
 include_content_neo4j: true
 
-# La part de chaque source ingérée, dans ]0, 1] : les ⌈ratio × n⌉ fichiers de plus petit
-# hash, les mêmes d'un run à l'autre. Un run partiel laisse la plupart des arêtes
+# Par source, la part ingérée, dans [0, 1] : les ⌈ratio × n⌉ fichiers de plus petit hash,
+# les mêmes d'un run à l'autre. Une source absente vaut 1, une source à 0 est retirée du
+# run, une source inconnue l'arrête. Un run partiel laisse la plupart des arêtes
 # pendantes : son graphe n'est pas représentatif (ADR-034).
-ingestion_ratio: 0.01
+ingestion_ratio:
+  legi: 0.01

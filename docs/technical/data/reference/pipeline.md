@@ -109,10 +109,11 @@ passe le temps.
 ### La lecture (`SourceReading`)
 
 1. **Passe 1** (`connector.discover()`, `stages_s.discovery`) : chaque connecteur indexe
-   son arborescence sans ouvrir un fichier, et garde les clés que retient
-   `ingestion_ratio` ([configuration.md](configuration.md)). L'inventaire de chaque
-   source (documents retenus sur le total) rejoint le bilan (`run_sink`) et part au
-   log, en avertissement pour un run partiel. Le total retenu sert à la progression.
+   son arborescence sans ouvrir un fichier, et garde les clés que retient son
+   `ingestion_ratio` ([configuration.md](configuration.md)) ; une source à `0` n'a pas de
+   connecteur. L'inventaire de chaque source (son ratio, les documents retenus sur le
+   total) rejoint le bilan (`run_sink`) et part au log, en avertissement pour un run
+   partiel. Le total retenu sert à la progression.
 2. **Passe 2** (`connector.fetch_all()`) : un document à la fois. Chacun est mesuré
    (`xml_bytes`, `facets`, et `step_ms.read`, le temps écoulé depuis le document
    précédent).
