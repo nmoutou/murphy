@@ -1,6 +1,6 @@
 # INDEX — Registre des décisions (ADR)
 
-> Un fichier par ADR (format Nygard). **Prochain numéro : ADR-035.**
+> Un fichier par ADR (format Nygard). **Prochain numéro : ADR-037.**
 
 ## Registre
 
@@ -40,6 +40,8 @@
 | [ADR-032](ADR-032-interface-onglets-dockview.md) | L'interface du moteur de recherche : un espace d'onglets Dockview | ✅ Accepté (11 octobre 2026) — réalise ADR-028 §10 côté frontend, amende ADR-030 §2 et §3 et ADR-017 §2 à §4 · ferme le point ouvert « Interface du frontend adaptée au pivot » · §1 à §6 et §12 amendés le 11 octobre 2026 (ni icône de document, ni bouton Scinder ; la barre de recherche passe dans l'onglet Résultats, renommé Recherche ; Explication renommé Résumé) · §2, §4, §6, §11 et §12 amendés par ADR-033 (sélection, sidebar, onglet Explications) |
 | [ADR-033](ADR-033-onglet-explications.md) | L'onglet Explications : un LLM borné aux documents choisis | ✅ Accepté (12 octobre 2026) — amende ADR-007, ADR-010, ADR-015 §2, ADR-030 §1, §4 à §6 et ADR-032 §2, §4, §6, §11 et §12 |
 | [ADR-034](ADR-034-ingestion-en-flux.md) | L'ingestion en flux : une mémoire bornée, des relations en transit | ✅ Accepté (14 octobre 2026) — amende ADR-013 et ADR-019 §3 |
+| [ADR-035](ADR-035-historique-editorial.md) | L'historique éditorial : les archives DILA font foi, chaque révision est gardée | Proposé (15 octobre 2026) — amende ADR-034 §1 |
+| [ADR-036](ADR-036-base-des-problemes.md) | `MURPHY_PROBLEMS` : une base des problèmes d'ingestion, une ligne par problème | Proposé (15 octobre 2026) — amende ADR-034 §8, ADR-021 §1 et ADR-035 (une copie écartée n'est plus une collision) |
 
 ## Points ouverts rattachés
 
