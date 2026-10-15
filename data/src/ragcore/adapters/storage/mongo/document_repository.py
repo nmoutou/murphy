@@ -1,6 +1,6 @@
 """Implémentation MongoDB du DocumentRepository."""
 
-from ragcore.adapters.storage.mongo.client import MongoClient, MongoDatabase
+from ragcore.adapters.storage.mongo.client import MongoClient
 from ragcore.core.models.document import ParsedDocument
 from ragcore.core.models.identifiers import Identifier
 from ragcore.core.services.parent_text_titles import parent_text_titles
@@ -35,14 +35,8 @@ class MongoDocumentRepository:
         *,
         include_path: bool = False,
     ) -> None:
-        self._database = client[db_name]
-        self._collection = self._database[collection]
+        self._collection = client[db_name][collection]
         self._excluded_fields = _excluded_fields(include_path)
-
-    @property
-    def database(self) -> MongoDatabase:
-        """Celle que le nuke remet à neuf."""
-        return self._database
 
     async def upsert(self, document: ParsedDocument) -> None:
         """Remplacement atomique : l'identifiant n'est jamais absent, la saga n'a rien à

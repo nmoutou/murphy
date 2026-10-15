@@ -80,6 +80,7 @@ class InfraSettings(BaseSettings):
     mongodb_uri: str = "mongodb://localhost:27017"
     mongodb_data_db_name: str = "MURPHY_DATA"
     mongodb_meta_db_name: str = "MURPHY_META"
+    mongodb_problems_db_name: str = "MURPHY_PROBLEMS"
 
     neo4j_uri: str = "bolt://localhost:7687"
     neo4j_username: str = "neo4j"

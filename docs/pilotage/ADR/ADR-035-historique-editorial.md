@@ -161,6 +161,8 @@ texte. N'est affiché que ce que disent les fichiers de la DILA.
 - Une collection de révisions s'ajoute à `MURPHY_DATA`. Sa taille est à mesurer.
 - ADR-034 §1 est **amendé** : une copie écartée par l'arbitrage reste comptée comme
   collision, et devient en plus une révision datée par son mtime.
+  *Amendé par ADR-036 : une copie écartée n'est plus une collision ; elle est comptée
+  `document.superseded` et détaillée dans `MURPHY_PROBLEMS.superseded`, avec sa date.*
 - Le connecteur ne lit plus seulement une arborescence : il rejoue des archives dans
   l'ordre, et applique leurs suppressions.
 - L'interface (une vue des révisions dans l'onglet d'un document) et la route du

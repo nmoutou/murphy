@@ -3,7 +3,9 @@
 **Statut** : ✅ Accepté (14 octobre 2026) — amende ADR-013 (un échantillonnage revient,
 en ratio) et ADR-019 §3 (une clé de plus dans `parameters.yml`) · **§8 amendé le
 15 octobre 2026** (le détail des collisions a sa collection) · **§1 amendé le
-15 octobre 2026** (les copies d'une même racine sont départagées par leur date)
+15 octobre 2026** (les copies d'une même racine sont départagées par leur date) · **§8
+amendé par ADR-036** (le détail des problèmes passe dans `MURPHY_PROBLEMS`, une ligne par
+problème)
 
 ## Contexte
 
@@ -189,6 +191,14 @@ workers, des workers souvent inactifs désignent la lecture.
 > `(run_id, source, part)`), chacune portant les comptes de la source entière : la
 > limite de 16 Mo d'un document Mongo ne fait ni échouer l'écriture ni tronquer le
 > détail. Rejouer un run remplace ses documents.
+
+> **Amendement (15 octobre 2026, ADR-036) : `MURPHY_PROBLEMS`.** `MURPHY_META.collisions`
+> et son découpage en parties disparaissent. Le détail des problèmes va dans la base
+> `MURPHY_PROBLEMS`, une ligne Mongo par problème avec son `run_id`, toujours écrit à la
+> clôture de la session, même en cas d'échec : `collisions` (`metadata`,
+> `duplicate_copy`, `facet_root_duplicated`) et `superseded` (une ligne par copie
+> écartée par l'arbitrage, qui n'est plus une collision et se compte
+> `document.superseded`). `nuke_all` vide cette base.
 
 **9. `ingestion_ratio`, un réglage de dev par source.** Une nouvelle clé de
 `parameters.yml` : une table `source → ratio`, chaque ratio dans [0, 1]. Une source

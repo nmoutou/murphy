@@ -1,6 +1,6 @@
 # ADR-036 — `MURPHY_PROBLEMS` : une base des problèmes d'ingestion, une ligne par problème
 
-**Statut** : Proposé (15 octobre 2026) — amende ADR-034 §8 (l'amendement
+**Statut** : ✅ Accepté (15 octobre 2026) — amende ADR-034 §8 (l'amendement
 `MURPHY_META.collisions`), ADR-021 §1 (la base de `unformatted_relations`) et les
 conséquences d'ADR-035 (une copie écartée n'est plus une collision)
 

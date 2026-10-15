@@ -36,10 +36,7 @@ def _nuke_all() -> Node:
     return node(
         func=nuke_all_node,
         inputs=[
-            "doc_repo",
-            "graph_repo",
-            "search_index",
-            "transit_repo",
+            "nuke_targets",
             # Déjà arbitré par le plan du run : `False` hors dev
             "nuke_all",
             "pipeline_runtime",

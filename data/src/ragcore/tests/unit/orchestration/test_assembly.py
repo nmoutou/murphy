@@ -29,6 +29,7 @@ from ragcore.orchestration.kedro.stores import (
     open_clients,
     open_document_stores,
     open_meta_stores,
+    open_nuke_targets,
 )
 from ragcore.tests.fakes.embedder import NoopEmbedder
 from ragcore.tests.fakes.runtime import FakeRuntime
@@ -101,6 +102,7 @@ def test_les_depots_s_ouvrent_sans_se_connecter(
     try:
         open_document_stores(clients, settings, plan, vector_dimension=768)
         open_meta_stores(clients, settings)
+        open_nuke_targets(clients, settings, plan, vector_dimension=768)
     finally:
         _close(clients)
 

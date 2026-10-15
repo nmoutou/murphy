@@ -38,8 +38,10 @@ Le hook est le **point d'assemblage** du run. Dans l'ordre :
    une requête de sonde mesure la dimension des vecteurs, transmise à l'index du run.
    Échec = run arrêté avant tout nœud ;
 5. **Clients, index et dépôts du hook** (`stores.open_clients`, `ensure_indexes`,
-   `open_document_stores`, `open_meta_stores`) : `ensure_data_indexes` (MURPHY_DATA :
-   documents, pendantes), `ensure_meta_indexes` (MURPHY_META : bilans, statistiques) et
+   `open_document_stores`, `open_meta_stores`, `open_nuke_targets`) :
+   `ensure_data_indexes` (MURPHY_DATA : documents, pendantes, transit),
+   `ensure_meta_indexes` (MURPHY_META : bilans, statistiques), `ensure_problems_indexes`
+   (MURPHY_PROBLEMS : relations non formatées) et
    `ensure_graph_constraints` (Neo4j : unicité de `(:Document).identifier`).
 6. **La session du run** (`run_session.RunSession`) : le `PipelineContext` (run_id
    uuid4-hex, `sources` résolues par le plan, started_at ; sa propriété `source` vaut la
@@ -65,8 +67,9 @@ l'exécute dans la boucle juste avant de la fermer.
 
 ## 1. `nukeAll`
 
-Entrées : les dépôts Mongo et Neo4j du hook, l'index OpenSearch, `transit_repo`,
-`nuke_all` (du plan du run), le runtime du hook.
+Entrées : `nuke_targets` (les bases `MURPHY_DATA` et `MURPHY_PROBLEMS`, le graphe,
+l'index OpenSearch et les relations en transit), `nuke_all` (du plan du run), le runtime
+du hook.
 
 - **Toujours** : vide `MURPHY_DATA.transit_relations`, avant la phase 1 (ADR-034 §4).
 
@@ -80,10 +83,11 @@ Entrées : les dépôts Mongo et Neo4j du hook, l'index OpenSearch, `transit_rep
 - `nuke_all: true` → le garde-fou a déjà joué en amont : hors `ENVIRONMENT=dev`, `plan_run`
   ignore `parameters.yml` et `nuke_all` arrive ici à `false` (l'absence de la variable vaut
   `prod`). Le nœud n'efface donc qu'en dev :
-  - Mongo `MURPHY_DATA` : les collections `documents`, `pending_relations`,
-    `unformatted_relations` et `transit_relations`
-    (`schemas.reset_data_collections`, qui **repose les index** qu'un drop détruit avec
-    la collection) ;
+  - Mongo `MURPHY_DATA` : les collections `documents`, `pending_relations` et
+    `transit_relations` (`schemas.reset_data_collections`, qui **repose les index**
+    qu'un drop détruit avec la collection) ;
+  - Mongo `MURPHY_PROBLEMS` : ses collections déclarées, dont `unformatted_relations`
+    (`schemas.reset_problem_collections`, qui repose aussi les index) ;
   - Neo4j : le graphe entier ;
   - OpenSearch : **seulement** l'index du run, recréé aussitôt par `ensure_index()`. Les
     index système (Dashboards, plugins) vivent dans le même cluster ;

@@ -13,20 +13,13 @@ parser:
   type: MemoryDataset
   copy_mode: assign
 
-# --- Dépôts du hook (maintenance + phase 2 ; les workers fabriquent les leurs) ---
-doc_repo:
-  type: MemoryDataset
-  copy_mode: assign
-
-graph_repo:
+# --- Dépôts du hook (les workers fabriquent les leurs) ---
+# Ce que `nukeAll` efface : bases Mongo, graphe, index, transit
+nuke_targets:
   type: MemoryDataset
   copy_mode: assign
 
 search_index:
-  type: MemoryDataset
-  copy_mode: assign
-
-transit_repo:
   type: MemoryDataset
   copy_mode: assign
 

@@ -90,8 +90,9 @@ erreur ni trace. D'où :
 
 `nuke_all: true` + `ENVIRONMENT=dev` (ailleurs, `parameters.yml` est ignoré : rien n'est effacé) :
 
-- efface Mongo `MURPHY_DATA` (`documents`, `pending_relations`, `unformatted_relations`
-  et `transit_relations`, puis **repose les index**), le graphe Neo4j entier, et l'index
+- efface Mongo `MURPHY_DATA` (`documents`, `pending_relations` et `transit_relations`)
+  et `MURPHY_PROBLEMS` (ses collections déclarées, dont `unformatted_relations`), puis
+  **repose les index**, le graphe Neo4j entier, et l'index
   OpenSearch du run (`OPENSEARCH_INDEX`), recréé aussitôt ; les index système du cluster
   restent. Les pendantes partent avec le corpus : elles pointent vers des
   nœuds effacés, et le run suivant retrouve celles qui manquent toujours ;

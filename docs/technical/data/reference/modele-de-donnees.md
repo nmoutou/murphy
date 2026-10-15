@@ -95,22 +95,6 @@ rejeu ciblé, interrogé par tranches de 10 000 cibles (ADR-034 §7).
 Une pendante dérive des documents : elle vit dans leur base et `nuke_all` l'efface avec
 eux.
 
-### `unformatted_relations`
-
-Les `UnformattedRelation` (ADR-021) : les relations d'un lien à `@id` vide, dont la cible
-est décrite en toutes lettres (« code de l'environnement ») au lieu d'être identifiée —
-source_id, target_text, relation_type, sens, source, first_seen_run, last_seen_run.
-Écrites par la saga du document (étape `mongo_unformatted_upsert`, juste après
-`mongo_upsert`), elles **s'accumulent** comme les pendantes : rien n'est supprimé
-d'un run à l'autre, seul `last_seen_run` avance. La compensation de la saga ne retire que
-les lignes du document nées dans le run qui échoue.
-
-Index **unique** `uq_unformatted_source_text_type_sens` (source_id, target_text,
-relation_type, sens) — l'union de l'upsert ; `sens` en fait partie, car « je cite X » et
-« X me cite » sont deux faits. Son préfixe `source_id` sert aussi la compensation.
-
-Comme les pendantes, elles dérivent des documents et `nuke_all` les efface avec eux.
-
 ### `transit_relations`
 
 Les relations d'un run entre ses deux phases (ADR-034 §4) : la phase 1 n'en garde aucune
@@ -128,6 +112,30 @@ fois leurs arêtes écrites, en attente ou réduites. Chaque run relit et réext
 restes d'un run en échec ne contiennent rien que le suivant ne reproduise. Non vide en
 fin de phase 2, elle fait échouer le run (`TransitNotDrainedError`, ADR-034 §6). De
 l'ordre de 5 à 6 Go sur disque pendant un run complet.
+
+## MongoDB — base des problèmes `MURPHY_PROBLEMS`
+
+Le détail des problèmes d'ingestion (ADR-036), une ligne Mongo par problème. `nuke_all`
+vide chaque collection déclarée et repose ses index ; sans lui, les lignes des runs
+successifs s'accumulent.
+
+### `unformatted_relations`
+
+Les `UnformattedRelation` (ADR-021) : les relations d'un lien à `@id` vide, dont la cible
+est décrite en toutes lettres (« code de l'environnement ») au lieu d'être identifiée —
+source_id, target_text, relation_type, sens, source, first_seen_run, last_seen_run.
+Écrites par la saga du document (étape `mongo_unformatted_upsert`, juste après
+`mongo_upsert`), elles **s'accumulent** comme les pendantes : rien n'est supprimé
+d'un run à l'autre, seul `last_seen_run` avance. La compensation de la saga ne retire que
+les lignes du document nées dans le run qui échoue.
+
+Index **unique** `uq_unformatted_source_text_type_sens` (source_id, target_text,
+relation_type, sens) — l'union de l'upsert ; `sens` en fait partie, car « je cite X » et
+« X me cite » sont deux faits. Son préfixe `source_id` sert aussi la compensation.
+
+Comme les pendantes, elles dérivent des documents et `nuke_all` les efface avec eux.
+Elles vivent dans `MURPHY_PROBLEMS` depuis ADR-036 : une cible décrite est un problème
+d'ingestion, à lire à côté des autres.
 
 ## MongoDB — base méta `MURPHY_META`
 

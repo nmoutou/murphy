@@ -15,7 +15,7 @@ from ragcore.core.models.unformatted_relation import UnformattedRelation
 __all__ = ["UNFORMATTED_RELATIONS_COLLECTION", "MongoUnformattedRelationRepository"]
 
 UNFORMATTED_RELATIONS_COLLECTION = "unformatted_relations"
-"""Dans la base de données, pas la méta."""
+"""Dans la base des problèmes."""
 
 
 def _key_filter(relation: UnformattedRelation) -> dict[str, object]:

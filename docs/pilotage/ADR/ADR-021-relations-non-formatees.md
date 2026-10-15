@@ -1,6 +1,7 @@
 # ADR-021 — Relations non formatées : une collection, plus un champ du document
 
-**Statut** : ✅ Accepté (1er octobre 2026)
+**Statut** : ✅ Accepté (1er octobre 2026) · **§1 amendé par ADR-036** (la collection
+passe dans `MURPHY_PROBLEMS`)
 
 ## Contexte
 
@@ -39,6 +40,12 @@ Ce rangement posait deux problèmes :
 Index unique `uq_unformatted_source_text_type_sens` sur (`source_id`, `target_text`,
 `relation_type`, `sens`). `sens` fait partie de la clé : « je cite X » et « X me cite »
 sont deux faits.
+
+> **Amendement (15 octobre 2026, ADR-036 §8) : `MURPHY_PROBLEMS.unformatted_relations`.**
+> La collection change de base, pas de schéma : une cible décrite est un problème
+> d'ingestion, lue à côté des autres dans `MURPHY_PROBLEMS`. Ses lignes, son index
+> unique, son accumulation et son écriture par la saga restent ceux de cet ADR, et
+> `nuke_all` la vide toujours.
 
 **2. Accumulation, comme les pendantes.** L'écriture est une union idempotente :
 `$setOnInsert` fige `first_seen_run`, `$set` avance `last_seen_run`. Rien n'est supprimé

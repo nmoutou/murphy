@@ -37,6 +37,7 @@ from ragcore.orchestration.kedro.stores import (
     open_clients,
     open_document_stores,
     open_meta_stores,
+    open_nuke_targets,
 )
 
 logger = logging.getLogger(__name__)
@@ -85,10 +86,10 @@ class TelemetryHooks:
         return {
             "connector": stack.connector,
             "parser": stack.parser,
-            "doc_repo": stores.documents,
-            "graph_repo": stores.graph,
+            "nuke_targets": open_nuke_targets(
+                clients, settings, plan, embedder.dimension
+            ),
             "search_index": stores.search_index,
-            "transit_repo": stores.transit,
             "runner": build_runner(settings, plan, session.context, stack),
             "resolve_service": ResolveRelationsService(
                 graph_repo=stores.graph,

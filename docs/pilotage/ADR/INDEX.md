@@ -26,7 +26,7 @@
 | [ADR-018](ADR-018-collection-qdrant-nom-fixe.md) | Une collection Qdrant au nom fixe : fin de l'empreinte, du pointeur et du tracking | ✅ Accepté (30 septembre 2026) — remplace ADR-014, amende ADR-015 §3, §3 amendé par ADR-019, §1-§2 par ADR-028 |
 | [ADR-019](ADR-019-configuration-ingestion-environment.md) | Configuration de l'ingestion : un fichier, un bloc `dev`, `ENVIRONMENT` seul arbitre | ✅ Accepté (30 septembre 2026) — amende ADR-011 §5-§6, ADR-012, ADR-018 §3 ; §3 et §4 amendés (labels Neo4j déclarés par les sources ; découpe dans l'environnement ; bloc `dev` aplati), §4 par ADR-020, amendement du §3 par ADR-022, §3 par ADR-034 (`ingestion_ratio`) |
 | [ADR-020](ADR-020-suppression-du-manifest.md) | Suppression du manifest d'ingestion | ✅ Accepté (1er octobre 2026) — amende ADR-011 §4-§5 et ADR-019 §2 et §4 |
-| [ADR-021](ADR-021-relations-non-formatees.md) | Relations non formatées : une collection, plus un champ du document | ✅ Accepté (1er octobre 2026) |
+| [ADR-021](ADR-021-relations-non-formatees.md) | Relations non formatées : une collection, plus un champ du document | ✅ Accepté (1er octobre 2026) — §1 amendé par ADR-036 (`MURPHY_PROBLEMS.unformatted_relations`) |
 | [ADR-022](ADR-022-typage-des-documents.md) | Typage des documents : `document_type` fait foi, Neo4j le reflète | ✅ Accepté (1er octobre 2026) — amende ADR-015 §2 et l'amendement du §3 d'ADR-019 |
 | [ADR-023](ADR-023-balise-non-configuree.md) | Une balise sans renommage est non configurée | ✅ Accepté (1er octobre 2026) — amende ADR-011 §1, amendé par ADR-024, ADR-025 et ADR-026 |
 | [ADR-024](ADR-024-inconnus-tags-roots-links.md) | Les inconnus du bilan : `tags`, `roots`, `links` | ✅ Accepté (1er octobre 2026) — amende ADR-023, amendé par ADR-025 |
@@ -39,9 +39,9 @@
 | [ADR-031](ADR-031-modele-embedding-francais.md) | Un modèle d'embedding qui couvre le droit français | ✅ Accepté (11 octobre 2026) — `microsoft/harrier-oss-v1-0.6b`, consigne devant la question ; amende ADR-015 §2 |
 | [ADR-032](ADR-032-interface-onglets-dockview.md) | L'interface du moteur de recherche : un espace d'onglets Dockview | ✅ Accepté (11 octobre 2026) — réalise ADR-028 §10 côté frontend, amende ADR-030 §2 et §3 et ADR-017 §2 à §4 · ferme le point ouvert « Interface du frontend adaptée au pivot » · §1 à §6 et §12 amendés le 11 octobre 2026 (ni icône de document, ni bouton Scinder ; la barre de recherche passe dans l'onglet Résultats, renommé Recherche ; Explication renommé Résumé) · §2, §4, §6, §11 et §12 amendés par ADR-033 (sélection, sidebar, onglet Explications) |
 | [ADR-033](ADR-033-onglet-explications.md) | L'onglet Explications : un LLM borné aux documents choisis | ✅ Accepté (12 octobre 2026) — amende ADR-007, ADR-010, ADR-015 §2, ADR-030 §1, §4 à §6 et ADR-032 §2, §4, §6, §11 et §12 |
-| [ADR-034](ADR-034-ingestion-en-flux.md) | L'ingestion en flux : une mémoire bornée, des relations en transit | ✅ Accepté (14 octobre 2026) — amende ADR-013 et ADR-019 §3 |
-| [ADR-035](ADR-035-historique-editorial.md) | L'historique éditorial : les archives DILA font foi, chaque révision est gardée | Proposé (15 octobre 2026) — amende ADR-034 §1 |
-| [ADR-036](ADR-036-base-des-problemes.md) | `MURPHY_PROBLEMS` : une base des problèmes d'ingestion, une ligne par problème | Proposé (15 octobre 2026) — amende ADR-034 §8, ADR-021 §1 et ADR-035 (une copie écartée n'est plus une collision) |
+| [ADR-034](ADR-034-ingestion-en-flux.md) | L'ingestion en flux : une mémoire bornée, des relations en transit | ✅ Accepté (14 octobre 2026) — amende ADR-013 et ADR-019 §3 · §8 amendé par ADR-036 (`MURPHY_PROBLEMS`) |
+| [ADR-035](ADR-035-historique-editorial.md) | L'historique éditorial : les archives DILA font foi, chaque révision est gardée | Proposé (15 octobre 2026) — amende ADR-034 §1 · conséquences amendées par ADR-036 (une copie écartée n'est plus une collision) |
+| [ADR-036](ADR-036-base-des-problemes.md) | `MURPHY_PROBLEMS` : une base des problèmes d'ingestion, une ligne par problème | ✅ Accepté (15 octobre 2026) — amende ADR-034 §8, ADR-021 §1 et ADR-035 (une copie écartée n'est plus une collision) |
 
 ## Points ouverts rattachés
 

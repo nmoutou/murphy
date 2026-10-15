@@ -11,8 +11,8 @@ from testcontainers.mongodb import MongoDbContainer
 
 from ragcore.adapters.storage.mongo.client import create_mongo_client
 from ragcore.adapters.storage.mongo.schemas import (
-    ensure_data_indexes,
-    reset_data_collections,
+    ensure_problems_indexes,
+    reset_problem_collections,
 )
 from ragcore.adapters.storage.mongo.unformatted_repository import (
     MongoUnformattedRelationRepository,
@@ -24,7 +24,7 @@ from ragcore.core.models.unformatted_relation import UnformattedRelation
 
 pytestmark = pytest.mark.integration
 
-DB = "MURPHY_DATA_TEST"
+DB = "MURPHY_PROBLEMS_TEST"
 CITING = Identifier(raw="JURITEXT000000000001")
 RUN_1 = RunId("run-1")
 RUN_2 = RunId("run-2")
@@ -50,7 +50,7 @@ def mongo_uri():
 async def repo(mongo_uri):
     client = create_mongo_client(mongo_uri)
     await client.drop_database(DB)
-    await ensure_data_indexes(client[DB])
+    await ensure_problems_indexes(client[DB])
     yield MongoUnformattedRelationRepository(client, DB)
     client.close()
 
@@ -142,7 +142,7 @@ async def test_the_nuke_empties_the_collection_and_restores_the_unique_index(
     """La remise à neuf repose les index, que le drop emporte."""
     await repo.upsert_many([_unformatted("code civil")], RUN_1)
 
-    await reset_data_collections(repo._collection.database)  # noqa: SLF001
+    await reset_problem_collections(repo._collection.database)  # noqa: SLF001
 
     assert await repo.count() == 0
     indexes = await repo._collection.index_information()  # noqa: SLF001

@@ -25,7 +25,7 @@ flowchart TB
     end
 
     subgraph stores ["Les bases partagées"]
-        Mongo[(MongoDB<br>MURPHY_DATA + MURPHY_META)]
+        Mongo[(MongoDB<br>MURPHY_DATA + MURPHY_META<br>+ MURPHY_PROBLEMS)]
         OpenSearch[(OpenSearch<br>un index, nom fixe)]
         Neo4j[(Neo4j<br>graphe documentaire)]
     end

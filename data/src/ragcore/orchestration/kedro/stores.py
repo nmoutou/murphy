@@ -26,6 +26,7 @@ from ragcore.adapters.storage.mongo.run_summary_repository import (
 from ragcore.adapters.storage.mongo.schemas import (
     ensure_data_indexes,
     ensure_meta_indexes,
+    ensure_problems_indexes,
 )
 from ragcore.adapters.storage.mongo.statistics_repository import (
     MongoStatisticsRepository,
@@ -43,6 +44,7 @@ from ragcore.adapters.storage.opensearch.client import create_opensearch_client
 from ragcore.adapters.storage.opensearch.search_index import OpenSearchSearchIndex
 from ragcore.application.ingest_document import IngestionStores
 from ragcore.core.ports.runtime import AsyncRuntime
+from ragcore.orchestration.kedro.nodes.nuke_all import NukeTargets
 from ragcore.orchestration.kedro.run_plan import RunPlan
 
 __all__ = [
@@ -53,6 +55,7 @@ __all__ = [
     "open_clients",
     "open_document_stores",
     "open_meta_stores",
+    "open_nuke_targets",
 ]
 
 
@@ -95,6 +98,9 @@ def ensure_indexes(
 ) -> None:
     runtime.run(ensure_data_indexes(clients.mongo[settings.mongodb_data_db_name]))
     runtime.run(ensure_meta_indexes(clients.mongo[settings.mongodb_meta_db_name]))
+    runtime.run(
+        ensure_problems_indexes(clients.mongo[settings.mongodb_problems_db_name])
+    )
     runtime.run(ensure_graph_constraints(clients.neo4j))
 
 
@@ -114,7 +120,9 @@ def open_document_stores(
             clients.opensearch, plan.index, vector_dimension
         ),
         pending=MongoPendingRelationRepository(clients.mongo, data_db),
-        unformatted=MongoUnformattedRelationRepository(clients.mongo, data_db),
+        unformatted=MongoUnformattedRelationRepository(
+            clients.mongo, settings.mongodb_problems_db_name
+        ),
         transit=MongoTransitRelationRepository(clients.mongo, data_db),
     )
 
@@ -125,4 +133,22 @@ def open_meta_stores(clients: InfraClients, settings: InfraSettings) -> MetaStor
         summaries=MongoRunSummaryRepository(clients.mongo, meta_db),
         statistics=MongoStatisticsRepository(clients.mongo, meta_db),
         collisions=MongoCollisionRepository(clients.mongo, meta_db),
+    )
+
+
+def open_nuke_targets(
+    clients: InfraClients,
+    settings: InfraSettings,
+    plan: RunPlan,
+    vector_dimension: int,
+) -> NukeTargets:
+    data_db = settings.mongodb_data_db_name
+    return NukeTargets(
+        data_db=clients.mongo[data_db],
+        problems_db=clients.mongo[settings.mongodb_problems_db_name],
+        graph=Neo4jGraphRepository(clients.neo4j, plan.node_hydration),
+        search_index=OpenSearchSearchIndex(
+            clients.opensearch, plan.index, vector_dimension
+        ),
+        transit=MongoTransitRelationRepository(clients.mongo, data_db),
     )

@@ -40,7 +40,7 @@ coquille arrête le run même en prod.
 
 | Clé | Valeur | En `dev` | Hors `dev` |
 |---|---|---|---|
-| `nuke_all` | `true` | Efface TOUTES les données de TOUTES les bases en tête de run (Mongo `documents`, `pending_relations`, `unformatted_relations` et `transit_relations`, graphe Neo4j, l'index OpenSearch du run), en **préservant `MURPHY_META`**. Le levier disque du développement. | Rien n'est effacé. |
+| `nuke_all` | `true` | Efface TOUTES les données de TOUTES les bases en tête de run (Mongo `documents`, `pending_relations` et `transit_relations`, les collections de `MURPHY_PROBLEMS`, graphe Neo4j, l'index OpenSearch du run), en **préservant `MURPHY_META`**. Le levier disque du développement. | Rien n'est effacé. |
 | `embedding_enabled` | `true` | **L'interrupteur d'embedding (ADR-012).** `false` = aucun vecteur calculé ni écrit : les passages partent dans l'index sans vecteur, cherchables par leur seul texte ; Mongo/Neo4j normaux — le régime d'itération sur le modèle de données. TEI doit quand même tourner : le modèle servi est vérifié et la dimension mesurée au démarrage. | On embarque toujours. |
 | `skip_unconfigured` | `false` | Le sort des données non configurées (ADR-023, ADR-024) : les métadonnées d'une balise absente de la table de rôles ou sans renommage dans `meta_renames`, et les arêtes d'un type de lien non configuré (`typelien` inconnu, lien heuristique). `false` = ingérées (métadonnée sous sa clé chemin-complet, arête sous son nom brut : le `typelien`, ou la balise d'un lien heuristique) ; `true` = retirées. Les signaux `tags` et `links`, eux, sont TOUJOURS émis — on compte d'abord, on filtre ensuite. | Toujours retirées (ADR-011 §1). |
 | `include_path` | `true` | Les chemins des fichiers XML source (`source_files`), dans le document Mongo **et** sur le nœud Neo4j. Repasser à `false` sans `nuke_all` : Mongo les perd au run suivant (`replace_one` remplace le document entier), mais Neo4j les garde (`SET +=` n'efface aucune propriété). | Aucun chemin écrit (ADR-011 §4). |
@@ -70,8 +70,9 @@ service.
 |---|---|---|
 | `ENVIRONMENT` | `prod` | `dev` ou `prod` (ADR-019). **Le défaut penche vers le refus** : seul `dev` applique `parameters.yml` (`nuke_all`, interrupteur d'embedding, balises non configurées, chemins des fichiers source, hydratation Neo4j). Absente ou vide, la variable vaut `prod` : un `.env` incomplet est traité comme protégé. Toute autre valeur (`Dev`, `development`…) arrête le run au chargement de la configuration, avant tout nœud. |
 | `MONGODB_URI` | `mongodb://localhost:27017` | |
-| `MONGODB_DATA_DB_NAME` | `MURPHY_DATA` | Données : `documents`, `pending_relations`, `unformatted_relations`, `transit_relations` (temporaire, le temps d'un run). |
+| `MONGODB_DATA_DB_NAME` | `MURPHY_DATA` | Données : `documents`, `pending_relations`, `transit_relations` (temporaire, le temps d'un run). |
 | `MONGODB_META_DB_NAME` | `MURPHY_META` | Méta : bilans de run. |
+| `MONGODB_PROBLEMS_DB_NAME` | `MURPHY_PROBLEMS` | Problèmes d'ingestion, une ligne par problème (ADR-036) : `unformatted_relations`. Vidée par `nuke_all`. |
 | `NEO4J_URI` / `NEO4J_USERNAME` / `NEO4J_PASSWORD` | `bolt://localhost:7687` / `neo4j` / `neo4j` | Mot de passe en `SecretStr`. |
 | `OPENSEARCH_URL` | `http://localhost:9200` | Sans authentification : le plugin de sécurité est coupé en dev. La prod l'active (HTTPS, compte admin) ; l'ingestion n'y sait pas encore se connecter. |
 | `OPENSEARCH_INDEX` | — (**obligatoire**) | Le nom fixe de l'index, que le backend lira aussi. Absente = levée au chargement des settings. |
