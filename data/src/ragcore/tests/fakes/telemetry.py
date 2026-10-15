@@ -4,6 +4,7 @@ from typing import Any
 
 from ragcore.adapters.telemetry.measures import MeasuresAggregator
 from ragcore.core.models.audit import AuditEvent
+from ragcore.core.models.collision_record import CollisionRecord
 from ragcore.core.models.run_measures import MeasurePath, RunMeasures
 from ragcore.core.models.run_stats import RunStats
 from ragcore.core.models.unknown_tally import UnknownExample
@@ -18,6 +19,7 @@ class RecordingTelemetry:
         self.closed = False
         self._declared = RunStats.empty()
         self.measured: list[tuple[MeasurePath, float, str]] = []
+        self.collisions: list[CollisionRecord] = []
 
     def emit(self, event: AuditEvent) -> None:
         self.events.append(event)
@@ -31,8 +33,9 @@ class RecordingTelemetry:
     ) -> None:
         self._declared = self._declared.with_unknown(category, value, example)
 
-    def record_collision(self, key: str, source_files: tuple[str, ...]) -> None:
-        self._declared = self._declared.with_collision(key, source_files)
+    def record_collision(self, record: CollisionRecord) -> None:
+        self._declared = self._declared.with_collision(record.reason)
+        self.collisions.append(record)
 
     def record_invalidation(self, reason: str) -> None:
         self._declared = self._declared.with_invalidation(reason)

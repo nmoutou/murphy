@@ -1,7 +1,7 @@
 """Parse un flux de documents : ceux qui parsent partent à l'ingestion, déjà en base ou
 non ; les autres sont rejetés et comptés (``document.invalidated``).
 
-Les collisions (ADR-025) sont comptées par (document, clé), document refusé compris.
+Les collisions sont déclarées par (document, clé), document refusé compris.
 """
 
 from __future__ import annotations
@@ -11,13 +11,23 @@ from collections.abc import Iterable, Iterator, Sequence
 from dataclasses import dataclass
 from time import perf_counter
 
-from ragcore.core.exceptions import CollisionError, ParseError, ValidationError
+from ragcore.core.exceptions import (
+    CollisionError,
+    FacetRootCollisionError,
+    ParseError,
+    ValidationError,
+)
 from ragcore.core.models.audit import build_event
 from ragcore.core.models.collision import Collision
+from ragcore.core.models.collision_record import CollisionRecord
 from ragcore.core.models.document import ParsedDocument, RawDocument
 from ragcore.core.models.unknown_tally import UnknownExample
 from ragcore.core.ports.parser import BaseParser, ParseResult
 from ragcore.core.ports.telemetry import WorkerTelemetry
+from ragcore.core.services.collision_reasons import (
+    COLLISION_FACET_ROOT_DUPLICATED,
+    COLLISION_METADATA,
+)
 from ragcore.core.services.exclusion_reasons import REASON_PARSE_ERROR
 from ragcore.core.services.unknown_categories import (
     CATEGORY_LINK,
@@ -69,7 +79,7 @@ class DocumentParsing:
                 self.skipped.append(raw.source_document_id)
                 continue
             self._site.declare_signals(result)
-            self._site.declare_collisions(result.collisions)
+            self._site.declare_collisions(_metadata_records(result.collisions))
             parsed = _apply_cursor(result, self._skip_unconfigured)
             self._site.declare_parsed(raw, parsed)
             yield parsed
@@ -95,7 +105,10 @@ def _parse(
     try:
         return parser.parse(raw)
     except CollisionError as exc:
-        site.declare_collisions(exc.collisions)
+        site.declare_collisions(_metadata_records(exc.collisions))
+        site.exclude(raw, exc, exc.reason)
+    except FacetRootCollisionError as exc:
+        site.declare_collisions(_facet_root_records(raw, exc))
         site.exclude(raw, exc, exc.reason)
     except ValidationError as exc:
         site.exclude(raw, exc, exc.reason)
@@ -103,6 +116,34 @@ def _parse(
         # Toute autre exception sort du contrat de BaseParser : un bug, qui arrête le run
         site.exclude(raw, exc, REASON_PARSE_ERROR)
     return None
+
+
+def _metadata_records(collisions: Sequence[Collision]) -> list[CollisionRecord]:
+    return [
+        CollisionRecord(
+            source=collision.source,
+            reason=COLLISION_METADATA,
+            identifier=collision.identifier,
+            key=collision.key,
+            files=collision.source_files(),
+        )
+        for collision in collisions
+    ]
+
+
+def _facet_root_records(
+    raw: RawDocument, exc: FacetRootCollisionError
+) -> list[CollisionRecord]:
+    return [
+        CollisionRecord(
+            source=raw.source,
+            reason=COLLISION_FACET_ROOT_DUPLICATED,
+            identifier=raw.source_document_id,
+            key=root,
+            files=files,
+        )
+        for root, files in exc.roots.items()
+    ]
 
 
 def _apply_cursor(result: ParseResult, skip_unconfigured: bool) -> ParsedDocument:
@@ -176,7 +217,7 @@ class _ParseSite:
             )
         )
 
-    def declare_collisions(self, collisions: Sequence[Collision]) -> None:
+    def declare_collisions(self, records: Sequence[CollisionRecord]) -> None:
         """Une par (document, clé)."""
-        for collision in collisions:
-            self.telemetry.record_collision(collision.key, collision.source_files())
+        for record in records:
+            self.telemetry.record_collision(record)

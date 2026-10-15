@@ -18,7 +18,6 @@ from ragcore.core.telemetry_events import (
     DOCUMENT_PERSISTED,
 )
 
-from .collision_tally import CollisionTally
 from .enums import SourceName
 from .identifiers import RunId
 from .inventory import SourceInventory
@@ -54,8 +53,9 @@ class RunSummary(BaseModel):
     """Ce que le run n'a pas su nommer, par catégorie : pour chaque mot, le nombre de
     documents qui le portent et l'un d'eux. Vide = le vocabulaire a tout couvert."""
 
-    collisions: dict[str, CollisionTally]
-    """Les clés de métadonnée qui ont reçu plusieurs valeurs distinctes (ADR-025)."""
+    collisions: dict[str, int]
+    """Par raison, le nombre de (document, clé) en collision ; le détail est dans
+    ``MURPHY_META.collisions``."""
 
     invalidations: dict[str, int] = Field(default_factory=dict)
     """Les rejets au parse, par raison. Un défaut : les bilans écrits avant lui se

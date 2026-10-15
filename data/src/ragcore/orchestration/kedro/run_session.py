@@ -9,7 +9,11 @@ import logging
 from collections.abc import Mapping
 from dataclasses import dataclass
 
-from ragcore.adapters.telemetry import MeasuresAggregator, RunStatsAggregator
+from ragcore.adapters.telemetry import (
+    CollisionsAggregator,
+    MeasuresAggregator,
+    RunStatsAggregator,
+)
 from ragcore.adapters.telemetry.factory import assemble_telemetry
 from ragcore.adapters.telemetry.worker_stack import WorkerTelemetryStack
 from ragcore.application.run_context import PipelineContext
@@ -20,6 +24,7 @@ from ragcore.core.models.run_measures import RunMeasures
 from ragcore.core.models.run_statistics import RunStatistics
 from ragcore.core.models.run_stats import RunStats
 from ragcore.core.models.run_summary import RunStatus, RunSummary
+from ragcore.core.ports.collision_repository import CollisionRepository
 from ragcore.core.ports.embedder import BaseEmbedder
 from ragcore.core.ports.run_summary_repository import RunSummaryRepository
 from ragcore.core.ports.runtime import AsyncRuntime
@@ -37,12 +42,13 @@ logger = logging.getLogger(__name__)
 @dataclass(frozen=True)
 class RunAggregates:
     """Ce que le run accumule : les compteurs du bilan, les mesures et les étapes de
-    ``statistics``. Le ``run_sink`` du catalogue : ``ingest`` y pousse les agrégats des
-    workers."""
+    ``statistics``, le détail des collisions. Le ``run_sink`` du catalogue : ``ingest``
+    y pousse les agrégats des workers."""
 
     stats: RunStatsAggregator
     measures: MeasuresAggregator
     stages: StageClock
+    collisions: CollisionsAggregator
 
     def absorb(self, stats: RunStats, measures: RunMeasures) -> None:
         self.stats.absorb(stats)
@@ -65,8 +71,11 @@ def start_telemetry(
         ),
         measures=MeasuresAggregator(),
         stages=StageClock(),
+        collisions=CollisionsAggregator(),
     )
-    telemetry = assemble_telemetry(aggregates.stats, aggregates.measures)
+    telemetry = assemble_telemetry(
+        aggregates.stats, aggregates.measures, aggregates.collisions
+    )
     return telemetry, aggregates
 
 
@@ -77,6 +86,7 @@ class RunSession:
     aggregates: RunAggregates
     summaries: RunSummaryRepository
     statistics: StatisticsRepository
+    collisions: CollisionRepository
     embedder: BaseEmbedder
     """Interrogé en fin de run sur les chunks qu'il a dû raccourcir."""
     runtime: AsyncRuntime
@@ -84,10 +94,18 @@ class RunSession:
 
     def close(self, status: RunStatus, error_message: str | None = None) -> RunSummary:
         """Rend le bilan persisté, que le run ait réussi ou cassé, et persiste ses
-        statistiques. Les chunks raccourcis sont déclarés avant, pour y figurer."""
+        statistiques et ses collisions. Les chunks raccourcis sont déclarés avant, pour
+        y figurer."""
         self._declare_truncations()
         summary = self._persist_summary(status, error_message)
         self.runtime.run(self.statistics.upsert(self._statistics()))
+        self.runtime.run(
+            self.collisions.replace_run(
+                self.context.run_id,
+                self.context.started_at,
+                self.aggregates.collisions.snapshot(),
+            )
+        )
         return summary
 
     def _declare_truncations(self) -> None:

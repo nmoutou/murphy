@@ -9,7 +9,11 @@ from datetime import UTC, datetime
 
 import pytest
 
-from ragcore.core.exceptions import CollisionError, ValidationError
+from ragcore.core.exceptions import (
+    CollisionError,
+    FacetRootCollisionError,
+    ValidationError,
+)
 from ragcore.core.models.document import RawDocument
 from ragcore.core.models.enums import DocumentType, SourceName
 from ragcore.core.ports.parser import ParseResult
@@ -126,6 +130,14 @@ def test_deux_facettes_de_meme_racine_rendent_l_ordre_indetermine() -> None:
     assert "racines en double ['VERSION'], fichiers ['0.xml', '1.xml']" in str(
         refused.value
     )
+
+
+def test_une_racine_en_double_porte_ses_seuls_fichiers() -> None:
+    """Pour le détail des collisions : la facette de racine unique n'en est pas."""
+    with pytest.raises(FacetRootCollisionError) as refused:
+        _parse(_facet("STRUCT", ""), _facet("VERSION", ""), _facet("VERSION", ""))
+
+    assert refused.value.roots == {"VERSION": ("1.xml", "2.xml")}
 
 
 def test_une_facette_seule_de_racine_inconnue_reste_un_signal() -> None:

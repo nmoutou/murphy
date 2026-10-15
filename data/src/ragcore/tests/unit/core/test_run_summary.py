@@ -9,7 +9,6 @@ import pytest
 
 from ragcore.adapters.telemetry.aggregator import RunStatsAggregator
 from ragcore.core.models.audit import build_event
-from ragcore.core.models.collision_tally import CollisionTally
 from ragcore.core.models.enums import SourceName
 from ragcore.core.models.identifiers import RunId
 from ragcore.core.models.inventory import SourceInventory
@@ -27,7 +26,6 @@ from ragcore.core.telemetry_events import (
 RUN = RunId("run-1")
 DOC_1 = UnknownExample(identifier="LEGIARTI000000000001", source_file="a.xml")
 DOC_2 = UnknownExample(identifier="LEGIARTI000000000002", source_file="b.xml")
-FACETS = ("version.xml", "struct.xml")
 
 
 @pytest.fixture
@@ -103,7 +101,7 @@ def test_the_stored_summary_is_flat() -> None:
             unknowns={
                 "relation_type": {"titre_tm": UnknownTally(count=2, example=DOC_1)}
             },
-            collisions={"url": CollisionTally(count=3, example=FACETS)},
+            collisions={"metadata": 3},
             invalidations={"facet_root_duplicated": 4},
         ),
         context_run_id=RUN,
@@ -124,9 +122,7 @@ def test_the_stored_summary_is_flat() -> None:
             }
         }
     }
-    assert stored["collisions"] == {
-        "url": {"count": 3, "example": ["version.xml", "struct.xml"]}
-    }
+    assert stored["collisions"] == {"metadata": 3}
     assert stored["invalidations"] == {"facet_root_duplicated": 4}
     assert "stats" not in stored
     assert "breakdowns" not in stored
@@ -173,13 +169,13 @@ def test_aggregator_declares_what_it_could_not_name(
 def test_aggregator_counts_collisions_apart_from_unknowns(
     aggregator: RunStatsAggregator,
 ) -> None:
-    """Une collision a son propre champ, au premier niveau."""
-    aggregator.record_collision("url", FACETS)
-    aggregator.record_collision("url", FACETS)
+    """Une collision a son propre champ, au premier niveau, compté par raison."""
+    aggregator.record_collision("metadata")
+    aggregator.record_collision("metadata")
 
     summary = aggregator.finalize(RunStatus.OK)
 
-    assert summary.collisions == {"url": CollisionTally(count=2, example=FACETS)}
+    assert summary.collisions == {"metadata": 2}
     assert "collisions" not in summary.unknowns
 
 

@@ -1,6 +1,7 @@
 from pymongo import ASCENDING, IndexModel
 
 from ragcore.adapters.storage.mongo.client import MongoDatabase
+from ragcore.adapters.storage.mongo.collision_repository import COLLISIONS_COLLECTION
 from ragcore.adapters.storage.mongo.pending_repository import (
     PENDING_RELATIONS_COLLECTION,
 )
@@ -80,6 +81,13 @@ _META_INDEXES: dict[str, list[IndexModel]] = {
             [("run_id", ASCENDING)],
             unique=True,
             name="uq_statistics_run_id",
+        ),
+    ],
+    COLLISIONS_COLLECTION: [
+        IndexModel(
+            [("run_id", ASCENDING), ("source", ASCENDING), ("part", ASCENDING)],
+            unique=True,
+            name="uq_collisions_run_source_part",
         ),
     ],
 }

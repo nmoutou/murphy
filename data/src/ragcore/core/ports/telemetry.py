@@ -1,6 +1,7 @@
 from typing import Any, Protocol, runtime_checkable
 
 from ..models.audit import AuditEvent
+from ..models.collision_record import CollisionRecord
 from ..models.run_measures import MeasurePath, RunMeasures
 from ..models.run_stats import RunStats
 from ..models.unknown_tally import UnknownExample
@@ -50,9 +51,12 @@ class WorkerTelemetry(TelemetryPort, Protocol):
         """
         ...
 
-    def record_collision(self, key: str, source_files: tuple[str, ...]) -> None:
-        """Une clé de métadonnée qui a reçu plusieurs valeurs dans le document de
-        fichiers ``source_files`` (ADR-025). Un appel par document et par clé.
+    def record_collision(self, record: CollisionRecord) -> None:
+        """Une collision, comptée au bilan et détaillée dans ``MURPHY_META.collisions``.
+        Un appel par document et par clé.
+
+        Seule la pile du hook garde le détail : lecture et parse tournent dans le
+        thread du nœud, jamais dans un worker, dont le détail serait perdu.
         """
         ...
 

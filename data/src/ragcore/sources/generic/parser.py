@@ -15,12 +15,16 @@ from typing import Any
 
 from pydantic import ValidationError as PydanticValidationError
 
-from ragcore.core.exceptions import CollisionError, ParseError, ValidationError
+from ragcore.core.exceptions import (
+    CollisionError,
+    FacetRootCollisionError,
+    ParseError,
+    ValidationError,
+)
 from ragcore.core.models import ParsedDocument, RawDocument, SourceName
 from ragcore.core.models.identifiers import Identifier
 from ragcore.core.ports.parser import ParseResult
 from ragcore.core.services.exclusion_reasons import (
-    REASON_FACET_ROOT_DUPLICATED,
     REASON_FACET_ROOT_UNDECLARED,
     REASON_IDENTIFIER_MALFORMED,
     REASON_IDENTIFIER_MISSING,
@@ -196,12 +200,16 @@ def _ordered(sourced: list[SourcedFacet], table: RoleTable) -> list[SourcedFacet
     if len(sourced) <= 1:
         return sourced
     roots = [facet["tag"] for facet, _ in sourced]
-    duplicated = sorted({root for root in roots if roots.count(root) > 1})
+    duplicated = {
+        root: tuple(file for facet, file in sourced if facet["tag"] == root)
+        for root in sorted(set(roots))
+        if roots.count(root) > 1
+    }
     if duplicated:
-        raise ValidationError(
-            REASON_FACET_ROOT_DUPLICATED,
-            f"Ordre des facettes indéterminé : racines en double {duplicated}, "
+        raise FacetRootCollisionError(
+            f"Ordre des facettes indéterminé : racines en double {list(duplicated)}, "
             f"fichiers {[source_file for _, source_file in sourced]}",
+            duplicated,
         )
     undeclared = sorted(set(roots) - set(table.roots))
     if undeclared:

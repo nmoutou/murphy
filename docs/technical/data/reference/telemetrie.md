@@ -85,12 +85,10 @@ commutative ferait dépendre le bilan de l'ordonnancement). Quatre champs :
 
   Une balise sans valeur n'y apparaît pas : elle n'a rien à ingérer. Un lien qu'on ne
   sait pas écrire n'est pas un type de lien : il est compté par `relation.unknown`.
-- `collisions` : clé de métadonnée qui a reçu au moins deux valeurs distinctes dans un
-  document (ADR-025), rangée en liste (`list`) ou refusée → `{count, example}`. Ce n'est
-  pas un inconnu : la table sait la nommer. `count` est un nombre de documents ;
-  `example` est la liste des fichiers d'où viennent les valeurs d'un de ces
-  documents, distincts, dans l'ordre déclaré des facettes : deux pour une collision entre
-  facettes, un pour une balise répétée dans une facette. Fusion : comme `unknowns`.
+- `collisions` : raison de collision → nombre de (document, clé) (`record_collision`).
+  Ce n'est pas un inconnu : la table sait nommer ce qui entre en collision. Le détail
+  vit dans `MURPHY_META.collisions` (voir [Les collisions d'un run](#les-collisions-dun-run)).
+  Fusion : somme.
 - `invalidations` : raison de rejet au parse → nombre de documents (`record_invalidation`,
   un appel par `document.invalidated`) ; leur somme vaut `counts["document.invalidated"]`.
   Les raisons sont celles de `exclusion_reasons.py` : `identifier_missing`,
@@ -144,9 +142,7 @@ document est plat :
       "example": { "identifier": "LEGITEXT…", "source_file": "/…/LEGITEXT….xml" } } },
     "roots": {},
     "links": { "ZORGLUB": { "count": 1, "example": { … } } } },
-  "collisions": {
-    "versions_a_venir": { "count": 14, "example": [
-      "/…/texte/version/LEGITEXT….xml" ] } },
+  "collisions": { "metadata": 14, "facet_root_duplicated": 3 },
   "invalidations": { "facet_root_duplicated": 3, "parse_error": 1 },
   "sampling": { "legi": { "total": 2116313, "retained": 211632, "ratio": 0.1 } } }
 ```
@@ -154,6 +150,40 @@ document est plat :
 `sources` est toujours une liste, même pour un run mono-source. `error_message` n'est
 écrit que sur un run `failed` : un `degraded` n'a pas d'exception, il se lit dans les
 compteurs.
+
+## Les collisions d'un run
+
+`MURPHY_META.collisions` détaille ce que `run_summaries.collisions` compte (ADR-034 §8,
+amendé) : un document par source en collision et par run, écrit à la clôture de la
+session, **même en cas d'échec**. Une source sans collision n'a pas de document.
+
+```json
+{ "run_id": "…", "source": "legi", "started_at": ISODate("…"), "part": 1, "parts": 1,
+  "collisions": {
+    "metadata": { "count": 14, "details": [
+      { "identifier": "LEGITEXT…", "key": "versions_a_venir",
+        "files": ["/…/texte/version/LEGITEXT….xml"] } ] },
+    "facet_root_duplicated": { "count": 3, "details": [
+      { "identifier": "LEGIARTI…", "key": "ARTICLE",
+        "files": ["/…/TNC_en_vigueur/…/LEGIARTI….xml",
+                  "/…/TNC_non_vigueur/…/LEGIARTI….xml"] } ] } } }
+```
+
+Un détail par (document, clé), document refusé compris ; ni les valeurs en conflit, ni
+les dates des fichiers : la clé et les chemins suffisent à retrouver la collision. Les
+raisons sont celles de `collision_reasons.py` :
+
+| Raison | `key` | `files` |
+|---|---|---|
+| `metadata` | La clé de métadonnée qui a reçu plusieurs valeurs distinctes (ADR-025), rangée en liste ou refusée (`invalidations.collision`) | Les fichiers d'où viennent les valeurs, distincts, dans l'ordre des facettes |
+| `facet_root_duplicated` | La racine XML portée par plusieurs fichiers ; le document est aussi rejeté (`invalidations.facet_root_duplicated`) | Les seuls fichiers de cette racine |
+
+`count` est le total de la source ; les `details` sont triés par (`identifier`, `key`),
+pour qu'un run rejoué écrive les mêmes documents. Au-delà de 15 Mio de détails, la
+source est découpée en parties (`part` sur `parts`), chacune répétant les comptes de la
+source entière : la limite de 16 Mo d'un document Mongo ne tronque rien. Le détail
+s'accumule dans le `CollisionsAggregator` du hook : lecture et parse tournent dans le
+thread du nœud `ingest`, jamais dans un worker.
 
 ## Les statistiques d'un run
 

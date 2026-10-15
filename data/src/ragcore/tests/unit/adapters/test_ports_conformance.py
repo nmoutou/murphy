@@ -10,6 +10,9 @@ from datetime import UTC, datetime
 
 from ragcore.adapters.embedding import EmbeddingTransport, TeiEmbedder
 from ragcore.adapters.runtime import AsyncioRuntime, AsyncioRuntimeFactory
+from ragcore.adapters.storage.mongo.collision_repository import (
+    MongoCollisionRepository,
+)
 from ragcore.adapters.storage.mongo.document_repository import MongoDocumentRepository
 from ragcore.adapters.storage.mongo.pending_repository import (
     MongoPendingRelationRepository,
@@ -34,11 +37,12 @@ from ragcore.adapters.telemetry import (
     RunStatsAggregator,
     WorkerTelemetryFactory,
 )
-from ragcore.core.models.collision_tally import CollisionTally
+from ragcore.core.models.collision_record import CollisionRecord
 from ragcore.core.models.enums import SourceName
 from ragcore.core.models.processing import EmbeddingModel
 from ragcore.core.models.run_stats import RunStats
 from ragcore.core.models.unknown_tally import UnknownExample, UnknownTally
+from ragcore.core.ports.collision_repository import CollisionRepository
 from ragcore.core.ports.document_repository import DocumentRepository
 from ragcore.core.ports.embedder import BaseEmbedder
 from ragcore.core.ports.graph_repository import GraphRepository
@@ -81,6 +85,10 @@ class TestStorageAdapters:
     def test_mongo_statistics_repository(self) -> None:
         repo = MongoStatisticsRepository.__new__(MongoStatisticsRepository)
         assert isinstance(repo, StatisticsRepository)
+
+    def test_mongo_collision_repository(self) -> None:
+        repo = MongoCollisionRepository.__new__(MongoCollisionRepository)
+        assert isinstance(repo, CollisionRepository)
 
     def test_mongo_run_summary_repository(self) -> None:
         repo = MongoRunSummaryRepository.__new__(MongoRunSummaryRepository)
@@ -272,17 +280,23 @@ class TestTelemetry:
         finally:
             runtime.close()
 
-    def test_a_collision_reaches_the_aggregate(self) -> None:
-        """Une collision déclarée suit le même chemin, vers son propre champ."""
+    def test_a_collision_is_counted_and_detailed(self) -> None:
+        """Le compte va au bilan, le détail à son propre agrégat."""
         runtime = AsyncioRuntimeFactory().build(0)
         try:
             stack = _telemetry_factory().build(0, runtime)
-            source_files = ("version.xml", "struct.xml")
-            stack.record_collision("url", source_files)
+            record = CollisionRecord(
+                source=SourceName.LEGI,
+                reason="metadata",
+                identifier="LEGIARTI000000000001",
+                key="url",
+                files=("version.xml", "struct.xml"),
+            )
+            stack.record_collision(record)
 
-            assert stack.snapshot().collisions == {
-                "url": CollisionTally(count=1, example=source_files)
-            }
+            assert stack.snapshot().collisions == {"metadata": 1}
+            details = stack._backends.collisions.snapshot()  # noqa: SLF001
+            assert details.records == (record,)
         finally:
             runtime.close()
 

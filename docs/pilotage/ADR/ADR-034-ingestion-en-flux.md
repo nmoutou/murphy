@@ -1,7 +1,8 @@
 # ADR-034 — L'ingestion en flux : une mémoire bornée, des relations en transit
 
 **Statut** : ✅ Accepté (14 octobre 2026) — amende ADR-013 (un échantillonnage revient,
-en ratio) et ADR-019 §3 (une clé de plus dans `parameters.yml`)
+en ratio) et ADR-019 §3 (une clé de plus dans `parameters.yml`) · **§8 amendé le
+15 octobre 2026** (le détail des collisions a sa collection)
 
 ## Contexte
 
@@ -164,6 +165,19 @@ Le schéma :
 `queues` dit quel côté de la file freine : une lecture souvent bloquée désigne les
 workers, des workers souvent inactifs désignent la lecture.
 
+> **Amendement (15 octobre 2026) : `MURPHY_META.collisions`.** `run_summaries` ne garde
+> des collisions qu'un compte par raison ; leur détail va dans `collisions`, écrit à la
+> clôture de la session comme `statistics`, même en cas d'échec. Un document par source
+> en collision et par run : `{run_id, source, started_at, part, parts, collisions:
+> {raison: {count, details: [{identifier, key, files}]}}}`, chemins absolus, sans les
+> valeurs en conflit. Trois raisons : `metadata` (ADR-025), `facet_root_duplicated` (le
+> document est aussi rejeté, compté dans `invalidations` : l'équation de complétude ne
+> change pas), et les copies arbitrées par le connecteur. Au-delà de 15 Mio de détails,
+> le document est découpé en parties numérotées (`part` sur `parts`, index unique
+> `(run_id, source, part)`), chacune portant les comptes de la source entière : la
+> limite de 16 Mo d'un document Mongo ne fait ni échouer l'écriture ni tronquer le
+> détail. Rejouer un run remplace ses documents.
+
 **9. `ingestion_ratio`, un réglage de dev par source.** Une nouvelle clé de
 `parameters.yml` : une table `source → ratio`, chaque ratio dans [0, 1]. Une source
 absente de la table vaut `1` ; une source inconnue, ou sans connecteur, arrête le run.
@@ -242,8 +256,8 @@ document d'un processus à l'autre ; ce choix attend les mesures et sa propre AD
   `statistics` le remplacent.
 - `transit_relations` occupe de l'ordre de 5 à 6 Go sur disque pendant un run complet,
   et doit être vide à sa fin.
-- Deux collections nouvelles (`MURPHY_DATA.transit_relations`,
-  `MURPHY_META.statistics`), et `run_summaries` gagne `sampling` : par source, le ratio
+- Trois collections nouvelles (`MURPHY_DATA.transit_relations`,
+  `MURPHY_META.statistics`, `MURPHY_META.collisions`), et `run_summaries` gagne `sampling` : par source, le ratio
   et les nombres retenus sur le total.
 - Un run partiel produit beaucoup de relations pendantes : c'est attendu (§9).
 - ADR-013 est **amendé** : l'échantillonnage revient, sous la forme d'un ratio et non

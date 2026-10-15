@@ -120,6 +120,7 @@ class TelemetryHooks:
             aggregates=aggregates,
             summaries=meta.summaries,
             statistics=meta.statistics,
+            collisions=meta.collisions,
             embedder=embedder,
             runtime=self._runtime,
         )

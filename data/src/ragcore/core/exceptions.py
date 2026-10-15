@@ -1,11 +1,14 @@
 """Exceptions du domaine."""
 
+from collections.abc import Mapping
+
 from .models.collision import Collision
-from .services.exclusion_reasons import REASON_COLLISION
+from .services.exclusion_reasons import REASON_COLLISION, REASON_FACET_ROOT_DUPLICATED
 
 __all__ = [
     "CollisionError",
     "EmbeddingModelMismatchError",
+    "FacetRootCollisionError",
     "ParseError",
     "RagCoreError",
     "ValidationError",
@@ -50,6 +53,18 @@ class CollisionError(ValidationError):
     def __init__(self, message: str, collisions: tuple[Collision, ...]) -> None:
         super().__init__(REASON_COLLISION, message)
         self.collisions = collisions
+
+
+class FacetRootCollisionError(ValidationError):
+    """Plusieurs fichiers d'une clé ont la même racine : sans ordre entre eux, le
+    document est refusé (ADR-025).
+
+    ``roots`` : chaque racine en double -> ses fichiers, pour le détail des collisions.
+    """
+
+    def __init__(self, message: str, roots: Mapping[str, tuple[str, ...]]) -> None:
+        super().__init__(REASON_FACET_ROOT_DUPLICATED, message)
+        self.roots = dict(roots)
 
 
 # Sœur de ValidationError, jamais parente ni fille : parse_documents les distingue par

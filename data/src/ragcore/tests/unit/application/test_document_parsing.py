@@ -9,12 +9,19 @@ import pytest
 
 from ragcore.application.document_parsing import DocumentParsing
 from ragcore.application.run_context import PipelineContext
-from ragcore.core.exceptions import ParseError, ValidationError
-from ragcore.core.models.collision_tally import CollisionTally
+from ragcore.core.exceptions import (
+    FacetRootCollisionError,
+    ParseError,
+    ValidationError,
+)
 from ragcore.core.models.document import RawDocument
 from ragcore.core.models.enums import SourceName
 from ragcore.core.models.unknown_tally import UnknownExample, UnknownTally
 from ragcore.core.ports.parser import ParseResult
+from ragcore.core.services.collision_reasons import (
+    COLLISION_FACET_ROOT_DUPLICATED,
+    COLLISION_METADATA,
+)
 from ragcore.core.services.exclusion_reasons import (
     REASON_COLLISION,
     REASON_FACET_ROOT_DUPLICATED,
@@ -128,6 +135,25 @@ def test_une_ValidationError_est_rejetee_sous_SA_raison() -> None:
     assert event.payload["reason"] == REASON_FACET_ROOT_DUPLICATED
     assert event.payload["error"] == "racines en double"
     assert telemetry.snapshot().invalidations == {REASON_FACET_ROOT_DUPLICATED: 1}
+
+
+def test_des_racines_en_double_sont_une_collision_ET_un_rejet() -> None:
+    """Le document reste compté rejeté (équation de complétude) ; chaque racine en
+    double est détaillée avec ses seuls fichiers."""
+    telemetry = RecordingTelemetry()
+    roots = {"ARTICLE": ("vigueur/a.xml", "non_vigueur/a.xml")}
+    error = FacetRootCollisionError("racines en double", roots)
+
+    _run(_FailingParser(error), telemetry)
+
+    assert telemetry.snapshot().invalidations == {REASON_FACET_ROOT_DUPLICATED: 1}
+    assert telemetry.snapshot().collisions == {COLLISION_FACET_ROOT_DUPLICATED: 1}
+    (record,) = telemetry.collisions
+    assert (record.identifier, record.key, record.files) == (
+        "doc-1",
+        "ARTICLE",
+        roots["ARTICLE"],
+    )
 
 
 def test_le_warning_de_rejet_dit_la_raison_et_le_detail(
@@ -261,12 +287,15 @@ def test_une_collision_non_configuree_est_rejetee_sous_sa_raison() -> None:
 
 def test_parse_ou_refuse_chaque_collision_est_comptee_au_bilan() -> None:
     """Parsé ou refusé, chaque (document, clé) en collision est compté une fois, hors
-    des inconnus, avec les fichiers d'où viennent ses valeurs."""
+    des inconnus, et détaillé avec les fichiers d'où viennent ses valeurs."""
     telemetry = RecordingTelemetry()
 
     _parse_collisions(telemetry)
 
     stats = telemetry.snapshot()
-    tally = CollisionTally(count=1, example=(_SOURCE_FILE,))
-    assert stats.collisions == {"versions_a_venir": tally, "num": tally}
+    assert stats.collisions == {COLLISION_METADATA: 2}
     assert stats.unknowns.keys() <= {CATEGORY_TAG}
+    assert {(r.identifier, r.key, r.files) for r in telemetry.collisions} == {
+        ("LEGIARTI000000000002", "versions_a_venir", (_SOURCE_FILE,)),
+        ("LEGIARTI000000000003", "num", (_SOURCE_FILE,)),
+    }

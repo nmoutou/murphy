@@ -71,9 +71,8 @@ class RunStatsAggregator:
     ) -> None:
         self._stats = self._stats.with_unknown(category, value, example)
 
-    def record_collision(self, key: str, source_files: tuple[str, ...]) -> None:
-        """Rangée en liste ou refusée, une clé en collision se compte."""
-        self._stats = self._stats.with_collision(key, source_files)
+    def record_collision(self, reason: str) -> None:
+        self._stats = self._stats.with_collision(reason)
 
     def record_invalidation(self, reason: str) -> None:
         self._stats = self._stats.with_invalidation(reason)

@@ -13,6 +13,9 @@ from opensearchpy import AsyncOpenSearch
 
 from ragcore.adapters.config.settings import InfraSettings
 from ragcore.adapters.storage.mongo.client import MongoClient, create_mongo_client
+from ragcore.adapters.storage.mongo.collision_repository import (
+    MongoCollisionRepository,
+)
 from ragcore.adapters.storage.mongo.document_repository import MongoDocumentRepository
 from ragcore.adapters.storage.mongo.pending_repository import (
     MongoPendingRelationRepository,
@@ -64,6 +67,7 @@ class InfraClients:
 class MetaStores:
     summaries: MongoRunSummaryRepository
     statistics: MongoStatisticsRepository
+    collisions: MongoCollisionRepository
 
 
 def open_clients(settings: InfraSettings) -> InfraClients:
@@ -120,4 +124,5 @@ def open_meta_stores(clients: InfraClients, settings: InfraSettings) -> MetaStor
     return MetaStores(
         summaries=MongoRunSummaryRepository(clients.mongo, meta_db),
         statistics=MongoStatisticsRepository(clients.mongo, meta_db),
+        collisions=MongoCollisionRepository(clients.mongo, meta_db),
     )

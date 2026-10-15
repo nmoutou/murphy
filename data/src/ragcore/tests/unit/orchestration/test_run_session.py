@@ -1,12 +1,18 @@
 """La clôture d'un run : les chunks raccourcis sont déclarés avant le bilan, pour y
-figurer, et les statistiques sont écrites, que le run ait réussi ou cassé."""
+figurer, et les statistiques et les collisions sont écrites, que le run ait réussi ou
+cassé."""
 
 from collections.abc import Iterator
+from datetime import datetime
 
 import pytest
 
 from ragcore.application.run_context import PipelineContext
 from ragcore.core.models.audit import build_event
+from ragcore.core.models.collision_record import CollisionRecord
+from ragcore.core.models.enums import SourceName
+from ragcore.core.models.identifiers import RunId
+from ragcore.core.models.run_collisions import RunCollisions
 from ragcore.core.models.run_statistics import RunStatistics
 from ragcore.core.models.run_summary import RunStatus, RunSummary
 from ragcore.core.ports.embedder import BaseEmbedder
@@ -37,6 +43,26 @@ class _SpyStatistics:
         self.upserted.append(statistics)
 
 
+class _SpyCollisions:
+    def __init__(self) -> None:
+        self.replaced: list[tuple[RunId, RunCollisions]] = []
+
+    async def replace_run(
+        self, run_id: RunId, started_at: datetime, collisions: RunCollisions
+    ) -> None:
+        del started_at
+        self.replaced.append((run_id, collisions))
+
+
+_RECORD = CollisionRecord(
+    source=SourceName.LEGI,
+    reason="facet_root_duplicated",
+    identifier="LEGIARTI1",
+    key="ARTICLE",
+    files=("a.xml", "b.xml"),
+)
+
+
 class _TruncatingEmbedder(NoopEmbedder):
     @property
     def truncations(self) -> int:
@@ -47,6 +73,7 @@ class _Spies:
     def __init__(self) -> None:
         self.summaries = _SpySummaries()
         self.statistics = _SpyStatistics()
+        self.collisions = _SpyCollisions()
         self.telemetry = RecordingTelemetry()
 
 
@@ -73,6 +100,7 @@ def _session(
     for event_type in (DOCUMENT_FETCHED, DOCUMENT_PERSISTED):
         aggregates.stats.emit(build_event(event_type, context.run_id))
     aggregates.measures.record(("documents", "legi", "chunks"), 4, "LEGIARTI1")
+    aggregates.collisions.record(_RECORD)
     with aggregates.stages.stage("phase1"):
         pass
     return RunSession(
@@ -81,6 +109,7 @@ def _session(
         aggregates=aggregates,
         summaries=spies.summaries,
         statistics=spies.statistics,
+        collisions=spies.collisions,
         embedder=embedder or NoopEmbedder(dimension=768),
         runtime=runtime,
     )
@@ -128,3 +157,16 @@ def test_les_statistiques_sont_ecrites_quel_que_soit_le_statut(
     assert document["run_id"] == session.context.run_id
     assert set(document["stages_s"]) == {"phase1"}
     assert document["documents"]["legi"]["chunks"]["max"] == 4
+
+
+@pytest.mark.parametrize("status", [RunStatus.OK, RunStatus.FAILED])
+def test_les_collisions_sont_ecrites_quel_que_soit_le_statut(
+    spies: _Spies, runtime: FakeRuntime, status: RunStatus
+) -> None:
+    session = _session(spies, runtime)
+
+    session.close(status, error_message="panne")
+
+    ((run_id, collisions),) = spies.collisions.replaced
+    assert run_id == session.context.run_id
+    assert collisions.records == (_RECORD,)

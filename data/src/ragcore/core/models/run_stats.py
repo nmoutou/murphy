@@ -7,7 +7,6 @@ from typing import Protocol, Self, TypeVar
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from .collision_tally import CollisionTally
 from .unknown_tally import UnknownExample, UnknownTally
 
 __all__ = ["RunStats"]
@@ -52,9 +51,9 @@ class RunStats(BaseModel):
     unknowns: dict[str, dict[str, UnknownTally]] = Field(default_factory=dict)
     """Catégorie -> mot que le run n'a pas su nommer -> nombre de documents et exemple."""
 
-    collisions: dict[str, CollisionTally] = Field(default_factory=dict)
-    """Clé de métadonnée qui a reçu plusieurs valeurs -> nombre de documents et
-    fichiers de l'un d'eux (ADR-025)."""
+    collisions: dict[str, int] = Field(default_factory=dict)
+    """Raison de collision -> nombre de (document, clé). Le détail vit dans
+    ``RunCollisions``."""
 
     invalidations: dict[str, int] = Field(default_factory=dict)
     """Raison de rejet au parse -> nombre de documents ; leur somme vaut
@@ -71,12 +70,10 @@ class RunStats(BaseModel):
             )
             for category in dict.fromkeys([*self.unknowns, *other.unknowns])
         }
-        collisions = _merge_tallies(self.collisions, other.collisions)
-
         return RunStats(
             counts=_sum_counts(self.counts, other.counts),
             unknowns=unknowns,
-            collisions=collisions,
+            collisions=_sum_counts(self.collisions, other.collisions),
             invalidations=_sum_counts(self.invalidations, other.invalidations),
         )
 
@@ -96,9 +93,8 @@ class RunStats(BaseModel):
         tally = UnknownTally.seen_in(example)
         return self.merge(RunStats(unknowns={category: {value: tally}}))
 
-    def with_collision(self, key: str, source_files: tuple[str, ...]) -> "RunStats":
-        tally = CollisionTally.seen_in(source_files)
-        return self.merge(RunStats(collisions={key: tally}))
+    def with_collision(self, reason: str) -> "RunStats":
+        return self.merge(RunStats(collisions={reason: 1}))
 
     def with_invalidation(self, reason: str) -> "RunStats":
         return self.merge(RunStats(invalidations={reason: 1}))
