@@ -90,16 +90,16 @@ describe('document tabs', () => {
 
   it('opens in the active group once Recherche is closed', () => {
     const api = renderDockview();
-    const graph = api.getPanel('graph');
+    const explanation = api.getPanel('explanation');
     act(() => {
       api.getPanel('results')?.api.close();
-      graph?.api.moveTo({ group: api.addGroup({ direction: 'right' }) });
-      graph?.api.setActive();
+      explanation?.api.moveTo({ group: api.addGroup({ direction: 'right' }) });
+      explanation?.api.setActive();
     });
 
     act(() => openDocument(api, RESULT));
 
-    expect(api.getPanel(DOCUMENT_PANEL_ID)?.group).toBe(graph?.group);
+    expect(api.getPanel(DOCUMENT_PANEL_ID)?.group).toBe(explanation?.group);
   });
 
   it('closes the tab of an unreadable document and shows the error', async () => {

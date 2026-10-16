@@ -5,7 +5,7 @@ en ratio) et ADR-019 §3 (une clé de plus dans `parameters.yml`) · **§8 amend
 15 octobre 2026** (le détail des collisions a sa collection) · **§1 amendé le
 15 octobre 2026** (les copies d'une même racine sont départagées par leur date) · **§8
 amendé par ADR-036** (le détail des problèmes passe dans `MURPHY_PROBLEMS`, une ligne par
-problème)
+problème) · **§8 amendé le 16 octobre 2026** (une `Distribution` perd son histogramme)
 
 ## Contexte
 
@@ -154,7 +154,8 @@ Distribution = { count, sum, min, max, mean, max_ref, histogram }
 - `max_ref` nomme ce qui a donné le maximum (un identifiant de document, de composante).
 - `histogram` compte les valeurs par classe en puissance de 2 (`{"2^k": n}`) : aucune
   borne à choisir, et un compte exact par classe. Une moyenne seule ne dirait rien de
-  distributions aussi asymétriques que celles du contexte.
+  distributions aussi asymétriques que celles du contexte. *Amendé le 16 octobre 2026 :
+  l'histogramme est retiré, `min`, `max` et `max_ref` suffisent au diagnostic.*
 - Comme `RunStats`, une `Distribution` se fusionne dans n'importe quel ordre : chaque
   worker tient la sienne, réunies en fin de run sans verrou.
 

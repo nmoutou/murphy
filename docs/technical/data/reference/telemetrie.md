@@ -24,7 +24,7 @@ n'en sort en silence.
 | `document.failed` | **La fuite** : vu, jamais ingéré (saga échouée/compensée). `reason` = type d'exception. |
 | `chunk.truncated` | Chunks raccourcis par l'embedder pour tenir dans la fenêtre du modèle (1 événement en fin de run, `count`). Pas une fuite — mais la fin de ces chunks n'est pas indexée : `CHUNKING_MAX_CHARS` à corriger. |
 | `relation.upserted` | Arêtes **réussies** d'un batch (`count`) |
-| `relation.pending` | Cible absente → cache des pendantes |
+| `relation.pending` | Source ou cible absente → cache des pendantes |
 | `relation.promoted` | Pendante d'un run passé enfin résolue |
 | `relation.unknown` | Liens qu'on ne sait pas écrire (`sens` inconnu, `@id` illisible, `typelien` ou balise heuristique qui ne peut pas être un verbe) : 1 événement par document, `count` = liens perdus. L'arête n'existe pas ; un lien retiré par `skip_unconfigured` n'est pas compté. Ne change pas le statut du run (ADR-024). |
 | `saga.compensation.triggered` / `.completed` / `.failed` | Rollback d'une saga (`.failed` = un écrit partiel subsiste ; `success` du `.completed` dit la vérité : une seule compensation ratée et le rollback n'est pas propre) |
@@ -262,9 +262,8 @@ run, unique par `run_id`, écrit à la clôture de la session, **même en cas d'
 | Usage | Le statut du run s'en dérive | Le diagnostic et le réglage ; jamais lue pour décider |
 
 Toute mesure est une `Distribution` (`core/models/distribution.py`) :
-`{count, sum, min, max, mean, max_ref, histogram}`. `max_ref` nomme ce qui a donné le
-maximum (un identifiant de document) ; `histogram` compte les valeurs par classe en
-puissance de 2 (`{"2^k": n}`, `2^k <= v < 2^(k+1)`, `"0"` pour zéro, `k` négatif sous 1).
+`{count, sum, min, max, mean, max_ref}`. `max_ref` nomme ce qui a donné le
+maximum (un identifiant de document).
 Comme `RunStats`, les mesures (`RunMeasures`) se fusionnent dans n'importe quel ordre :
 à maximum égal, `max_ref` est la plus petite référence.
 

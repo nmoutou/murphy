@@ -84,13 +84,14 @@ Donc : `identifier` (sérialisé), `source`, `document_type`, `nature`, `title`,
 
 ### `pending_relations`
 
-Les `PendingRelation` : arêtes différées, dont la cible n'est pas (encore) dans le
-corpus — source_id, target_id, relation_type, metadata, first_seen_run, last_seen_run.
+Les `PendingRelation` : arêtes différées, dont la source ou la cible n'est pas (encore)
+dans le corpus — source_id, target_id, relation_type, metadata, first_seen_run, last_seen_run.
 Ni TTL ni retry_count : écrite une fois, promue une fois — ou jamais.
 
 Index **unique** `uq_pending_source_target_type` (source_id, target_id, relation_type) —
-c'est lui qui fait de l'upsert une union ; `idx_pending_target` (target_id) pour le
-rejeu ciblé, interrogé par tranches de 10 000 cibles (ADR-034 §7).
+c'est lui qui fait de l'upsert une union, et son préfixe `source_id` sert le rejeu par la
+source ; `idx_pending_target` (target_id) sert le rejeu par la cible. Le rejeu interroge
+les deux par tranches de 10 000 identifiants (ADR-034 §7).
 
 Une pendante dérive des documents : elle vit dans leur base et `nuke_all` l'efface avec
 eux.
@@ -220,6 +221,6 @@ définition que l'ingestion applique est
 - **Arêtes** : écrites en phase 2 uniquement, `MERGE (a)-[r:TYPE]->(b)` avec le **verbe
   comme type d'arête** (type paramétré natif), taguées du `run_id` qui les a posées
   (compensabilité à la maille du run), par lots `UNWIND` d'un même verbe (ADR-034 §5).
-  Une cible absente ne crée pas de nœud fantôme :
+  Une extrémité absente ne crée pas de nœud fantôme :
   la relation part en pendante. Une cible décrite est une ligne
   d'`unformatted_relations`, pas un nœud.

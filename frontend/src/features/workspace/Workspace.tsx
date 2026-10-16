@@ -30,7 +30,8 @@ export default function Workspace() {
   return (
     // min-w-0 : Dockview fixe ses largeurs en px, qui sinon imposeraient sa largeur passée au body
     <div className="flex min-h-0 min-w-0 flex-1 bg-primary">
-      <div className="min-w-0 flex-1">
+      {/* overflow-hidden : un panneau jamais affiché reste posé sous la grille et ferait défiler la page */}
+      <div className="min-w-0 flex-1 overflow-hidden">
         <DockviewReact
           theme={MURPHY_THEME}
           components={PANEL_COMPONENTS}

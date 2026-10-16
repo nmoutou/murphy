@@ -47,11 +47,11 @@ beforeEach(() => {
 const sidebar = () => within(screen.getByRole('complementary', { name: 'Sélection' }));
 
 describe('Workspace', () => {
-  it('opens Recherche, Graphe and Explications in one group, Recherche active', () => {
+  it('opens Recherche and Explications in one group, Recherche active', () => {
     const { groupCount } = renderWorkspace();
 
     expect(groupCount()).toBe(1);
-    for (const title of ['Recherche', 'Graphe', 'Explications']) {
+    for (const title of ['Recherche', 'Explications']) {
       expect(closeButton(title)).toBeInTheDocument();
     }
     expect(screen.getByRole('region', { name: 'Recherche' })).toHaveClass('dv-active-group');
@@ -78,13 +78,13 @@ describe('Workspace', () => {
 
   it('reopens a closed fixed tab from the group menu', async () => {
     renderWorkspace();
-    await closeTabs('Graphe');
+    await closeTabs('Explications');
 
     await userEvent.click(screen.getByRole('button', { name: 'Rouvrir un onglet' }));
-    await userEvent.click(screen.getByRole('button', { name: 'Ouvrir Graphe' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Ouvrir Explications' }));
 
-    expect(closeButton('Graphe')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Graphe' })).not.toBeInTheDocument();
+    expect(closeButton('Explications')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Explications' })).not.toBeInTheDocument();
   });
 
   it('says so when every fixed tab is open', async () => {
@@ -98,7 +98,7 @@ describe('Workspace', () => {
   it('offers the closed tabs once the workspace is empty', async () => {
     renderWorkspace();
 
-    await closeTabs('Recherche', 'Graphe', 'Explications');
+    await closeTabs('Recherche', 'Explications');
     const watermark = screen.getByText(/Aucun onglet ouvert/).parentElement;
     if (!watermark) throw new Error('The watermark has no container');
     await userEvent.click(within(watermark).getByRole('button', { name: 'Ouvrir Recherche' }));

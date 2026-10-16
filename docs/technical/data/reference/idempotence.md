@@ -78,10 +78,10 @@ erreur ni trace. D'où :
 
 - la **barrière structurelle** du DAG (`ingestion_outcome` → `resolveRelations`) : la
   phase 2 ne démarre qu'après que tous les nœuds du run existent ;
-- le **registre des pendantes** (`MURPHY_DATA.pending_relations`) pour les cibles réellement
-  absentes du corpus : une arête différée est une donnée, pas un vide. Ni TTL ni
-  compteur d'essais — écrite une fois, **promue** une fois (quand sa cible arrive dans le
-  delta d'un run : le rejeu est borné par `written_node_ids`, jamais par la taille du
+- le **registre des pendantes** (`MURPHY_DATA.pending_relations`) pour les extrémités
+  réellement absentes du corpus : une arête différée est une donnée, pas un vide. Ni TTL ni
+  compteur d'essais — écrite une fois, **promue** une fois (quand sa source ou sa cible
+  arrive dans le delta d'un run : le rejeu est borné par `written_node_ids`, jamais par la taille du
   backlog), ou jamais (un lien légitime vers l'extérieur du corpus) ;
 - chaque arête écrite est **taguée du `run_id`** : compensable à la maille du run sans
   emporter celles d'autres runs.

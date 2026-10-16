@@ -1,7 +1,6 @@
 import type { FunctionComponent } from 'react';
 import type { DockviewApi, DockviewGroupPanel, IDockviewPanelProps } from 'dockview-react';
 import ResultsPanel from '@/features/results/ResultsPanel';
-import GraphPanel from '@/features/graph/GraphPanel';
 import ExplanationPanel from '@/features/explanation/ExplanationPanel';
 import { DOCUMENT_COMPONENT, DocumentPanelAdapter, openDocument } from './documentTabs';
 
@@ -20,7 +19,7 @@ const ExplanationPanelAdapter = ({ containerApi }: IDockviewPanelProps) => (
 );
 
 /** Un panneau fixe a pour identifiant et pour composant Dockview son type : il est unique */
-export const FIXED_PANELS = ['results', 'graph', 'explanation'] as const;
+export const FIXED_PANELS = ['results', 'explanation'] as const;
 
 export type FixedPanelKind = (typeof FIXED_PANELS)[number];
 
@@ -32,7 +31,6 @@ interface PanelDefinition {
 
 export const PANEL_DEFINITIONS: Record<FixedPanelKind, PanelDefinition> = {
   results: { title: 'Recherche', icon: 'search', component: ResultsPanelAdapter },
-  graph: { title: 'Graphe', icon: 'graphe', component: GraphPanel },
   explanation: { title: 'Explications', icon: 'explaining', component: ExplanationPanelAdapter },
 };
 

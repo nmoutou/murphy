@@ -270,9 +270,9 @@ ce run, et la mémoire est bornée par la plus grande composante connexe (ADR-03
    la différée. Chaque arête écrite est taguée du `run_id` : c'est ce qui la rend
    compensable à la maille du run sans emporter les arêtes d'autres runs.
    `relation.upserted` porte le compte des arêtes **réussies** (pas « tentées »).
-5. **Les trous vont au cache** : chaque relation dont la cible manque devient une
-   `PendingRelation` (`MURPHY_DATA.pending_relations`, upsert-union sur la clé
-   source/target/type) + événement `relation.pending`. Une pendante peut rester
+5. **Les trous vont au cache** : chaque relation dont la source ou la cible manque
+   devient une `PendingRelation` (`MURPHY_DATA.pending_relations`, upsert-union sur la
+   clé source/target/type) + événement `relation.pending`. Une pendante peut rester
    pendante indéfiniment — un arrêt qui cite une directive jamais ingérée est un lien
    légitime vers l'extérieur, pas une erreur.
 6. **Suppression au fil de l'eau** : les lignes de transit d'un groupe de composantes ou
@@ -280,11 +280,16 @@ ce run, et la mémoire est bornée par la plus grande composante connexe (ADR-03
    écrites, en attente ou réduites. Si la collection n'est pas vide en fin de phase, le
    run échoue (`TransitNotDrainedError`, ADR-034 §6) : c'est un bug, pas un état
    dégradé.
-7. **Promotion ciblée** : on ne retente QUE les pendantes dont la cible figure dans
+7. **Promotion ciblée**, exécutée **avant** les étapes 2 à 6 : les pendantes de ce run
+   naissent quand tous ses nœuds existent, les rejouer échouerait à coup sûr. On ne
+   retente QUE les pendantes de runs passés dont la source ou la cible figure dans
    `written_node_ids` (le delta de CE run) — le rejeu est borné par le delta, jamais par
-   la taille du backlog. `written_node_ids` reste en mémoire (~2,1 M identifiants,
-   ~200 Mo pour LEGI) ; seuls le `$in` qui le porte et la suppression des promues sont
-   découpés, par tranches de 10 000 (`_QUERY_CHUNK`) : une requête Mongo ne dépasse pas
+   la taille du backlog. La source manque quand le document qui déclare l'arête en est la
+   cible (`sens="cible"`, contenance déclarée par l'ancêtre, version précédente). Une
+   pendante dont l'autre extrémité manque toujours reste, comptée dans le log
+   `relation.promotion.still_pending`. `written_node_ids` reste en mémoire (~2,1 M
+   identifiants, ~200 Mo pour LEGI) ; seuls le `$or` qui le porte et la suppression des
+   promues sont découpés, par tranches de 10 000 (`_QUERY_CHUNK`) : une requête Mongo ne dépasse pas
    16 Mo (ADR-034 §7). Les promues sont écrites, supprimées du cache et émises en
    `relation.promoted`.
 
