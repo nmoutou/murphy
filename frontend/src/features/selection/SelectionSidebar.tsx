@@ -45,7 +45,7 @@ interface CollapsibleSidebarProps {
 
 /** À droite de l'espace de travail, hors de Dockview : visible depuis tous les onglets */
 function CollapsibleSidebar({ content }: CollapsibleSidebarProps) {
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(true);
   const count = content.entries.length;
   const layout = COLLAPSIBLE_LAYOUT[isCollapsed ? 'collapsed' : 'expanded'];
 

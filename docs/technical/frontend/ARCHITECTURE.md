@@ -163,7 +163,7 @@ et n'apparaît qu'après la première.
 
 ## La sélection (`features/selection/`)
 
-`SelectionSidebar.tsx` : repliable jusqu'à son compteur ; sous `md`, un bouton flottant
+`SelectionSidebar.tsx` : repliée par défaut jusqu'à son compteur ; sous `md`, un bouton flottant
 l'ouvre en tiroir. De haut en bas (`SelectionContent.tsx`) :
 
 - **« Résumer »** ;

@@ -44,7 +44,11 @@ beforeEach(() => {
   });
 });
 
-const sidebar = () => within(screen.getByRole('complementary', { name: 'Sélection' }));
+const unfoldSidebar = async () => {
+  const sidebar = within(screen.getByRole('complementary', { name: 'Sélection' }));
+  await act(() => userEvent.click(sidebar.getByRole('button', { name: /^Déplier la sélection/ })));
+  return sidebar;
+};
 
 describe('Workspace', () => {
   it('opens Recherche and Explications in one group, Recherche active', () => {
@@ -113,7 +117,8 @@ describe('Workspace', () => {
     renderWorkspace();
     await closeTabs('Explications');
 
-    await act(() => userEvent.click(sidebar().getByRole('button', { name: 'Résumer' })));
+    const sidebar = await unfoldSidebar();
+    await act(() => userEvent.click(sidebar.getByRole('button', { name: 'Résumer' })));
 
     expect(closeButton('Explications')).toBeInTheDocument();
     expect(await screen.findByText(SUMMARY_REQUEST)).toBeInTheDocument();
@@ -123,7 +128,8 @@ describe('Workspace', () => {
   it('opens a selected document in a tab, with no passage to highlight', async () => {
     renderWorkspace();
 
-    await act(() => userEvent.click(sidebar().getByRole('button', { name: SELECTED.title })));
+    const sidebar = await unfoldSidebar();
+    await act(() => userEvent.click(sidebar.getByRole('button', { name: SELECTED.title })));
 
     expect(closeButton(SELECTED.title)).toBeInTheDocument();
     expect(await screen.findByText(/se prescrivent par cinq ans/)).toBeInTheDocument();

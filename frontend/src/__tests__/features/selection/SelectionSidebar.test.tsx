@@ -18,7 +18,7 @@ const entryOf = (identifier: string, contentLength = 100): SelectionEntry => ({
 
 const select = (...entries: SelectionEntry[]) => act(() => useSelectionStore.setState({ entries }));
 
-const renderSidebar = ({ isAnswering = false } = {}) => {
+const renderFoldedSidebar = ({ isAnswering = false } = {}) => {
   const onSummarize = vi.fn();
   const onOpenDocument = vi.fn();
   render(
@@ -32,14 +32,20 @@ const renderSidebar = ({ isAnswering = false } = {}) => {
   return { sidebar, onSummarize, onOpenDocument };
 };
 
+const renderSidebar = async ({ isAnswering = false } = {}) => {
+  const rendered = renderFoldedSidebar({ isAnswering });
+  await userEvent.click(rendered.sidebar.getByRole('button', { name: /^Déplier la sélection/ }));
+  return rendered;
+};
+
 beforeEach(() => {
   useSelectionStore.setState(useSelectionStore.getInitialState(), true);
   useSearchStore.setState({ contextBudget: BUDGET });
 });
 
 describe('SelectionSidebar', () => {
-  it('invites to add documents from the search, summarizing disabled', () => {
-    const { sidebar } = renderSidebar();
+  it('invites to add documents from the search, summarizing disabled', async () => {
+    const { sidebar } = await renderSidebar();
 
     expect(sidebar.getByText(/Ajoutez des documents depuis la recherche/)).toBeInTheDocument();
     expect(sidebar.getByRole('button', { name: 'Résumer' })).toBeDisabled();
@@ -47,7 +53,7 @@ describe('SelectionSidebar', () => {
 
   it('numbers the documents in order, and renumbers them after a removal', async () => {
     select(entryOf('A'), entryOf('B'), entryOf('C'));
-    const { sidebar } = renderSidebar();
+    const { sidebar } = await renderSidebar();
 
     await userEvent.click(sidebar.getByRole('button', { name: 'Retirer Titre A de la sélection' }));
 
@@ -60,7 +66,7 @@ describe('SelectionSidebar', () => {
 
   it('summarizes and opens a document through its callbacks', async () => {
     select(entryOf('A'));
-    const { sidebar, onSummarize, onOpenDocument } = renderSidebar();
+    const { sidebar, onSummarize, onOpenDocument } = await renderSidebar();
 
     await userEvent.click(sidebar.getByRole('button', { name: 'Résumer' }));
     await userEvent.click(sidebar.getByRole('button', { name: 'Titre A' }));
@@ -69,9 +75,9 @@ describe('SelectionSidebar', () => {
     expect(onOpenDocument).toHaveBeenCalledExactlyOnceWith(entryOf('A'));
   });
 
-  it('accepts a selection over budget, turns the gauge red and blocks summarizing', () => {
+  it('accepts a selection over budget, turns the gauge red and blocks summarizing', async () => {
     select(entryOf('A', 800), entryOf('B', 400));
-    const { sidebar } = renderSidebar();
+    const { sidebar } = await renderSidebar();
 
     expect(sidebar.getByRole('meter', { name: 'Budget de lecture' })).toHaveAttribute(
       'aria-valuetext',
@@ -80,43 +86,44 @@ describe('SelectionSidebar', () => {
     expect(sidebar.getByRole('button', { name: 'Résumer' })).toBeDisabled();
   });
 
-  it('shows the share of the budget the texts use', () => {
+  it('shows the share of the budget the texts use', async () => {
     select(entryOf('A', 250));
-    const { sidebar } = renderSidebar();
+    const { sidebar } = await renderSidebar();
 
     expect(sidebar.getByText('25 % du budget de lecture')).toBeInTheDocument();
   });
 
-  it('blocks summarizing while an answer is coming', () => {
+  it('blocks summarizing while an answer is coming', async () => {
     select(entryOf('A'));
-    const { sidebar } = renderSidebar({ isAnswering: true });
+    const { sidebar } = await renderSidebar({ isAnswering: true });
 
     expect(sidebar.getByRole('button', { name: 'Résumer' })).toBeDisabled();
   });
 
   it('removes every document at once', async () => {
     select(entryOf('A'), entryOf('B'));
-    const { sidebar } = renderSidebar();
+    const { sidebar } = await renderSidebar();
 
     await userEvent.click(sidebar.getByRole('button', { name: 'Tout retirer' }));
 
     expect(useSelectionStore.getState().entries).toEqual([]);
   });
 
-  it('collapses to its counter, and unfolds again', async () => {
+  it('starts folded to its counter, unfolds and folds again', async () => {
     select(entryOf('A'), entryOf('B'));
-    const { sidebar } = renderSidebar();
-
-    await userEvent.click(sidebar.getByRole('button', { name: 'Replier la sélection' }));
+    const { sidebar } = renderFoldedSidebar();
     expect(sidebar.queryByRole('list')).not.toBeInTheDocument();
 
     await userEvent.click(sidebar.getByRole('button', { name: 'Déplier la sélection (2)' }));
     expect(sidebar.getByRole('list', { name: 'Documents sélectionnés' })).toBeInTheDocument();
+
+    await userEvent.click(sidebar.getByRole('button', { name: 'Replier la sélection' }));
+    expect(sidebar.queryByRole('list')).not.toBeInTheDocument();
   });
 
   it('opens as a drawer from its floating button on small screens', async () => {
     select(entryOf('A'));
-    renderSidebar();
+    renderFoldedSidebar();
 
     await userEvent.click(screen.getByRole('button', { name: 'Afficher la sélection (1)' }));
 
