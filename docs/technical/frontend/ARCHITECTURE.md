@@ -96,20 +96,18 @@ reste.
 
 `panelRegistry.tsx` associe à chaque type de panneau un adaptateur : il reçoit les props
 de Dockview et rend le panneau métier avec des props simples, ses paramètres et ses
-rappels. Les panneaux (`results/`, `document/`, `graph/`, `explanation/`) n'importent
+rappels. Les panneaux (`results/`, `document/`, `explanation/`) n'importent
 ni Dockview, ni `workspace/`, ni un autre panneau.
 
 | Type | Identifiant | Panneau | Ce que l'adaptateur lui passe |
 |---|---|---|---|
 | `results` | `results` | `ResultsPanel` | `onOpenDocument(result)` → `openDocument(containerApi, …)`, avec son premier passage |
-| `graph` | `graph` | `GraphPanel` (vide) | — |
 | `explanation` | `explanation` | `ExplanationPanel` | `onOpenDocument(source)` → `openDocument(containerApi, source)`, sans passage |
 | `document` | `document:<identifier>` | `DocumentPanel` | `identifier`, `passage`, `onError(code)` → la modale, puis la fermeture de l'onglet |
 
-Les trois panneaux fixes ont pour identifiant leur type : chacun est unique. La
+Les deux panneaux fixes ont pour identifiant leur type : chacun est unique. La
 disposition par défaut (`defaultLayout.ts`) les ouvre dans un seul groupe, Recherche
-actif. Graphe est une amorce vide, qui aura son ADR. `showFixedPanel(api, kind)` active
-un panneau fixe, ou le rouvre s'il est fermé.
+actif. `showFixedPanel(api, kind)` active un panneau fixe, ou le rouvre s'il est fermé.
 
 ### La sidebar de la sélection
 
@@ -227,7 +225,6 @@ src/
 │   │                     # Pagination, PageSizeSelect
 │   ├── selection/        # SelectionSidebar, SelectionContent, SelectionList, BudgetGauge
 │   ├── document/         # DocumentPanel, useDocumentContent, splitAroundPassage
-│   ├── graph/            # GraphPanel (vide)
 │   ├── explanation/      # ExplanationPanel, MessageList, UserMessage, MessageSources,
 │   │                     # AssistantMessage, citations, SegmentSeparator, QuestionForm,
 │   │                     # useQuestionInput
