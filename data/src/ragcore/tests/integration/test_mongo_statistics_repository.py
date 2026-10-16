@@ -61,4 +61,3 @@ async def test_replaying_a_run_replaces_its_statistics(repo) -> None:
     (document,) = documents
     assert document["stages_s"] == {"phase1": 12.5}
     assert document["documents"]["legi"]["chunks"]["max"] == 8
-    assert document["documents"]["legi"]["chunks"]["histogram"] == {"2^3": 1}

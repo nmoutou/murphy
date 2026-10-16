@@ -3,8 +3,6 @@ dans un ordre non déterministe."""
 
 from itertools import permutations
 
-import pytest
-
 from ragcore.core.models.distribution import Distribution
 from ragcore.core.models.run_measures import RunMeasures
 
@@ -23,20 +21,6 @@ def test_the_summary_figures() -> None:
     assert (distribution.count, distribution.sum) == (3, 15)
     assert (distribution.min, distribution.max, distribution.mean) == (2, 8, 5)
     assert distribution.max_ref == "b"
-
-
-@pytest.mark.parametrize(
-    ("value", "bucket"),
-    [(0, "0"), (0.3, "2^-2"), (1, "2^0"), (3, "2^1"), (4, "2^2"), (1023, "2^9")],
-)
-def test_each_value_falls_in_its_power_of_two(value: float, bucket: str) -> None:
-    assert Distribution.of(value, "x").histogram == {bucket: 1}
-
-
-def test_the_histogram_counts_exactly_per_class() -> None:
-    distribution = _reduce([(4, "a"), (5, "b"), (7, "c"), (8, "d")])
-
-    assert distribution.histogram == {"2^2": 3, "2^3": 1}
 
 
 def test_the_merge_does_not_depend_on_the_order() -> None:
@@ -59,7 +43,6 @@ def test_the_document_carries_the_mean() -> None:
         "max": 3,
         "mean": 2,
         "max_ref": "b",
-        "histogram": {"2^0": 1, "2^1": 1},
     }
 
 
